@@ -1,0 +1,316 @@
+package dev.heyari.ari.ui.conversation
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MicOff
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import dev.heyari.ari.stt.SttState
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ConversationScreen(
+    onOpenSettings: () -> Unit = {},
+    viewModel: ConversationViewModel = hiltViewModel(),
+) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val listState = rememberLazyListState()
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    val isRecognising = state.sttState is SttState.Listening
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { results ->
+        val audioGranted = results[Manifest.permission.RECORD_AUDIO] == true
+        if (audioGranted) {
+            viewModel.toggleWakeWord()
+        }
+    }
+
+    // Refresh on every entry into RESUMED (handles activity resume) AND on every
+    // composition of this destination (handles NavHost back-navigation, where the
+    // activity stays resumed but the destination re-enters the tree).
+    LaunchedEffect(Unit) {
+        viewModel.syncServiceState()
+    }
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            viewModel.syncServiceState()
+        }
+    }
+
+    LaunchedEffect(state.messages.size) {
+        if (state.messages.isNotEmpty()) {
+            listState.animateScrollToItem(state.messages.size - 1)
+        }
+    }
+
+    if (state.needsFsnPermission) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissFsnPrompt() },
+            title = { Text("Full-screen notifications") },
+            text = { Text("For hands-free wake word activation, Ari needs permission to show full-screen notifications. Without this, you'll get a banner notification instead.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.dismissFsnPrompt()
+                    viewModel.openFsnSettings()
+                }) {
+                    Text("Open settings")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissFsnPrompt() }) {
+                    Text("Later")
+                }
+            }
+        )
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Ari") },
+                actions = {
+                    IconButton(
+                        onClick = {
+                            if (state.isListening) {
+                                viewModel.toggleWakeWord()
+                            } else {
+                                val hasAudio = ContextCompat.checkSelfPermission(
+                                    context, Manifest.permission.RECORD_AUDIO
+                                ) == PackageManager.PERMISSION_GRANTED
+
+                                val hasNotifications = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    ContextCompat.checkSelfPermission(
+                                        context, Manifest.permission.POST_NOTIFICATIONS
+                                    ) == PackageManager.PERMISSION_GRANTED
+                                } else {
+                                    true
+                                }
+
+                                if (hasAudio && hasNotifications) {
+                                    viewModel.toggleWakeWord()
+                                } else {
+                                    val needed = mutableListOf<String>()
+                                    if (!hasAudio) needed.add(Manifest.permission.RECORD_AUDIO)
+                                    if (!hasNotifications && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        needed.add(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                    permissionLauncher.launch(needed.toTypedArray())
+                                }
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = if (state.isListening) Icons.Default.Mic else Icons.Default.MicOff,
+                            contentDescription = if (state.isListening) "Stop listening" else "Start listening",
+                            tint = if (state.isListening) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
+                        )
+                    }
+                }
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .imePadding()
+        ) {
+            if (state.needsSetup) {
+                OnboardingCard(onOpenSettings = onOpenSettings)
+            }
+
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(state.messages, key = { it.id }) { message ->
+                    MessageBubble(message)
+                }
+            }
+
+            AnimatedVisibility(
+                visible = isRecognising,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                SttIndicator(
+                    partial = (state.sttState as? SttState.Listening)?.partial.orEmpty(),
+                    onStop = { viewModel.stopStt() }
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = state.inputText,
+                    onValueChange = viewModel::onInputChanged,
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Ask Ari something...") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(
+                        onSend = { viewModel.onTextSubmitted(state.inputText) }
+                    ),
+                    enabled = !isRecognising
+                )
+                IconButton(onClick = { viewModel.onTextSubmitted(state.inputText) }) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Send,
+                        contentDescription = "Send"
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OnboardingCard(onOpenSettings: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Setup needed",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Voice features need a microphone permission and a downloaded speech model. You can still type queries below.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onOpenSettings) {
+                    Text("Open settings")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SttIndicator(partial: String, onStop: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Listening\u2026",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                TextButton(onClick = onStop) {
+                    Text("Stop")
+                }
+            }
+            if (partial.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = partial,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontStyle = FontStyle.Italic,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+    }
+}
