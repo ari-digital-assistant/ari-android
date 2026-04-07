@@ -32,6 +32,7 @@ data class PermissionStatus(
     val recordAudio: Boolean,
     val postNotifications: Boolean,
     val fullScreenIntent: Boolean,
+    val systemAlertWindow: Boolean,
 )
 
 data class ModelStatus(
@@ -41,7 +42,7 @@ data class ModelStatus(
 )
 
 data class SettingsState(
-    val permissions: PermissionStatus = PermissionStatus(false, false, false),
+    val permissions: PermissionStatus = PermissionStatus(false, false, false, false),
     val models: List<ModelStatus> = emptyList(),
     val download: ModelDownloadState = ModelDownloadState.Idle,
 )
@@ -118,7 +119,26 @@ class SettingsViewModel @Inject constructor(
             true
         }
 
-        return PermissionStatus(recordAudio, postNotifications, fullScreenIntent)
+        val systemAlertWindow = Settings.canDrawOverlays(application)
+
+        return PermissionStatus(recordAudio, postNotifications, fullScreenIntent, systemAlertWindow)
+    }
+
+    /**
+     * Opens the system "Display over other apps" page for our package. Holding
+     * SYSTEM_ALERT_WINDOW grants Background Activity Launch privilege, which
+     * is what lets WakeWordService open the voice overlay over the lock screen
+     * on every detection (not just the first one in the FGS BAL grace window).
+     * Ari does not actually draw any overlay windows.
+     */
+    fun openOverlaySettings() {
+        val intent = Intent(
+            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            Uri.parse("package:${application.packageName}")
+        ).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        runCatching { application.startActivity(intent) }
     }
 
     private fun buildModelList(activeId: String?): List<ModelStatus> {

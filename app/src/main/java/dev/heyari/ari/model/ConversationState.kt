@@ -10,4 +10,6 @@ data class ConversationState(
     val sttState: SttState = SttState.Idle,
     val needsFsnPermission: Boolean = false,
     val needsSetup: Boolean = false,
+    /** False until startup checks have finished — prevents the onboarding card flashing on launch. */
+    val setupChecked: Boolean = false,
 )

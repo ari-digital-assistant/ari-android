@@ -36,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -44,6 +45,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.heyari.ari.stt.ModelDownloadState
 import dev.heyari.ari.stt.SttModel
@@ -56,6 +60,20 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Refresh permission state every time the screen comes back to the
+    // foreground (e.g. after the user grants an overlay permission in the
+    // system settings and returns to Ari).
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshPermissions()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     val recordAudioLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -94,6 +112,7 @@ fun SettingsScreen(
                     }
                 },
                 onOpenFsnSettings = { viewModel.openFsnSettings() },
+                onOpenOverlaySettings = { viewModel.openOverlaySettings() },
                 onOpenAppSettings = { viewModel.openAppSettings() },
             )
 
@@ -159,6 +178,7 @@ private fun PermissionsSection(
     onRequestRecordAudio: () -> Unit,
     onRequestNotifications: () -> Unit,
     onOpenFsnSettings: () -> Unit,
+    onOpenOverlaySettings: () -> Unit,
     onOpenAppSettings: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -183,8 +203,17 @@ private fun PermissionsSection(
         )
 
         PermissionRow(
+            label = "Lock screen wake word",
+            description = "Required for the wake word to keep working when your phone is locked — like how phone calls appear on the lock screen. Android calls this \"Display over other apps\", but Ari does not draw on top of your other apps. It only uses this permission to open its own voice screen when you say the wake word. Without it, the wake word will only work once per session.",
+            granted = permissions.systemAlertWindow,
+            required = true,
+            actionLabel = if (permissions.systemAlertWindow) "Granted" else "Open Android settings",
+            onAction = onOpenOverlaySettings,
+        )
+
+        PermissionRow(
             label = "Full-screen notifications",
-            description = "Optional. Lets Ari take over the screen when wake word fires from the lock screen.",
+            description = "Optional. Legacy fallback path — not used by Ari's current wake word flow, but kept available in case Android tightens overlay rules in future.",
             granted = permissions.fullScreenIntent,
             required = false,
             actionLabel = if (permissions.fullScreenIntent) "Granted" else "Open settings",
@@ -208,37 +237,47 @@ private fun PermissionRow(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
         ),
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Icon(
-                imageVector = if (granted) Icons.Default.CheckCircle else Icons.Default.Cancel,
-                contentDescription = null,
-                tint = if (granted) Color(0xFF2E7D32) else if (required) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(text = label, style = MaterialTheme.typography.titleMedium)
-                    if (required) {
-                        Text(
-                            text = "REQUIRED",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                }
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Icon(
+                    imageVector = if (granted) Icons.Default.CheckCircle else Icons.Default.Cancel,
+                    contentDescription = null,
+                    tint = if (granted) Color(0xFF2E7D32) else if (required) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
                 )
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                if (required) {
+                    Text(
+                        text = "REQUIRED",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
-            TextButton(onClick = onAction, enabled = !granted || actionLabel != "Granted") {
-                Text(actionLabel)
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(onClick = onAction, enabled = !granted || actionLabel != "Granted") {
+                    Text(actionLabel)
+                }
             }
         }
     }

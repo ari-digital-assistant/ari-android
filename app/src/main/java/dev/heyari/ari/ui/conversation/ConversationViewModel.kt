@@ -19,16 +19,17 @@ import dev.heyari.ari.model.Message
 import dev.heyari.ari.stt.ModelDownloadManager
 import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.stt.SttModelRegistry
-import dev.heyari.ari.stt.SttState
 import dev.heyari.ari.tts.SpeechOutput
-import dev.heyari.ari.wakeword.WakeWordEvents
 import dev.heyari.ari.wakeword.WakeWordService
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import uniffi.ari_ffi.AriEngine
 import uniffi.ari_ffi.FfiResponse
@@ -41,7 +42,6 @@ class ConversationViewModel @Inject constructor(
     private val speechOutput: SpeechOutput,
     private val downloadManager: ModelDownloadManager,
     private val settingsRepository: SettingsRepository,
-    private val wakeWordEvents: WakeWordEvents,
     private val actionHandler: ActionHandler,
     private val application: Application,
 ) : ViewModel() {
@@ -49,13 +49,28 @@ class ConversationViewModel @Inject constructor(
     private val _state = MutableStateFlow(ConversationState())
     val state: StateFlow<ConversationState> = _state.asStateFlow()
 
-    private var wasListeningBeforeStt = false
+    private var suppressPollUntil = 0L
 
     init {
-        // React to active model changes — load into recognizer + refresh onboarding state.
-        // Loading is a JNI call that takes seconds, so we hop to IO before invoking it.
+        // Load active model + mark setup checked once. Done as a launch-and-await sequence
+        // so the onboarding flag flips correctly only after the model has had a chance to load.
         viewModelScope.launch(Dispatchers.IO) {
-            settingsRepository.activeSttModelId.collect { activeId ->
+            val activeId = settingsRepository.activeSttModelId.first()
+            val model = SttModelRegistry.byId(activeId)
+            if (model != null && downloadManager.isDownloaded(model) && speechRecognizer.currentModelId != model.id) {
+                runCatching {
+                    speechRecognizer.loadModel(model, downloadManager.modelDir(model))
+                }
+            }
+            _state.update { it.copy(setupChecked = true) }
+            refreshOnboarding()
+        }
+
+        // Then keep watching for subsequent active-model changes (e.g. user picks a
+        // different model in Settings). Skip the very first emission so we don't
+        // duplicate work the block above just did.
+        viewModelScope.launch(Dispatchers.IO) {
+            settingsRepository.activeSttModelId.drop(1).collect { activeId ->
                 val model = SttModelRegistry.byId(activeId)
                 if (model != null && downloadManager.isDownloaded(model) && speechRecognizer.currentModelId != model.id) {
                     runCatching {
@@ -66,18 +81,25 @@ class ConversationViewModel @Inject constructor(
             }
         }
 
-        viewModelScope.launch {
-            speechRecognizer.state.collect { sttState ->
-                _state.update { it.copy(sttState = sttState) }
-                if (sttState is SttState.Done) {
-                    onSttResult(sttState.text)
-                }
-            }
-        }
+        // Wake word events and STT are handled by the system overlay
+        // (VoiceSession + VoiceOverlayManager) — the activity no longer
+        // collects them. Keeps the activity focused on typed input + chat
+        // history while voice runs entirely from the foreground service.
 
+        // Poll the wake word service state every second. The service has its own
+        // lifecycle (notification action, OS kill, etc.) so the UI cannot rely on
+        // the last command we sent — it has to keep checking what's actually true.
+        // We skip polling for a short window after setWakeWordEnabled() to avoid
+        // a visible flicker while the FGS finishes starting up / shutting down.
         viewModelScope.launch {
-            wakeWordEvents.events.collect {
-                onWakeWordDetected()
+            while (isActive) {
+                if (System.currentTimeMillis() >= suppressPollUntil) {
+                    val running = WakeWordService.isRunning
+                    if (running != _state.value.isListening) {
+                        _state.update { it.copy(isListening = running) }
+                    }
+                }
+                delay(1000)
             }
         }
     }
@@ -119,8 +141,14 @@ class ConversationViewModel @Inject constructor(
             application, Manifest.permission.RECORD_AUDIO
         ) == PackageManager.PERMISSION_GRANTED
         val hasModel = speechRecognizer.isModelLoaded
+        // SAW is required for the wake word to keep working over the lock screen
+        // on every detection (it grants UID-wide Background Activity Launch
+        // privilege — Ari does not actually draw any overlay windows).
+        val hasOverlay = Settings.canDrawOverlays(application)
+        val needs = !hasMic || !hasModel || !hasOverlay
         _state.update {
-            it.copy(needsSetup = !hasMic || !hasModel)
+            // Don't flash the card before startup checks have completed
+            it.copy(needsSetup = if (it.setupChecked) needs else false)
         }
     }
 
@@ -146,63 +174,27 @@ class ConversationViewModel @Inject constructor(
         _state.update { it.copy(needsFsnPermission = false) }
     }
 
-    fun toggleWakeWord() {
-        val newState = !_state.value.isListening
-        _state.update { it.copy(isListening = newState) }
-
+    /**
+     * Set the wake word service to a desired state. Idempotent against the
+     * actual service state, not the displayed state — so we can't get into a
+     * "switch says ON, service is OFF" feedback loop.
+     */
+    fun setWakeWordEnabled(enabled: Boolean) {
         val intent = Intent(application, WakeWordService::class.java)
-        if (newState) {
+        if (enabled) {
+            if (WakeWordService.isRunning) return
             if (!checkFsnPermission()) {
                 _state.update { it.copy(needsFsnPermission = true) }
             }
             ContextCompat.startForegroundService(application, intent)
         } else {
+            if (!WakeWordService.isRunning) return
             application.stopService(intent)
         }
+        // Suppress the poll loop briefly while the FGS finishes its lifecycle
+        // transition, otherwise the user sees an ON → OFF → ON flicker.
+        suppressPollUntil = System.currentTimeMillis() + 2500
+        _state.update { it.copy(isListening = enabled) }
     }
 
-    private fun onWakeWordDetected() {
-        _state.update { it.copy(wakeWordDetected = true) }
-        startSttFromWakeWord()
-    }
-
-    fun clearWakeWordDetected() {
-        _state.update { it.copy(wakeWordDetected = false) }
-    }
-
-    private fun startSttFromWakeWord() {
-        if (!speechRecognizer.isModelLoaded) {
-            _state.update {
-                it.copy(sttState = SttState.Error("No STT model. Open Settings to download one."))
-            }
-            return
-        }
-
-        wasListeningBeforeStt = WakeWordService.isRunning
-
-        if (WakeWordService.isRunning) {
-            application.stopService(Intent(application, WakeWordService::class.java))
-            _state.update { it.copy(isListening = false) }
-        }
-
-        speechRecognizer.startListening()
-    }
-
-    fun stopStt() {
-        speechRecognizer.stopListening()
-    }
-
-    private fun onSttResult(text: String) {
-        speechRecognizer.reset()
-        onTextSubmitted(text)
-        resumeWakeWord()
-    }
-
-    private fun resumeWakeWord() {
-        if (wasListeningBeforeStt) {
-            val intent = Intent(application, WakeWordService::class.java)
-            ContextCompat.startForegroundService(application, intent)
-            _state.update { it.copy(isListening = true) }
-        }
-    }
 }

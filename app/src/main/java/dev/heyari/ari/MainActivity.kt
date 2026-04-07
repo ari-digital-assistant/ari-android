@@ -12,15 +12,10 @@ import androidx.activity.enableEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
 import dev.heyari.ari.ui.AriNavHost
 import dev.heyari.ari.ui.theme.AriTheme
-import dev.heyari.ari.wakeword.WakeWordEvents
 import dev.heyari.ari.wakeword.WakeWordService
-import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-
-    @Inject
-    lateinit var wakeWordEvents: WakeWordEvents
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,13 +42,16 @@ class MainActivity : ComponentActivity() {
         handleWakeWordIntent(intent)
     }
 
-    override fun onPause() {
-        super.onPause()
-        // Critical: clear lock-screen flags as soon as we leave foreground.
-        // If left set, Android keeps the activity in a quasi-foreground state
-        // and refuses to fire subsequent full-screen intents on top of it
-        // (instead degrading them to heads-up notifications).
-        clearLockScreenFlags()
+    override fun onStop() {
+        super.onStop()
+        // Clear lock-screen flags when the activity is no longer visible.
+        // This is critical: if left set, Android keeps Ari's UID at
+        // IMPORTANCE_VISIBLE even with the screen off, which causes the next
+        // wake word's full-screen intent to be suppressed (degraded to a
+        // heads-up notification). Clearing here matches Dicio's behaviour.
+        setShowWhenLocked(false)
+        setTurnScreenOn(false)
+        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
     private fun showOverLockScreen() {
@@ -65,20 +63,15 @@ class MainActivity : ComponentActivity() {
         Log.i(TAG, "Showing over lock screen for wake word")
     }
 
-    private fun clearLockScreenFlags() {
-        setShowWhenLocked(false)
-        setTurnScreenOn(false)
-        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-    }
-
     private fun isWakeWordIntent(intent: Intent?): Boolean {
         return intent?.getBooleanExtra(WakeWordService.EXTRA_WAKE_WORD_DETECTED, false) == true
     }
 
     private fun handleWakeWordIntent(intent: Intent?) {
-        if (isWakeWordIntent(intent)) {
-            wakeWordEvents.onWakeWordDetected()
-        }
+        // Wake word events go straight to the system overlay (VoiceSession)
+        // now — the activity doesn't need to react. We still set the lock-screen
+        // flags above so the activity can still come up if the user taps the
+        // notification fallback.
     }
 
     private fun logFsnPermission() {
@@ -89,11 +82,6 @@ class MainActivity : ComponentActivity() {
         } else {
             Log.i(TAG, "Full-screen intent: not required (API < 34)")
         }
-    }
-
-    override fun onDestroy() {
-        clearLockScreenFlags()
-        super.onDestroy()
     }
 
     companion object {

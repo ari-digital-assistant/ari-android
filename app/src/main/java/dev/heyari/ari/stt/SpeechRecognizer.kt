@@ -99,7 +99,16 @@ class SpeechRecognizer {
         loadedModelId = null
     }
 
-    fun startListening() {
+    /**
+     * Begin listening for speech.
+     *
+     * @param discardFirstMs how long, after [AudioRecord.startRecording] is
+     * called, to read-and-discard captured samples without feeding them to
+     * sherpa. Use this to mask a "ready" cue tone whose playback overlaps with
+     * mic warm-up — the mic HAL gets to wake up during the cue, but the cue
+     * audio itself is dropped on the floor before sherpa sees it.
+     */
+    fun startListening(discardFirstMs: Long = 0L) {
         val rec = recognizer ?: run {
             Log.e(TAG, "startListening called but no model loaded")
             _state.value = SttState.Error("No STT model loaded. Configure one in Settings.")
@@ -132,16 +141,28 @@ class SpeechRecognizer {
         }
 
         audioRecord?.startRecording()
+        val discardUntil = System.currentTimeMillis() + discardFirstMs
         _state.value = SttState.Listening("")
-        Log.i(TAG, "STT listening started")
+        Log.i(TAG, "STT listening started (discardFirstMs=$discardFirstMs)")
 
         listenJob = scope.launch {
             val buffer = ShortArray(CHUNK_SAMPLES)
             val currentStream = stream ?: return@launch
+            var discardLogged = false
 
             while (isActive) {
                 val read = audioRecord?.read(buffer, 0, buffer.size) ?: 0
                 if (read <= 0) continue
+
+                if (System.currentTimeMillis() < discardUntil) {
+                    // Mic is warming up under cover of the ready cue — drop
+                    // these samples so the tone doesn't enter the transcript.
+                    continue
+                }
+                if (!discardLogged && discardFirstMs > 0L) {
+                    Log.d(TAG, "Discard window over — feeding samples to sherpa")
+                    discardLogged = true
+                }
 
                 val floatBuffer = FloatArray(read) { i -> buffer[i] / 32768.0f }
                 currentStream.acceptWaveform(floatBuffer, SAMPLE_RATE)

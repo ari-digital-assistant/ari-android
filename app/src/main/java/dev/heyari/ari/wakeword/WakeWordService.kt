@@ -1,5 +1,6 @@
 package dev.heyari.ari.wakeword
 
+import android.app.ActivityOptions
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -10,27 +11,56 @@ import android.content.pm.ServiceInfo
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.net.Uri
+import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.provider.Settings
 import android.util.Log
+import dagger.hilt.android.AndroidEntryPoint
 import dev.heyari.ari.MainActivity
 import dev.heyari.ari.R
+import dev.heyari.ari.voice.VoiceOverlayActivity
+import dev.heyari.ari.voice.VoiceSession
+import dev.heyari.ari.voice.VoiceState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import java.nio.ByteBuffer
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class WakeWordService : Service() {
+
+    @Inject
+    lateinit var voiceSession: VoiceSession
 
     private var audioRecord: AudioRecord? = null
     private var detector: MicroWakeWord? = null
     private var isListening = false
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    @Volatile
+    private var lastDetectionAt = 0L
+    private val detectionDebounceMs = 4_000L
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()
+        // Watch the voice session state. When it returns to Idle (i.e. the
+        // overlay has dismissed), resume wake word listening.
+        scope.launch {
+            voiceSession.state.collect { state ->
+                if (state is VoiceState.Idle && !isListening && isRunning) {
+                    Log.i(TAG, "Voice session ended — resuming wake word listening")
+                    startListening()
+                }
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -92,6 +122,13 @@ class WakeWordService : Service() {
                 if (read > 0) {
                     val samples = if (read == buffer.size) buffer else buffer.copyOf(read)
                     if (detector?.processAudio(samples) == true) {
+                        val now = System.currentTimeMillis()
+                        if (now - lastDetectionAt < detectionDebounceMs) {
+                            Log.d(TAG, "Wake word detected within debounce window — ignoring")
+                            detector?.reset()
+                            continue
+                        }
+                        lastDetectionAt = now
                         Log.i(TAG, "Wake word detected!")
                         onWakeWordDetected()
                         detector?.reset()
@@ -103,40 +140,99 @@ class WakeWordService : Service() {
         Log.i(TAG, "Wake word listening started")
     }
 
+    /**
+     * Stop our AudioRecord without tearing down the foreground service. Used
+     * to release the mic to STT during a voice session, then resumed when the
+     * session ends.
+     */
+    private fun pauseListening() {
+        isListening = false
+        audioRecord?.stop()
+        audioRecord?.release()
+        audioRecord = null
+        detector?.close()
+        detector = null
+    }
+
     private fun onWakeWordDetected() {
+        // Pause our mic so STT can take it. Always do this first regardless of
+        // whether the activity launch succeeds — if we can't open the UI, we
+        // still don't want to be hogging the mic.
+        pauseListening()
+
+        // BAL gate: Android 14+ only allows a foreground service to start an
+        // activity from the background during a brief grace window after the
+        // FGS comes up (granted by FOREGROUND_SERVICE_TYPE_MICROPHONE). After
+        // that grace expires, startActivity() throws BackgroundActivityStart-
+        // Exception. The fix is to hold SYSTEM_ALERT_WINDOW, which permanently
+        // grants UID-wide BAL privilege. We do NOT draw any overlay window —
+        // SAW is purely held for its BAL side-effect. Same trick Signal,
+        // Telegram, WhatsApp use for incoming-call screens over the keyguard.
+        if (!Settings.canDrawOverlays(this)) {
+            Log.w(TAG, "SYSTEM_ALERT_WINDOW not granted — cannot launch over lock screen. Posting recovery notification.")
+            postSawMissingNotification()
+            return
+        }
+
+        val intent = Intent(this, VoiceOverlayActivity::class.java).apply {
+            addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK
+                    or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    or Intent.FLAG_ACTIVITY_NO_ANIMATION
+            )
+        }
+        @Suppress("DEPRECATION")
+        val options = ActivityOptions.makeBasic().apply {
+            if (Build.VERSION.SDK_INT >= 34) {
+                // Deprecated in API 36 in favour of an as-yet-unstable replacement;
+                // the constant still works and SAW is the actual BAL grant anyway —
+                // this just makes the intent explicit for OEM hardening.
+                setPendingIntentBackgroundActivityStartMode(
+                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                )
+            }
+        }.toBundle()
+
+        try {
+            startActivity(intent, options)
+            Log.i(TAG, "Voice overlay activity launched")
+        } catch (t: Throwable) {
+            // Should not happen with SAW granted. If it does, surface the same
+            // recovery notification — it's the only path the user can act on.
+            Log.e(TAG, "Failed to launch voice overlay activity despite SAW being granted", t)
+            postSawMissingNotification()
+        }
+    }
+
+    /**
+     * Posted when the wake word fired but we couldn't open the voice overlay
+     * because SYSTEM_ALERT_WINDOW is not granted. Tapping deep-links into the
+     * Android overlay-permission settings page for our package. This is the
+     * ONLY notification path on the wake-word fire branch — the previous FSI
+     * fallback was downgraded by NotificationManagerService anyway, so it gave
+     * a false impression of success.
+     */
+    private fun postSawMissingNotification() {
         val nm = getSystemService(NotificationManager::class.java)
-        val canFsn = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            nm.canUseFullScreenIntent()
-        } else {
-            true
+        val settingsIntent = Intent(
+            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            Uri.parse("package:$packageName")
+        ).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        Log.i(TAG, "Wake word detected! canUseFullScreenIntent=$canFsn")
-
-        // Target the trampoline activity rather than MainActivity directly.
-        // The trampoline lives in its own task affinity and is never in recents,
-        // so Android always considers it "sleeping" — meaning the FSN policy
-        // actually fires the full-screen intent instead of degrading to a
-        // heads-up banner when MainActivity was the most recently focused app.
-        val openIntent = Intent(this, WakeTrampolineActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        }
-
-        val fullScreenPendingIntent = PendingIntent.getActivity(
+        val pi = PendingIntent.getActivity(
             this, REQUEST_WAKE_DETECTED,
-            openIntent,
+            settingsIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-
         val notification = Notification.Builder(this, CHANNEL_DETECTION)
-            .setContentTitle("Ari")
-            .setContentText("Wake word detected — tap to open")
+            .setContentTitle("Ari couldn't open")
+            .setContentText("Tap to allow Ari to open from the lock screen")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentIntent(fullScreenPendingIntent)
-            .setFullScreenIntent(fullScreenPendingIntent, true)
-            .setCategory(Notification.CATEGORY_CALL)
+            .setContentIntent(pi)
+            .setCategory(Notification.CATEGORY_ERROR)
             .setAutoCancel(true)
             .build()
-
         nm.notify(DETECTION_NOTIFICATION_ID, notification)
     }
 

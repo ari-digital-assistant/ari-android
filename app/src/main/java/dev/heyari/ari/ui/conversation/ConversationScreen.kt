@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -40,6 +41,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -73,14 +76,13 @@ fun ConversationScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    val isRecognising = state.sttState is SttState.Listening
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { results ->
         val audioGranted = results[Manifest.permission.RECORD_AUDIO] == true
         if (audioGranted) {
-            viewModel.toggleWakeWord()
+            viewModel.setWakeWordEnabled(true)
         }
     }
 
@@ -128,11 +130,23 @@ fun ConversationScreen(
             TopAppBar(
                 title = { Text("Ari") },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            if (state.isListening) {
-                                viewModel.toggleWakeWord()
-                            } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(end = 4.dp),
+                    ) {
+                        Text(
+                            text = if (state.isListening) "Listening" else "Not listening",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (state.isListening) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(end = 8.dp),
+                        )
+                        Switch(
+                            checked = state.isListening,
+                            onCheckedChange = { wantsOn ->
+                                if (!wantsOn) {
+                                    viewModel.setWakeWordEnabled(false)
+                                    return@Switch
+                                }
                                 val hasAudio = ContextCompat.checkSelfPermission(
                                     context, Manifest.permission.RECORD_AUDIO
                                 ) == PackageManager.PERMISSION_GRANTED
@@ -146,7 +160,7 @@ fun ConversationScreen(
                                 }
 
                                 if (hasAudio && hasNotifications) {
-                                    viewModel.toggleWakeWord()
+                                    viewModel.setWakeWordEnabled(true)
                                 } else {
                                     val needed = mutableListOf<String>()
                                     if (!hasAudio) needed.add(Manifest.permission.RECORD_AUDIO)
@@ -155,13 +169,14 @@ fun ConversationScreen(
                                     }
                                     permissionLauncher.launch(needed.toTypedArray())
                                 }
-                            }
-                        }
-                    ) {
-                        Icon(
-                            imageVector = if (state.isListening) Icons.Default.Mic else Icons.Default.MicOff,
-                            contentDescription = if (state.isListening) "Stop listening" else "Start listening",
-                            tint = if (state.isListening) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            thumbContent = {
+                                Icon(
+                                    imageVector = if (state.isListening) Icons.Default.Mic else Icons.Default.MicOff,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                )
+                            },
                         )
                     }
                     IconButton(onClick = onOpenSettings) {
@@ -197,17 +212,6 @@ fun ConversationScreen(
                 }
             }
 
-            AnimatedVisibility(
-                visible = isRecognising,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                SttIndicator(
-                    partial = (state.sttState as? SttState.Listening)?.partial.orEmpty(),
-                    onStop = { viewModel.stopStt() }
-                )
-            }
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -224,7 +228,6 @@ fun ConversationScreen(
                     keyboardActions = KeyboardActions(
                         onSend = { viewModel.onTextSubmitted(state.inputText) }
                     ),
-                    enabled = !isRecognising
                 )
                 IconButton(onClick = { viewModel.onTextSubmitted(state.inputText) }) {
                     Icon(
@@ -277,40 +280,3 @@ private fun OnboardingCard(onOpenSettings: () -> Unit) {
     }
 }
 
-@Composable
-private fun SttIndicator(partial: String, onStop: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Listening\u2026",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                TextButton(onClick = onStop) {
-                    Text("Stop")
-                }
-            }
-            if (partial.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = partial,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontStyle = FontStyle.Italic,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-        }
-    }
-}
