@@ -27,7 +27,18 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    val activeWakeWordId: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[KEY_ACTIVE_WAKE_WORD]
+    }
+
+    suspend fun setActiveWakeWordId(id: String) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_ACTIVE_WAKE_WORD] = id
+        }
+    }
+
     companion object {
         private val KEY_ACTIVE_STT_MODEL = stringPreferencesKey("active_stt_model")
+        private val KEY_ACTIVE_WAKE_WORD = stringPreferencesKey("active_wake_word")
     }
 }

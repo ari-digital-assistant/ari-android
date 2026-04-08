@@ -21,6 +21,7 @@ import android.util.Log
 import dagger.hilt.android.AndroidEntryPoint
 import dev.heyari.ari.MainActivity
 import dev.heyari.ari.R
+import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.voice.VoiceOverlayActivity
 import dev.heyari.ari.voice.VoiceSession
 import dev.heyari.ari.voice.VoiceState
@@ -28,7 +29,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.nio.ByteBuffer
 import javax.inject.Inject
 
@@ -37,6 +40,9 @@ class WakeWordService : Service() {
 
     @Inject
     lateinit var voiceSession: VoiceSession
+
+    @Inject
+    lateinit var settingsRepository: SettingsRepository
 
     private var audioRecord: AudioRecord? = null
     private var detector: MicroWakeWord? = null
@@ -83,18 +89,26 @@ class WakeWordService : Service() {
     private fun startListening() {
         if (isListening) return
 
-        val modelBuffer = loadModelFromAssets()
+        // Datastore read on Main is a sub-millisecond cache hit after first
+        // access — fine for service startup. We need it sync because the rest
+        // of startListening() is sync and there's no audio loop yet to defer
+        // into.
+        val activeId = runBlocking { settingsRepository.activeWakeWordId.first() }
+        val wakeWord = WakeWordRegistry.byId(activeId)
+        Log.i(TAG, "Loading wake word model: ${wakeWord.id}")
+
+        val modelBuffer = loadModelFromAssets(wakeWord.assetFilename)
         if (modelBuffer == null) {
-            Log.e(TAG, "Failed to load wake word model")
+            Log.e(TAG, "Failed to load wake word model ${wakeWord.assetFilename}")
             stopSelf()
             return
         }
 
         detector = MicroWakeWord(
             modelBuffer = modelBuffer,
-            featureStepSizeMs = FEATURE_STEP_SIZE_MS,
-            probabilityCutoff = PROBABILITY_CUTOFF,
-            slidingWindowSize = SLIDING_WINDOW_SIZE
+            featureStepSizeMs = wakeWord.featureStepSizeMs,
+            probabilityCutoff = wakeWord.probabilityCutoff,
+            slidingWindowSize = wakeWord.slidingWindowSize,
         )
 
         val bufferSize = AudioRecord.getMinBufferSize(
@@ -236,9 +250,9 @@ class WakeWordService : Service() {
         nm.notify(DETECTION_NOTIFICATION_ID, notification)
     }
 
-    private fun loadModelFromAssets(): ByteBuffer? {
+    private fun loadModelFromAssets(filename: String): ByteBuffer? {
         return try {
-            val inputStream = assets.open(MODEL_FILENAME)
+            val inputStream = assets.open(filename)
             val bytes = inputStream.readBytes()
             inputStream.close()
             val buffer = ByteBuffer.allocateDirect(bytes.size)
@@ -330,12 +344,8 @@ class WakeWordService : Service() {
         private const val CHANNEL_LISTENING = "wake_word_listening"
         private const val CHANNEL_DETECTION = "wake_word_detection"
 
-        private const val MODEL_FILENAME = "hey_jarvis.tflite"
         private const val SAMPLE_RATE = 16000
         private const val CHUNK_SIZE = 160 // 10ms at 16kHz
-        private const val FEATURE_STEP_SIZE_MS = 10
-        private const val PROBABILITY_CUTOFF = 0.97f
-        private const val SLIDING_WINDOW_SIZE = 5
 
         const val ACTION_STOP_LISTENING = "dev.heyari.ari.STOP_LISTENING"
         const val EXTRA_WAKE_WORD_DETECTED = "wake_word_detected"

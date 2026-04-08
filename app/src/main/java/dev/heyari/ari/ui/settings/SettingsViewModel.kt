@@ -18,6 +18,9 @@ import dev.heyari.ari.stt.ModelDownloadState
 import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.stt.SttModel
 import dev.heyari.ari.stt.SttModelRegistry
+import dev.heyari.ari.wakeword.WakeWordModel
+import dev.heyari.ari.wakeword.WakeWordRegistry
+import dev.heyari.ari.wakeword.WakeWordService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -41,10 +44,16 @@ data class ModelStatus(
     val active: Boolean,
 )
 
+data class WakeWordOption(
+    val model: WakeWordModel,
+    val active: Boolean,
+)
+
 data class SettingsState(
     val permissions: PermissionStatus = PermissionStatus(false, false, false, false),
     val models: List<ModelStatus> = emptyList(),
     val download: ModelDownloadState = ModelDownloadState.Idle,
+    val wakeWords: List<WakeWordOption> = emptyList(),
 )
 
 @HiltViewModel
@@ -60,6 +69,16 @@ class SettingsViewModel @Inject constructor(
 
     init {
         refreshPermissions()
+        viewModelScope.launch {
+            settingsRepository.activeWakeWordId.collect { activeId ->
+                val resolved = WakeWordRegistry.byId(activeId).id
+                _state.update { current ->
+                    current.copy(
+                        wakeWords = WakeWordRegistry.all.map { WakeWordOption(it, it.id == resolved) }
+                    )
+                }
+            }
+        }
         viewModelScope.launch {
             combine(
                 downloadManager.state,
@@ -205,6 +224,23 @@ class SettingsViewModel @Inject constructor(
                 settingsRepository.setActiveSttModelId(null)
             }
             _state.update { it.copy(models = buildModelList(settingsRepository.activeSttModelId.first())) }
+        }
+    }
+
+    /**
+     * Persist the new wake word and bounce WakeWordService if it's currently
+     * running so it picks up the new model. The service holds its detector +
+     * AudioRecord across its whole lifetime, so a process-internal restart is
+     * the simplest way to swap models without inventing a hot-reload path.
+     */
+    fun selectWakeWord(model: WakeWordModel) {
+        viewModelScope.launch {
+            settingsRepository.setActiveWakeWordId(model.id)
+            if (WakeWordService.isRunning) {
+                val intent = Intent(application, WakeWordService::class.java)
+                application.stopService(intent)
+                ContextCompat.startForegroundService(application, intent)
+            }
         }
     }
 

@@ -51,6 +51,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.heyari.ari.stt.ModelDownloadState
 import dev.heyari.ari.stt.SttModel
+import dev.heyari.ari.wakeword.WakeWordModel
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -114,6 +115,11 @@ fun SettingsScreen(
                 onOpenFsnSettings = { viewModel.openFsnSettings() },
                 onOpenOverlaySettings = { viewModel.openOverlaySettings() },
                 onOpenAppSettings = { viewModel.openAppSettings() },
+            )
+
+            WakeWordSection(
+                wakeWords = state.wakeWords,
+                onSelect = viewModel::selectWakeWord,
             )
 
             ModelsSection(
@@ -277,6 +283,49 @@ private fun PermissionRow(
             ) {
                 TextButton(onClick = onAction, enabled = !granted || actionLabel != "Granted") {
                     Text(actionLabel)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WakeWordSection(
+    wakeWords: List<WakeWordOption>,
+    onSelect: (WakeWordModel) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionHeading("Wake word")
+        Text(
+            text = "The phrase Ari listens for. \"Hey Jarvis\" is the original microWakeWord model and is included as a fallback.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(4.dp))
+
+        wakeWords.forEach { option ->
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (option.active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                ),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(
+                        selected = option.active,
+                        onClick = { onSelect(option.model) },
+                    )
+                    Text(
+                        text = option.model.displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
         }
