@@ -21,6 +21,7 @@ import android.util.Log
 import dagger.hilt.android.AndroidEntryPoint
 import dev.heyari.ari.MainActivity
 import dev.heyari.ari.R
+import dev.heyari.ari.audio.CaptureBus
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.voice.VoiceOverlayActivity
 import dev.heyari.ari.voice.VoiceSession
@@ -43,6 +44,9 @@ class WakeWordService : Service() {
 
     @Inject
     lateinit var settingsRepository: SettingsRepository
+
+    @Inject
+    lateinit var captureBus: CaptureBus
 
     private var audioRecord: AudioRecord? = null
     private var detector: MicroWakeWord? = null
@@ -139,8 +143,22 @@ class WakeWordService : Service() {
             while (isListening) {
                 val read = audioRecord?.read(buffer, 0, buffer.size) ?: 0
                 if (read > 0) {
+                    // Feed every chunk into the shared capture bus FIRST.
+                    // Producer-side fan-out: ring buffer always; live channel
+                    // iff a consumer (sherpa) is currently armed. Cheap and
+                    // non-blocking by design — see CaptureBus.write().
+                    captureBus.write(buffer, read)
+
                     val samples = if (read == buffer.size) buffer else buffer.copyOf(read)
                     if (detector?.processAudio(samples) == true) {
+                        // Belt-and-braces: don't fire wake while STT is armed.
+                        // The debounce below covers the common case but the
+                        // mic is now permanently open, so an in-utterance fire
+                        // is theoretically possible.
+                        if (captureBus.armed) {
+                            detector?.reset()
+                            continue
+                        }
                         val now = System.currentTimeMillis()
                         if (now - lastDetectionAt < detectionDebounceMs) {
                             Log.d(TAG, "Wake word detected within debounce window — ignoring")
@@ -174,11 +192,12 @@ class WakeWordService : Service() {
     }
 
     private fun onWakeWordDetected() {
-        // Pause our mic so STT can take it. Always do this first regardless of
-        // whether the activity launch succeeds — if we can't open the UI, we
-        // still don't want to be hogging the mic.
-        pauseListening()
-
+        // NOTE: we no longer pauseListening() here. The mic stays open and is
+        // shared with sherpa via CaptureBus. VoiceSession.start() will arm the
+        // bus, snapshot the pre-roll, and start consuming live chunks — all
+        // without ever closing AudioRecord. This is the whole point of the
+        // unified pipeline refactor: zero-gap wake-to-STT.
+        //
         // BAL gate: Android 14+ only allows a foreground service to start an
         // activity from the background during a brief grace window after the
         // FGS comes up (granted by FOREGROUND_SERVICE_TYPE_MICROPHONE). After

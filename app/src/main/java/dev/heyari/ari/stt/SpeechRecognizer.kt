@@ -1,8 +1,5 @@
 package dev.heyari.ari.stt
 
-import android.media.AudioFormat
-import android.media.AudioRecord
-import android.media.MediaRecorder
 import android.util.Log
 import com.k2fsa.sherpa.onnx.EndpointConfig
 import com.k2fsa.sherpa.onnx.EndpointRule
@@ -12,11 +9,14 @@ import com.k2fsa.sherpa.onnx.OnlineRecognizer
 import com.k2fsa.sherpa.onnx.OnlineRecognizerConfig
 import com.k2fsa.sherpa.onnx.OnlineStream
 import com.k2fsa.sherpa.onnx.OnlineTransducerModelConfig
+import dev.heyari.ari.audio.CaptureBus
+import dev.heyari.ari.voice.stripWakePhrase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,12 +24,11 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
 
-class SpeechRecognizer {
+class SpeechRecognizer(private val captureBus: CaptureBus) {
 
     private var recognizer: OnlineRecognizer? = null
     private var loadedModelId: String? = null
     private var stream: OnlineStream? = null
-    private var audioRecord: AudioRecord? = null
     private var listenJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
@@ -82,7 +81,13 @@ class SpeechRecognizer {
                 rule2 = EndpointRule(mustContainNonSilence = true, minTrailingSilence = 1.0f, minUtteranceLength = 0.0f),
                 rule3 = EndpointRule(mustContainNonSilence = false, minTrailingSilence = 0.0f, minUtteranceLength = 20.0f),
             ),
-            enableEndpoint = true,
+            // Sherpa's energy-based endpoint detection is disabled because
+            // it freezes the stream the moment it fires, even if we don't
+            // call reset(). And reset() destroys the encoder context, which
+            // clips the next ~500ms of speech. We do our own endpointing
+            // based on cleaned-partial-text stability — see the decode loop
+            // in startListening().
+            enableEndpoint = false,
             decodingMethod = "greedy_search",
         )
 
@@ -121,15 +126,13 @@ class SpeechRecognizer {
     }
 
     /**
-     * Begin listening for speech.
-     *
-     * @param discardFirstMs how long, after [AudioRecord.startRecording] is
-     * called, to read-and-discard captured samples without feeding them to
-     * sherpa. Use this to mask a "ready" cue tone whose playback overlaps with
-     * mic warm-up — the mic HAL gets to wake up during the cue, but the cue
-     * audio itself is dropped on the floor before sherpa sees it.
+     * Begin listening for speech. Subscribes to [CaptureBus] (which is
+     * already capturing 24/7 via the wake word service) and consumes a
+     * pre-roll snapshot of the last [rewindSeconds] seconds plus the live
+     * stream that follows. No `AudioRecord` is opened here — the mic stays
+     * with the wake word service for the entire app lifecycle.
      */
-    fun startListening(discardFirstMs: Long = 0L) {
+    fun startListening(rewindSeconds: Float = DEFAULT_REWIND_SECONDS) {
         val rec = recognizer ?: run {
             Log.e(TAG, "startListening called but no model loaded")
             _state.value = SttState.Error("No STT model loaded. Configure one in Settings.")
@@ -137,81 +140,101 @@ class SpeechRecognizer {
         }
         if (_state.value is SttState.Listening) return
 
-        stream = rec.createStream()
-        Log.d(TAG, "Stream created")
-
-        val minBufferSize = AudioRecord.getMinBufferSize(
-            SAMPLE_RATE,
-            AudioFormat.CHANNEL_IN_MONO,
-            AudioFormat.ENCODING_PCM_16BIT
-        )
-        // 4 seconds of headroom in bytes (16-bit mono @ 16kHz = 2 bytes/sample).
-        // Belt-and-braces insurance: if the read loop ever stalls briefly
-        // (GC pause, priority inversion, a slow decode), audio accumulates
-        // in the ring buffer instead of being silently overwritten.
-        val bufferSize = maxOf(minBufferSize, SAMPLE_RATE * 2 * 4)
-        Log.d(TAG, "AudioRecord bufferSize=$bufferSize (minBufferSize=$minBufferSize)")
-
-        audioRecord = AudioRecord(
-            MediaRecorder.AudioSource.MIC,
-            SAMPLE_RATE,
-            AudioFormat.CHANNEL_IN_MONO,
-            AudioFormat.ENCODING_PCM_16BIT,
-            bufferSize
-        )
-
-        if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
-            Log.e(TAG, "AudioRecord failed to initialise! state=${audioRecord?.state}")
-            stopRecording()
-            _state.value = SttState.Idle
+        val channel = captureBus.arm(rewindSeconds) ?: run {
+            Log.e(TAG, "CaptureBus already armed — refusing to start listening")
+            _state.value = SttState.Error("Audio bus busy")
             return
         }
 
-        audioRecord?.startRecording()
-        val discardUntil = System.currentTimeMillis() + discardFirstMs
+        stream = rec.createStream()
+        Log.d(TAG, "Stream created")
+
         _state.value = SttState.Listening("")
-        Log.i(TAG, "STT listening started (discardFirstMs=$discardFirstMs)")
+        val startTime = System.currentTimeMillis()
+        Log.i(TAG, "STT listening started (rewindSeconds=$rewindSeconds)")
 
         listenJob = scope.launch {
-            val buffer = ShortArray(CHUNK_SAMPLES)
             val currentStream = stream ?: return@launch
-            var discardLogged = false
+            var firstChunkLogged = false
+            // Sherpa-onnx zipformer is tuned for ~100ms chunks. The producer
+            // (WakeWordService) writes 10ms chunks because microWakeWord wants
+            // 10ms feature steps, so we re-batch on the consumer side. Without
+            // this, sherpa decodes 10× per 100ms and transcription quality
+            // collapses (e.g. "tell me some wisdom" → "Team").
+            val batchAccumulator = ArrayList<ShortArray>(16)
+            var batchSamples = 0
+            // Endpoint detector: track when cleanedPartial last changed.
+            // When it stays at the same NON-EMPTY value for STABILITY_WINDOW_MS,
+            // assume the user has stopped speaking and emit Done.
+            //
+            // Why this and not RMS / inputFinished: sherpa-onnx's streaming
+            // decoder lags audio by an unpredictable amount on-device, and
+            // calling inputFinished() does NOT force it to commit late
+            // tokens — once it decides a hypothesis is "final", it's final.
+            // Audio-energy detection fires too early because sherpa can be
+            // 500-1000ms behind real time when the user stops speaking.
+            // Partial-text stability is the least-bad signal we have.
+            var lastCleaned = ""
+            var lastChangeAt = System.currentTimeMillis()
+            try {
+                while (isActive) {
+                    val incoming = try {
+                        channel.receive()
+                    } catch (e: ClosedReceiveChannelException) {
+                        return@launch
+                    }
+                    if (incoming.isNotEmpty()) {
+                        batchAccumulator.add(incoming)
+                        batchSamples += incoming.size
+                    }
+                    // Wait until we have at least one full sherpa chunk before
+                    // feeding. The pre-roll is already 32000 samples so the
+                    // first iteration always flushes immediately.
+                    if (batchSamples < BATCH_TARGET_SAMPLES) continue
 
-            while (isActive) {
-                val read = audioRecord?.read(buffer, 0, buffer.size) ?: 0
-                if (read <= 0) continue
+                    val merged = ShortArray(batchSamples)
+                    var pos = 0
+                    for (b in batchAccumulator) {
+                        System.arraycopy(b, 0, merged, pos, b.size)
+                        pos += b.size
+                    }
+                    batchAccumulator.clear()
+                    batchSamples = 0
 
-                if (System.currentTimeMillis() < discardUntil) {
-                    // Mic is warming up under cover of the ready cue — drop
-                    // these samples so the tone doesn't enter the transcript.
-                    continue
-                }
-                if (!discardLogged && discardFirstMs > 0L) {
-                    Log.d(TAG, "Discard window over — feeding samples to sherpa")
-                    discardLogged = true
-                }
+                    if (!firstChunkLogged) {
+                        Log.i(TAG, "First chunk decoded ${System.currentTimeMillis() - startTime}ms after arm (size=${merged.size})")
+                        firstChunkLogged = true
+                    }
 
-                val floatBuffer = FloatArray(read) { i -> buffer[i] / 32768.0f }
-                currentStream.acceptWaveform(floatBuffer, SAMPLE_RATE)
+                    val floatBuffer = FloatArray(merged.size) { i -> merged[i] / 32768.0f }
+                    currentStream.acceptWaveform(floatBuffer, SAMPLE_RATE)
 
-                while (rec.isReady(currentStream)) {
-                    rec.decode(currentStream)
-                }
+                    while (rec.isReady(currentStream)) {
+                        rec.decode(currentStream)
+                    }
 
-                val partial = rec.getResult(currentStream).text.trim()
-                if (partial.isNotEmpty()) {
-                    _state.value = SttState.Listening(partial)
-                }
+                    val rawPartial = rec.getResult(currentStream).text.trim()
+                    val cleanedPartial = stripWakePhrase(rawPartial)
+                    Log.d(TAG, "decode: fed=${merged.size} raw='$rawPartial' cleaned='$cleanedPartial'")
+                    if (cleanedPartial.isNotEmpty()) {
+                        _state.value = SttState.Listening(cleanedPartial)
+                    }
 
-                if (rec.isEndpoint(currentStream)) {
-                    Log.i(TAG, "Endpoint detected: '$partial'")
-                    if (partial.isNotEmpty()) {
-                        _state.value = SttState.Done(partial)
+                    val now = System.currentTimeMillis()
+                    if (cleanedPartial != lastCleaned) {
+                        lastCleaned = cleanedPartial
+                        lastChangeAt = now
+                    } else if (cleanedPartial.isNotEmpty() &&
+                        now - lastChangeAt >= STABILITY_WINDOW_MS) {
+                        Log.i(TAG, "Custom endpoint: stable for ${now - lastChangeAt}ms cleaned='$cleanedPartial'")
+                        _state.value = SttState.Done(cleanedPartial)
                         stopRecording()
                         return@launch
                     }
-                    rec.reset(currentStream)
                 }
+            } finally {
+                // If the loop exits for any reason and we're still armed, the
+                // stopRecording() path below handles disarming. Defensive only.
             }
         }
     }
@@ -242,9 +265,7 @@ class SpeechRecognizer {
     private fun stopRecording() {
         listenJob?.cancel()
         listenJob = null
-        audioRecord?.stop()
-        audioRecord?.release()
-        audioRecord = null
+        captureBus.disarm()
         stream?.release()
         stream = null
     }
@@ -252,7 +273,22 @@ class SpeechRecognizer {
     companion object {
         private const val TAG = "SpeechRecognizer"
         private const val SAMPLE_RATE = 16000
-        private const val CHUNK_SAMPLES = 1600 // 100ms at 16kHz
+        // Generous rewind: capture the full ring (~2 s) so device-power
+        // variations in arm latency never clip the user's first word. The
+        // wake phrase that inevitably comes along for the ride is stripped
+        // from the transcript by stripWakePhrase(), and endpoint detection
+        // is gated on the stripped text — so the wake phrase never reaches
+        // the engine and never causes a premature endpoint.
+        private const val DEFAULT_REWIND_SECONDS = 2.0f
+        // 100 ms at 16 kHz — matches the chunk size sherpa was originally
+        // tuned against in the legacy SpeechRecognizer read loop.
+        private const val BATCH_TARGET_SAMPLES = 1600
+        // How long the cleaned partial must hold steady before we declare
+        // the user is done speaking. 1500 ms is the empirical sweet spot —
+        // longer doesn't help (sherpa's streaming decoder either commits
+        // late tokens within ~1s or never does) and slows responses.
+        // Remaining flakiness is sherpa-onnx model lag, not this value.
+        private const val STABILITY_WINDOW_MS = 1500L
     }
 }
 
