@@ -97,21 +97,13 @@ class VoiceSession @Inject constructor(
 
         sessionJob = scope.launch {
             try {
-                // Brief pause before opening the STT mic so the tail of the
-                // wake-word audio doesn't leak into the user's actual query.
-                // Without this, "Hey Jarvis" itself ends up as the transcript.
-                delay(WAKE_WORD_DRAIN_DELAY_MS)
-
-                // Open the mic and start the ready-cue tone IN PARALLEL. The
-                // mic HAL takes a few hundred ms to actually produce samples
-                // after startRecording(), and the cue WAV is ~2 s long — if we
-                // played the cue first and then opened the mic, the user would
-                // talk into a dead-air gap while the HAL warmed up. Instead we
-                // open the mic NOW (it warms up under cover of the cue) and
-                // tell sherpa to discard captured samples until the cue has
-                // finished, so the tone itself never enters the transcript.
-                val cueMs = startReadyCue() + CUE_DISCARD_MARGIN_MS
-                speechRecognizer.startListening(discardFirstMs = cueMs)
+                // Unified audio pipeline: the mic is already open and the
+                // CaptureBus has been buffering the user's first words since
+                // before the wake-word fired. Arming sherpa is instant — we
+                // do it FIRST, then play the ready cue cosmetically. There is
+                // no drain delay, no cue-discard window, no mic handover.
+                speechRecognizer.startListening()
+                startReadyCue()
 
                 // Track activity so we can dismiss after a silence timeout if
                 // the user never actually speaks.
@@ -240,11 +232,6 @@ class VoiceSession @Inject constructor(
 
     companion object {
         private const val TAG = "VoiceSession"
-        private const val WAKE_WORD_DRAIN_DELAY_MS = 400L
         private const val SILENCE_TIMEOUT_MS = 8000L
-        // Extra ms added to the cue duration when telling sherpa what to drop.
-        // Covers MediaPlayer reporting duration slightly short, plus the speaker
-        // tail acoustically reaching the mic after the buffer ends.
-        private const val CUE_DISCARD_MARGIN_MS = 200L
     }
 }

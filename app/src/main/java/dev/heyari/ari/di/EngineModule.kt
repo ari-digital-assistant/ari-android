@@ -11,6 +11,7 @@ import dagger.hilt.components.SingletonComponent
 import dev.heyari.ari.actions.ActionHandler
 import dev.heyari.ari.actions.AppLauncher
 import dev.heyari.ari.actions.WebSearchLauncher
+import dev.heyari.ari.audio.CaptureBus
 import dev.heyari.ari.stt.ModelDownloadManager
 import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.tts.SpeechOutput
@@ -41,7 +42,8 @@ object EngineModule {
 
     @Provides
     @Singleton
-    fun provideSpeechRecognizer(): SpeechRecognizer = SpeechRecognizer()
+    fun provideSpeechRecognizer(captureBus: CaptureBus): SpeechRecognizer =
+        SpeechRecognizer(captureBus)
 
     @Provides
     @Singleton
