@@ -46,7 +46,8 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Ari">
+            android:theme="@style/Theme.Ari"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -101,6 +102,23 @@
             android:name=".assistant.AriVoiceInteractionSessionService"
             android:permission="android.permission.BIND_VOICE_INTERACTION"
             android:exported="false" />
+
+        <!--
+          Disable the default WorkManagerInitializer so AriApplication's
+          Configuration.Provider path (Hilt-provided WorkerFactory) is the
+          one WorkManager uses. Required for @HiltWorker to get its
+          dependencies injected.
+        -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
 
         <service
             android:name=".assistant.AriRecognitionService"

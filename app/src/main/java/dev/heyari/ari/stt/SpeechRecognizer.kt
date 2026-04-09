@@ -87,9 +87,30 @@ class SpeechRecognizer {
         )
 
         Log.i(TAG, "Loading sherpa-onnx model: ${model.id}")
-        recognizer = OnlineRecognizer(assetManager = null, config = config)
+        val loaded = OnlineRecognizer(assetManager = null, config = config)
+        recognizer = loaded
         loadedModelId = model.id
         Log.i(TAG, "Model loaded: ${model.id}")
+
+        // Warm up the recognizer: the first decode on a freshly-loaded
+        // zipformer triggers graph setup, XNNPACK delegate init, and tensor
+        // arena allocation — on a phone CPU that's easily 2–5 seconds of
+        // blocking work. We pay that cost here (on the loading thread,
+        // typically IO under the splash) instead of on the first word after
+        // the wake beep, which was eating the first ~5 seconds of user
+        // speech while the read loop stalled and AudioRecord overflowed.
+        val warmupStart = System.currentTimeMillis()
+        val warmupStream = loaded.createStream()
+        try {
+            val silence = FloatArray(SAMPLE_RATE / 5) // 200ms of silence
+            warmupStream.acceptWaveform(silence, SAMPLE_RATE)
+            while (loaded.isReady(warmupStream)) {
+                loaded.decode(warmupStream)
+            }
+        } finally {
+            warmupStream.release()
+        }
+        Log.i(TAG, "Recognizer warmed in ${System.currentTimeMillis() - warmupStart}ms")
     }
 
     fun unload() {
@@ -119,11 +140,17 @@ class SpeechRecognizer {
         stream = rec.createStream()
         Log.d(TAG, "Stream created")
 
-        val bufferSize = AudioRecord.getMinBufferSize(
+        val minBufferSize = AudioRecord.getMinBufferSize(
             SAMPLE_RATE,
             AudioFormat.CHANNEL_IN_MONO,
             AudioFormat.ENCODING_PCM_16BIT
         )
+        // 4 seconds of headroom in bytes (16-bit mono @ 16kHz = 2 bytes/sample).
+        // Belt-and-braces insurance: if the read loop ever stalls briefly
+        // (GC pause, priority inversion, a slow decode), audio accumulates
+        // in the ring buffer instead of being silently overwritten.
+        val bufferSize = maxOf(minBufferSize, SAMPLE_RATE * 2 * 4)
+        Log.d(TAG, "AudioRecord bufferSize=$bufferSize (minBufferSize=$minBufferSize)")
 
         audioRecord = AudioRecord(
             MediaRecorder.AudioSource.MIC,

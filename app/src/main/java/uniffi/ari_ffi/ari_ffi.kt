@@ -638,7 +638,25 @@ internal object IntegrityCheckingUniffiLib {
     }
     external fun uniffi_ari_ffi_checksum_method_ariengine_process_input(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_reload_community_skills(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_skillregistry_browse_registry(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_skillregistry_check_for_updates(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_skillregistry_install_skill_by_id(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_skillregistry_install_skill_update(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_skillregistry_list_installed(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_skillregistry_read_installed_manifest(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_skillregistry_uninstall_skill_by_id(
+    ): Short
     external fun uniffi_ari_ffi_checksum_constructor_ariengine_new(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_constructor_skillregistry_new(
     ): Short
     external fun ffi_ari_ffi_uniffi_contract_version(
     ): Int
@@ -666,6 +684,28 @@ internal object UniffiLib {
     ): Long
     external fun uniffi_ari_ffi_fn_method_ariengine_process_input(`ptr`: Long,`input`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_ari_ffi_fn_method_ariengine_reload_community_skills(`ptr`: Long,`skillStoreDir`: RustBuffer.ByValue,`storageDir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Int
+    external fun uniffi_ari_ffi_fn_clone_skillregistry(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    external fun uniffi_ari_ffi_fn_free_skillregistry(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_ari_ffi_fn_constructor_skillregistry_new(`skillStoreDir`: RustBuffer.ByValue,`storageDir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    external fun uniffi_ari_ffi_fn_method_skillregistry_browse_registry(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_ari_ffi_fn_method_skillregistry_check_for_updates(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_ari_ffi_fn_method_skillregistry_install_skill_by_id(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_ari_ffi_fn_method_skillregistry_install_skill_update(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_ari_ffi_fn_method_skillregistry_list_installed(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_ari_ffi_fn_method_skillregistry_read_installed_manifest(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_ari_ffi_fn_method_skillregistry_uninstall_skill_by_id(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     external fun ffi_ari_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun ffi_ari_ffi_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -788,7 +828,34 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_process_input() != 44833.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_reload_community_skills() != 23146.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_skillregistry_browse_registry() != 19077.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_skillregistry_check_for_updates() != 62854.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_skillregistry_install_skill_by_id() != 24025.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_skillregistry_install_skill_update() != 44951.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_skillregistry_list_installed() != 46377.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_skillregistry_read_installed_manifest() != 7185.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_skillregistry_uninstall_skill_by_id() != 56184.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ari_ffi_checksum_constructor_ariengine_new() != 23511.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_constructor_skillregistry_new() != 29338.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -946,6 +1013,52 @@ private class JavaLangRefCleanable(
     val cleanable: java.lang.ref.Cleaner.Cleanable
 ) : UniffiCleaner.Cleanable {
     override fun clean() = cleanable.clean()
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterUInt: FfiConverter<UInt, Int> {
+    override fun lift(value: Int): UInt {
+        return value.toUInt()
+    }
+
+    override fun read(buf: ByteBuffer): UInt {
+        return lift(buf.getInt())
+    }
+
+    override fun lower(value: UInt): Int {
+        return value.toInt()
+    }
+
+    override fun allocationSize(value: UInt) = 4UL
+
+    override fun write(value: UInt, buf: ByteBuffer) {
+        buf.putInt(value.toInt())
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterBoolean: FfiConverter<Boolean, Byte> {
+    override fun lift(value: Byte): Boolean {
+        return value.toInt() != 0
+    }
+
+    override fun read(buf: ByteBuffer): Boolean {
+        return lift(buf.get())
+    }
+
+    override fun lower(value: Boolean): Byte {
+        return if (value) 1.toByte() else 0.toByte()
+    }
+
+    override fun allocationSize(value: Boolean) = 1UL
+
+    override fun write(value: Boolean, buf: ByteBuffer) {
+        buf.put(lower(value))
+    }
 }
 
 /**
@@ -1124,6 +1237,28 @@ public interface AriEngineInterface {
     
     fun `processInput`(`input`: kotlin.String): FfiResponse
     
+    /**
+     * Rebuild the engine's skill set from scratch: the 6 built-in Rust
+     * skills plus every community skill on disk under `skill_store_dir`.
+     *
+     * `storage_dir` is where per-skill `storage_kv` JSON files live —
+     * must match what `SkillRegistry` was constructed with, otherwise a
+     * skill's installed state (on-disk JSON) will be invisible at
+     * conversation time. Both dirs should sit under the app's private
+     * files directory on Android (`context.filesDir`).
+     *
+     * Call once at app startup (after constructing `SkillRegistry` so the
+     * store dir exists) and again after every successful install / update
+     * / uninstall so the next `process_input` can see the new state.
+     *
+     * Silently ignores skills that fail to load — individual failures are
+     * recorded in the loader's `LoadReport.failures`, which we currently
+     * discard at this boundary. A broken skill should not take the
+     * conversation engine down with it. Returns the number of community
+     * skills successfully registered so the caller can log / surface it.
+     */
+    fun `reloadCommunitySkills`(`skillStoreDir`: kotlin.String, `storageDir`: kotlin.String): kotlin.UInt
+    
     companion object
 }
 
@@ -1245,6 +1380,39 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     
 
     
+    /**
+     * Rebuild the engine's skill set from scratch: the 6 built-in Rust
+     * skills plus every community skill on disk under `skill_store_dir`.
+     *
+     * `storage_dir` is where per-skill `storage_kv` JSON files live —
+     * must match what `SkillRegistry` was constructed with, otherwise a
+     * skill's installed state (on-disk JSON) will be invisible at
+     * conversation time. Both dirs should sit under the app's private
+     * files directory on Android (`context.filesDir`).
+     *
+     * Call once at app startup (after constructing `SkillRegistry` so the
+     * store dir exists) and again after every successful install / update
+     * / uninstall so the next `process_input` can see the new state.
+     *
+     * Silently ignores skills that fail to load — individual failures are
+     * recorded in the loader's `LoadReport.failures`, which we currently
+     * discard at this boundary. A broken skill should not take the
+     * conversation engine down with it. Returns the number of community
+     * skills successfully registered so the caller can log / surface it.
+     */override fun `reloadCommunitySkills`(`skillStoreDir`: kotlin.String, `storageDir`: kotlin.String): kotlin.UInt {
+            return FfiConverterUInt.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_reload_community_skills(
+        it,
+        FfiConverterString.lower(`skillStoreDir`),FfiConverterString.lower(`storageDir`),_status)
+}
+    }
+    )
+    }
+    
+
+    
 
     
 
@@ -1280,6 +1448,841 @@ public object FfiConverterTypeAriEngine: FfiConverter<AriEngine, Long> {
     override fun write(value: AriEngine, buf: ByteBuffer) {
         buf.putLong(lower(value))
     }
+}
+
+
+// This template implements a class for working with a Rust struct via a handle
+// to the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque handle to the underlying Rust struct.
+//     Method calls need to read this handle from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its handle should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the handle, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the handle, but is interrupted
+//      before it can pass the handle over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read handle value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * Thread-safe handle to a skill store. One instance per process, created
+ * at app startup and injected wherever it's needed. `storage_dir` is
+ * retained so install calls can rebuild [`LoadOptions`] with the same
+ * `storage_kv` root the store was opened with.
+ */
+public interface SkillRegistryInterface {
+    
+    /**
+     * Fetch the registry index and return every entry as a [`FfiBrowseEntry`],
+     * with `installed` set for skills that already exist in the local store.
+     * Powers the "Browse registry" screen where the user picks skills to
+     * install for the first time.
+     *
+     * Blocks on the network — callers must run this off the main thread.
+     */
+    fun `browseRegistry`(): List<FfiBrowseEntry>
+    
+    /**
+     * Fetch the registry index and return the updates available for
+     * already-installed skills. An empty list means "up to date".
+     *
+     * Blocks on the network — callers must run this off the main thread.
+     */
+    fun `checkForUpdates`(): List<FfiSkillUpdate>
+    
+    /**
+     * Download and install the registry's current version of `id`, even
+     * if the skill isn't already installed locally. This is the "Browse →
+     * tap install" path, complementing [`install_skill_update`] which is
+     * for already-installed skills.
+     *
+     * Blocks on the network — callers must run this off the main thread.
+     */
+    fun `installSkillById`(`id`: kotlin.String): FfiInstalledSkill
+    
+    /**
+     * Download and install the registry's current version of `id` over
+     * whatever's installed locally. Returns details about the newly
+     * installed version, or an error if the registry doesn't carry the
+     * skill, the hash/signature don't match, or extraction fails.
+     *
+     * Blocks on the network — callers must run this off the main thread.
+     */
+    fun `installSkillUpdate`(`id`: kotlin.String): FfiInstalledSkill
+    
+    /**
+     * Every skill currently installed in the store, sorted by id so the
+     * Android list has a stable order without needing a second sort pass.
+     */
+    fun `listInstalled`(): List<FfiInstalledSkill>
+    
+    /**
+     * Read the on-disk `SKILL.md` for an already-installed skill and
+     * return the rich manifest the list/row view doesn't have room for —
+     * author, homepage, capabilities, supported languages, full body.
+     *
+     * Returns [`FfiRegistryError::NotInstalled`] if `id` isn't in the
+     * store, or [`FfiRegistryError::Manifest`] if the file is missing
+     * or fails to parse (shouldn't happen for skills we installed
+     * ourselves but possible if the user's tampered with the dir).
+     */
+    fun `readInstalledManifest`(`id`: kotlin.String): FfiSkillManifest
+    
+    /**
+     * Remove an installed skill from disk and wipe its `storage_kv`
+     * state. Returns [`FfiRegistryError::NotInstalled`] if `id` isn't in
+     * the local store. The caller should invoke
+     * [`AriEngine::reload_community_skills`] afterwards so the next
+     * `process_input` sees the updated skill set.
+     */
+    fun `uninstallSkillById`(`id`: kotlin.String)
+    
+    companion object
+}
+
+/**
+ * Thread-safe handle to a skill store. One instance per process, created
+ * at app startup and injected wherever it's needed. `storage_dir` is
+ * retained so install calls can rebuild [`LoadOptions`] with the same
+ * `storage_kv` root the store was opened with.
+ */
+open class SkillRegistry: Disposable, AutoCloseable, SkillRegistryInterface
+{
+
+    @Suppress("UNUSED_PARAMETER")
+    /**
+     * @suppress
+     */
+    constructor(withHandle: UniffiWithHandle, handle: Long) {
+        this.handle = handle
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(handle))
+    }
+
+    /**
+     * @suppress
+     *
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noHandle: NoHandle) {
+        this.handle = 0
+        this.cleanable = null
+    }
+    /**
+     * Open (or create) a skill store rooted at `skill_store_dir`, with
+     * per-skill `storage_kv` files living under `storage_dir`. Both
+     * paths should be inside the app's private files directory on
+     * Android (`context.filesDir`).
+     */
+    constructor(`skillStoreDir`: kotlin.String, `storageDir`: kotlin.String) :
+        this(UniffiWithHandle, 
+    uniffiRustCallWithError(FfiRegistryException) { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_constructor_skillregistry_new(
+    
+        FfiConverterString.lower(`skillStoreDir`),FfiConverterString.lower(`storageDir`),_status)
+}
+    )
+
+    protected val handle: Long
+    protected val cleanable: UniffiCleaner.Cleanable?
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithHandle(block: (handle: Long) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the handle being freed concurrently.
+        try {
+            return block(this.uniffiCloneHandle())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val handle: Long) : Runnable {
+        override fun run() {
+            if (handle == 0.toLong()) {
+                // Fake object created with `NoHandle`, don't try to free.
+                return;
+            }
+            uniffiRustCall { status ->
+                UniffiLib.uniffi_ari_ffi_fn_free_skillregistry(handle, status)
+            }
+        }
+    }
+
+    /**
+     * @suppress
+     */
+    fun uniffiCloneHandle(): Long {
+        if (handle == 0.toLong()) {
+            throw InternalException("uniffiCloneHandle() called on NoHandle object");
+        }
+        return uniffiRustCall() { status ->
+            UniffiLib.uniffi_ari_ffi_fn_clone_skillregistry(handle, status)
+        }
+    }
+
+    
+    /**
+     * Fetch the registry index and return every entry as a [`FfiBrowseEntry`],
+     * with `installed` set for skills that already exist in the local store.
+     * Powers the "Browse registry" screen where the user picks skills to
+     * install for the first time.
+     *
+     * Blocks on the network — callers must run this off the main thread.
+     */
+    @Throws(FfiRegistryException::class)override fun `browseRegistry`(): List<FfiBrowseEntry> {
+            return FfiConverterSequenceTypeFfiBrowseEntry.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FfiRegistryException) { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_skillregistry_browse_registry(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Fetch the registry index and return the updates available for
+     * already-installed skills. An empty list means "up to date".
+     *
+     * Blocks on the network — callers must run this off the main thread.
+     */
+    @Throws(FfiRegistryException::class)override fun `checkForUpdates`(): List<FfiSkillUpdate> {
+            return FfiConverterSequenceTypeFfiSkillUpdate.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FfiRegistryException) { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_skillregistry_check_for_updates(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Download and install the registry's current version of `id`, even
+     * if the skill isn't already installed locally. This is the "Browse →
+     * tap install" path, complementing [`install_skill_update`] which is
+     * for already-installed skills.
+     *
+     * Blocks on the network — callers must run this off the main thread.
+     */
+    @Throws(FfiRegistryException::class)override fun `installSkillById`(`id`: kotlin.String): FfiInstalledSkill {
+            return FfiConverterTypeFfiInstalledSkill.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FfiRegistryException) { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_skillregistry_install_skill_by_id(
+        it,
+        FfiConverterString.lower(`id`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Download and install the registry's current version of `id` over
+     * whatever's installed locally. Returns details about the newly
+     * installed version, or an error if the registry doesn't carry the
+     * skill, the hash/signature don't match, or extraction fails.
+     *
+     * Blocks on the network — callers must run this off the main thread.
+     */
+    @Throws(FfiRegistryException::class)override fun `installSkillUpdate`(`id`: kotlin.String): FfiInstalledSkill {
+            return FfiConverterTypeFfiInstalledSkill.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FfiRegistryException) { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_skillregistry_install_skill_update(
+        it,
+        FfiConverterString.lower(`id`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Every skill currently installed in the store, sorted by id so the
+     * Android list has a stable order without needing a second sort pass.
+     */override fun `listInstalled`(): List<FfiInstalledSkill> {
+            return FfiConverterSequenceTypeFfiInstalledSkill.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_skillregistry_list_installed(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Read the on-disk `SKILL.md` for an already-installed skill and
+     * return the rich manifest the list/row view doesn't have room for —
+     * author, homepage, capabilities, supported languages, full body.
+     *
+     * Returns [`FfiRegistryError::NotInstalled`] if `id` isn't in the
+     * store, or [`FfiRegistryError::Manifest`] if the file is missing
+     * or fails to parse (shouldn't happen for skills we installed
+     * ourselves but possible if the user's tampered with the dir).
+     */
+    @Throws(FfiRegistryException::class)override fun `readInstalledManifest`(`id`: kotlin.String): FfiSkillManifest {
+            return FfiConverterTypeFfiSkillManifest.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FfiRegistryException) { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_skillregistry_read_installed_manifest(
+        it,
+        FfiConverterString.lower(`id`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Remove an installed skill from disk and wipe its `storage_kv`
+     * state. Returns [`FfiRegistryError::NotInstalled`] if `id` isn't in
+     * the local store. The caller should invoke
+     * [`AriEngine::reload_community_skills`] afterwards so the next
+     * `process_input` sees the updated skill set.
+     */
+    @Throws(FfiRegistryException::class)override fun `uninstallSkillById`(`id`: kotlin.String)
+        = 
+    callWithHandle {
+    uniffiRustCallWithError(FfiRegistryException) { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_skillregistry_uninstall_skill_by_id(
+        it,
+        FfiConverterString.lower(`id`),_status)
+}
+    }
+    
+    
+
+    
+
+    
+
+
+    
+    
+    /**
+     * @suppress
+     */
+    companion object
+    
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSkillRegistry: FfiConverter<SkillRegistry, Long> {
+    override fun lower(value: SkillRegistry): Long {
+        return value.uniffiCloneHandle()
+    }
+
+    override fun lift(value: Long): SkillRegistry {
+        return SkillRegistry(UniffiWithHandle, value)
+    }
+
+    override fun read(buf: ByteBuffer): SkillRegistry {
+        return lift(buf.getLong())
+    }
+
+    override fun allocationSize(value: SkillRegistry) = 8UL
+
+    override fun write(value: SkillRegistry, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
+
+
+
+/**
+ * One row for the "Browse registry" screen — every skill the registry
+ * carries, with an `installed` flag so the UI can mark rows for skills
+ * the user already has on disk. `version` is the registry's version,
+ * which may be ahead of the installed one; the UI can decide whether
+ * to render that as "update available" or just "installed".
+ */
+data class FfiBrowseEntry (
+    var `id`: kotlin.String
+    , 
+    var `version`: kotlin.String
+    , 
+    var `name`: kotlin.String
+    , 
+    var `description`: kotlin.String
+    , 
+    var `installed`: kotlin.Boolean
+    , 
+    var `license`: kotlin.String?
+    , 
+    var `author`: kotlin.String?
+    , 
+    var `homepage`: kotlin.String?
+    , 
+    var `capabilities`: List<kotlin.String>
+    , 
+    var `languages`: List<kotlin.String>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiBrowseEntry: FfiConverterRustBuffer<FfiBrowseEntry> {
+    override fun read(buf: ByteBuffer): FfiBrowseEntry {
+        return FfiBrowseEntry(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterSequenceString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiBrowseEntry) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`version`) +
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterString.allocationSize(value.`description`) +
+            FfiConverterBoolean.allocationSize(value.`installed`) +
+            FfiConverterOptionalString.allocationSize(value.`license`) +
+            FfiConverterOptionalString.allocationSize(value.`author`) +
+            FfiConverterOptionalString.allocationSize(value.`homepage`) +
+            FfiConverterSequenceString.allocationSize(value.`capabilities`) +
+            FfiConverterSequenceString.allocationSize(value.`languages`)
+    )
+
+    override fun write(value: FfiBrowseEntry, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`version`, buf)
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterString.write(value.`description`, buf)
+            FfiConverterBoolean.write(value.`installed`, buf)
+            FfiConverterOptionalString.write(value.`license`, buf)
+            FfiConverterOptionalString.write(value.`author`, buf)
+            FfiConverterOptionalString.write(value.`homepage`, buf)
+            FfiConverterSequenceString.write(value.`capabilities`, buf)
+            FfiConverterSequenceString.write(value.`languages`, buf)
+    }
+}
+
+
+
+/**
+ * One already-installed skill, flattened into a uniffi-safe record.
+ */
+data class FfiInstalledSkill (
+    var `id`: kotlin.String
+    , 
+    var `version`: kotlin.String
+    , 
+    /**
+     * Absolute path to the extracted skill directory on disk.
+     */
+    var `installDir`: kotlin.String
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiInstalledSkill: FfiConverterRustBuffer<FfiInstalledSkill> {
+    override fun read(buf: ByteBuffer): FfiInstalledSkill {
+        return FfiInstalledSkill(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiInstalledSkill) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`version`) +
+            FfiConverterString.allocationSize(value.`installDir`)
+    )
+
+    override fun write(value: FfiInstalledSkill, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`version`, buf)
+            FfiConverterString.write(value.`installDir`, buf)
+    }
+}
+
+
+
+/**
+ * Rich manifest details for an already-installed skill, parsed from the
+ * on-disk SKILL.md. Used by the detail screen to show fields that don't
+ * fit on a list row: author, homepage, capabilities the skill requires,
+ * supported languages, and the full SKILL.md body (which typically
+ * contains the human-readable long description / usage examples).
+ */
+data class FfiSkillManifest (
+    var `id`: kotlin.String
+    , 
+    var `version`: kotlin.String
+    , 
+    var `name`: kotlin.String
+    , 
+    var `description`: kotlin.String
+    , 
+    var `author`: kotlin.String?
+    , 
+    var `homepage`: kotlin.String?
+    , 
+    var `license`: kotlin.String?
+    , 
+    /**
+     * Capability names as they appear in the manifest (e.g. `http`,
+     * `storage_kv`). Stable strings — see
+     * [`ari_skill_loader::capability_name`].
+     */
+    var `capabilities`: List<kotlin.String>
+    , 
+    var `languages`: List<kotlin.String>
+    , 
+    /**
+     * Full SKILL.md body after the frontmatter — markdown, verbatim.
+     */
+    var `body`: kotlin.String
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiSkillManifest: FfiConverterRustBuffer<FfiSkillManifest> {
+    override fun read(buf: ByteBuffer): FfiSkillManifest {
+        return FfiSkillManifest(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiSkillManifest) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`version`) +
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterString.allocationSize(value.`description`) +
+            FfiConverterOptionalString.allocationSize(value.`author`) +
+            FfiConverterOptionalString.allocationSize(value.`homepage`) +
+            FfiConverterOptionalString.allocationSize(value.`license`) +
+            FfiConverterSequenceString.allocationSize(value.`capabilities`) +
+            FfiConverterSequenceString.allocationSize(value.`languages`) +
+            FfiConverterString.allocationSize(value.`body`)
+    )
+
+    override fun write(value: FfiSkillManifest, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`version`, buf)
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterString.write(value.`description`, buf)
+            FfiConverterOptionalString.write(value.`author`, buf)
+            FfiConverterOptionalString.write(value.`homepage`, buf)
+            FfiConverterOptionalString.write(value.`license`, buf)
+            FfiConverterSequenceString.write(value.`capabilities`, buf)
+            FfiConverterSequenceString.write(value.`languages`, buf)
+            FfiConverterString.write(value.`body`, buf)
+    }
+}
+
+
+
+/**
+ * One update the registry has for a skill that's already installed.
+ * `name` + `description` come from the registry index so the UI can
+ * show a changelog-adjacent blurb without reading the local SKILL.md.
+ */
+data class FfiSkillUpdate (
+    var `id`: kotlin.String
+    , 
+    var `installedVersion`: kotlin.String
+    , 
+    var `availableVersion`: kotlin.String
+    , 
+    var `name`: kotlin.String
+    , 
+    var `description`: kotlin.String
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiSkillUpdate: FfiConverterRustBuffer<FfiSkillUpdate> {
+    override fun read(buf: ByteBuffer): FfiSkillUpdate {
+        return FfiSkillUpdate(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiSkillUpdate) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`installedVersion`) +
+            FfiConverterString.allocationSize(value.`availableVersion`) +
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterString.allocationSize(value.`description`)
+    )
+
+    override fun write(value: FfiSkillUpdate, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`installedVersion`, buf)
+            FfiConverterString.write(value.`availableVersion`, buf)
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterString.write(value.`description`, buf)
+    }
+}
+
+
+
+
+
+sealed class FfiRegistryException(message: String): kotlin.Exception(message) {
+        
+        class Registry(message: String) : FfiRegistryException(message)
+        
+        class Store(message: String) : FfiRegistryException(message)
+        
+        class NotFound(message: String) : FfiRegistryException(message)
+        
+        class NotInstalled(message: String) : FfiRegistryException(message)
+        
+        class Manifest(message: String) : FfiRegistryException(message)
+        
+        class TrustKey(message: String) : FfiRegistryException(message)
+        
+
+    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<FfiRegistryException> {
+        override fun lift(error_buf: RustBuffer.ByValue): FfiRegistryException = FfiConverterTypeFfiRegistryError.lift(error_buf)
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiRegistryError : FfiConverterRustBuffer<FfiRegistryException> {
+    override fun read(buf: ByteBuffer): FfiRegistryException {
+        
+            return when(buf.getInt()) {
+            1 -> FfiRegistryException.Registry(FfiConverterString.read(buf))
+            2 -> FfiRegistryException.Store(FfiConverterString.read(buf))
+            3 -> FfiRegistryException.NotFound(FfiConverterString.read(buf))
+            4 -> FfiRegistryException.NotInstalled(FfiConverterString.read(buf))
+            5 -> FfiRegistryException.Manifest(FfiConverterString.read(buf))
+            6 -> FfiRegistryException.TrustKey(FfiConverterString.read(buf))
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+        
+    }
+
+    override fun allocationSize(value: FfiRegistryException): ULong {
+        return 4UL
+    }
+
+    override fun write(value: FfiRegistryException, buf: ByteBuffer) {
+        when(value) {
+            is FfiRegistryException.Registry -> {
+                buf.putInt(1)
+                Unit
+            }
+            is FfiRegistryException.Store -> {
+                buf.putInt(2)
+                Unit
+            }
+            is FfiRegistryException.NotFound -> {
+                buf.putInt(3)
+                Unit
+            }
+            is FfiRegistryException.NotInstalled -> {
+                buf.putInt(4)
+                Unit
+            }
+            is FfiRegistryException.Manifest -> {
+                buf.putInt(5)
+                Unit
+            }
+            is FfiRegistryException.TrustKey -> {
+                buf.putInt(6)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
 }
 
 
@@ -1392,4 +2395,148 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
 }
 
 
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?> {
+    override fun read(buf: ByteBuffer): kotlin.String? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterString.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.String?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterString.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.String?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterString.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.String>> {
+    override fun read(buf: ByteBuffer): List<kotlin.String> {
+        val len = buf.getInt()
+        return List<kotlin.String>(len) {
+            FfiConverterString.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.String>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterString.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.String>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterString.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiBrowseEntry: FfiConverterRustBuffer<List<FfiBrowseEntry>> {
+    override fun read(buf: ByteBuffer): List<FfiBrowseEntry> {
+        val len = buf.getInt()
+        return List<FfiBrowseEntry>(len) {
+            FfiConverterTypeFfiBrowseEntry.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiBrowseEntry>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiBrowseEntry.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiBrowseEntry>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiBrowseEntry.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiInstalledSkill: FfiConverterRustBuffer<List<FfiInstalledSkill>> {
+    override fun read(buf: ByteBuffer): List<FfiInstalledSkill> {
+        val len = buf.getInt()
+        return List<FfiInstalledSkill>(len) {
+            FfiConverterTypeFfiInstalledSkill.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiInstalledSkill>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiInstalledSkill.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiInstalledSkill>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiInstalledSkill.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiSkillUpdate: FfiConverterRustBuffer<List<FfiSkillUpdate>> {
+    override fun read(buf: ByteBuffer): List<FfiSkillUpdate> {
+        val len = buf.getInt()
+        return List<FfiSkillUpdate>(len) {
+            FfiConverterTypeFfiSkillUpdate.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiSkillUpdate>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiSkillUpdate.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiSkillUpdate>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiSkillUpdate.write(it, buf)
+        }
+    }
+}
 

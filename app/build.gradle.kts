@@ -55,6 +55,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -89,9 +90,14 @@ dependencies {
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
 
     implementation("net.java.dev.jna:jna:5.17.0@aar")
     implementation(files("libs/sherpa-onnx-1.12.35.aar"))
+    implementation(libs.richtext.commonmark)
+    implementation(libs.richtext.ui.material3)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -20,6 +20,7 @@ import dev.heyari.ari.stt.SttModel
 import dev.heyari.ari.stt.SttModelRegistry
 import dev.heyari.ari.wakeword.WakeWordModel
 import dev.heyari.ari.wakeword.WakeWordRegistry
+import dev.heyari.ari.wakeword.WakeWordSensitivity
 import dev.heyari.ari.wakeword.WakeWordService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,6 +55,7 @@ data class SettingsState(
     val models: List<ModelStatus> = emptyList(),
     val download: ModelDownloadState = ModelDownloadState.Idle,
     val wakeWords: List<WakeWordOption> = emptyList(),
+    val wakeWordSensitivity: WakeWordSensitivity = WakeWordSensitivity.DEFAULT,
 )
 
 @HiltViewModel
@@ -77,6 +79,11 @@ class SettingsViewModel @Inject constructor(
                         wakeWords = WakeWordRegistry.all.map { WakeWordOption(it, it.id == resolved) }
                     )
                 }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.wakeWordSensitivity.collect { name ->
+                _state.update { it.copy(wakeWordSensitivity = WakeWordSensitivity.fromName(name)) }
             }
         }
         viewModelScope.launch {
@@ -236,11 +243,28 @@ class SettingsViewModel @Inject constructor(
     fun selectWakeWord(model: WakeWordModel) {
         viewModelScope.launch {
             settingsRepository.setActiveWakeWordId(model.id)
-            if (WakeWordService.isRunning) {
-                val intent = Intent(application, WakeWordService::class.java)
-                application.stopService(intent)
-                ContextCompat.startForegroundService(application, intent)
-            }
+            bounceWakeWordService()
+        }
+    }
+
+    /**
+     * Persist the chosen sensitivity and bounce the wake word service so the
+     * new cutoff/window take effect immediately. Same restart pattern used for
+     * swapping the active wake word model — cheaper than inventing a hot-reload
+     * path for a setting users will only change occasionally.
+     */
+    fun selectWakeWordSensitivity(sensitivity: WakeWordSensitivity) {
+        viewModelScope.launch {
+            settingsRepository.setWakeWordSensitivity(sensitivity.name)
+            bounceWakeWordService()
+        }
+    }
+
+    private fun bounceWakeWordService() {
+        if (WakeWordService.isRunning) {
+            val intent = Intent(application, WakeWordService::class.java)
+            application.stopService(intent)
+            ContextCompat.startForegroundService(application, intent)
         }
     }
 

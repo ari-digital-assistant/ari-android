@@ -37,8 +37,19 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    val wakeWordSensitivity: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[KEY_WAKE_WORD_SENSITIVITY]
+    }
+
+    suspend fun setWakeWordSensitivity(name: String) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_WAKE_WORD_SENSITIVITY] = name
+        }
+    }
+
     companion object {
         private val KEY_ACTIVE_STT_MODEL = stringPreferencesKey("active_stt_model")
         private val KEY_ACTIVE_WAKE_WORD = stringPreferencesKey("active_wake_word")
+        private val KEY_WAKE_WORD_SENSITIVITY = stringPreferencesKey("wake_word_sensitivity")
     }
 }

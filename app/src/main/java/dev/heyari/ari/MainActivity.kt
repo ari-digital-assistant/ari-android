@@ -10,12 +10,25 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
+import dev.heyari.ari.skills.SkillUpdateNotifier
 import dev.heyari.ari.ui.AriNavHost
+import dev.heyari.ari.ui.Routes
 import dev.heyari.ari.ui.theme.AriTheme
 import dev.heyari.ari.wakeword.WakeWordService
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    // Channel, not SharedFlow: intents arrive before setContent runs, so we
+    // need a buffer that survives until the NavHost collector shows up.
+    // SharedFlow with replay=0 would drop the emission on the floor.
+    private val deepLinkCommands = Channel<String>(
+        capacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,9 +40,10 @@ class MainActivity : ComponentActivity() {
         }
 
         handleWakeWordIntent(intent)
+        handleSkillUpdatesIntent(intent)
         setContent {
             AriTheme {
-                AriNavHost()
+                AriNavHost(deepLinkCommands = deepLinkCommands.receiveAsFlow())
             }
         }
     }
@@ -40,6 +54,16 @@ class MainActivity : ComponentActivity() {
             showOverLockScreen()
         }
         handleWakeWordIntent(intent)
+        handleSkillUpdatesIntent(intent)
+    }
+
+    private fun handleSkillUpdatesIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra(SkillUpdateNotifier.EXTRA_OPEN_SKILLS, false) == true) {
+            // trySend is fine — the channel has capacity 1 with DROP_OLDEST,
+            // so it never suspends and the most recent intent always wins.
+            deepLinkCommands.trySend(Routes.SKILLS)
+            intent.removeExtra(SkillUpdateNotifier.EXTRA_OPEN_SKILLS)
+        }
     }
 
     override fun onStop() {

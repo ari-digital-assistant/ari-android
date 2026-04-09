@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
@@ -28,12 +30,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,7 +45,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import dev.heyari.ari.ui.components.AriTopBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -64,10 +64,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import dev.heyari.ari.stt.SttState
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConversationScreen(
-    onOpenSettings: () -> Unit = {},
+    onOpenMenu: () -> Unit = {},
     viewModel: ConversationViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -104,6 +103,17 @@ fun ConversationScreen(
         }
     }
 
+    // Chat-app behaviour: when the IME opens (user tapped the text field),
+    // snap the conversation to the bottom so the latest message + the reply
+    // stay visible above the keyboard rather than being occluded.
+    @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+    val imeVisible = WindowInsets.isImeVisible
+    LaunchedEffect(imeVisible) {
+        if (imeVisible && state.messages.isNotEmpty()) {
+            listState.animateScrollToItem(state.messages.size - 1)
+        }
+    }
+
     if (state.needsFsnPermission) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissFsnPrompt() },
@@ -127,8 +137,8 @@ fun ConversationScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Ari") },
+            AriTopBar(
+                onOpenMenu = onOpenMenu,
                 actions = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -179,12 +189,6 @@ fun ConversationScreen(
                             },
                         )
                     }
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings",
-                        )
-                    }
                 }
             )
         },
@@ -197,7 +201,7 @@ fun ConversationScreen(
                 .imePadding()
         ) {
             if (state.needsSetup) {
-                OnboardingCard(onOpenSettings = onOpenSettings)
+                OnboardingCard(onOpenMenu = onOpenMenu)
             }
 
             LazyColumn(
@@ -241,7 +245,7 @@ fun ConversationScreen(
 }
 
 @Composable
-private fun OnboardingCard(onOpenSettings: () -> Unit) {
+private fun OnboardingCard(onOpenMenu: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -272,8 +276,8 @@ private fun OnboardingCard(onOpenSettings: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onOpenSettings) {
-                    Text("Open settings")
+                TextButton(onClick = onOpenMenu) {
+                    Text("Open menu")
                 }
             }
         }

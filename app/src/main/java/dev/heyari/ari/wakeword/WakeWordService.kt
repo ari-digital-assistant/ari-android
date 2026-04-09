@@ -93,9 +93,14 @@ class WakeWordService : Service() {
         // access — fine for service startup. We need it sync because the rest
         // of startListening() is sync and there's no audio loop yet to defer
         // into.
+        // Datastore reads on Main are sub-ms cache hits after first access —
+        // fine for service startup. Sync is required because the rest of
+        // startListening() is sync and there's no audio loop yet to defer into.
         val activeId = runBlocking { settingsRepository.activeWakeWordId.first() }
+        val sensitivityName = runBlocking { settingsRepository.wakeWordSensitivity.first() }
         val wakeWord = WakeWordRegistry.byId(activeId)
-        Log.i(TAG, "Loading wake word model: ${wakeWord.id}")
+        val sensitivity = WakeWordSensitivity.fromName(sensitivityName)
+        Log.i(TAG, "Loading wake word model: ${wakeWord.id} @ sensitivity=${sensitivity.name} (cutoff=${sensitivity.probabilityCutoff}, window=${sensitivity.slidingWindowSize})")
 
         val modelBuffer = loadModelFromAssets(wakeWord.assetFilename)
         if (modelBuffer == null) {
@@ -107,8 +112,8 @@ class WakeWordService : Service() {
         detector = MicroWakeWord(
             modelBuffer = modelBuffer,
             featureStepSizeMs = wakeWord.featureStepSizeMs,
-            probabilityCutoff = wakeWord.probabilityCutoff,
-            slidingWindowSize = wakeWord.slidingWindowSize,
+            probabilityCutoff = sensitivity.probabilityCutoff,
+            slidingWindowSize = sensitivity.slidingWindowSize,
         )
 
         val bufferSize = AudioRecord.getMinBufferSize(

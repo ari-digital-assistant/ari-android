@@ -2,6 +2,7 @@ package dev.heyari.ari.di
 
 import android.app.Application
 import android.content.Context
+import android.util.Log
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -14,6 +15,7 @@ import dev.heyari.ari.stt.ModelDownloadManager
 import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.tts.SpeechOutput
 import uniffi.ari_ffi.AriEngine
+import java.io.File
 import javax.inject.Singleton
 
 @Module
@@ -21,7 +23,21 @@ import javax.inject.Singleton
 object EngineModule {
     @Provides
     @Singleton
-    fun provideAriEngine(): AriEngine = AriEngine()
+    fun provideAriEngine(@ApplicationContext context: Context): AriEngine {
+        val engine = AriEngine()
+        // Load every installed community skill into the conversation
+        // engine at startup. Both paths must match what SkillRegistryModule
+        // uses — otherwise a skill's installed state (filesystem location)
+        // or its storage_kv JSON would be invisible at conversation time.
+        val skillsDir = File(context.filesDir, "skills").apply { mkdirs() }
+        val storageDir = File(context.filesDir, "skill-storage").apply { mkdirs() }
+        val loaded = engine.reloadCommunitySkills(
+            skillsDir.absolutePath,
+            storageDir.absolutePath,
+        )
+        Log.i("EngineModule", "loaded $loaded community skill(s) at startup")
+        return engine
+    }
 
     @Provides
     @Singleton
