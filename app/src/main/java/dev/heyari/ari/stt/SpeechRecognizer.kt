@@ -185,6 +185,9 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
             val parBatchAccumulator = ArrayList<ShortArray>(160)
             var parBatchSamples = 0
             var mainBatchCount = 0
+            // Raw PCM accumulator for the offline retry fallback.
+            val audioAccum = ArrayList<ShortArray>(200)
+            var audioAccumSamples = 0
             // Endpoint detector: track when cleanedPartial last changed.
             // When it stays at the same NON-EMPTY value for STABILITY_WINDOW_MS,
             // assume the user has stopped speaking and emit Done.
@@ -227,6 +230,10 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
                         Log.i(TAG, "First chunk decoded ${System.currentTimeMillis() - startTime}ms after arm (size=${merged.size})")
                         firstChunkLogged = true
                     }
+
+                    // Stash raw PCM for the offline retry fallback.
+                    audioAccum.add(merged.copyOf())
+                    audioAccumSamples += merged.size
 
                     val floatBuffer = FloatArray(merged.size) { i -> merged[i] / 32768.0f }
                     currentStream.acceptWaveform(floatBuffer, SAMPLE_RATE)
@@ -307,7 +314,15 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
                                 null
                             }
                         }
-                        _state.value = SttState.Done(cleanedPartial, parallelText)
+                        // Merge the raw PCM accumulator into one flat array
+                        // for the offline retry fallback.
+                        val mergedAudio = ShortArray(audioAccumSamples)
+                        var apos = 0
+                        for (a in audioAccum) {
+                            System.arraycopy(a, 0, mergedAudio, apos, a.size)
+                            apos += a.size
+                        }
+                        _state.value = SttState.Done(cleanedPartial, parallelText, mergedAudio)
                         stopRecording()
                         return@launch
                     }
@@ -340,6 +355,41 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
         recognizer = null
         loadedModelId = null
         Log.i(TAG, "STT recognizer released")
+    }
+
+    /**
+     * Feed [audio] into a brand-new sherpa stream in one shot, call
+     * `inputFinished()` to force the decoder to commit, and return the
+     * cleaned transcript. Returns null if the recognizer isn't loaded or
+     * the result is empty after wake-phrase stripping.
+     *
+     * This is the "third layer" retry: slower (blocks for the full
+     * decode) but structurally different from both the streaming pass
+     * and the parallel pass — the decoder sees the entire utterance
+     * before committing any token, giving it maximum context.
+     *
+     * MUST be called from a background thread.
+     */
+    fun transcribeOffline(audio: ShortArray): String? {
+        val rec = recognizer ?: return null
+        val offStream = rec.createStream()
+        return try {
+            val floats = FloatArray(audio.size) { i -> audio[i] / 32768.0f }
+            offStream.acceptWaveform(floats, SAMPLE_RATE)
+            offStream.inputFinished()
+            while (rec.isReady(offStream)) {
+                rec.decode(offStream)
+            }
+            val raw = rec.getResult(offStream).text.trim()
+            val cleaned = stripWakePhrase(raw)
+            Log.i(TAG, "Offline retry: raw='$raw' cleaned='$cleaned'")
+            cleaned.takeIf { it.isNotEmpty() }
+        } catch (t: Throwable) {
+            Log.w(TAG, "Offline retry failed", t)
+            null
+        } finally {
+            offStream.release()
+        }
     }
 
     private fun stopRecording() {
@@ -394,6 +444,18 @@ sealed interface SttState {
      *   When the engine doesn't understand [text], the host should try
      *   feeding [parallel] before giving up.
      */
-    data class Done(val text: String, val parallel: String? = null) : SttState
+    /**
+     * @param text Best transcript from the streaming decoder.
+     * @param parallel Transcript from the parallel clean-start stream,
+     *   or null if it was identical to [text] or empty.
+     * @param audio Raw 16-bit PCM of the entire captured utterance. The
+     *   host can feed this into [SpeechRecognizer.transcribeOffline] for
+     *   a third-layer retry if both [text] and [parallel] fail.
+     */
+    data class Done(
+        val text: String,
+        val parallel: String? = null,
+        val audio: ShortArray? = null,
+    ) : SttState
     data class Error(val message: String) : SttState
 }
