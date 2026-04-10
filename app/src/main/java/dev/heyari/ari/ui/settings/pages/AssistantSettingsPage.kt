@@ -23,8 +23,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -186,20 +190,40 @@ private fun AssistantCard(
                 for (field in configFields) {
                     when (field.fieldType) {
                         "text" -> {
+                            var localValue by remember(field.key) {
+                                mutableStateOf(field.currentValue ?: field.defaultValue ?: "")
+                            }
                             OutlinedTextField(
-                                value = field.currentValue ?: field.defaultValue ?: "",
-                                onValueChange = { onConfigChange(field.key, it) },
+                                value = localValue,
+                                onValueChange = { localValue = it },
                                 label = { Text(field.label) },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .onFocusChanged { state ->
+                                        if (!state.isFocused && localValue.isNotEmpty()) {
+                                            onConfigChange(field.key, localValue)
+                                        }
+                                    },
                                 singleLine = true,
                             )
                         }
                         "secret" -> {
+                            var localValue by remember(field.key) {
+                                mutableStateOf("")
+                            }
+                            val hasExisting = field.currentValue == "••••••••"
                             OutlinedTextField(
-                                value = if (field.currentValue == "••••••••") "" else field.currentValue ?: "",
-                                onValueChange = { onConfigChange(field.key, it) },
+                                value = localValue,
+                                onValueChange = { localValue = it },
                                 label = { Text(field.label) },
-                                modifier = Modifier.fillMaxWidth(),
+                                placeholder = if (hasExisting) {{ Text("••••••••") }} else null,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .onFocusChanged { state ->
+                                        if (!state.isFocused && localValue.isNotEmpty()) {
+                                            onConfigChange(field.key, localValue)
+                                        }
+                                    },
                                 singleLine = true,
                                 visualTransformation = PasswordVisualTransformation(),
                             )

@@ -21,6 +21,7 @@ import uniffi.ari_ffi.FfiInstalledSkill
 import uniffi.ari_ffi.FfiRegistryException
 import uniffi.ari_ffi.FfiSkillManifest
 import uniffi.ari_ffi.FfiSkillUpdate
+import uniffi.ari_ffi.AssistantRegistry
 import uniffi.ari_ffi.SkillRegistry
 import java.io.File
 import java.time.Instant
@@ -34,6 +35,7 @@ class SkillsViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val skillRegistry: SkillRegistry,
     private val engine: AriEngine,
+    private val assistantRegistry: AssistantRegistry,
     private val notifier: SkillUpdateNotifier,
     private val prefs: SkillsPreferences,
 ) : ViewModel() {
@@ -48,6 +50,7 @@ class SkillsViewModel @Inject constructor(
     private fun reloadEngineSkills() {
         viewModelScope.launch(Dispatchers.IO) {
             engine.reloadCommunitySkills(skillsDirPath, storageDirPath)
+            assistantRegistry.reloadCommunityAssistants()
         }
     }
 
