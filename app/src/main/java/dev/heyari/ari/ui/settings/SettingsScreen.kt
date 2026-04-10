@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
@@ -24,6 +25,7 @@ fun SettingsScreen(
     onOpenPermissions: () -> Unit,
     onOpenWakeWord: () -> Unit,
     onOpenStt: () -> Unit,
+    onOpenLlm: () -> Unit,
 ) {
     SettingsScaffold(
         title = stringResource(R.string.settings_title),
@@ -55,6 +57,11 @@ fun SettingsScreen(
                 icon = Icons.AutoMirrored.Filled.Chat,
                 title = stringResource(R.string.settings_category_stt),
                 onClick = onOpenStt,
+            )
+            SettingsCategoryRow(
+                icon = Icons.Default.AutoAwesome,
+                title = stringResource(R.string.settings_category_assistant),
+                onClick = onOpenLlm,
             )
         }
     }

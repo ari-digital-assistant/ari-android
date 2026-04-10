@@ -29,8 +29,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.heyari.ari.llm.LlmDownloadState
+import dev.heyari.ari.llm.LlmModel
 import dev.heyari.ari.stt.ModelDownloadState
 import dev.heyari.ari.stt.SttModel
+import dev.heyari.ari.ui.settings.LlmModelStatus
 import dev.heyari.ari.ui.settings.ModelStatus
 import dev.heyari.ari.ui.settings.PermissionStatus
 import dev.heyari.ari.ui.settings.WakeWordOption
@@ -388,6 +391,169 @@ internal fun IntegrationSection(onSetAsAssistant: () -> Unit) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 Button(onClick = onSetAsAssistant) {
                     Text("Open settings")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun LlmModelsSection(
+    models: List<LlmModelStatus>,
+    downloadState: LlmDownloadState,
+    noneActive: Boolean,
+    onDownload: (LlmModel) -> Unit,
+    onCancel: () -> Unit,
+    onDelete: (LlmModel) -> Unit,
+    onSelect: (LlmModel) -> Unit,
+    onSelectNone: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "Choose an on-device language model. When enabled, Ari can answer general questions and reroute misheard commands to the right skill. Larger models give better answers but use more storage and RAM.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(4.dp))
+
+        // "None" option
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = if (noneActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+            ),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(
+                    selected = noneActive,
+                    onClick = onSelectNone,
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "None",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = "No on-device LLM. Ari only answers via matched skills.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        // Model tiers
+        models.forEach { status ->
+            LlmModelRow(
+                status = status,
+                downloadState = downloadState,
+                onDownload = { onDownload(status.model) },
+                onCancel = onCancel,
+                onDelete = { onDelete(status.model) },
+                onSelect = { onSelect(status.model) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun LlmModelRow(
+    status: LlmModelStatus,
+    downloadState: LlmDownloadState,
+    onDownload: () -> Unit,
+    onCancel: () -> Unit,
+    onDelete: () -> Unit,
+    onSelect: () -> Unit,
+) {
+    val isDownloadingThis = downloadState is LlmDownloadState.Downloading && downloadState.modelId == status.model.id
+    val downloadFailed = downloadState is LlmDownloadState.Failed && downloadState.modelId == status.model.id
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (status.active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (status.downloaded) {
+                    RadioButton(
+                        selected = status.active,
+                        onClick = onSelect,
+                    )
+                } else {
+                    Spacer(Modifier.width(48.dp))
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = status.model.displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = status.model.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            when {
+                isDownloadingThis -> {
+                    val dl = downloadState as LlmDownloadState.Downloading
+                    val progress = if (dl.totalBytes > 0) dl.bytesSoFar.toFloat() / dl.totalBytes.toFloat() else 0f
+                    LinearProgressIndicator(
+                        progress = { progress.coerceIn(0f, 1f) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "${formatBytes(dl.bytesSoFar)} / ${formatBytes(dl.totalBytes)} (${String.format(Locale.US, "%.0f", progress * 100)}%)",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        TextButton(onClick = onCancel) { Text("Cancel") }
+                    }
+                }
+                status.downloaded -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        OutlinedButton(onClick = onDelete) {
+                            Icon(Icons.Default.Delete, contentDescription = null)
+                            Spacer(Modifier.width(4.dp))
+                            Text("Delete")
+                        }
+                    }
+                }
+                else -> {
+                    if (downloadFailed) {
+                        Text(
+                            text = "Last download failed: ${(downloadState as LlmDownloadState.Failed).error}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        Button(onClick = onDownload) {
+                            Icon(Icons.Default.Download, contentDescription = null)
+                            Spacer(Modifier.width(4.dp))
+                            Text("Download ${formatBytes(status.model.totalBytes)}")
+                        }
+                    }
                 }
             }
         }

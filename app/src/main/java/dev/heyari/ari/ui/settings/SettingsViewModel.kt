@@ -2,6 +2,7 @@ package dev.heyari.ari.ui.settings
 
 import android.Manifest
 import android.app.Application
+import android.util.Log
 import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -13,6 +14,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.heyari.ari.data.SettingsRepository
+import dev.heyari.ari.di.EngineModule
+import dev.heyari.ari.llm.LlmDownloadManager
+import dev.heyari.ari.llm.LlmDownloadState
+import dev.heyari.ari.llm.LlmModel
+import dev.heyari.ari.llm.LlmModelRegistry
 import dev.heyari.ari.stt.ModelDownloadManager
 import dev.heyari.ari.stt.ModelDownloadState
 import dev.heyari.ari.stt.SpeechRecognizer
@@ -22,6 +28,9 @@ import dev.heyari.ari.wakeword.WakeWordModel
 import dev.heyari.ari.wakeword.WakeWordRegistry
 import dev.heyari.ari.wakeword.WakeWordSensitivity
 import dev.heyari.ari.wakeword.WakeWordService
+import uniffi.ari_ffi.AriEngine
+import uniffi.ari_ffi.AssistantRegistry
+import uniffi.ari_ffi.FfiConfigField
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -50,24 +59,51 @@ data class WakeWordOption(
     val active: Boolean,
 )
 
+data class LlmModelStatus(
+    val model: LlmModel,
+    val downloaded: Boolean,
+    val active: Boolean,
+)
+
+data class AssistantUiEntry(
+    val id: String,
+    val name: String,
+    val description: String,
+    val provider: String,
+    val privacy: String,
+    val configFields: List<FfiConfigField>,
+)
+
 data class SettingsState(
     val permissions: PermissionStatus = PermissionStatus(false, false, false, false),
     val models: List<ModelStatus> = emptyList(),
     val download: ModelDownloadState = ModelDownloadState.Idle,
     val wakeWords: List<WakeWordOption> = emptyList(),
     val wakeWordSensitivity: WakeWordSensitivity = WakeWordSensitivity.DEFAULT,
+    val llmModels: List<LlmModelStatus> = emptyList(),
+    val llmDownload: LlmDownloadState = LlmDownloadState.Idle,
+    val llmNoneActive: Boolean = true,
+    val activeAssistantId: String? = null,
+    val assistantEntries: List<AssistantUiEntry> = emptyList(),
 )
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val application: Application,
     private val downloadManager: ModelDownloadManager,
+    private val llmDownloadManager: LlmDownloadManager,
     private val speechRecognizer: SpeechRecognizer,
     private val settingsRepository: SettingsRepository,
+    private val engine: AriEngine,
+    private val assistantRegistry: AssistantRegistry,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
     val state: StateFlow<SettingsState> = _state.asStateFlow()
+
+    /** Tracks which LLM model id is currently loaded in the engine, to avoid redundant loads. */
+    @Volatile
+    private var loadedLlmId: String? = null
 
     init {
         refreshPermissions()
@@ -118,6 +154,71 @@ class SettingsViewModel @Inject constructor(
                     // Force a UI refresh after loading so the radio button updates
                     _state.update { it.copy(models = buildModelList(activeId)) }
                 }
+            }
+        }
+
+        // LLM download state — track download progress for the assistant
+        // settings page. When the built-in assistant is active and a model
+        // finishes downloading, load it into the engine.
+        viewModelScope.launch {
+            combine(
+                llmDownloadManager.state,
+                settingsRepository.activeLlmModelId,
+                settingsRepository.activeAssistantId,
+            ) { dlState, llmId, assistantId ->
+                Triple(dlState, llmId, assistantId)
+            }.collect { (dlState, llmId, assistantId) ->
+                _state.update {
+                    it.copy(
+                        llmModels = buildLlmModelList(llmId),
+                        llmDownload = dlState,
+                    )
+                }
+
+                // Auto-select a just-downloaded model for the built-in assistant.
+                if (dlState is LlmDownloadState.Completed
+                    && assistantId == EngineModule.BUILTIN_ASSISTANT_ID
+                    && llmId == null
+                ) {
+                    val model = LlmModelRegistry.byId(dlState.modelId) ?: return@collect
+                    settingsRepository.setActiveLlmModelId(model.id)
+                }
+            }
+        }
+
+        // Load/unload the LLM into the engine when the active model changes
+        // and the built-in assistant is active.
+        viewModelScope.launch(Dispatchers.IO) {
+            combine(
+                settingsRepository.activeLlmModelId,
+                settingsRepository.activeAssistantId,
+            ) { llmId, assistantId -> Pair(llmId, assistantId) }
+            .collect { (llmId, assistantId) ->
+                if (assistantId != EngineModule.BUILTIN_ASSISTANT_ID) {
+                    if (loadedLlmId != null) {
+                        engine.unloadLlmModel()
+                        loadedLlmId = null
+                    }
+                    return@collect
+                }
+                val model = LlmModelRegistry.byId(llmId)
+                if (model == null) {
+                    if (loadedLlmId != null) {
+                        engine.unloadLlmModel()
+                        loadedLlmId = null
+                    }
+                    return@collect
+                }
+                if (model.id != loadedLlmId && llmDownloadManager.isDownloaded(model)) {
+                    loadLlmIntoEngine(model)
+                }
+            }
+        }
+
+        // Assistant UI state — load entries from registry and track active selection.
+        viewModelScope.launch {
+            settingsRepository.activeAssistantId.collect { activeId ->
+                refreshAssistantEntries(activeId)
             }
         }
     }
@@ -286,5 +387,111 @@ class SettingsViewModel @Inject constructor(
                 _state.update { it.copy(models = buildModelList(activeId)) }
             }
         }
+    }
+
+    // ── LLM model management (used by built-in assistant) ─────────────
+
+    private fun buildLlmModelList(activeId: String?): List<LlmModelStatus> {
+        return LlmModelRegistry.all.map { model ->
+            LlmModelStatus(
+                model = model,
+                downloaded = llmDownloadManager.isDownloaded(model),
+                active = model.id == activeId,
+            )
+        }
+    }
+
+    fun downloadLlmModel(model: LlmModel) {
+        llmDownloadManager.download(model)
+    }
+
+    fun cancelLlmDownload() {
+        llmDownloadManager.cancel()
+    }
+
+    fun deleteLlmModel(model: LlmModel) {
+        viewModelScope.launch {
+            val activeId = settingsRepository.activeLlmModelId.first()
+            if (activeId == model.id) {
+                settingsRepository.setActiveLlmModelId(null)
+                engine.unloadLlmModel()
+                loadedLlmId = null
+            }
+            llmDownloadManager.delete(model)
+            _state.update { it.copy(llmModels = buildLlmModelList(settingsRepository.activeLlmModelId.first())) }
+        }
+    }
+
+    /**
+     * Select an LLM model tier for the built-in assistant. Also persists
+     * the choice as `activeLlmModelId` so the engine can load it.
+     */
+    fun selectLlmModel(model: LlmModel) {
+        if (!llmDownloadManager.isDownloaded(model)) return
+        viewModelScope.launch {
+            settingsRepository.setActiveLlmModelId(model.id)
+        }
+    }
+
+    private fun loadLlmIntoEngine(model: LlmModel) {
+        val modelFile = llmDownloadManager.modelFile(model)
+        if (modelFile.isFile) {
+            val ok = engine.loadLlmModel(modelFile.absolutePath)
+            if (ok) {
+                loadedLlmId = model.id
+                Log.i(TAG, "LLM loaded: ${model.id}")
+            } else {
+                Log.e(TAG, "LLM load failed: ${model.id}")
+            }
+        }
+    }
+
+    // ── Assistant management ───────────────────────────────────────────
+
+    private fun refreshAssistantEntries(activeId: String?) {
+        val entries = assistantRegistry.listAssistants().map { ffi ->
+            AssistantUiEntry(
+                id = ffi.id,
+                name = ffi.name,
+                description = ffi.description,
+                provider = ffi.provider,
+                privacy = ffi.privacy,
+                configFields = assistantRegistry.getAssistantConfig(ffi.id),
+            )
+        }
+        _state.update {
+            it.copy(
+                activeAssistantId = activeId,
+                assistantEntries = entries,
+            )
+        }
+    }
+
+    fun selectAssistant(id: String?) {
+        viewModelScope.launch {
+            settingsRepository.setActiveAssistantId(id)
+            assistantRegistry.setActiveAssistant(id)
+            viewModelScope.launch(Dispatchers.IO) {
+                assistantRegistry.applyToEngine(engine)
+            }
+        }
+    }
+
+    fun setAssistantConfig(skillId: String, key: String, value: String) {
+        viewModelScope.launch {
+            assistantRegistry.setAssistantConfigValue(skillId, key, value)
+            settingsRepository.setAssistantConfigValue(skillId, key, value)
+            // Refresh config fields to show the updated value.
+            val activeId = settingsRepository.activeAssistantId.first()
+            refreshAssistantEntries(activeId)
+            // Re-apply to engine in case the config change affects routing.
+            viewModelScope.launch(Dispatchers.IO) {
+                assistantRegistry.applyToEngine(engine)
+            }
+        }
+    }
+
+    companion object {
+        private const val TAG = "SettingsViewModel"
     }
 }

@@ -17,6 +17,7 @@ import dev.heyari.ari.ui.conversation.ConversationScreen
 import dev.heyari.ari.ui.settings.SettingsScreen
 import dev.heyari.ari.ui.settings.pages.GeneralSettingsPage
 import dev.heyari.ari.ui.settings.pages.PermissionsSettingsPage
+import dev.heyari.ari.ui.settings.pages.AssistantSettingsPage
 import dev.heyari.ari.ui.settings.pages.SttSettingsPage
 import dev.heyari.ari.ui.settings.pages.WakeWordSettingsPage
 import dev.heyari.ari.ui.settings.skills.SkillDetailScreen
@@ -31,6 +32,7 @@ object Routes {
     const val SETTINGS_PERMISSIONS = "settings/permissions"
     const val SETTINGS_WAKEWORD = "settings/wakeword"
     const val SETTINGS_STT = "settings/stt"
+    const val SETTINGS_LLM = "settings/llm"
     const val SKILLS = "skills"
     const val SKILL_DETAIL = "skills/detail/{skillId}?source={source}"
     const val ABOUT = "about"
@@ -92,6 +94,7 @@ fun AriNavHost(deepLinkCommands: Flow<String>? = null) {
                     onOpenPermissions = { navController.navigate(Routes.SETTINGS_PERMISSIONS) },
                     onOpenWakeWord = { navController.navigate(Routes.SETTINGS_WAKEWORD) },
                     onOpenStt = { navController.navigate(Routes.SETTINGS_STT) },
+                    onOpenLlm = { navController.navigate(Routes.SETTINGS_LLM) },
                 )
             }
             composable(Routes.SETTINGS_GENERAL) {
@@ -105,6 +108,9 @@ fun AriNavHost(deepLinkCommands: Flow<String>? = null) {
             }
             composable(Routes.SETTINGS_STT) {
                 SttSettingsPage(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.SETTINGS_LLM) {
+                AssistantSettingsPage(onBack = { navController.popBackStack() })
             }
             composable(Routes.SKILLS) {
                 SkillsScreen(

@@ -636,9 +636,27 @@ internal object IntegrityCheckingUniffiLib {
         uniffiCheckContractApiVersion(this)
         uniffiCheckApiChecksums(this)
     }
+    external fun uniffi_ari_ffi_checksum_method_ariengine_load_llm_model(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_process_input(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_reload_community_skills(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_unload_llm_model(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_assistantregistry_apply_to_engine(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_assistantregistry_get_active_assistant(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_assistantregistry_get_assistant_config(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_assistantregistry_list_assistants(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_assistantregistry_reload_community_assistants(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_assistantregistry_set_active_assistant(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_assistantregistry_set_assistant_config_value(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_skillregistry_browse_registry(
     ): Short
@@ -655,6 +673,8 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_ari_ffi_checksum_method_skillregistry_uninstall_skill_by_id(
     ): Short
     external fun uniffi_ari_ffi_checksum_constructor_ariengine_new(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_constructor_assistantregistry_new(
     ): Short
     external fun uniffi_ari_ffi_checksum_constructor_skillregistry_new(
     ): Short
@@ -682,10 +702,34 @@ internal object UniffiLib {
     ): Unit
     external fun uniffi_ari_ffi_fn_constructor_ariengine_new(uniffi_out_err: UniffiRustCallStatus, 
     ): Long
+    external fun uniffi_ari_ffi_fn_method_ariengine_load_llm_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
     external fun uniffi_ari_ffi_fn_method_ariengine_process_input(`ptr`: Long,`input`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_ari_ffi_fn_method_ariengine_reload_community_skills(`ptr`: Long,`skillStoreDir`: RustBuffer.ByValue,`storageDir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Int
+    external fun uniffi_ari_ffi_fn_method_ariengine_unload_llm_model(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_ari_ffi_fn_clone_assistantregistry(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    external fun uniffi_ari_ffi_fn_free_assistantregistry(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_ari_ffi_fn_constructor_assistantregistry_new(`skillStoreDir`: RustBuffer.ByValue,`storageDir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    external fun uniffi_ari_ffi_fn_method_assistantregistry_apply_to_engine(`ptr`: Long,`engine`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_ari_ffi_fn_method_assistantregistry_get_active_assistant(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_ari_ffi_fn_method_assistantregistry_get_assistant_config(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_ari_ffi_fn_method_assistantregistry_list_assistants(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_ari_ffi_fn_method_assistantregistry_reload_community_assistants(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_ari_ffi_fn_method_assistantregistry_set_active_assistant(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_ari_ffi_fn_method_assistantregistry_set_assistant_config_value(`ptr`: Long,`skillId`: RustBuffer.ByValue,`key`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     external fun uniffi_ari_ffi_fn_clone_skillregistry(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
     external fun uniffi_ari_ffi_fn_free_skillregistry(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -825,10 +869,37 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_llm_model() != 22848.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_process_input() != 44833.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_reload_community_skills() != 23146.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_unload_llm_model() != 46360.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_assistantregistry_apply_to_engine() != 26810.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_assistantregistry_get_active_assistant() != 13209.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_assistantregistry_get_assistant_config() != 60119.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_assistantregistry_list_assistants() != 35393.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_assistantregistry_reload_community_assistants() != 64764.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_assistantregistry_set_active_assistant() != 65190.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_assistantregistry_set_assistant_config_value() != 11566.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_skillregistry_browse_registry() != 19077.toShort()) {
@@ -853,6 +924,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_constructor_ariengine_new() != 23511.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_constructor_assistantregistry_new() != 58131.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_constructor_skillregistry_new() != 29338.toShort()) {
@@ -1035,6 +1109,29 @@ public object FfiConverterUInt: FfiConverter<UInt, Int> {
 
     override fun write(value: UInt, buf: ByteBuffer) {
         buf.putInt(value.toInt())
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterULong: FfiConverter<ULong, Long> {
+    override fun lift(value: Long): ULong {
+        return value.toULong()
+    }
+
+    override fun read(buf: ByteBuffer): ULong {
+        return lift(buf.getLong())
+    }
+
+    override fun lower(value: ULong): Long {
+        return value.toLong()
+    }
+
+    override fun allocationSize(value: ULong) = 8UL
+
+    override fun write(value: ULong, buf: ByteBuffer) {
+        buf.putLong(value.toLong())
     }
 }
 
@@ -1235,6 +1332,16 @@ public object FfiConverterByteArray: FfiConverterRustBuffer<ByteArray> {
 
 public interface AriEngineInterface {
     
+    /**
+     * Set the GGUF model path for the LLM fallback. The model is NOT
+     * loaded immediately — it loads on demand when the first unmatched
+     * query arrives, and unloads after 60 seconds of idle to free RAM.
+     *
+     * Returns `true` if the path exists, `false` otherwise.
+     * Call at app startup if a model file is available on disk.
+     */
+    fun `loadLlmModel`(`modelPath`: kotlin.String): kotlin.Boolean
+    
     fun `processInput`(`input`: kotlin.String): FfiResponse
     
     /**
@@ -1258,6 +1365,12 @@ public interface AriEngineInterface {
      * skills successfully registered so the caller can log / surface it.
      */
     fun `reloadCommunitySkills`(`skillStoreDir`: kotlin.String, `storageDir`: kotlin.String): kotlin.UInt
+    
+    /**
+     * Remove the LLM fallback. If a model is currently loaded in RAM,
+     * it is dropped and the memory is freed.
+     */
+    fun `unloadLlmModel`()
     
     companion object
 }
@@ -1366,6 +1479,27 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
         }
     }
 
+    
+    /**
+     * Set the GGUF model path for the LLM fallback. The model is NOT
+     * loaded immediately — it loads on demand when the first unmatched
+     * query arrives, and unloads after 60 seconds of idle to free RAM.
+     *
+     * Returns `true` if the path exists, `false` otherwise.
+     * Call at app startup if a model file is available on disk.
+     */override fun `loadLlmModel`(`modelPath`: kotlin.String): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_load_llm_model(
+        it,
+        FfiConverterString.lower(`modelPath`),_status)
+}
+    }
+    )
+    }
+    
+
     override fun `processInput`(`input`: kotlin.String): FfiResponse {
             return FfiConverterTypeFfiResponse.lift(
     callWithHandle {
@@ -1413,6 +1547,22 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     
 
     
+    /**
+     * Remove the LLM fallback. If a model is currently loaded in RAM,
+     * it is dropped and the memory is freed.
+     */override fun `unloadLlmModel`()
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_unload_llm_model(
+        it,
+        _status)
+}
+    }
+    
+    
+
+    
 
     
 
@@ -1446,6 +1596,404 @@ public object FfiConverterTypeAriEngine: FfiConverter<AriEngine, Long> {
     override fun allocationSize(value: AriEngine) = 8UL
 
     override fun write(value: AriEngine, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a handle
+// to the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque handle to the underlying Rust struct.
+//     Method calls need to read this handle from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its handle should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the handle, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the handle, but is interrupted
+//      before it can pass the handle over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read handle value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+public interface AssistantRegistryInterface {
+    
+    /**
+     * Apply the current active assistant selection to the engine.
+     * Must be called after `set_active_assistant` and whenever the
+     * engine is rebuilt (e.g. after `reload_community_skills`).
+     */
+    fun `applyToEngine`(`engine`: AriEngine)
+    
+    /**
+     * Get the ID of the currently active assistant, or null if none.
+     */
+    fun `getActiveAssistant`(): kotlin.String?
+    
+    /**
+     * Get the config schema for an assistant, with current values filled in.
+     */
+    fun `getAssistantConfig`(`id`: kotlin.String): List<FfiConfigField>
+    
+    /**
+     * List all available assistant providers (built-in first, then community).
+     */
+    fun `listAssistants`(): List<FfiAssistantEntry>
+    
+    /**
+     * Rescan the skill store for community assistant skills (call after
+     * install/uninstall).
+     */
+    fun `reloadCommunityAssistants`()
+    
+    /**
+     * Set the active assistant by ID. Pass null to deactivate.
+     * Returns the `ActiveAssistant` enum value the engine needs,
+     * but since we can't pass that across UniFFI directly, the
+     * caller should use `apply_to_engine` instead.
+     */
+    fun `setActiveAssistant`(`id`: kotlin.String?)
+    
+    /**
+     * Set a config value for an assistant skill.
+     */
+    fun `setAssistantConfigValue`(`skillId`: kotlin.String, `key`: kotlin.String, `value`: kotlin.String)
+    
+    companion object
+}
+
+open class AssistantRegistry: Disposable, AutoCloseable, AssistantRegistryInterface
+{
+
+    @Suppress("UNUSED_PARAMETER")
+    /**
+     * @suppress
+     */
+    constructor(withHandle: UniffiWithHandle, handle: Long) {
+        this.handle = handle
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(handle))
+    }
+
+    /**
+     * @suppress
+     *
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noHandle: NoHandle) {
+        this.handle = 0
+        this.cleanable = null
+    }
+    constructor(`skillStoreDir`: kotlin.String, `storageDir`: kotlin.String) :
+        this(UniffiWithHandle, 
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_constructor_assistantregistry_new(
+    
+        FfiConverterString.lower(`skillStoreDir`),FfiConverterString.lower(`storageDir`),_status)
+}
+    )
+
+    protected val handle: Long
+    protected val cleanable: UniffiCleaner.Cleanable?
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithHandle(block: (handle: Long) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the handle being freed concurrently.
+        try {
+            return block(this.uniffiCloneHandle())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val handle: Long) : Runnable {
+        override fun run() {
+            if (handle == 0.toLong()) {
+                // Fake object created with `NoHandle`, don't try to free.
+                return;
+            }
+            uniffiRustCall { status ->
+                UniffiLib.uniffi_ari_ffi_fn_free_assistantregistry(handle, status)
+            }
+        }
+    }
+
+    /**
+     * @suppress
+     */
+    fun uniffiCloneHandle(): Long {
+        if (handle == 0.toLong()) {
+            throw InternalException("uniffiCloneHandle() called on NoHandle object");
+        }
+        return uniffiRustCall() { status ->
+            UniffiLib.uniffi_ari_ffi_fn_clone_assistantregistry(handle, status)
+        }
+    }
+
+    
+    /**
+     * Apply the current active assistant selection to the engine.
+     * Must be called after `set_active_assistant` and whenever the
+     * engine is rebuilt (e.g. after `reload_community_skills`).
+     */override fun `applyToEngine`(`engine`: AriEngine)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_assistantregistry_apply_to_engine(
+        it,
+        FfiConverterTypeAriEngine.lower(`engine`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Get the ID of the currently active assistant, or null if none.
+     */override fun `getActiveAssistant`(): kotlin.String? {
+            return FfiConverterOptionalString.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_assistantregistry_get_active_assistant(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Get the config schema for an assistant, with current values filled in.
+     */override fun `getAssistantConfig`(`id`: kotlin.String): List<FfiConfigField> {
+            return FfiConverterSequenceTypeFfiConfigField.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_assistantregistry_get_assistant_config(
+        it,
+        FfiConverterString.lower(`id`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * List all available assistant providers (built-in first, then community).
+     */override fun `listAssistants`(): List<FfiAssistantEntry> {
+            return FfiConverterSequenceTypeFfiAssistantEntry.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_assistantregistry_list_assistants(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Rescan the skill store for community assistant skills (call after
+     * install/uninstall).
+     */override fun `reloadCommunityAssistants`()
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_assistantregistry_reload_community_assistants(
+        it,
+        _status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Set the active assistant by ID. Pass null to deactivate.
+     * Returns the `ActiveAssistant` enum value the engine needs,
+     * but since we can't pass that across UniFFI directly, the
+     * caller should use `apply_to_engine` instead.
+     */override fun `setActiveAssistant`(`id`: kotlin.String?)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_assistantregistry_set_active_assistant(
+        it,
+        FfiConverterOptionalString.lower(`id`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Set a config value for an assistant skill.
+     */override fun `setAssistantConfigValue`(`skillId`: kotlin.String, `key`: kotlin.String, `value`: kotlin.String)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_assistantregistry_set_assistant_config_value(
+        it,
+        FfiConverterString.lower(`skillId`),FfiConverterString.lower(`key`),FfiConverterString.lower(`value`),_status)
+}
+    }
+    
+    
+
+    
+
+    
+
+
+    
+    
+    /**
+     * @suppress
+     */
+    companion object
+    
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAssistantRegistry: FfiConverter<AssistantRegistry, Long> {
+    override fun lower(value: AssistantRegistry): Long {
+        return value.uniffiCloneHandle()
+    }
+
+    override fun lift(value: Long): AssistantRegistry {
+        return AssistantRegistry(UniffiWithHandle, value)
+    }
+
+    override fun read(buf: ByteBuffer): AssistantRegistry {
+        return lift(buf.getLong())
+    }
+
+    override fun allocationSize(value: AssistantRegistry) = 8UL
+
+    override fun write(value: AssistantRegistry, buf: ByteBuffer) {
         buf.putLong(lower(value))
     }
 }
@@ -1925,6 +2473,64 @@ public object FfiConverterTypeSkillRegistry: FfiConverter<SkillRegistry, Long> {
 
 
 
+data class FfiAssistantEntry (
+    var `id`: kotlin.String
+    , 
+    var `name`: kotlin.String
+    , 
+    var `description`: kotlin.String
+    , 
+    var `provider`: kotlin.String
+    , 
+    var `privacy`: kotlin.String
+    , 
+    var `body`: kotlin.String
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiAssistantEntry: FfiConverterRustBuffer<FfiAssistantEntry> {
+    override fun read(buf: ByteBuffer): FfiAssistantEntry {
+        return FfiAssistantEntry(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiAssistantEntry) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterString.allocationSize(value.`description`) +
+            FfiConverterString.allocationSize(value.`provider`) +
+            FfiConverterString.allocationSize(value.`privacy`) +
+            FfiConverterString.allocationSize(value.`body`)
+    )
+
+    override fun write(value: FfiAssistantEntry, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterString.write(value.`description`, buf)
+            FfiConverterString.write(value.`provider`, buf)
+            FfiConverterString.write(value.`privacy`, buf)
+            FfiConverterString.write(value.`body`, buf)
+    }
+}
+
+
+
 /**
  * One row for the "Browse registry" screen — every skill the registry
  * carries, with an `installed` flag so the UI can mark rows for skills
@@ -2010,6 +2616,69 @@ public object FfiConverterTypeFfiBrowseEntry: FfiConverterRustBuffer<FfiBrowseEn
 
 
 
+data class FfiConfigField (
+    var `key`: kotlin.String
+    , 
+    var `label`: kotlin.String
+    , 
+    var `fieldType`: kotlin.String
+    , 
+    var `required`: kotlin.Boolean
+    , 
+    var `defaultValue`: kotlin.String?
+    , 
+    var `currentValue`: kotlin.String?
+    , 
+    var `options`: List<FfiSelectOption>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiConfigField: FfiConverterRustBuffer<FfiConfigField> {
+    override fun read(buf: ByteBuffer): FfiConfigField {
+        return FfiConfigField(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterSequenceTypeFfiSelectOption.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiConfigField) = (
+            FfiConverterString.allocationSize(value.`key`) +
+            FfiConverterString.allocationSize(value.`label`) +
+            FfiConverterString.allocationSize(value.`fieldType`) +
+            FfiConverterBoolean.allocationSize(value.`required`) +
+            FfiConverterOptionalString.allocationSize(value.`defaultValue`) +
+            FfiConverterOptionalString.allocationSize(value.`currentValue`) +
+            FfiConverterSequenceTypeFfiSelectOption.allocationSize(value.`options`)
+    )
+
+    override fun write(value: FfiConfigField, buf: ByteBuffer) {
+            FfiConverterString.write(value.`key`, buf)
+            FfiConverterString.write(value.`label`, buf)
+            FfiConverterString.write(value.`fieldType`, buf)
+            FfiConverterBoolean.write(value.`required`, buf)
+            FfiConverterOptionalString.write(value.`defaultValue`, buf)
+            FfiConverterOptionalString.write(value.`currentValue`, buf)
+            FfiConverterSequenceTypeFfiSelectOption.write(value.`options`, buf)
+    }
+}
+
+
+
 /**
  * One already-installed skill, flattened into a uniffi-safe record.
  */
@@ -2054,6 +2723,54 @@ public object FfiConverterTypeFfiInstalledSkill: FfiConverterRustBuffer<FfiInsta
             FfiConverterString.write(value.`id`, buf)
             FfiConverterString.write(value.`version`, buf)
             FfiConverterString.write(value.`installDir`, buf)
+    }
+}
+
+
+
+data class FfiSelectOption (
+    var `value`: kotlin.String
+    , 
+    var `label`: kotlin.String
+    , 
+    var `downloadUrl`: kotlin.String?
+    , 
+    var `downloadBytes`: kotlin.ULong?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiSelectOption: FfiConverterRustBuffer<FfiSelectOption> {
+    override fun read(buf: ByteBuffer): FfiSelectOption {
+        return FfiSelectOption(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiSelectOption) = (
+            FfiConverterString.allocationSize(value.`value`) +
+            FfiConverterString.allocationSize(value.`label`) +
+            FfiConverterOptionalString.allocationSize(value.`downloadUrl`) +
+            FfiConverterOptionalULong.allocationSize(value.`downloadBytes`)
+    )
+
+    override fun write(value: FfiSelectOption, buf: ByteBuffer) {
+            FfiConverterString.write(value.`value`, buf)
+            FfiConverterString.write(value.`label`, buf)
+            FfiConverterOptionalString.write(value.`downloadUrl`, buf)
+            FfiConverterOptionalULong.write(value.`downloadBytes`, buf)
     }
 }
 
@@ -2433,6 +3150,38 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
 /**
  * @suppress
  */
+public object FfiConverterOptionalULong: FfiConverterRustBuffer<kotlin.ULong?> {
+    override fun read(buf: ByteBuffer): kotlin.ULong? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterULong.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.ULong?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterULong.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.ULong?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterULong.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?> {
     override fun read(buf: ByteBuffer): kotlin.String? {
         if (buf.get().toInt() == 0) {
@@ -2493,6 +3242,34 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiAssistantEntry: FfiConverterRustBuffer<List<FfiAssistantEntry>> {
+    override fun read(buf: ByteBuffer): List<FfiAssistantEntry> {
+        val len = buf.getInt()
+        return List<FfiAssistantEntry>(len) {
+            FfiConverterTypeFfiAssistantEntry.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiAssistantEntry>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiAssistantEntry.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiAssistantEntry>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiAssistantEntry.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiBrowseEntry: FfiConverterRustBuffer<List<FfiBrowseEntry>> {
     override fun read(buf: ByteBuffer): List<FfiBrowseEntry> {
         val len = buf.getInt()
@@ -2521,6 +3298,34 @@ public object FfiConverterSequenceTypeFfiBrowseEntry: FfiConverterRustBuffer<Lis
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiConfigField: FfiConverterRustBuffer<List<FfiConfigField>> {
+    override fun read(buf: ByteBuffer): List<FfiConfigField> {
+        val len = buf.getInt()
+        return List<FfiConfigField>(len) {
+            FfiConverterTypeFfiConfigField.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiConfigField>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiConfigField.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiConfigField>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiConfigField.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiInstalledSkill: FfiConverterRustBuffer<List<FfiInstalledSkill>> {
     override fun read(buf: ByteBuffer): List<FfiInstalledSkill> {
         val len = buf.getInt()
@@ -2539,6 +3344,34 @@ public object FfiConverterSequenceTypeFfiInstalledSkill: FfiConverterRustBuffer<
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeFfiInstalledSkill.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiSelectOption: FfiConverterRustBuffer<List<FfiSelectOption>> {
+    override fun read(buf: ByteBuffer): List<FfiSelectOption> {
+        val len = buf.getInt()
+        return List<FfiSelectOption>(len) {
+            FfiConverterTypeFfiSelectOption.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiSelectOption>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiSelectOption.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiSelectOption>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiSelectOption.write(it, buf)
         }
     }
 }

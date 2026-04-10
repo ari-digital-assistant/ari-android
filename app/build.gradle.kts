@@ -65,11 +65,11 @@ androidRust {
 
         buildType("debug") {
             profile = "dev"
-            targets = listOf("arm64", "arm", "x86_64")
+            targets = listOf("arm64", "x86_64")
         }
         buildType("release") {
             profile = "release"
-            targets = listOf("arm64", "arm", "x86_64")
+            targets = listOf("arm64", "x86_64")
         }
     }
 }
