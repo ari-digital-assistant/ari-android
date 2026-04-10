@@ -120,12 +120,15 @@ class ConversationViewModel @Inject constructor(
                 is FfiResponse.Text -> response.body
                 is FfiResponse.Action -> actionHandler.handle(response.json)
                 is FfiResponse.Binary -> "[Binary: ${response.mime}, ${response.data.size} bytes]"
+                // Text-input path: no STT to retry, so NotUnderstood is just
+                // the apology body as-is.
+                is FfiResponse.NotUnderstood -> response.body
             }
             val ariMessage = Message(text = responseText, isFromUser = false)
             _state.update { it.copy(messages = it.messages + ariMessage) }
 
             // Speak text and action confirmations alike — both are just user-facing strings now
-            if (response is FfiResponse.Text || response is FfiResponse.Action) {
+            if (response is FfiResponse.Text || response is FfiResponse.Action || response is FfiResponse.NotUnderstood) {
                 speechOutput.speak(responseText)
             }
         }

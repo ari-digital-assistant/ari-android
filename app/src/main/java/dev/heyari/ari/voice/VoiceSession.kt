@@ -132,7 +132,7 @@ class VoiceSession @Inject constructor(
                             is SttState.Done -> {
                                 speechRecognizer.reset()
                                 silenceWatcher.cancel()
-                                handleFinalText(sttState.text)
+                                handleFinalText(sttState.text, sttState.parallel)
                                 return@collect
                             }
                             is SttState.Error -> {
@@ -160,7 +160,7 @@ class VoiceSession @Inject constructor(
         }
     }
 
-    private suspend fun handleFinalText(text: String) {
+    private suspend fun handleFinalText(text: String, parallel: String?) {
         if (text.isBlank()) {
             dismiss()
             return
@@ -168,11 +168,26 @@ class VoiceSession @Inject constructor(
 
         _state.value = VoiceState.Thinking
 
-        val response = engine.processInput(text)
+        var response = engine.processInput(text)
+        // Retry path: if the engine couldn't match a skill to the streaming
+        // transcript, try the parallel-stream transcript (which sometimes
+        // commits different tokens because it gets bigger acceptWaveform
+        // batches with more decoder context). The parallel decode has
+        // already happened — we're not blocking on STT here, just running
+        // the engine matcher one more time.
+        if (response is FfiResponse.NotUnderstood && !parallel.isNullOrBlank() && parallel != text) {
+            Log.i(TAG, "NotUnderstood for '$text' — retrying with parallel '$parallel'")
+            val retry = engine.processInput(parallel)
+            if (retry !is FfiResponse.NotUnderstood) {
+                Log.i(TAG, "Retry succeeded with parallel transcript")
+                response = retry
+            }
+        }
         val responseText = when (response) {
             is FfiResponse.Text -> response.body
             is FfiResponse.Action -> actionHandler.handle(response.json)
             is FfiResponse.Binary -> "[Binary: ${response.mime}, ${response.data.size} bytes]"
+            is FfiResponse.NotUnderstood -> response.body
         }
 
         _state.value = VoiceState.Responding(responseText)
