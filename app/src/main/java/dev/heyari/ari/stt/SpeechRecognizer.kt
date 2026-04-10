@@ -29,6 +29,15 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
     private var recognizer: OnlineRecognizer? = null
     private var loadedModelId: String? = null
     private var stream: OnlineStream? = null
+    /**
+     * Second sherpa stream that runs concurrently with [stream] but is fed
+     * with bigger acceptWaveform batches (~1 s instead of 100 ms). Sherpa's
+     * streaming decoder commits different tokens depending on how much audio
+     * arrives per call — bigger calls give it more context per decoder pass
+     * and sometimes catch words the streaming pass misses. Used by the
+     * NotUnderstood retry path in [VoiceSession].
+     */
+    private var parallelStream: OnlineStream? = null
     private var listenJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
@@ -147,7 +156,8 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
         }
 
         stream = rec.createStream()
-        Log.d(TAG, "Stream created")
+        parallelStream = rec.createStream()
+        Log.d(TAG, "Streams created (main + parallel)")
 
         _state.value = SttState.Listening("")
         val startTime = System.currentTimeMillis()
@@ -155,6 +165,7 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
 
         listenJob = scope.launch {
             val currentStream = stream ?: return@launch
+            val parStream = parallelStream
             var firstChunkLogged = false
             // Sherpa-onnx zipformer is tuned for ~100ms chunks. The producer
             // (WakeWordService) writes 10ms chunks because microWakeWord wants
@@ -163,6 +174,20 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
             // collapses (e.g. "tell me some wisdom" → "Team").
             val batchAccumulator = ArrayList<ShortArray>(16)
             var batchSamples = 0
+            // Parallel stream batching: ~1 second chunks, and ONLY live audio
+            // (no pre-roll). The pre-roll feeds silence + wake phrase into
+            // the main stream, biasing its decoder ("Okay Ari,"). The
+            // parallel stream skips that entirely: different encoder start
+            // state → different token commits → a meaningfully different
+            // second opinion. We skip pre-roll by ignoring the first
+            // PREROLL_SKIP_BATCHES batches (= pre-roll slices / main batch
+            // target size ≈ 20 batches of 1600 samples = 32000 samples).
+            val parBatchAccumulator = ArrayList<ShortArray>(160)
+            var parBatchSamples = 0
+            var mainBatchCount = 0
+            // Raw PCM accumulator for the offline retry fallback.
+            val audioAccum = ArrayList<ShortArray>(200)
+            var audioAccumSamples = 0
             // Endpoint detector: track when cleanedPartial last changed.
             // When it stays at the same NON-EMPTY value for STABILITY_WINDOW_MS,
             // assume the user has stopped speaking and emit Done.
@@ -206,11 +231,42 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
                         firstChunkLogged = true
                     }
 
+                    // Stash raw PCM for the offline retry fallback.
+                    audioAccum.add(merged.copyOf())
+                    audioAccumSamples += merged.size
+
                     val floatBuffer = FloatArray(merged.size) { i -> merged[i] / 32768.0f }
                     currentStream.acceptWaveform(floatBuffer, SAMPLE_RATE)
 
                     while (rec.isReady(currentStream)) {
                         rec.decode(currentStream)
+                    }
+
+                    // Feed LIVE audio (post-pre-roll) into the parallel
+                    // stream. Skip the first N batches which are the pre-roll
+                    // (silence + wake phrase). The parallel stream starts
+                    // clean with only the user's actual speech, producing a
+                    // meaningfully different decode that can rescue a bad
+                    // streaming commit.
+                    mainBatchCount++
+                    if (parStream != null && mainBatchCount > PREROLL_SKIP_BATCHES) {
+                        parBatchAccumulator.add(merged)
+                        parBatchSamples += merged.size
+                        if (parBatchSamples >= PARALLEL_BATCH_TARGET_SAMPLES) {
+                            val parMerged = ShortArray(parBatchSamples)
+                            var ppos = 0
+                            for (b in parBatchAccumulator) {
+                                System.arraycopy(b, 0, parMerged, ppos, b.size)
+                                ppos += b.size
+                            }
+                            parBatchAccumulator.clear()
+                            parBatchSamples = 0
+                            val parFloat = FloatArray(parMerged.size) { i -> parMerged[i] / 32768.0f }
+                            parStream.acceptWaveform(parFloat, SAMPLE_RATE)
+                            while (rec.isReady(parStream)) {
+                                rec.decode(parStream)
+                            }
+                        }
                     }
 
                     val rawPartial = rec.getResult(currentStream).text.trim()
@@ -227,7 +283,46 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
                     } else if (cleanedPartial.isNotEmpty() &&
                         now - lastChangeAt >= STABILITY_WINDOW_MS) {
                         Log.i(TAG, "Custom endpoint: stable for ${now - lastChangeAt}ms cleaned='$cleanedPartial'")
-                        _state.value = SttState.Done(cleanedPartial)
+                        // Flush any leftover audio into the parallel stream,
+                        // then finalise it so its decoder commits everything
+                        // it has. Read its result for the NotUnderstood
+                        // retry path.
+                        val parallelText = parStream?.let { ps ->
+                            try {
+                                if (parBatchSamples > 0) {
+                                    val tail = ShortArray(parBatchSamples)
+                                    var tpos = 0
+                                    for (b in parBatchAccumulator) {
+                                        System.arraycopy(b, 0, tail, tpos, b.size)
+                                        tpos += b.size
+                                    }
+                                    parBatchAccumulator.clear()
+                                    parBatchSamples = 0
+                                    val tailFloat = FloatArray(tail.size) { i -> tail[i] / 32768.0f }
+                                    ps.acceptWaveform(tailFloat, SAMPLE_RATE)
+                                }
+                                ps.inputFinished()
+                                while (rec.isReady(ps)) {
+                                    rec.decode(ps)
+                                }
+                                val parRaw = rec.getResult(ps).text.trim()
+                                val parCleaned = stripWakePhrase(parRaw)
+                                Log.i(TAG, "Parallel stream final: raw='$parRaw' cleaned='$parCleaned'")
+                                parCleaned.takeIf { it.isNotEmpty() && it != cleanedPartial }
+                            } catch (t: Throwable) {
+                                Log.w(TAG, "Parallel stream finalisation failed", t)
+                                null
+                            }
+                        }
+                        // Merge the raw PCM accumulator into one flat array
+                        // for the offline retry fallback.
+                        val mergedAudio = ShortArray(audioAccumSamples)
+                        var apos = 0
+                        for (a in audioAccum) {
+                            System.arraycopy(a, 0, mergedAudio, apos, a.size)
+                            apos += a.size
+                        }
+                        _state.value = SttState.Done(cleanedPartial, parallelText, mergedAudio)
                         stopRecording()
                         return@launch
                     }
@@ -262,12 +357,49 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
         Log.i(TAG, "STT recognizer released")
     }
 
+    /**
+     * Feed [audio] into a brand-new sherpa stream in one shot, call
+     * `inputFinished()` to force the decoder to commit, and return the
+     * cleaned transcript. Returns null if the recognizer isn't loaded or
+     * the result is empty after wake-phrase stripping.
+     *
+     * This is the "third layer" retry: slower (blocks for the full
+     * decode) but structurally different from both the streaming pass
+     * and the parallel pass — the decoder sees the entire utterance
+     * before committing any token, giving it maximum context.
+     *
+     * MUST be called from a background thread.
+     */
+    fun transcribeOffline(audio: ShortArray): String? {
+        val rec = recognizer ?: return null
+        val offStream = rec.createStream()
+        return try {
+            val floats = FloatArray(audio.size) { i -> audio[i] / 32768.0f }
+            offStream.acceptWaveform(floats, SAMPLE_RATE)
+            offStream.inputFinished()
+            while (rec.isReady(offStream)) {
+                rec.decode(offStream)
+            }
+            val raw = rec.getResult(offStream).text.trim()
+            val cleaned = stripWakePhrase(raw)
+            Log.i(TAG, "Offline retry: raw='$raw' cleaned='$cleaned'")
+            cleaned.takeIf { it.isNotEmpty() }
+        } catch (t: Throwable) {
+            Log.w(TAG, "Offline retry failed", t)
+            null
+        } finally {
+            offStream.release()
+        }
+    }
+
     private fun stopRecording() {
         listenJob?.cancel()
         listenJob = null
         captureBus.disarm()
         stream?.release()
         stream = null
+        parallelStream?.release()
+        parallelStream = null
     }
 
     companion object {
@@ -283,6 +415,14 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
         // 100 ms at 16 kHz — matches the chunk size sherpa was originally
         // tuned against in the legacy SpeechRecognizer read loop.
         private const val BATCH_TARGET_SAMPLES = 1600
+        // 1 s at 16 kHz — chunk size for the parallel stream. Bigger
+        // batches give the decoder more context per acceptWaveform call.
+        private const val PARALLEL_BATCH_TARGET_SAMPLES = 16000
+        // How many main-stream batches to skip before feeding the parallel
+        // stream. Skips the pre-roll (silence + wake phrase) so the
+        // parallel decoder starts clean on user speech only.
+        // 32000 pre-roll samples / 1600 batch target = 20 batches.
+        private const val PREROLL_SKIP_BATCHES = 20
         // How long the cleaned partial must hold steady before we declare
         // the user is done speaking. 1500 ms is the empirical sweet spot —
         // longer doesn't help (sherpa's streaming decoder either commits
@@ -295,6 +435,27 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
 sealed interface SttState {
     data object Idle : SttState
     data class Listening(val partial: String) : SttState
-    data class Done(val text: String) : SttState
+    /**
+     * @param text Best transcript from the streaming decoder.
+     * @param parallel Transcript from a second sherpa stream that ran in
+     *   parallel with bigger acceptWaveform batches — sometimes commits
+     *   different (better) tokens because the decoder gets more context
+     *   per call. May be null if the parallel decode failed or was empty.
+     *   When the engine doesn't understand [text], the host should try
+     *   feeding [parallel] before giving up.
+     */
+    /**
+     * @param text Best transcript from the streaming decoder.
+     * @param parallel Transcript from the parallel clean-start stream,
+     *   or null if it was identical to [text] or empty.
+     * @param audio Raw 16-bit PCM of the entire captured utterance. The
+     *   host can feed this into [SpeechRecognizer.transcribeOffline] for
+     *   a third-layer retry if both [text] and [parallel] fail.
+     */
+    data class Done(
+        val text: String,
+        val parallel: String? = null,
+        val audio: ShortArray? = null,
+    ) : SttState
     data class Error(val message: String) : SttState
 }

@@ -132,7 +132,11 @@ class VoiceSession @Inject constructor(
                             is SttState.Done -> {
                                 speechRecognizer.reset()
                                 silenceWatcher.cancel()
-                                handleFinalText(sttState.text)
+                                handleFinalText(
+                                    sttState.text,
+                                    sttState.parallel,
+                                    sttState.audio,
+                                )
                                 return@collect
                             }
                             is SttState.Error -> {
@@ -160,7 +164,11 @@ class VoiceSession @Inject constructor(
         }
     }
 
-    private suspend fun handleFinalText(text: String) {
+    private suspend fun handleFinalText(
+        text: String,
+        parallel: String?,
+        audio: ShortArray?,
+    ) {
         if (text.isBlank()) {
             dismiss()
             return
@@ -168,11 +176,55 @@ class VoiceSession @Inject constructor(
 
         _state.value = VoiceState.Thinking
 
-        val response = engine.processInput(text)
+        var response = engine.processInput(text)
+        var usedText = text
+
+        // --- Layer 2: parallel-stream transcript ---
+        if (response is FfiResponse.NotUnderstood &&
+            !parallel.isNullOrBlank() && parallel != text
+        ) {
+            Log.i(TAG, "NotUnderstood for '$text' — retrying with parallel '$parallel'")
+            val retry = engine.processInput(parallel)
+            if (retry !is FfiResponse.NotUnderstood) {
+                Log.i(TAG, "Retry succeeded with parallel transcript")
+                response = retry
+                usedText = parallel
+            }
+        }
+
+        // --- Layer 3: offline full-buffer retry ---
+        if (response is FfiResponse.NotUnderstood && audio != null) {
+            Log.i(TAG, "Parallel also failed — running offline retry (${audio.size} samples)")
+            // transcribeOffline blocks while sherpa decodes the full
+            // buffer. We're already on Main here so dispatch to Default
+            // and suspend until it's done.
+            val offlineText = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                speechRecognizer.transcribeOffline(audio)
+            }
+            if (!offlineText.isNullOrBlank() && offlineText != text && offlineText != parallel) {
+                Log.i(TAG, "Offline produced '$offlineText' — retrying engine")
+                val retry = engine.processInput(offlineText)
+                if (retry !is FfiResponse.NotUnderstood) {
+                    Log.i(TAG, "Offline retry succeeded")
+                    response = retry
+                    usedText = offlineText
+                }
+            }
+        }
+
+        // If we used a different transcript (from parallel or offline),
+        // briefly flash the corrected text in the overlay so the user
+        // sees that Ari corrected itself before the response appears.
+        if (usedText != text) {
+            _state.value = VoiceState.Listening(usedText)
+            delay(CORRECTION_FLASH_MS)
+        }
+
         val responseText = when (response) {
             is FfiResponse.Text -> response.body
             is FfiResponse.Action -> actionHandler.handle(response.json)
             is FfiResponse.Binary -> "[Binary: ${response.mime}, ${response.data.size} bytes]"
+            is FfiResponse.NotUnderstood -> response.body
         }
 
         _state.value = VoiceState.Responding(responseText)
@@ -233,5 +285,9 @@ class VoiceSession @Inject constructor(
     companion object {
         private const val TAG = "VoiceSession"
         private const val SILENCE_TIMEOUT_MS = 8000L
+        // How long to flash the corrected transcript in the overlay before
+        // transitioning to the response. Long enough for the user to notice
+        // the text changed, short enough not to feel like a stall.
+        private const val CORRECTION_FLASH_MS = 600L
     }
 }

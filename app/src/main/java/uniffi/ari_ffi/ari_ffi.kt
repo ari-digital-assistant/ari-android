@@ -2317,6 +2317,22 @@ sealed class FfiResponse {
         companion object
     }
     
+    /**
+     * The engine couldn't match any skill to the input. The host can use
+     * this signal to retry the upstream STT (e.g. with a fresh sherpa
+     * stream on the buffered audio) before falling back to the apology.
+     * `body` carries the apology text the host should say if the retry
+     * also fails — kept here so the host doesn't have to hardcode it.
+     */
+    data class NotUnderstood(
+        val `body`: kotlin.String) : FfiResponse()
+        
+    {
+        
+
+        companion object
+    }
+    
 
     
 
@@ -2342,6 +2358,9 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
             3 -> FfiResponse.Binary(
                 FfiConverterString.read(buf),
                 FfiConverterByteArray.read(buf),
+                )
+            4 -> FfiResponse.NotUnderstood(
+                FfiConverterString.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
         }
@@ -2370,6 +2389,13 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
                 + FfiConverterByteArray.allocationSize(value.`data`)
             )
         }
+        is FfiResponse.NotUnderstood -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`body`)
+            )
+        }
     }
 
     override fun write(value: FfiResponse, buf: ByteBuffer) {
@@ -2388,6 +2414,11 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
                 buf.putInt(3)
                 FfiConverterString.write(value.`mime`, buf)
                 FfiConverterByteArray.write(value.`data`, buf)
+                Unit
+            }
+            is FfiResponse.NotUnderstood -> {
+                buf.putInt(4)
+                FfiConverterString.write(value.`body`, buf)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
