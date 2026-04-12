@@ -106,7 +106,7 @@ class SettingsRepository @Inject constructor(
 
     /** Whether the FunctionGemma skill router is enabled. */
     val routerEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
-        prefs[KEY_ROUTER_ENABLED] ?: false
+        prefs[KEY_ROUTER_ENABLED] ?: true
     }
 
     suspend fun setRouterEnabled(enabled: Boolean) {
