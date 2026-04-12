@@ -19,6 +19,8 @@ import dev.heyari.ari.llm.LlmDownloadManager
 import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.llm.LlmModel
 import dev.heyari.ari.llm.LlmModelRegistry
+import dev.heyari.ari.router.RouterDownloadManager
+import dev.heyari.ari.router.RouterDownloadState
 import dev.heyari.ari.stt.ModelDownloadManager
 import dev.heyari.ari.stt.ModelDownloadState
 import dev.heyari.ari.stt.SpeechRecognizer
@@ -88,6 +90,7 @@ data class SettingsState(
     val startOnBoot: Boolean = false,
     val routerEnabled: Boolean = false,
     val routerDownloaded: Boolean = false,
+    val routerDownloadState: RouterDownloadState = RouterDownloadState.Idle,
 )
 
 @HiltViewModel
@@ -99,6 +102,7 @@ class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val engine: AriEngine,
     private val assistantRegistry: AssistantRegistry,
+    private val routerDownloadManager: RouterDownloadManager,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
@@ -233,10 +237,23 @@ class SettingsViewModel @Inject constructor(
 
         // Router state
         viewModelScope.launch {
-            settingsRepository.routerEnabled.collect { enabled ->
-                val routerFile = java.io.File(application.filesDir, "models/router/${dev.heyari.ari.di.EngineModule.ROUTER_MODEL_FILENAME}")
+            combine(
+                settingsRepository.routerEnabled,
+                routerDownloadManager.state,
+            ) { enabled, dlState -> Pair(enabled, dlState) }
+            .collect { (enabled, dlState) ->
                 _state.update {
-                    it.copy(routerEnabled = enabled, routerDownloaded = routerFile.isFile)
+                    it.copy(
+                        routerEnabled = enabled,
+                        routerDownloaded = routerDownloadManager.isDownloaded(),
+                        routerDownloadState = dlState,
+                    )
+                }
+                // Auto-load the router when download completes and it's enabled
+                if (dlState is RouterDownloadState.Completed && enabled) {
+                    viewModelScope.launch(Dispatchers.IO) {
+                        engine.loadRouterModel(routerDownloadManager.modelFile().absolutePath)
+                    }
                 }
             }
         }
@@ -251,13 +268,16 @@ class SettingsViewModel @Inject constructor(
     fun setRouterEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setRouterEnabled(enabled)
-            viewModelScope.launch(Dispatchers.IO) {
-                if (enabled) {
-                    val routerFile = java.io.File(application.filesDir, "models/router/${dev.heyari.ari.di.EngineModule.ROUTER_MODEL_FILENAME}")
-                    if (routerFile.isFile) {
-                        engine.loadRouterModel(routerFile.absolutePath)
+            if (enabled) {
+                if (routerDownloadManager.isDownloaded()) {
+                    viewModelScope.launch(Dispatchers.IO) {
+                        engine.loadRouterModel(routerDownloadManager.modelFile().absolutePath)
                     }
                 } else {
+                    routerDownloadManager.download()
+                }
+            } else {
+                viewModelScope.launch(Dispatchers.IO) {
                     engine.unloadRouterModel()
                 }
             }

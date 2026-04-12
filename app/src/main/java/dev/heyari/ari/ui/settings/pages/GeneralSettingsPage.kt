@@ -40,6 +40,7 @@ fun GeneralSettingsPage(
             SkillRouterSection(
                 enabled = state.routerEnabled,
                 downloaded = state.routerDownloaded,
+                downloadState = state.routerDownloadState,
                 onToggle = viewModel::setRouterEnabled,
             )
         }

@@ -15,6 +15,7 @@ import dev.heyari.ari.audio.CaptureBus
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.llm.LlmDownloadManager
 import dev.heyari.ari.llm.LlmModelRegistry
+import dev.heyari.ari.router.RouterDownloadManager
 import dev.heyari.ari.stt.ModelDownloadManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -126,6 +127,11 @@ object EngineModule {
     @Singleton
     fun provideLlmDownloadManager(@ApplicationContext context: Context): LlmDownloadManager =
         LlmDownloadManager(context)
+
+    @Provides
+    @Singleton
+    fun provideRouterDownloadManager(@ApplicationContext context: Context): RouterDownloadManager =
+        RouterDownloadManager(context)
 
     @Provides
     @Singleton

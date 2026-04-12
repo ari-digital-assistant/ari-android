@@ -412,6 +412,7 @@ internal fun StartOnBootSection(
 internal fun SkillRouterSection(
     enabled: Boolean,
     downloaded: Boolean,
+    downloadState: dev.heyari.ari.router.RouterDownloadState,
     onToggle: (Boolean) -> Unit,
 ) {
     Card(
@@ -436,20 +437,38 @@ internal fun SkillRouterSection(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    if (!downloaded && enabled) {
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = "Model not yet downloaded. The router will activate once the model is available.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
                 }
                 Spacer(Modifier.width(12.dp))
                 Switch(
                     checked = enabled,
                     onCheckedChange = onToggle,
                 )
+            }
+            when (downloadState) {
+                is dev.heyari.ari.router.RouterDownloadState.Downloading -> {
+                    Spacer(Modifier.height(8.dp))
+                    val progress = if (downloadState.totalBytes > 0) {
+                        downloadState.bytesSoFar.toFloat() / downloadState.totalBytes.toFloat()
+                    } else 0f
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        text = "Downloading router model... ${formatBytes(downloadState.bytesSoFar)} / ${formatBytes(downloadState.totalBytes)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                is dev.heyari.ari.router.RouterDownloadState.Failed -> {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Download failed: ${downloadState.error}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                else -> {}
             }
         }
     }
