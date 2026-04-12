@@ -638,11 +638,15 @@ internal object IntegrityCheckingUniffiLib {
     }
     external fun uniffi_ari_ffi_checksum_method_ariengine_load_llm_model(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_load_router_model(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_process_input(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_reload_community_skills(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_unload_llm_model(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_unload_router_model(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_assistantregistry_apply_to_engine(
     ): Short
@@ -704,11 +708,15 @@ internal object UniffiLib {
     ): Long
     external fun uniffi_ari_ffi_fn_method_ariengine_load_llm_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Byte
+    external fun uniffi_ari_ffi_fn_method_ariengine_load_router_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
     external fun uniffi_ari_ffi_fn_method_ariengine_process_input(`ptr`: Long,`input`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_ari_ffi_fn_method_ariengine_reload_community_skills(`ptr`: Long,`skillStoreDir`: RustBuffer.ByValue,`storageDir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Int
     external fun uniffi_ari_ffi_fn_method_ariengine_unload_llm_model(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_ari_ffi_fn_method_ariengine_unload_router_model(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     external fun uniffi_ari_ffi_fn_clone_assistantregistry(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
@@ -872,6 +880,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_llm_model() != 22848.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_router_model() != 35388.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_process_input() != 44833.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -879,6 +890,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_unload_llm_model() != 46360.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_unload_router_model() != 1304.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_assistantregistry_apply_to_engine() != 26810.toShort()) {
@@ -1342,6 +1356,13 @@ public interface AriEngineInterface {
      */
     fun `loadLlmModel`(`modelPath`: kotlin.String): kotlin.Boolean
     
+    /**
+     * Set the FunctionGemma router model path. Like the LLM fallback,
+     * the model loads lazily on first use and unloads after 60s idle.
+     * Returns `true` if the path exists, `false` otherwise.
+     */
+    fun `loadRouterModel`(`modelPath`: kotlin.String): kotlin.Boolean
+    
     fun `processInput`(`input`: kotlin.String): FfiResponse
     
     /**
@@ -1371,6 +1392,12 @@ public interface AriEngineInterface {
      * it is dropped and the memory is freed.
      */
     fun `unloadLlmModel`()
+    
+    /**
+     * Remove the FunctionGemma router. Keyword scoring still works;
+     * unmatched queries go straight to the assistant.
+     */
+    fun `unloadRouterModel`()
     
     companion object
 }
@@ -1500,6 +1527,24 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     }
     
 
+    
+    /**
+     * Set the FunctionGemma router model path. Like the LLM fallback,
+     * the model loads lazily on first use and unloads after 60s idle.
+     * Returns `true` if the path exists, `false` otherwise.
+     */override fun `loadRouterModel`(`modelPath`: kotlin.String): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_load_router_model(
+        it,
+        FfiConverterString.lower(`modelPath`),_status)
+}
+    }
+    )
+    }
+    
+
     override fun `processInput`(`input`: kotlin.String): FfiResponse {
             return FfiConverterTypeFfiResponse.lift(
     callWithHandle {
@@ -1555,6 +1600,22 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     callWithHandle {
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_ari_ffi_fn_method_ariengine_unload_llm_model(
+        it,
+        _status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Remove the FunctionGemma router. Keyword scoring still works;
+     * unmatched queries go straight to the assistant.
+     */override fun `unloadRouterModel`()
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_unload_router_model(
         it,
         _status)
 }

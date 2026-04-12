@@ -88,10 +88,23 @@ object EngineModule {
             Log.i(TAG, "active assistant: $activeAssistantId")
         }
 
+        // Load the FunctionGemma router if enabled and downloaded.
+        val routerEnabled = runBlocking { settingsRepository.routerEnabled.first() }
+        if (routerEnabled) {
+            val routerFile = File(context.filesDir, "models/router/$ROUTER_MODEL_FILENAME")
+            if (routerFile.isFile) {
+                val ok = engine.loadRouterModel(routerFile.absolutePath)
+                Log.i(TAG, if (ok) "Router loaded (lazy)" else "Router path invalid")
+            }
+        }
+
         return engine
     }
 
     const val BUILTIN_ASSISTANT_ID = "dev.heyari.assistant.local"
+    const val ROUTER_MODEL_FILENAME = "ari-functiongemma-q4_k_m.gguf"
+    const val ROUTER_MODEL_URL = "https://github.com/ari-digital-assistant/ari-tools/releases/download/functiongemma-v1/ari-functiongemma-q4_k_m.gguf"
+    const val ROUTER_MODEL_BYTES = 253_000_000L
     private const val TAG = "EngineModule"
 
     @Provides

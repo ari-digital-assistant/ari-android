@@ -104,6 +104,17 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    /** Whether the FunctionGemma skill router is enabled. */
+    val routerEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_ROUTER_ENABLED] ?: false
+    }
+
+    suspend fun setRouterEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_ROUTER_ENABLED] = enabled
+        }
+    }
+
     companion object {
         private val KEY_ACTIVE_STT_MODEL = stringPreferencesKey("active_stt_model")
         private val KEY_ACTIVE_WAKE_WORD = stringPreferencesKey("active_wake_word")
@@ -111,5 +122,6 @@ class SettingsRepository @Inject constructor(
         private val KEY_ACTIVE_LLM_MODEL = stringPreferencesKey("active_llm_model")
         private val KEY_ACTIVE_ASSISTANT = stringPreferencesKey("active_assistant")
         private val KEY_START_ON_BOOT = booleanPreferencesKey("start_on_boot")
+        private val KEY_ROUTER_ENABLED = booleanPreferencesKey("router_enabled")
     }
 }

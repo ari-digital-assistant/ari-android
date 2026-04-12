@@ -409,6 +409,53 @@ internal fun StartOnBootSection(
 }
 
 @Composable
+internal fun SkillRouterSection(
+    enabled: Boolean,
+    downloaded: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Smart skill routing",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Uses a small on-device model (~253 MB) to understand paraphrases that keyword matching misses. For example, \"launch my music player\" routes to the open-app skill even though no keyword matched.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (!downloaded && enabled) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "Model not yet downloaded. The router will activate once the model is available.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+                Spacer(Modifier.width(12.dp))
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = onToggle,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 internal fun IntegrationSection(onSetAsAssistant: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),

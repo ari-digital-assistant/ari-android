@@ -86,6 +86,8 @@ data class SettingsState(
     val activeAssistantId: String? = null,
     val assistantEntries: List<AssistantUiEntry> = emptyList(),
     val startOnBoot: Boolean = false,
+    val routerEnabled: Boolean = false,
+    val routerDownloaded: Boolean = false,
 )
 
 @HiltViewModel
@@ -228,11 +230,37 @@ class SettingsViewModel @Inject constructor(
                 _state.update { it.copy(startOnBoot = enabled) }
             }
         }
+
+        // Router state
+        viewModelScope.launch {
+            settingsRepository.routerEnabled.collect { enabled ->
+                val routerFile = java.io.File(application.filesDir, "models/router/${dev.heyari.ari.di.EngineModule.ROUTER_MODEL_FILENAME}")
+                _state.update {
+                    it.copy(routerEnabled = enabled, routerDownloaded = routerFile.isFile)
+                }
+            }
+        }
     }
 
     fun setStartOnBoot(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setStartOnBoot(enabled)
+        }
+    }
+
+    fun setRouterEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setRouterEnabled(enabled)
+            viewModelScope.launch(Dispatchers.IO) {
+                if (enabled) {
+                    val routerFile = java.io.File(application.filesDir, "models/router/${dev.heyari.ari.di.EngineModule.ROUTER_MODEL_FILENAME}")
+                    if (routerFile.isFile) {
+                        engine.loadRouterModel(routerFile.absolutePath)
+                    }
+                } else {
+                    engine.unloadRouterModel()
+                }
+            }
         }
     }
 

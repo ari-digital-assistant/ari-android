@@ -37,6 +37,11 @@ fun GeneralSettingsPage(
                 enabled = state.startOnBoot,
                 onToggle = viewModel::setStartOnBoot,
             )
+            SkillRouterSection(
+                enabled = state.routerEnabled,
+                downloaded = state.routerDownloaded,
+                onToggle = viewModel::setRouterEnabled,
+            )
         }
     }
 }
