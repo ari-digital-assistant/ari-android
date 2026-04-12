@@ -85,6 +85,7 @@ data class SettingsState(
     val llmNoneActive: Boolean = true,
     val activeAssistantId: String? = null,
     val assistantEntries: List<AssistantUiEntry> = emptyList(),
+    val startOnBoot: Boolean = false,
 )
 
 @HiltViewModel
@@ -220,6 +221,18 @@ class SettingsViewModel @Inject constructor(
             settingsRepository.activeAssistantId.collect { activeId ->
                 refreshAssistantEntries(activeId)
             }
+        }
+
+        viewModelScope.launch {
+            settingsRepository.startOnBoot.collect { enabled ->
+                _state.update { it.copy(startOnBoot = enabled) }
+            }
+        }
+    }
+
+    fun setStartOnBoot(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setStartOnBoot(enabled)
         }
     }
 

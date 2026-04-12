@@ -1,6 +1,7 @@
 package dev.heyari.ari.data
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -72,6 +73,21 @@ class SettingsRepository @Inject constructor(
     }
 
     /**
+     * Whether to start the wake word service on device boot. Default off —
+     * auto-starting a microphone FGS is a privacy-visible behaviour we only
+     * want happening when the user has explicitly said yes.
+     */
+    val startOnBoot: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_START_ON_BOOT] ?: false
+    }
+
+    suspend fun setStartOnBoot(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_START_ON_BOOT] = enabled
+        }
+    }
+
+    /**
      * Read/write per-assistant config values. Scoped by skill ID + key.
      * Used for non-secret config (model name, endpoint URL, etc.).
      */
@@ -94,5 +110,6 @@ class SettingsRepository @Inject constructor(
         private val KEY_WAKE_WORD_SENSITIVITY = stringPreferencesKey("wake_word_sensitivity")
         private val KEY_ACTIVE_LLM_MODEL = stringPreferencesKey("active_llm_model")
         private val KEY_ACTIVE_ASSISTANT = stringPreferencesKey("active_assistant")
+        private val KEY_START_ON_BOOT = booleanPreferencesKey("start_on_boot")
     }
 }

@@ -10,6 +10,12 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <!--
+      Needed so BootReceiver can fire after the user reboots and opt-in
+      start-on-boot is enabled. Off by default — only matters when the user
+      flips the Settings toggle.
+    -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!--
       SYSTEM_ALERT_WINDOW is held SOLELY to obtain Background Activity Launch
       privilege so WakeWordService can start VoiceOverlayActivity over the
       keyguard on every wake-word detection (not just the first one within the
@@ -83,6 +89,16 @@
             android:name=".wakeword.WakeWordService"
             android:foregroundServiceType="microphone"
             android:exported="false" />
+
+        <receiver
+            android:name=".wakeword.BootReceiver"
+            android:exported="true"
+            android:directBootAware="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Digital assistant role services -->
         <service
