@@ -126,12 +126,25 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    /** The user's chosen TTS voice name, or null for system default. */
+    val activeTtsVoice: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[KEY_ACTIVE_TTS_VOICE]
+    }
+
+    suspend fun setActiveTtsVoice(name: String?) {
+        context.dataStore.edit { prefs ->
+            if (name == null) prefs.remove(KEY_ACTIVE_TTS_VOICE)
+            else prefs[KEY_ACTIVE_TTS_VOICE] = name
+        }
+    }
+
     companion object {
         private val KEY_ACTIVE_STT_MODEL = stringPreferencesKey("active_stt_model")
         private val KEY_ACTIVE_WAKE_WORD = stringPreferencesKey("active_wake_word")
         private val KEY_WAKE_WORD_SENSITIVITY = stringPreferencesKey("wake_word_sensitivity")
         private val KEY_ACTIVE_LLM_MODEL = stringPreferencesKey("active_llm_model")
         private val KEY_ACTIVE_ASSISTANT = stringPreferencesKey("active_assistant")
+        private val KEY_ACTIVE_TTS_VOICE = stringPreferencesKey("active_tts_voice")
         private val KEY_START_ON_BOOT = booleanPreferencesKey("start_on_boot")
         private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         private val KEY_ROUTER_ENABLED = booleanPreferencesKey("router_enabled")

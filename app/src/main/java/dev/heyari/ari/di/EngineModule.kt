@@ -115,8 +115,10 @@ object EngineModule {
 
     @Provides
     @Singleton
-    fun provideSpeechOutput(application: Application): SpeechOutput =
-        SpeechOutput(application)
+    fun provideSpeechOutput(
+        application: Application,
+        settingsRepository: SettingsRepository,
+    ): SpeechOutput = SpeechOutput(application, settingsRepository)
 
     @Provides
     @Singleton

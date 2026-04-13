@@ -17,6 +17,7 @@
     <string name="settings_category_stt">Speech to text</string>
     <string name="settings_category_llm">On-device LLM</string>
     <string name="settings_category_assistant">Assistant</string>
+    <string name="settings_category_tts">Voice</string>
 
     <!-- Skills -->
     <string name="skills_title">Skills</string>

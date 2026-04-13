@@ -9,6 +9,7 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -25,6 +26,7 @@ fun SettingsScreen(
     onOpenPermissions: () -> Unit,
     onOpenWakeWord: () -> Unit,
     onOpenStt: () -> Unit,
+    onOpenTts: () -> Unit,
     onOpenLlm: () -> Unit,
 ) {
     SettingsScaffold(
@@ -57,6 +59,11 @@ fun SettingsScreen(
                 icon = Icons.AutoMirrored.Filled.Chat,
                 title = stringResource(R.string.settings_category_stt),
                 onClick = onOpenStt,
+            )
+            SettingsCategoryRow(
+                icon = Icons.Default.RecordVoiceOver,
+                title = stringResource(R.string.settings_category_tts),
+                onClick = onOpenTts,
             )
             SettingsCategoryRow(
                 icon = Icons.Default.AutoAwesome,

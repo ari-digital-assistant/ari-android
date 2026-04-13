@@ -26,6 +26,7 @@ import dev.heyari.ari.stt.ModelDownloadState
 import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.stt.SttModel
 import dev.heyari.ari.stt.SttModelRegistry
+import dev.heyari.ari.tts.SpeechOutput
 import dev.heyari.ari.wakeword.WakeWordModel
 import dev.heyari.ari.wakeword.WakeWordRegistry
 import dev.heyari.ari.wakeword.WakeWordSensitivity
@@ -76,6 +77,15 @@ data class AssistantUiEntry(
     val configFields: List<FfiConfigField>,
 )
 
+data class TtsVoiceOption(
+    val localName: String?,
+    val networkName: String?,
+    val displayLabel: String,
+    val locale: String,
+    val active: Boolean,
+    val activeIsNetwork: Boolean,
+)
+
 data class SettingsState(
     val permissions: PermissionStatus = PermissionStatus(false, false, false, false),
     val models: List<ModelStatus> = emptyList(),
@@ -91,6 +101,8 @@ data class SettingsState(
     val routerEnabled: Boolean = false,
     val routerDownloaded: Boolean = false,
     val routerDownloadState: RouterDownloadState = RouterDownloadState.Idle,
+    val ttsVoices: List<TtsVoiceOption> = emptyList(),
+    val activeTtsVoice: String? = null,
 )
 
 @HiltViewModel
@@ -103,6 +115,7 @@ class SettingsViewModel @Inject constructor(
     private val engine: AriEngine,
     private val assistantRegistry: AssistantRegistry,
     private val routerDownloadManager: RouterDownloadManager,
+    private val speechOutput: SpeechOutput,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
@@ -232,6 +245,44 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.startOnBoot.collect { enabled ->
                 _state.update { it.copy(startOnBoot = enabled) }
+            }
+        }
+
+        // TTS voice selection
+        viewModelScope.launch {
+            settingsRepository.activeTtsVoice.collect { activeVoiceName ->
+                val voices = speechOutput.getAvailableVoices()
+
+                // Group by variant: strip -local / -network suffix to merge
+                // pairs into a single UI entry.
+                data class Variant(val key: String, val locale: String)
+
+                val groups = mutableMapOf<Variant, MutableMap<Boolean, String>>()
+                for (voice in voices) {
+                    val raw = voice.name
+                    val net = voice.isNetworkConnectionRequired
+                    val key = raw.removeSuffix("-local").removeSuffix("-network")
+                    val variant = Variant(key, voice.locale.displayName)
+                    groups.getOrPut(variant) { mutableMapOf() }[net] = raw
+                }
+
+                val sorted = groups.entries.sortedWith(compareBy({ it.key.locale }, { it.key.key }))
+                val counters = mutableMapOf<String, Int>()
+                val options = sorted.map { (variant, variants) ->
+                    val n = counters.merge(variant.locale, 1) { a, _ -> a + 1 }
+                    val localName = variants[false]
+                    val networkName = variants[true]
+                    val isActive = localName == activeVoiceName || networkName == activeVoiceName
+                    TtsVoiceOption(
+                        localName = localName,
+                        networkName = networkName,
+                        displayLabel = "Voice $n",
+                        locale = variant.locale,
+                        active = isActive,
+                        activeIsNetwork = activeVoiceName == networkName,
+                    )
+                }
+                _state.update { it.copy(ttsVoices = options, activeTtsVoice = activeVoiceName) }
             }
         }
 
@@ -550,6 +601,19 @@ class SettingsViewModel @Inject constructor(
                 assistantRegistry.applyToEngine(engine)
             }
         }
+    }
+
+    // ── TTS voice management ────────────────────────────────────────────
+
+    fun selectTtsVoice(voiceName: String?) {
+        viewModelScope.launch {
+            settingsRepository.setActiveTtsVoice(voiceName)
+            speechOutput.setVoice(voiceName)
+        }
+    }
+
+    fun previewTtsVoice(voiceName: String) {
+        speechOutput.preview(voiceName)
     }
 
     companion object {
