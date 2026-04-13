@@ -12,6 +12,7 @@ import dev.heyari.ari.actions.ActionHandler
 import dev.heyari.ari.actions.AppLauncher
 import dev.heyari.ari.actions.WebSearchLauncher
 import dev.heyari.ari.audio.CaptureBus
+import dev.heyari.ari.data.SecretStore
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.llm.LlmDownloadManager
 import dev.heyari.ari.llm.LlmModelRegistry
@@ -47,6 +48,7 @@ object EngineModule {
     fun provideAriEngine(
         @ApplicationContext context: Context,
         settingsRepository: SettingsRepository,
+        secretStore: SecretStore,
         llmDownloadManager: LlmDownloadManager,
         assistantRegistry: AssistantRegistry,
     ): AriEngine {
@@ -83,6 +85,12 @@ object EngineModule {
                     val ok = engine.loadLlmModel(llmDownloadManager.modelFile(model).absolutePath)
                     Log.i(TAG, if (ok) "LLM path set: ${model.id} (lazy)" else "LLM path invalid: ${model.id}")
                 }
+            }
+
+            // Restore encrypted secrets into the in-memory FFI config store
+            // so the engine can use API keys etc. at runtime.
+            for ((ids, value) in secretStore.allEntries()) {
+                assistantRegistry.setAssistantConfigValue(ids.first, ids.second, value)
             }
 
             assistantRegistry.applyToEngine(engine)

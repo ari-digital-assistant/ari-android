@@ -13,6 +13,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.heyari.ari.data.SecretStore
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.di.EngineModule
 import dev.heyari.ari.llm.LlmDownloadManager
@@ -112,6 +113,7 @@ class SettingsViewModel @Inject constructor(
     private val llmDownloadManager: LlmDownloadManager,
     private val speechRecognizer: SpeechRecognizer,
     private val settingsRepository: SettingsRepository,
+    private val secretStore: SecretStore,
     private val engine: AriEngine,
     private val assistantRegistry: AssistantRegistry,
     private val routerDownloadManager: RouterDownloadManager,
@@ -589,10 +591,16 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun setAssistantConfig(skillId: String, key: String, value: String) {
+    fun setAssistantConfig(skillId: String, key: String, value: String, secret: Boolean = false) {
         viewModelScope.launch {
             assistantRegistry.setAssistantConfigValue(skillId, key, value)
-            settingsRepository.setAssistantConfigValue(skillId, key, value)
+            if (secret) {
+                secretStore.set(skillId, key, value)
+                // Remove from plain DataStore if it was previously stored there
+                settingsRepository.setAssistantConfigValue(skillId, key, null)
+            } else {
+                settingsRepository.setAssistantConfigValue(skillId, key, value)
+            }
             // Refresh config fields to show the updated value.
             val activeId = settingsRepository.activeAssistantId.first()
             refreshAssistantEntries(activeId)

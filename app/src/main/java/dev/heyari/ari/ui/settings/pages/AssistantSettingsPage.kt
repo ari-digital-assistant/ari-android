@@ -80,7 +80,7 @@ fun AssistantSettingsPage(
                 selected = state.activeAssistantId == null,
                 onSelect = { viewModel.selectAssistant(null) },
                 configFields = emptyList(),
-                onConfigChange = { _, _ -> },
+                onConfigChange = { _, _, _ -> },
                 isBuiltin = false,
                 llmModels = emptyList(),
                 llmDownloadState = LlmDownloadState.Idle,
@@ -100,8 +100,8 @@ fun AssistantSettingsPage(
                     selected = state.activeAssistantId == entry.id,
                     onSelect = { viewModel.selectAssistant(entry.id) },
                     configFields = entry.configFields,
-                    onConfigChange = { key, value ->
-                        viewModel.setAssistantConfig(entry.id, key, value)
+                    onConfigChange = { key, value, secret ->
+                        viewModel.setAssistantConfig(entry.id, key, value, secret)
                     },
                     isBuiltin = isBuiltin,
                     llmModels = if (isBuiltin) state.llmModels else emptyList(),
@@ -155,7 +155,7 @@ private fun AssistantCard(
     selected: Boolean,
     onSelect: () -> Unit,
     configFields: List<FfiConfigField>,
-    onConfigChange: (String, String) -> Unit,
+    onConfigChange: (String, String, Boolean) -> Unit,
     isBuiltin: Boolean,
     llmModels: List<dev.heyari.ari.ui.settings.LlmModelStatus>,
     llmDownloadState: LlmDownloadState,
@@ -235,7 +235,7 @@ private fun AssistantCard(
                                     .fillMaxWidth()
                                     .onFocusChanged { state ->
                                         if (!state.isFocused && localValue.isNotEmpty()) {
-                                            onConfigChange(field.key, localValue)
+                                            onConfigChange(field.key, localValue, false)
                                         }
                                     },
                                 singleLine = true,
@@ -255,7 +255,7 @@ private fun AssistantCard(
                                     .fillMaxWidth()
                                     .onFocusChanged { state ->
                                         if (!state.isFocused && localValue.isNotEmpty()) {
-                                            onConfigChange(field.key, localValue)
+                                            onConfigChange(field.key, localValue, true)
                                         }
                                     },
                                 singleLine = true,
@@ -275,7 +275,7 @@ private fun AssistantCard(
                                 ) {
                                     RadioButton(
                                         selected = field.currentValue == option.value,
-                                        onClick = { onConfigChange(field.key, option.value) },
+                                        onClick = { onConfigChange(field.key, option.value, false) },
                                     )
                                     Text(
                                         text = option.label,
