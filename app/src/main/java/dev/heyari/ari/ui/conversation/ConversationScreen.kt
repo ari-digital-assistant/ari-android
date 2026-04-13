@@ -289,12 +289,10 @@ private fun OnboardingCard(onOpenMenu: () -> Unit) {
 
 @Composable
 private fun DownloadProgressCard(state: ConversationState) {
-    val sttActive = state.sttDownload is dev.heyari.ari.stt.ModelDownloadState.Downloading ||
-        state.sttDownload is dev.heyari.ari.stt.ModelDownloadState.Completed
-    val llmActive = state.llmDownload is dev.heyari.ari.llm.LlmDownloadState.Downloading ||
-        state.llmDownload is dev.heyari.ari.llm.LlmDownloadState.Completed
+    val sttDownloading = state.sttDownload is dev.heyari.ari.stt.ModelDownloadState.Downloading
+    val llmDownloading = state.llmDownload is dev.heyari.ari.llm.LlmDownloadState.Downloading
 
-    if (!sttActive && !llmActive) return
+    if (!sttDownloading && !llmDownloading) return
 
     Card(
         modifier = Modifier
@@ -312,13 +310,13 @@ private fun DownloadProgressCard(state: ConversationState) {
             )
             Spacer(Modifier.height(8.dp))
 
-            if (sttActive) {
+            if (sttDownloading) {
                 DownloadRow(
                     label = "Voice recognition model",
                     state = state.sttDownload,
                 )
             }
-            if (llmActive) {
+            if (llmDownloading) {
                 DownloadRow(
                     label = "Assistant model",
                     state = state.llmDownload,
@@ -350,9 +348,6 @@ private fun DownloadRow(label: String, state: Any) {
                     )
                 }
             }
-            is dev.heyari.ari.stt.ModelDownloadState.Completed -> {
-                Text("$label — done", style = MaterialTheme.typography.bodySmall)
-            }
             is dev.heyari.ari.llm.LlmDownloadState.Downloading -> {
                 Text(label, style = MaterialTheme.typography.bodySmall)
                 if (state.totalBytes > 0) {
@@ -370,9 +365,6 @@ private fun DownloadRow(label: String, state: Any) {
                             .padding(top = 4.dp),
                     )
                 }
-            }
-            is dev.heyari.ari.llm.LlmDownloadState.Completed -> {
-                Text("$label — done", style = MaterialTheme.typography.bodySmall)
             }
         }
     }
