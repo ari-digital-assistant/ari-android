@@ -48,8 +48,13 @@
     <string name="skills_detail_no_capabilities">None</string>
     <string name="skills_detail_about">About this skill</string>
 
-    <!-- Drawer -->
-    <string name="drawer_onboarding">Onboarding</string>
+    <!-- Menu -->
+    <string name="drawer_setup_wizard">Setup Wizard</string>
+
+    <!-- Settings sections -->
+    <string name="settings_section_app">App Settings</string>
+    <string name="settings_section_listening">Listening &amp; Speech</string>
+    <string name="settings_section_ai">AI</string>
 
     <!-- Onboarding -->
     <string name="onboarding_welcome_title">Welcome to Ari!</string>

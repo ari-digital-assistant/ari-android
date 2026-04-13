@@ -24,12 +24,14 @@ fun WelcomeScreen(
     onboardingViewModel: OnboardingViewModel,
     onGetStarted: () -> Unit,
     onSkip: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     val wizardState by onboardingViewModel.state.collectAsStateWithLifecycle()
 
     OnboardingScaffold(
         title = "",
         currentStep = 1,
+        onBack = if (wizardState.isRevisit) onBack else null,
         primaryLabel = stringResource(R.string.onboarding_get_started),
         onPrimary = onGetStarted,
         secondaryLabel = if (!wizardState.isRevisit) stringResource(R.string.onboarding_skip) else null,
