@@ -157,7 +157,12 @@ fun AriNavHost(
             TtsSettingsPage(onBack = { navController.popBackStack() })
         }
         composable(Routes.SETTINGS_LLM) {
-            AssistantSettingsPage(onBack = { navController.popBackStack() })
+            AssistantSettingsPage(
+                onBack = { navController.popBackStack() },
+                onOpenSkills = {
+                    navController.navigate(Routes.skills(type = "assistant")) { launchSingleTop = true }
+                },
+            )
         }
         composable(
             route = Routes.SKILLS,

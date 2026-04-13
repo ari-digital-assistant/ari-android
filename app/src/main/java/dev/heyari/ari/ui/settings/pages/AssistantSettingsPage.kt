@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -45,9 +46,11 @@ import uniffi.ari_ffi.FfiSelectOption
 @Composable
 fun AssistantSettingsPage(
     onBack: () -> Unit,
+    onOpenSkills: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val hasCloudAssistant = state.assistantEntries.any { it.privacy == "cloud" }
 
     SettingsScaffold(
         title = "Assistant",
@@ -91,7 +94,7 @@ fun AssistantSettingsPage(
             for (entry in state.assistantEntries) {
                 val isBuiltin = entry.id == EngineModule.BUILTIN_ASSISTANT_ID
                 AssistantCard(
-                    name = entry.name,
+                    name = if (isBuiltin) "On-Device Intelligence" else entry.name,
                     description = entry.description,
                     privacy = entry.privacy,
                     selected = state.activeAssistantId == entry.id,
@@ -108,6 +111,37 @@ fun AssistantSettingsPage(
                     onDeleteModel = { model -> viewModel.deleteLlmModel(model) },
                     onSelectModel = { model -> viewModel.selectLlmModel(model) },
                 )
+            }
+
+            // Cloud assistant nudge when none are installed
+            if (!hasCloudAssistant) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    ),
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Want a cloud assistant?",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = "Install a cloud assistant skill (ChatGPT, Claude, Gemini, etc.) from the skill browser to add it as an option here.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                        TextButton(
+                            onClick = onOpenSkills,
+                            modifier = Modifier.padding(top = 4.dp),
+                        ) {
+                            Text("Browse skills")
+                        }
+                    }
+                }
             }
         }
     }

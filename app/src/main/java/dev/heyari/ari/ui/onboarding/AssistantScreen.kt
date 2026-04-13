@@ -119,7 +119,7 @@ fun AssistantScreen(
             selected = wizardState.assistantChoice == AssistantChoice.ON_DEVICE,
             onClick = {
                 onboardingViewModel.setAssistantChoice(AssistantChoice.ON_DEVICE)
-                settingsViewModel.selectAssistant("builtin")
+                settingsViewModel.selectAssistant(dev.heyari.ari.di.EngineModule.BUILTIN_ASSISTANT_ID)
             },
         )
 
