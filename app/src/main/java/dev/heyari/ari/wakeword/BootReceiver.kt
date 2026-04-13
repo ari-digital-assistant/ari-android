@@ -121,7 +121,7 @@ class BootReceiver : BroadcastReceiver() {
                     "Ari is set to start listening when your device boots, but these need attention: $missingText. Tap to open Ari."
                 )
             )
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_ari_symbolic)
             .setContentIntent(pi)
             .setAutoCancel(true)
             .build()

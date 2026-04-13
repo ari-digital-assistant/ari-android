@@ -266,7 +266,7 @@ class WakeWordService : Service() {
         val notification = Notification.Builder(this, CHANNEL_DETECTION)
             .setContentTitle("Ari couldn't open")
             .setContentText("Tap to allow Ari to open from the lock screen")
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_ari_symbolic)
             .setContentIntent(pi)
             .setCategory(Notification.CATEGORY_ERROR)
             .setAutoCancel(true)
@@ -333,7 +333,7 @@ class WakeWordService : Service() {
         return Notification.Builder(this, CHANNEL_LISTENING)
             .setContentTitle("Ari")
             .setContentText("Listening for wake word\u2026")
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_ari_symbolic)
             .setContentIntent(openAppIntent)
             .setOngoing(true)
             .addAction(

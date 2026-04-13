@@ -52,7 +52,7 @@ class SkillUpdateNotifier @Inject constructor(
 
         val title = if (count == 1) "1 skill update available" else "$count skill updates available"
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_ari_symbolic)
             .setContentTitle(title)
             .setContentText("Open Ari to review and install.")
             .setPriority(NotificationCompat.PRIORITY_LOW)
