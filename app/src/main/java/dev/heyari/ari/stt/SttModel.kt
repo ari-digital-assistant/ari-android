@@ -16,6 +16,7 @@ data class SttModel(
     val joinerFile: String,
     val tokensFile: String = "tokens.txt",
     val baseUrl: String,
+    val modelType: String = "zipformer",
 )
 
 object SttModelRegistry {
@@ -28,6 +29,7 @@ object SttModelRegistry {
         decoderFile = "decoder.onnx",
         joinerFile = "joiner.onnx",
         baseUrl = "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06/resolve/main",
+        modelType = "zipformer2",
     )
 
     val NEMOTRON = SttModel(

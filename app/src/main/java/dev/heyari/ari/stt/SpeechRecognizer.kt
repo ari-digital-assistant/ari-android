@@ -83,7 +83,7 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
                 tokens = tokens.absolutePath,
                 numThreads = 2,
                 provider = "cpu",
-                modelType = "zipformer",
+                modelType = model.modelType,
             ),
             endpointConfig = EndpointConfig(
                 rule1 = EndpointRule(mustContainNonSilence = false, minTrailingSilence = 2.0f, minUtteranceLength = 0.0f),
@@ -129,7 +129,10 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
 
     fun unload() {
         stopRecording()
-        recognizer?.release()
+        // Don't call recognizer.release() — sherpa-onnx's finalize() also
+        // frees native memory, and release() doesn't guard against that.
+        // On hardened allocators (GrapheneOS) the double free is fatal.
+        // Nulling the reference lets the GC handle cleanup via finalize().
         recognizer = null
         loadedModelId = null
     }
@@ -351,7 +354,6 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
     fun release() {
         stopRecording()
         scope.cancel()
-        recognizer?.release()
         recognizer = null
         loadedModelId = null
         Log.i(TAG, "STT recognizer released")
