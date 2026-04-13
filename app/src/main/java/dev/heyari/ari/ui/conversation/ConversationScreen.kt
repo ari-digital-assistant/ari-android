@@ -45,6 +45,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import dev.heyari.ari.model.ConversationState
 import dev.heyari.ari.ui.components.AriTopBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -204,6 +205,8 @@ fun ConversationScreen(
                 OnboardingCard(onOpenMenu = onOpenMenu)
             }
 
+            DownloadProgressCard(state)
+
             LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -279,6 +282,97 @@ private fun OnboardingCard(onOpenMenu: () -> Unit) {
                 TextButton(onClick = onOpenMenu) {
                     Text("Open menu")
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DownloadProgressCard(state: ConversationState) {
+    val sttActive = state.sttDownload is dev.heyari.ari.stt.ModelDownloadState.Downloading ||
+        state.sttDownload is dev.heyari.ari.stt.ModelDownloadState.Completed
+    val llmActive = state.llmDownload is dev.heyari.ari.llm.LlmDownloadState.Downloading ||
+        state.llmDownload is dev.heyari.ari.llm.LlmDownloadState.Completed
+
+    if (!sttActive && !llmActive) return
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+        ),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Downloading in the background",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            Spacer(Modifier.height(8.dp))
+
+            if (sttActive) {
+                DownloadRow(
+                    label = "Voice recognition model",
+                    state = state.sttDownload,
+                )
+            }
+            if (llmActive) {
+                DownloadRow(
+                    label = "Assistant model",
+                    state = state.llmDownload,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DownloadRow(label: String, state: Any) {
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        when (state) {
+            is dev.heyari.ari.stt.ModelDownloadState.Downloading -> {
+                Text(label, style = MaterialTheme.typography.bodySmall)
+                if (state.totalBytes > 0) {
+                    val progress = state.bytesSoFar.toFloat() / state.totalBytes.toFloat()
+                    androidx.compose.material3.LinearProgressIndicator(
+                        progress = { progress.coerceIn(0f, 1f) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                    )
+                } else {
+                    androidx.compose.material3.LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                    )
+                }
+            }
+            is dev.heyari.ari.stt.ModelDownloadState.Completed -> {
+                Text("$label — done", style = MaterialTheme.typography.bodySmall)
+            }
+            is dev.heyari.ari.llm.LlmDownloadState.Downloading -> {
+                Text(label, style = MaterialTheme.typography.bodySmall)
+                if (state.totalBytes > 0) {
+                    val progress = state.bytesSoFar.toFloat() / state.totalBytes.toFloat()
+                    androidx.compose.material3.LinearProgressIndicator(
+                        progress = { progress.coerceIn(0f, 1f) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                    )
+                } else {
+                    androidx.compose.material3.LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                    )
+                }
+            }
+            is dev.heyari.ari.llm.LlmDownloadState.Completed -> {
+                Text("$label — done", style = MaterialTheme.typography.bodySmall)
             }
         }
     }

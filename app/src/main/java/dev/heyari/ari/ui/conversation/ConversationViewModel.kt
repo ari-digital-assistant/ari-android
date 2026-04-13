@@ -14,6 +14,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.heyari.ari.actions.ActionHandler
 import dev.heyari.ari.data.SettingsRepository
+import dev.heyari.ari.llm.LlmDownloadManager
 import dev.heyari.ari.model.ConversationState
 import dev.heyari.ari.model.Message
 import dev.heyari.ari.stt.ModelDownloadManager
@@ -41,6 +42,7 @@ class ConversationViewModel @Inject constructor(
     private val speechRecognizer: SpeechRecognizer,
     private val speechOutput: SpeechOutput,
     private val downloadManager: ModelDownloadManager,
+    private val llmDownloadManager: LlmDownloadManager,
     private val settingsRepository: SettingsRepository,
     private val actionHandler: ActionHandler,
     private val application: Application,
@@ -78,6 +80,18 @@ class ConversationViewModel @Inject constructor(
                     }
                 }
                 refreshOnboarding()
+            }
+        }
+
+        // Track background downloads so the conversation screen can show progress.
+        viewModelScope.launch {
+            downloadManager.state.collect { dlState ->
+                _state.update { it.copy(sttDownload = dlState) }
+            }
+        }
+        viewModelScope.launch {
+            llmDownloadManager.state.collect { dlState ->
+                _state.update { it.copy(llmDownload = dlState) }
             }
         }
 
@@ -140,6 +154,16 @@ class ConversationViewModel @Inject constructor(
     }
 
     private fun refreshOnboarding() {
+        // If the user completed (or skipped) the onboarding wizard, they've
+        // made their choices. Don't nag them with the setup card.
+        val onboardingDone = kotlinx.coroutines.runBlocking {
+            settingsRepository.onboardingCompleted.first()
+        }
+        if (onboardingDone) {
+            _state.update { it.copy(needsSetup = false) }
+            return
+        }
+
         val hasMic = ContextCompat.checkSelfPermission(
             application, Manifest.permission.RECORD_AUDIO
         ) == PackageManager.PERMISSION_GRANTED

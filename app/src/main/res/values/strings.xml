@@ -47,6 +47,73 @@
     <string name="skills_detail_no_capabilities">None</string>
     <string name="skills_detail_about">About this skill</string>
 
+    <!-- Drawer -->
+    <string name="drawer_onboarding">Onboarding</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_title">Welcome to Ari!</string>
+    <string name="onboarding_welcome_title_revisit">Welcome back!</string>
+    <string name="onboarding_welcome_body">Ari is an open-source digital assistant that puts your privacy first. This wizard will help you set up your preferences. You can always change these later in settings, or re-run this wizard from the menu.</string>
+    <string name="onboarding_get_started">Get Started</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_back">Back</string>
+    <string name="onboarding_done">Done</string>
+
+    <string name="onboarding_permissions_title">Permissions</string>
+    <string name="onboarding_permissions_body">Ari works best with these. Tap to grant or manage each one.</string>
+    <string name="onboarding_permissions_missing_title">Continue without permissions?</string>
+    <string name="onboarding_permissions_missing_mic">You won\'t be able to use wake word detection or voice input. You can still type.</string>
+    <string name="onboarding_permissions_missing_notifications">Ari won\'t be able to show what it\'s doing when it\'s listening in the background.</string>
+    <string name="onboarding_permissions_missing_overlay">The wake word will only work once per session when your phone is locked.</string>
+    <string name="onboarding_permissions_stay">Stay and grant</string>
+    <string name="onboarding_permissions_continue">Continue anyway</string>
+
+    <string name="onboarding_wakeword_title">Wake word</string>
+    <string name="onboarding_wakeword_body">Say this to get Ari\'s attention. Choose a phrase and how eagerly Ari listens for it.</string>
+    <string name="onboarding_wakeword_start_listening">Start listening now</string>
+    <string name="onboarding_wakeword_start_listening_help">This starts Ari listening right away. You can also choose to start Ari on boot in the General screen — they\'re separate switches.</string>
+
+    <string name="onboarding_stt_title">Voice recognition</string>
+    <string name="onboarding_stt_body">Ari transcribes your voice on-device. <b>Audio never leaves your phone.</b></string>
+    <string name="onboarding_stt_continue_hint">You can continue — we\'ll finish downloading in the background.</string>
+
+    <string name="onboarding_assistant_title">Assistant</string>
+    <string name="onboarding_assistant_body">Ari uses skills to answer most things. For everything else, you can pick an assistant — or not.</string>
+    <string name="onboarding_assistant_none">None</string>
+    <string name="onboarding_assistant_none_blurb">No assistant. Ari answers only what matching skills can handle.</string>
+    <string name="onboarding_assistant_none_pro_1">Fastest response time</string>
+    <string name="onboarding_assistant_none_pro_2">Works fully offline</string>
+    <string name="onboarding_assistant_none_pro_3">Nothing to configure</string>
+    <string name="onboarding_assistant_none_con_1">Ari will tell you when it can\'t help</string>
+    <string name="onboarding_assistant_ondevice">On-device</string>
+    <string name="onboarding_assistant_ondevice_blurb">Runs a language model entirely on your phone.</string>
+    <string name="onboarding_assistant_ondevice_pro_1">100% private — nothing leaves your phone</string>
+    <string name="onboarding_assistant_ondevice_pro_2">No accounts, no API keys, no internet needed</string>
+    <string name="onboarding_assistant_ondevice_con_1">Smaller and less capable than cloud assistants</string>
+    <string name="onboarding_assistant_ondevice_con_2">Uses more battery and storage</string>
+    <string name="onboarding_assistant_cloud">Cloud</string>
+    <string name="onboarding_assistant_cloud_blurb">Uses a cloud provider to answer questions.</string>
+    <string name="onboarding_assistant_cloud_pro_1">Powerful and versatile</string>
+    <string name="onboarding_assistant_cloud_pro_2">Can handle a wide range of queries</string>
+    <string name="onboarding_assistant_cloud_con_1">Needs internet</string>
+    <string name="onboarding_assistant_cloud_con_2">Text messages are sent to a cloud provider</string>
+    <string name="onboarding_assistant_cloud_con_3">May need an API key or account</string>
+    <string name="onboarding_assistant_cloud_privacy">Your voice is transcribed on-device. Only the text is sent to the cloud provider. Ari never streams audio to a third party.</string>
+    <string name="onboarding_assistant_cloud_later">Cloud assistants are installed as skills. Ari supports various skill providers including ChatGPT, Claude and Gemini. You can browse and install your preferred provider from the Skills screen after onboarding.</string>
+
+    <string name="onboarding_general_title">Finishing touches</string>
+    <string name="onboarding_general_body">A couple of options to make Ari work the way you want.</string>
+
+    <string name="onboarding_complete_title">You\'re all set</string>
+    <string name="onboarding_complete_title_revisit">Updated</string>
+    <string name="onboarding_complete_try">Try saying:</string>
+    <string name="onboarding_complete_example">Hey Ari, what time is it?</string>
+    <string name="onboarding_complete_or_type">Or type anything in the conversation screen.</string>
+    <string name="onboarding_complete_cloud_nudge">You picked a cloud assistant. Browse and install one now to start using it.</string>
+    <string name="onboarding_complete_browse_cloud">Browse cloud assistant skills</string>
+    <string name="onboarding_complete_mic_denied">Voice is off. You can still type to Ari. Grant microphone access in Settings to enable voice.</string>
+
     <!-- About -->
     <string name="about_title">About</string>
     <string name="about_tagline">Open-source digital assistant</string>

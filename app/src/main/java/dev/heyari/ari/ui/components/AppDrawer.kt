@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
@@ -23,6 +24,7 @@ fun AppDrawer(
     onOpenSettings: () -> Unit,
     onOpenSkills: () -> Unit,
     onOpenAbout: () -> Unit,
+    onOpenOnboarding: () -> Unit,
 ) {
     ModalDrawerSheet {
         Spacer(Modifier.height(16.dp))
@@ -45,6 +47,13 @@ fun AppDrawer(
             label = { Text(stringResource(R.string.drawer_about)) },
             selected = false,
             onClick = onOpenAbout,
+            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+        )
+        NavigationDrawerItem(
+            icon = { Icon(Icons.Default.AutoAwesome, contentDescription = null) },
+            label = { Text(stringResource(R.string.drawer_onboarding)) },
+            selected = false,
+            onClick = onOpenOnboarding,
             modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
         )
     }

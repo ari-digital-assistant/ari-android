@@ -54,10 +54,12 @@ import java.time.Instant
 fun SkillsScreen(
     onBack: () -> Unit,
     onOpenDetail: (id: String, source: String) -> Unit,
+    initialTypeFilter: String? = null,
     viewModel: SkillsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(if (initialTypeFilter != null) 1 else 0) }
+    var typeFilter by rememberSaveable { mutableStateOf(initialTypeFilter) }
 
     // Auto-refresh each tab when it becomes visible, per wtf.md.
     LaunchedEffect(selectedTab) {
@@ -95,7 +97,7 @@ fun SkillsScreen(
 
             when (selectedTab) {
                 0 -> InstalledTab(state, viewModel, onOpenDetail)
-                else -> BrowseTab(state, viewModel, onOpenDetail)
+                else -> BrowseTab(state, viewModel, onOpenDetail, typeFilter, onClearTypeFilter = { typeFilter = null })
             }
         }
     }
@@ -305,6 +307,8 @@ private fun BrowseTab(
     state: SkillsScreenState,
     viewModel: SkillsViewModel,
     onOpenDetail: (id: String, source: String) -> Unit,
+    typeFilter: String? = null,
+    onClearTypeFilter: () -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -334,6 +338,35 @@ private fun BrowseTab(
             }
         }
 
+        if (typeFilter != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    ),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = typeFilter.replaceFirstChar { it.uppercase() } + "s",
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                        IconButton(
+                            onClick = onClearTypeFilter,
+                            modifier = Modifier.size(20.dp),
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "Clear filter", modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+            }
+        }
+
         OutlinedTextField(
             value = state.browseQuery,
             onValueChange = viewModel::setBrowseQuery,
@@ -347,15 +380,22 @@ private fun BrowseTab(
             ErrorCard(state.errorMessage)
         }
 
-        val filtered = remember(state.browse, state.browseQuery) {
-            if (state.browseQuery.isBlank()) {
-                state.browse
-            } else {
-                state.browse.filter {
+        val filtered = remember(state.browse, state.browseQuery, typeFilter) {
+            var result = state.browse
+            if (typeFilter != null) {
+                result = result.filter { entry ->
+                    entry.id.contains(typeFilter, ignoreCase = true) ||
+                        entry.name.contains(typeFilter, ignoreCase = true) ||
+                        entry.description.contains(typeFilter, ignoreCase = true)
+                }
+            }
+            if (state.browseQuery.isNotBlank()) {
+                result = result.filter {
                     it.name.contains(state.browseQuery, ignoreCase = true) ||
                         it.id.contains(state.browseQuery, ignoreCase = true)
                 }
             }
+            result
         }
 
         Column(

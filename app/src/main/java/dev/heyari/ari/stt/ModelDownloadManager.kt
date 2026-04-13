@@ -2,20 +2,16 @@ package dev.heyari.ari.stt
 
 import android.content.Context
 import android.util.Log
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
+import androidx.work.Constraints
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import androidx.work.workDataOf
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -30,11 +26,7 @@ sealed interface ModelDownloadState {
 class ModelDownloadManager @Inject constructor(
     private val context: Context,
 ) {
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private var currentJob: Job? = null
-
-    private val _state = MutableStateFlow<ModelDownloadState>(ModelDownloadState.Idle)
-    val state: StateFlow<ModelDownloadState> = _state.asStateFlow()
+    private val workManager = WorkManager.getInstance(context)
 
     private val modelsRoot: File
         get() = File(context.filesDir, "models").apply { mkdirs() }
@@ -58,136 +50,65 @@ class ModelDownloadManager @Inject constructor(
     }
 
     fun cancel() {
-        currentJob?.cancel()
-        currentJob = null
-        _state.value = ModelDownloadState.Idle
+        workManager.cancelUniqueWork(UNIQUE_WORK_NAME)
     }
 
     fun download(model: SttModel) {
-        if (currentJob?.isActive == true) {
-            Log.w(TAG, "Download already in progress, ignoring request for ${model.id}")
-            return
-        }
-
-        currentJob = scope.launch {
-            val dir = modelDir(model).apply { mkdirs() }
-            val files = listOf(model.encoderFile, model.decoderFile, model.joinerFile, model.tokensFile)
-
-            try {
-                _state.value = ModelDownloadState.Downloading(model.id, 0L, model.totalBytes, files.first())
-
-                var bytesSoFar = 0L
-                for (file in files) {
-                    val target = File(dir, file)
-                    if (target.isFile && target.length() > 0L) {
-                        bytesSoFar += target.length()
-                        _state.value = ModelDownloadState.Downloading(model.id, bytesSoFar, model.totalBytes, file)
-                        continue
-                    }
-
-                    val url = "${model.baseUrl}/$file"
-                    Log.i(TAG, "Downloading $url -> ${target.absolutePath}")
-
-                    val downloaded = downloadFile(url, target, model.id, bytesSoFar, model.totalBytes, file)
-                    if (!isActive) {
-                        target.delete()
-                        return@launch
-                    }
-                    bytesSoFar += downloaded
-                }
-
-                _state.value = ModelDownloadState.Completed(model.id)
-                Log.i(TAG, "Download completed for ${model.id}")
-            } catch (t: Throwable) {
-                if (t is kotlinx.coroutines.CancellationException) {
-                    Log.i(TAG, "Download cancelled for ${model.id}")
-                    throw t
-                }
-                Log.e(TAG, "Download failed for ${model.id}: ${t.message}", t)
-                val friendly = when (t) {
-                    is java.net.UnknownHostException ->
-                        "Couldn't reach the model server. Check your internet connection, and make sure Ari has Network permission in app settings."
-                    is java.net.SocketTimeoutException ->
-                        "Connection timed out. Check your internet connection and try again."
-                    is java.io.IOException ->
-                        "Network error: ${t.message ?: "connection lost"}"
-                    else -> t.message ?: "Unknown error"
-                }
-                _state.value = ModelDownloadState.Failed(model.id, friendly)
-            }
-        }
+        val request = OneTimeWorkRequestBuilder<ModelDownloadWorker>()
+            .setInputData(workDataOf(ModelDownloadWorker.KEY_MODEL_ID to model.id))
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            )
+            .build()
+        workManager.enqueueUniqueWork(
+            UNIQUE_WORK_NAME,
+            ExistingWorkPolicy.REPLACE,
+            request,
+        )
+        Log.i(TAG, "Enqueued STT download for ${model.id}")
     }
 
-    private suspend fun downloadFile(
-        url: String,
-        target: File,
-        modelId: String,
-        baseBytesSoFar: Long,
-        totalBytes: Long,
-        currentFileName: String,
-    ): Long {
-        val partFile = File(target.parentFile, "${target.name}.part")
-        partFile.delete()
-
-        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
-            instanceFollowRedirects = true
-            connectTimeout = 30_000
-            readTimeout = 60_000
-            requestMethod = "GET"
+    val state: Flow<ModelDownloadState> =
+        workManager.getWorkInfosForUniqueWorkFlow(UNIQUE_WORK_NAME).map { infos ->
+            mapToState(infos)
         }
 
-        try {
-            val responseCode = connection.responseCode
-            if (responseCode !in 200..299) {
-                throw RuntimeException("HTTP $responseCode for $url")
-            }
-
-            var fileBytes = 0L
-            connection.inputStream.use { input ->
-                java.io.FileOutputStream(partFile).use { output ->
-                    val buffer = ByteArray(BUFFER_SIZE)
-                    var lastEmit = 0L
-
-                    while (true) {
-                        val read = input.read(buffer)
-                        if (read == -1) break
-                        if (!scope.isActive) throw kotlinx.coroutines.CancellationException("download cancelled")
-
-                        output.write(buffer, 0, read)
-                        fileBytes += read
-
-                        val now = System.currentTimeMillis()
-                        if (now - lastEmit > 100) {
-                            _state.update {
-                                ModelDownloadState.Downloading(
-                                    modelId = modelId,
-                                    bytesSoFar = baseBytesSoFar + fileBytes,
-                                    totalBytes = totalBytes,
-                                    currentFile = currentFileName,
-                                )
-                            }
-                            lastEmit = now
-                        }
-                    }
-
-                    output.flush()
-                    output.fd.sync()
+    private fun mapToState(infos: List<WorkInfo>): ModelDownloadState {
+        val info = infos.firstOrNull() ?: return ModelDownloadState.Idle
+        return when (info.state) {
+            WorkInfo.State.RUNNING -> {
+                val modelId = info.progress.getString(ModelDownloadWorker.KEY_MODEL_ID) ?: ""
+                val bytesSoFar = info.progress.getLong(ModelDownloadWorker.KEY_BYTES_SO_FAR, 0L)
+                val totalBytes = info.progress.getLong(ModelDownloadWorker.KEY_TOTAL_BYTES, 0L)
+                if (modelId.isEmpty() && bytesSoFar == 0L) {
+                    // Worker just started, no progress yet
+                    ModelDownloadState.Downloading("", 0L, 0L, "")
+                } else {
+                    ModelDownloadState.Downloading(modelId, bytesSoFar, totalBytes, "")
                 }
             }
-
-            // Streams now closed and fsync'd. Rename atomically.
-            target.delete()
-            if (!partFile.renameTo(target)) {
-                throw RuntimeException("Failed to rename ${partFile.name} to ${target.name}")
+            WorkInfo.State.ENQUEUED -> {
+                // Waiting for network or constraints
+                ModelDownloadState.Downloading("", 0L, 0L, "")
             }
-            return fileBytes
-        } finally {
-            connection.disconnect()
+            WorkInfo.State.SUCCEEDED -> {
+                val modelId = info.outputData.getString(ModelDownloadWorker.KEY_MODEL_ID) ?: ""
+                ModelDownloadState.Completed(modelId)
+            }
+            WorkInfo.State.FAILED -> {
+                val modelId = info.outputData.getString(ModelDownloadWorker.KEY_MODEL_ID) ?: ""
+                val error = info.outputData.getString(ModelDownloadWorker.KEY_ERROR) ?: "Unknown error"
+                ModelDownloadState.Failed(modelId, error)
+            }
+            WorkInfo.State.CANCELLED -> ModelDownloadState.Idle
+            WorkInfo.State.BLOCKED -> ModelDownloadState.Downloading("", 0L, 0L, "")
         }
     }
 
     companion object {
         private const val TAG = "ModelDownloadManager"
-        private const val BUFFER_SIZE = 64 * 1024
+        private const val UNIQUE_WORK_NAME = "stt-model-download"
     }
 }

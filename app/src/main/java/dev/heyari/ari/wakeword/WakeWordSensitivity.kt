@@ -27,13 +27,13 @@ enum class WakeWordSensitivity(
         probabilityCutoff = 0.985f,
         slidingWindowSize = 10,
         displayName = "Medium",
-        description = "Recommended for most homes.",
+        description = "Recommended for most environments.",
     ),
     LOW(
         probabilityCutoff = 0.99f,
         slidingWindowSize = 14,
         displayName = "Low",
-        description = "Stricter. Use if Ari wakes when she shouldn't.",
+        description = "Stricter. Use if Ari wakes when it shouldn't.",
     );
 
     companion object {

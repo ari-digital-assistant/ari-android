@@ -10,6 +10,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
+import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.skills.SkillUpdateNotifier
 import dev.heyari.ari.ui.AriNavHost
 import dev.heyari.ari.ui.Routes
@@ -18,9 +19,12 @@ import dev.heyari.ari.wakeword.WakeWordService
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject lateinit var settingsRepository: SettingsRepository
 
     // Channel, not SharedFlow: intents arrive before setContent runs, so we
     // need a buffer that survives until the NavHost collector shows up.
@@ -43,7 +47,10 @@ class MainActivity : ComponentActivity() {
         handleSkillUpdatesIntent(intent)
         setContent {
             AriTheme {
-                AriNavHost(deepLinkCommands = deepLinkCommands.receiveAsFlow())
+                AriNavHost(
+                    deepLinkCommands = deepLinkCommands.receiveAsFlow(),
+                    settingsRepository = settingsRepository,
+                )
             }
         }
     }
@@ -61,7 +68,7 @@ class MainActivity : ComponentActivity() {
         if (intent?.getBooleanExtra(SkillUpdateNotifier.EXTRA_OPEN_SKILLS, false) == true) {
             // trySend is fine — the channel has capacity 1 with DROP_OLDEST,
             // so it never suspends and the most recent intent always wins.
-            deepLinkCommands.trySend(Routes.SKILLS)
+            deepLinkCommands.trySend(Routes.skills())
             intent.removeExtra(SkillUpdateNotifier.EXTRA_OPEN_SKILLS)
         }
     }

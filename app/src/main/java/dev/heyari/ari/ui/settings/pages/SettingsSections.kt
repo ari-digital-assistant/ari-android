@@ -119,20 +119,18 @@ private fun PermissionRow(
                 Icon(
                     imageVector = if (granted) Icons.Default.CheckCircle else Icons.Default.Cancel,
                     contentDescription = null,
-                    tint = if (granted) Color(0xFF2E7D32) else if (required) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                    tint = if (granted) Color(0xFF2E7D32) else if (required) Color(0xFFF57C00) else MaterialTheme.colorScheme.outline,
                 )
                 Text(
                     text = label,
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
                 )
-                if (required) {
-                    Text(
-                        text = "REQUIRED",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
+                Text(
+                    text = if (required) "RECOMMENDED" else "OPTIONAL",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (required) Color(0xFFF57C00) else MaterialTheme.colorScheme.outline,
+                )
             }
             Text(
                 text = description,
@@ -200,7 +198,7 @@ internal fun WakeWordSensitivitySection(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "Sensitivity — how eagerly Ari reacts. If she wakes when she shouldn't, lower this. If she misses you, raise it.",
+            text = "Sensitivity — how eagerly Ari responds to your voice. If Ari activates when it shouldn't, lower this. If it doesn't activate when you want it to, raise this.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

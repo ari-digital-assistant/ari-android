@@ -104,6 +104,17 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    /** Whether the first-run onboarding wizard has been completed (or skipped). */
+    val onboardingCompleted: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_ONBOARDING_COMPLETED] ?: false
+    }
+
+    suspend fun setOnboardingCompleted(completed: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_ONBOARDING_COMPLETED] = completed
+        }
+    }
+
     /** Whether the FunctionGemma skill router is enabled. */
     val routerEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_ROUTER_ENABLED] ?: true
@@ -122,6 +133,7 @@ class SettingsRepository @Inject constructor(
         private val KEY_ACTIVE_LLM_MODEL = stringPreferencesKey("active_llm_model")
         private val KEY_ACTIVE_ASSISTANT = stringPreferencesKey("active_assistant")
         private val KEY_START_ON_BOOT = booleanPreferencesKey("start_on_boot")
+        private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         private val KEY_ROUTER_ENABLED = booleanPreferencesKey("router_enabled")
     }
 }
