@@ -16,11 +16,16 @@
     -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!--
-      Timer expiry uses AlarmManager.setExactAndAllowWhileIdle so a 30-second
-      pasta timer actually fires on time. On API 33+ this is a user-grantable
-      permission; when not granted we fall back to the inexact variant in
-      TimerAlarmScheduler rather than nagging the user mid-setup.
+      Timer expiry uses AlarmManager.setExactAndAllowWhileIdle. Two permissions
+      cover the same capability across API levels:
+        - USE_EXACT_ALARM is the Play-Store-preferred path on API 33+: a
+          normal permission, auto-granted at install, allowlisted for timer
+          and reminder apps. No runtime prompt.
+        - SCHEDULE_EXACT_ALARM is kept for API 31-32 where USE_EXACT_ALARM
+          isn't defined. `canScheduleExactAlarms()` returns true whenever
+          either is in effect.
     -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <!--
       SYSTEM_ALERT_WINDOW is held SOLELY to obtain Background Activity Launch
