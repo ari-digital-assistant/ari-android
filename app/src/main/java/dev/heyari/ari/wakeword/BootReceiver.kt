@@ -104,8 +104,8 @@ class BootReceiver : BroadcastReceiver() {
         val now = System.currentTimeMillis()
         for (timer in timerRepository.state.value) {
             if (timer.endTsMs <= now) {
-                Log.i(TAG, "Timer ${timer.id} expired while powered off — firing now")
-                timerNotifier.showCompletion(timer.id, timer.name)
+                Log.i(TAG, "Timer ${timer.id} expired while powered off — silent notice")
+                timerNotifier.showExpiredWhilePoweredOff(timer.id, timer.name)
                 timerRepository.removeById(timer.id)
             } else {
                 Log.i(TAG, "Rescheduling timer ${timer.id} after boot")

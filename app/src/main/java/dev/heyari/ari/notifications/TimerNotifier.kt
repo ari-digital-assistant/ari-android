@@ -16,16 +16,18 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Posts, updates, and clears timer notifications.
+ * Posts the ongoing countdown notification for a running timer.
  *
- * Ongoing notification per timer uses `setUsesChronometer(true) +
- * setChronometerCountDown(true) + setWhen(endTsMs)`. The platform ticks for
- * free at the 1Hz rate without any polling on our side and the countdown
- * survives backgrounding + screen-off. This is the whole point of using a
- * notification in the first place.
+ * Uses `setUsesChronometer(true) + setChronometerCountDown(true) +
+ * setWhen(endTsMs)` so the platform ticks the display at 1Hz with zero
+ * polling from us — countdown survives backgrounding + screen-off.
  *
- * Completion notification is posted from [TimerExpiryReceiver] and uses the
- * high-importance channel so the user actually hears it.
+ * The loud completion alert (sound + TTS loop) is owned by
+ * [dev.heyari.ari.notifications.TimerAlertService]; that's a foreground
+ * service, not a plain notification. This class retains a
+ * [showExpiredWhilePoweredOff] entry for the narrow case where a timer
+ * lapsed during a device shutdown and the user deserves to know — silent
+ * and one-shot, no loop.
  */
 @Singleton
 class TimerNotifier @Inject constructor(
@@ -84,19 +86,15 @@ class TimerNotifier @Inject constructor(
         manager?.cancel(ongoingId(timerId))
     }
 
-    /** Posted by [TimerExpiryReceiver] when a timer's [Timer.endTsMs] passes. */
-    fun showCompletion(timerId: String, name: String?) {
+    /**
+     * Single silent notification used only when [BootReceiver] finds timers
+     * whose `endTsMs` passed while the device was powered off. Not the loud
+     * alert — the moment is already gone; we just record that it happened
+     * so the user isn't left wondering why their pasta overcooked.
+     */
+    fun showExpiredWhilePoweredOff(timerId: String, name: String?) {
         val nm = manager ?: return
-        val title = name?.let { "${it.replaceFirstChar(Char::titlecase)} timer done" } ?: "Timer done"
-
-        val stopIntent = PendingIntent.getBroadcast(
-            context,
-            timerId.hashCode() xor 0x7e57,
-            Intent(context, TimerExpiryReceiver::class.java)
-                .setAction(TimerExpiryReceiver.ACTION_DISMISS_ALERT)
-                .putExtra(TimerExpiryReceiver.EXTRA_TIMER_ID, timerId),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
+        val title = name?.let { "${it.replaceFirstChar(Char::titlecase)} timer missed" } ?: "Timer missed"
         val contentIntent = PendingIntent.getActivity(
             context,
             0,
@@ -105,30 +103,24 @@ class TimerNotifier @Inject constructor(
             ),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-
         val builder = NotificationCompat.Builder(context, NotificationChannels.TIMER_ALERT)
             .setSmallIcon(R.drawable.ic_ari_symbolic)
             .setContentTitle(title)
-            .setContentText("Tap to dismiss")
+            .setContentText("Expired while your device was off")
             .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(contentIntent)
-            .addAction(0, "Stop", stopIntent)
-
-        nm.notify(alertId(timerId), builder.build())
-    }
-
-    fun dismissCompletion(timerId: String) {
-        manager?.cancel(alertId(timerId))
+        nm.notify(missedId(timerId), builder.build())
     }
 
     private companion object {
-        // Hash the id into a stable positive int; stays unique between ongoing
-        // and alert buckets by XOR-ing a tag so the two notifications for one
-        // timer can coexist briefly at the moment of firing.
+        // Hash the id into stable positive ints; tag-XOR keeps the ongoing
+        // and missed buckets distinct so multiple notifications for a single
+        // timer don't collide.
         fun ongoingId(timerId: String): Int = (timerId.hashCode() xor 0x71_4d_00_01) and 0x7FFFFFFF
-        fun alertId(timerId: String): Int = (timerId.hashCode() xor 0x71_4d_00_02) and 0x7FFFFFFF
+        fun missedId(timerId: String): Int = (timerId.hashCode() xor 0x71_4d_00_03) and 0x7FFFFFFF
     }
 }

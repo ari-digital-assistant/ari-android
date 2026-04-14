@@ -45,6 +45,10 @@ object NotificationChannels {
                 description = "Fires when a timer finishes"
                 enableVibration(true)
                 setShowBadge(true)
+                // No setSound here — TimerAlertService plays the alert audio
+                // directly via MediaPlayer + TTS with USAGE_ALARM, which
+                // handles DND bypass. A channel sound would double-fire.
+                setSound(null, null)
             },
         )
     }

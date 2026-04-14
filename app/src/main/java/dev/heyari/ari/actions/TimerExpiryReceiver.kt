@@ -4,8 +4,10 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
 import dev.heyari.ari.data.timer.TimerStateRepository
+import dev.heyari.ari.notifications.TimerAlertService
 import dev.heyari.ari.notifications.TimerNotifier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -15,17 +17,19 @@ import uniffi.ari_ffi.AriEngine
 import javax.inject.Inject
 
 /**
- * Receiver for the three timer-lifecycle broadcasts:
+ * Receiver for the two timer-lifecycle broadcasts we own:
  *
  * 1. [ACTION_FIRE] — the `AlarmManager` entry set by [TimerAlarmScheduler]
- *    reached its trigger time. Post the completion notification, clear the
- *    ongoing one, and tell the skill so its `storage_kv` stays authoritative
- *    (the skill will prune the expired entry on its next call anyway, but
- *    nudging it keeps state aligned between utterances).
+ *    reached its trigger time. Clear the ongoing countdown notification,
+ *    hand off to [TimerAlertService] for the Siri-style alert loop, and
+ *    nudge the skill so its `storage_kv` drops the expired entry (it
+ *    would prune on its next call anyway; this just keeps state aligned
+ *    between utterances).
  * 2. [ACTION_CANCEL_FROM_NOTIFICATION] — user tapped "Cancel" on the
  *    ongoing notification. Same skill roundtrip as a UI cancel.
- * 3. [ACTION_DISMISS_ALERT] — user tapped "Stop" on the completion
- *    notification. Just clears the alert; the timer is already gone.
+ *
+ * The alert's "Stop" action targets [TimerAlertService] directly — no
+ * round-trip through this receiver for a service-internal stop.
  */
 @AndroidEntryPoint
 class TimerExpiryReceiver : BroadcastReceiver() {
@@ -40,16 +44,18 @@ class TimerExpiryReceiver : BroadcastReceiver() {
         val name = intent.getStringExtra(EXTRA_TIMER_NAME)
 
         when (intent.action) {
-            ACTION_FIRE -> onFire(id, name)
+            ACTION_FIRE -> onFire(context, id, name)
             ACTION_CANCEL_FROM_NOTIFICATION -> onCancelFromNotification(id, name)
-            ACTION_DISMISS_ALERT -> notifier.dismissCompletion(id)
             else -> Log.w(TAG, "Unknown action: ${intent.action}")
         }
     }
 
-    private fun onFire(id: String, name: String?) {
+    private fun onFire(context: Context, id: String, name: String?) {
         notifier.dismissOngoing(id)
-        notifier.showCompletion(id, name)
+        ContextCompat.startForegroundService(
+            context,
+            TimerAlertService.startIntent(context, id, name),
+        )
         repository.removeById(id)
         // Keep the skill aligned. Fire-and-forget — the response will come
         // back as a normal envelope and reconcile via TimerCoordinator.
@@ -75,7 +81,6 @@ class TimerExpiryReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_FIRE = "dev.heyari.ari.TIMER_FIRE"
         const val ACTION_CANCEL_FROM_NOTIFICATION = "dev.heyari.ari.TIMER_CANCEL_NOTIF"
-        const val ACTION_DISMISS_ALERT = "dev.heyari.ari.TIMER_DISMISS_ALERT"
         const val EXTRA_TIMER_ID = "timer_id"
         const val EXTRA_TIMER_NAME = "timer_name"
 

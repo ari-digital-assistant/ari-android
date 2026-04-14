@@ -7,6 +7,13 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <!--
+      Needed so TimerAlertService (foregroundServiceType=mediaPlayback) can
+      promote itself to foreground on API 34+. The app plays a looping
+      alert sound + TTS when a timer fires; mediaPlayback is the honest
+      category for that.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <!--
@@ -109,6 +116,17 @@
             android:foregroundServiceType="microphone"
             android:exported="false" />
 
+        <!--
+          Plays the Siri-style alert loop (sound + spoken name on repeat)
+          when a timer fires. Audio must survive backgrounding and
+          screen-off, so the service promotes itself with
+          FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK.
+        -->
+        <service
+            android:name=".notifications.TimerAlertService"
+            android:foregroundServiceType="mediaPlayback"
+            android:exported="false" />
+
         <receiver
             android:name=".wakeword.BootReceiver"
             android:exported="true"
@@ -120,9 +138,10 @@
         </receiver>
 
         <!--
-          Timer expiry + notification cancel broadcasts. Not exported — only
-          the app's own AlarmManager entries and notification actions target
-          this receiver.
+          Timer expiry + ongoing-notification cancel broadcasts. Not exported
+          — only the app's own AlarmManager entries and notification actions
+          target this receiver. The alert's Stop action targets
+          TimerAlertService directly, so no ACTION_DISMISS_ALERT here.
         -->
         <receiver
             android:name=".actions.TimerExpiryReceiver"
@@ -130,7 +149,6 @@
             <intent-filter>
                 <action android:name="dev.heyari.ari.TIMER_FIRE" />
                 <action android:name="dev.heyari.ari.TIMER_CANCEL_NOTIF" />
-                <action android:name="dev.heyari.ari.TIMER_DISMISS_ALERT" />
             </intent-filter>
         </receiver>
 
