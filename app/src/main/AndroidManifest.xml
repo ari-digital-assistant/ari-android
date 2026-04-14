@@ -65,6 +65,13 @@
         </activity>
 
         <activity
+            android:name=".wakeword.StartListeningActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <activity
             android:name=".wakeword.WakeTrampolineActivity"
             android:exported="false"
             android:taskAffinity="dev.heyari.ari.wake"

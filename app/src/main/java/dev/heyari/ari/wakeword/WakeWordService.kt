@@ -81,11 +81,23 @@ class WakeWordService : Service() {
             }
         }
 
-        startForeground(
-            NOTIFICATION_ID,
-            createListeningNotification(),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-        )
+        try {
+            startForeground(
+                NOTIFICATION_ID,
+                createListeningNotification(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            )
+        } catch (e: IllegalStateException) {
+            // ForegroundServiceStartNotAllowedException (API 31+) extends
+            // IllegalStateException — catching the superclass keeps this
+            // working on older SDKs where the subclass isn't available.
+            // Happens whenever the start context wasn't foreground enough for
+            // a mic FGS: BOOT_COMPLETED, notification taps on A14+, etc.
+            Log.w(TAG, "startForeground blocked — posting tap-to-start recovery", e)
+            postTapToStartNotification(this)
+            stopSelf()
+            return START_NOT_STICKY
+        }
         startListening()
         return START_STICKY
     }

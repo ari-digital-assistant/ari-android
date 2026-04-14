@@ -1,6 +1,8 @@
 package dev.heyari.ari.wakeword
 
+import android.app.Activity
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -32,7 +34,17 @@ class WakeTrampolineActivity : ComponentActivity() {
         }
         startActivity(target)
         finish()
-        overridePendingTransition(0, 0)
+        suppressTransitions()
+    }
+
+    private fun suppressTransitions() {
+        if (Build.VERSION.SDK_INT >= 34) {
+            overrideActivityTransition(Activity.OVERRIDE_TRANSITION_OPEN, 0, 0)
+            overrideActivityTransition(Activity.OVERRIDE_TRANSITION_CLOSE, 0, 0)
+        } else {
+            @Suppress("DEPRECATION")
+            overridePendingTransition(0, 0)
+        }
     }
 
     companion object {
