@@ -9,6 +9,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import dev.heyari.ari.data.card.CardStateRepository
 import dev.heyari.ari.notifications.AlertService
 import dev.heyari.ari.notifications.AlertSpecCodec
+import dev.heyari.ari.notifications.NotificationCoordinator
 import javax.inject.Inject
 
 /**
@@ -24,6 +25,7 @@ import javax.inject.Inject
 class CardExpiryReceiver : BroadcastReceiver() {
 
     @Inject lateinit var repository: CardStateRepository
+    @Inject lateinit var notificationCoordinator: NotificationCoordinator
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != ACTION_FIRE) {
@@ -32,9 +34,16 @@ class CardExpiryReceiver : BroadcastReceiver() {
         }
         val cardId = intent.getStringExtra(EXTRA_CARD_ID) ?: return
         val dismissCard = intent.getBooleanExtra(EXTRA_DISMISS_CARD, true)
+        val dismissNotifIds = intent.getStringArrayExtra(EXTRA_DISMISS_NOTIFICATION_IDS).orEmpty()
         val specJson = intent.getStringExtra(EXTRA_ALERT_SPEC_JSON)
         val spec = specJson?.let { AlertSpecCodec.decode(it) }
 
+        // Dismiss paired notifications first so the shade entry vanishes
+        // at exactly the moment the alert fires, rather than ticking past
+        // zero while the alert plays.
+        for (notifId in dismissNotifIds) {
+            notificationCoordinator.dismiss(notifId)
+        }
         if (spec != null) {
             ContextCompat.startForegroundService(context, AlertService.startIntent(context, spec))
         }
@@ -48,6 +57,7 @@ class CardExpiryReceiver : BroadcastReceiver() {
         const val EXTRA_CARD_ID = "card_id"
         const val EXTRA_CARD_TITLE = "card_title"
         const val EXTRA_DISMISS_CARD = "dismiss_card"
+        const val EXTRA_DISMISS_NOTIFICATION_IDS = "dismiss_notification_ids"
         const val EXTRA_ALERT_SPEC_JSON = "alert_spec_json"
         private const val TAG = "CardExpiryReceiver"
     }

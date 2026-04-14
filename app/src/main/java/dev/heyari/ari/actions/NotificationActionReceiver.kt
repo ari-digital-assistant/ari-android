@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import uniffi.ari_ffi.AriEngine
+import uniffi.ari_ffi.FfiResponse
 import javax.inject.Inject
 
 /**
@@ -30,6 +31,7 @@ import javax.inject.Inject
 class NotificationActionReceiver : BroadcastReceiver() {
 
     @Inject lateinit var engine: AriEngine
+    @Inject lateinit var actionHandler: ActionHandler
 
     override fun onReceive(context: Context, intent: Intent) {
         val actionId = intent.getStringExtra(EXTRA_ACTION_ID).orEmpty()
@@ -52,8 +54,16 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 }
                 if (!utterance.isNullOrBlank()) {
                     scope.launch {
-                        runCatching { engine.processInput(utterance) }
-                            .onFailure { Log.w(TAG, "engine call from notification action failed", it) }
+                        runCatching {
+                            val response = engine.processInput(utterance)
+                            // Apply the response so dismissals / cards /
+                            // alerts the skill emits in reply actually
+                            // take effect. Same shape as the chat-input
+                            // and card-action paths.
+                            if (response is FfiResponse.Action) {
+                                actionHandler.handle(response.json, response.skillId)
+                            }
+                        }.onFailure { Log.w(TAG, "engine call from notification action failed", it) }
                     }
                 }
             }

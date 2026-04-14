@@ -101,7 +101,8 @@ class PresentationEnvelopeParseTest {
                     "full_takeover":true,
                     "actions":[{"id":"stop_alert","label":"Stop","style":"primary"}]
                   },
-                  "dismiss_card": true
+                  "dismiss_card": true,
+                  "dismiss_notifications": ["notif_pasta"]
                 }
               }]
             }
@@ -130,6 +131,20 @@ class PresentationEnvelopeParseTest {
         assertEquals(12, alert.maxCycles)
         assertTrue(alert.fullTakeover)
         assertTrue(card.onComplete.dismissCard)
+        assertEquals(listOf("notif_pasta"), card.onComplete.dismissNotificationIds)
+    }
+
+    @Test
+    fun onCompleteDismissNotificationsDefaultsToEmpty() {
+        // When the field is absent in the wire format, the parsed list is
+        // empty (not null). Receiver-side iteration is safe either way.
+        val src = """
+            {"v":1,"cards":[{"id":"c","title":"t","countdown_to_ts_ms":1000,
+              "on_complete":{"dismiss_card":true}}]}
+        """.trimIndent()
+        val env = PresentationEnvelope.parse(JSONObject(src), SKILL_ID)!!
+        val oc = env.cards[0].onComplete!!
+        assertEquals(emptyList<String>(), oc.dismissNotificationIds)
     }
 
     @Test

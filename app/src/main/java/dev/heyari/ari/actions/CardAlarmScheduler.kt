@@ -43,6 +43,10 @@ class CardAlarmScheduler @Inject constructor(
             .putExtra(CardExpiryReceiver.EXTRA_CARD_ID, card.id)
             .putExtra(CardExpiryReceiver.EXTRA_CARD_TITLE, card.title)
             .putExtra(CardExpiryReceiver.EXTRA_DISMISS_CARD, onComplete.dismissCard)
+            .putExtra(
+                CardExpiryReceiver.EXTRA_DISMISS_NOTIFICATION_IDS,
+                onComplete.dismissNotificationIds.toTypedArray(),
+            )
         // Alert spec rides as a JSON-string extra (Parcelable would mean
         // pulling in kotlin-parcelize for one type; the codec already
         // exists for persistence so reuse it).

@@ -43,9 +43,16 @@ data class CardAction(
 
 /**
  * Drives `CardAlarmScheduler` — when the card's countdown hits zero, fire
- * the [alert] (if any) and optionally remove the card from the repo.
+ * the [alert] (if any), optionally remove the card from the repo, and
+ * dismiss any paired ongoing notifications by id ([dismissNotificationIds]).
+ *
+ * The notification dismissal is the cure for "ongoing notification ticks
+ * past zero" when the card had a paired notification — the skill declares
+ * the relationship via this list and the receiver acts on it without
+ * needing a roundtrip back through the engine.
  */
 data class OnComplete(
     val alert: AlertSpec?,
     val dismissCard: Boolean,
+    val dismissNotificationIds: List<String>,
 )

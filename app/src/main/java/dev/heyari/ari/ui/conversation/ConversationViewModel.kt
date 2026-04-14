@@ -229,6 +229,7 @@ class ConversationViewModel @Inject constructor(
                     ),
                 ),
                 dismissCard = true,
+                dismissNotificationIds = emptyList(),
             ),
         )
         cardRepository.debugInsertCard(card)

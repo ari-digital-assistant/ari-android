@@ -137,6 +137,7 @@ private fun parseOnComplete(o: JSONObject, skillId: String): OnComplete = OnComp
     alert = o.optJSONObject("alert")?.let { parseAlert(it, skillId) },
     // Wire format default: dismiss_card true when on_complete is present.
     dismissCard = o.optBoolean("dismiss_card", true),
+    dismissNotificationIds = o.optJSONArray("dismiss_notifications")?.toStringList().orEmpty(),
 )
 
 private fun parseAlerts(arr: JSONArray, skillId: String): List<AlertSpec> {

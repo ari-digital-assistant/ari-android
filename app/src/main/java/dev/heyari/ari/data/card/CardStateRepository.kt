@@ -169,6 +169,9 @@ private fun encodeCardAction(a: CardAction): JSONObject = JSONObject().apply {
 private fun encodeOnComplete(o: OnComplete): JSONObject = JSONObject().apply {
     o.alert?.let { put("alert", AlertSpecCodec.encodeObject(it)) }
     put("dismissCard", o.dismissCard)
+    if (o.dismissNotificationIds.isNotEmpty()) {
+        put("dismissNotificationIds", JSONArray(o.dismissNotificationIds))
+    }
 }
 
 private fun JSONObject.putOrNull(key: String, value: Any?) {
@@ -216,6 +219,11 @@ private fun decodeCardActions(arr: JSONArray): List<CardAction> {
 private fun decodeOnComplete(o: JSONObject): OnComplete = OnComplete(
     alert = o.optJSONObject("alert")?.let { AlertSpecCodec.decodeObject(it) },
     dismissCard = o.optBoolean("dismissCard", true),
+    dismissNotificationIds = o.optJSONArray("dismissNotificationIds")?.let {
+        val out = ArrayList<String>(it.length())
+        for (i in 0 until it.length()) out += it.optString(i, "")
+        out.filter { id -> id.isNotEmpty() }
+    }.orEmpty(),
 )
 
 private fun JSONObject.optStringOrNull(key: String): String? =
