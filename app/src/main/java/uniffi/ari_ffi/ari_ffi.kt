@@ -3076,8 +3076,17 @@ sealed class FfiResponse {
         companion object
     }
     
+    /**
+     * `skill_id` is the manifest id of the emitting skill (e.g.
+     * `dev.heyari.timer`), used by the frontend to resolve `asset:<path>`
+     * references back to the skill's bundle directory. Empty string if
+     * the engine couldn't attribute the response to a specific skill
+     * (router-direct actions, fallbacks) — treat that as "no bundle,
+     * asset references will fail to resolve".
+     */
     data class Action(
-        val `json`: kotlin.String) : FfiResponse()
+        val `json`: kotlin.String, 
+        val `skillId`: kotlin.String) : FfiResponse()
         
     {
         
@@ -3132,6 +3141,7 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
                 )
             2 -> FfiResponse.Action(
                 FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
                 )
             3 -> FfiResponse.Binary(
                 FfiConverterString.read(buf),
@@ -3157,6 +3167,7 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
             (
                 4UL
                 + FfiConverterString.allocationSize(value.`json`)
+                + FfiConverterString.allocationSize(value.`skillId`)
             )
         }
         is FfiResponse.Binary -> {
@@ -3186,6 +3197,7 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
             is FfiResponse.Action -> {
                 buf.putInt(2)
                 FfiConverterString.write(value.`json`, buf)
+                FfiConverterString.write(value.`skillId`, buf)
                 Unit
             }
             is FfiResponse.Binary -> {

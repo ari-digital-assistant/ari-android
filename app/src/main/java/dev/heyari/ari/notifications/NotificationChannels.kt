@@ -7,18 +7,20 @@ import android.os.Build
 import androidx.core.content.getSystemService
 
 /**
- * Centralised notification channel definitions for the whole app. Call
- * [ensureAll] once at process start (from `AriApplication.onCreate` or the
- * first component that posts anything). Creating the same channel multiple
- * times is a no-op, so callers never have to coordinate who owns what.
+ * Centralised notification channel definitions. Call [ensureAll] once at
+ * process start (`AriApplication.onCreate`); creating the same channel
+ * multiple times is a no-op so callers don't have to coordinate.
  *
- * The wake word service still has its own channels defined in-file because
- * those pre-date this module and moving them risks destabilising the
- * foreground-service lifecycle. The timer channels live here from day one.
+ * The wake word service still defines its own channels in-file because
+ * those pre-date this module. Presentation-primitive channels live here.
  */
 object NotificationChannels {
-    const val TIMER_ONGOING = "timer_ongoing"
-    const val TIMER_ALERT = "timer_alert"
+    /** Persistent skill-emitted shade entries (low importance, silent). */
+    const val ONGOING_DEFAULT = "presentation_ongoing_default"
+    /** Higher-importance background shade entries (`importance: "high"`). */
+    const val ONGOING_HIGH = "presentation_ongoing_high"
+    /** Foreground alert notifications driven by [AlertService]. */
+    const val ALERT = "presentation_alert"
 
     fun ensureAll(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -26,11 +28,11 @@ object NotificationChannels {
 
         nm.createNotificationChannel(
             NotificationChannel(
-                TIMER_ONGOING,
-                "Running timers",
+                ONGOING_DEFAULT,
+                "Background updates",
                 NotificationManager.IMPORTANCE_LOW,
             ).apply {
-                description = "Live countdown for active timers"
+                description = "Persistent skill-driven status (timers, downloads, …)"
                 setSound(null, null)
                 enableVibration(false)
                 setShowBadge(false)
@@ -38,14 +40,25 @@ object NotificationChannels {
         )
         nm.createNotificationChannel(
             NotificationChannel(
-                TIMER_ALERT,
-                "Timer done",
+                ONGOING_HIGH,
+                "Important updates",
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = "Higher-priority skill-driven status the user should see"
+                setSound(null, null)
+                setShowBadge(true)
+            },
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(
+                ALERT,
+                "Alerts",
                 NotificationManager.IMPORTANCE_HIGH,
             ).apply {
-                description = "Fires when a timer finishes"
+                description = "Skill-fired alerts (timer done, alarm clock, etc.)"
                 enableVibration(true)
                 setShowBadge(true)
-                // No setSound here — TimerAlertService plays the alert audio
+                // No setSound here — AlertService plays the alert audio
                 // directly via MediaPlayer + TTS with USAGE_ALARM, which
                 // handles DND bypass. A channel sound would double-fire.
                 setSound(null, null)

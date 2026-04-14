@@ -118,12 +118,12 @@
 
         <!--
           Plays the Siri-style alert loop (sound + spoken name on repeat)
-          when a timer fires. Audio must survive backgrounding and
-          screen-off, so the service promotes itself with
+          when a card's countdown fires. Audio must survive backgrounding
+          and screen-off, so the service promotes itself with
           FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK.
         -->
         <service
-            android:name=".notifications.TimerAlertService"
+            android:name=".notifications.AlertService"
             android:foregroundServiceType="mediaPlayback"
             android:exported="false" />
 
@@ -138,17 +138,30 @@
         </receiver>
 
         <!--
-          Timer expiry + ongoing-notification cancel broadcasts. Not exported
-          — only the app's own AlarmManager entries and notification actions
-          target this receiver. The alert's Stop action targets
-          TimerAlertService directly, so no ACTION_DISMISS_ALERT here.
+          Card expiry: AlarmManager fires this when a card's
+          countdown_to_ts_ms is reached. The receiver kicks AlertService
+          (if the card declared an on_complete.alert) and removes the
+          card from the repo (if dismiss_card was true).
         -->
         <receiver
-            android:name=".actions.TimerExpiryReceiver"
+            android:name=".actions.CardExpiryReceiver"
             android:exported="false">
             <intent-filter>
-                <action android:name="dev.heyari.ari.TIMER_FIRE" />
-                <action android:name="dev.heyari.ari.TIMER_CANCEL_NOTIF" />
+                <action android:name="dev.heyari.ari.CARD_EXPIRY_FIRE" />
+            </intent-filter>
+        </receiver>
+
+        <!--
+          Generic notification-action router: any tap on a notification
+          action button (other than the reserved local-only ids) routes
+          here, which then sends the action's `utterance` through
+          engine.processInput.
+        -->
+        <receiver
+            android:name=".actions.NotificationActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="dev.heyari.ari.NOTIFICATION_ACTION" />
             </intent-filter>
         </receiver>
 

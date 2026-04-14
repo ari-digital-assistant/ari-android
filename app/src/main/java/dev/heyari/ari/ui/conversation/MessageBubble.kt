@@ -17,8 +17,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import dev.heyari.ari.data.timer.Timer
-import dev.heyari.ari.data.timer.TimerStateRepository
+import dev.heyari.ari.assets.AssetResolver
+import dev.heyari.ari.data.card.CardAction
+import dev.heyari.ari.data.card.CardStateRepository
 import dev.heyari.ari.model.Attachment
 import dev.heyari.ari.model.Message
 
@@ -26,8 +27,9 @@ import dev.heyari.ari.model.Message
 fun MessageBubble(
     message: Message,
     modifier: Modifier = Modifier,
-    timerRepository: TimerStateRepository? = null,
-    onCancelTimer: (Timer) -> Unit = {},
+    cardRepository: CardStateRepository? = null,
+    assetResolver: AssetResolver? = null,
+    onCardAction: (cardId: String, action: CardAction) -> Unit = { _, _ -> },
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -64,16 +66,16 @@ fun MessageBubble(
         for (attachment in message.attachments) {
             Spacer(Modifier.height(6.dp))
             when (attachment) {
-                is Attachment.Timer -> {
-                    if (timerRepository != null) {
-                        val timerFlow = remember(attachment.timerId, timerRepository) {
-                            timerRepository.observe(attachment.timerId)
+                is Attachment.Card -> {
+                    if (cardRepository != null) {
+                        val cardFlow = remember(attachment.cardId, cardRepository) {
+                            cardRepository.observe(attachment.cardId)
                         }
-                        val timer = timerFlow.collectAsState(initial = null).value
-                        TimerCard(
-                            timer = timer,
-                            onCancel = onCancelTimer,
-                            fallbackName = attachment.name,
+                        val card = cardFlow.collectAsState(initial = null).value
+                        GenericCard(
+                            card = card,
+                            onAction = { action -> onCardAction(attachment.cardId, action) },
+                            assetResolver = assetResolver,
                         )
                     }
                 }

@@ -13,15 +13,19 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.heyari.ari.actions.ActionHandler
-import dev.heyari.ari.actions.TimerAlarmScheduler
+import dev.heyari.ari.actions.CardAlarmScheduler
 import dev.heyari.ari.data.SettingsRepository
-import dev.heyari.ari.data.timer.Timer
-import dev.heyari.ari.data.timer.TimerStateRepository
+import dev.heyari.ari.data.card.Card
+import dev.heyari.ari.data.card.CardAction
+import dev.heyari.ari.data.card.CardStateRepository
+import dev.heyari.ari.data.card.OnComplete
 import dev.heyari.ari.llm.LlmDownloadManager
 import dev.heyari.ari.model.Attachment
 import dev.heyari.ari.model.ConversationState
 import dev.heyari.ari.model.Message
-import dev.heyari.ari.notifications.TimerNotifier
+import dev.heyari.ari.notifications.AlertAction
+import dev.heyari.ari.notifications.AlertService
+import dev.heyari.ari.notifications.AlertSpec
 import dev.heyari.ari.stt.ModelDownloadManager
 import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.stt.SttModelRegistry
@@ -50,9 +54,9 @@ class ConversationViewModel @Inject constructor(
     private val llmDownloadManager: LlmDownloadManager,
     private val settingsRepository: SettingsRepository,
     private val actionHandler: ActionHandler,
-    val timerRepository: TimerStateRepository,
-    private val timerAlarmScheduler: TimerAlarmScheduler,
-    private val timerNotifier: TimerNotifier,
+    val cardRepository: CardStateRepository,
+    val assetResolver: dev.heyari.ari.assets.AssetResolver,
+    private val cardAlarmScheduler: CardAlarmScheduler,
     private val application: Application,
 ) : ViewModel() {
 
@@ -133,12 +137,13 @@ class ConversationViewModel @Inject constructor(
     fun onTextSubmitted(text: String) {
         if (text.isBlank()) return
 
-        // Debug hook for M3: `/timer-demo <secs> [name]` synthesises a fake
-        // timer straight into the repository + an Ari bubble with a
-        // TimerAttachment. Lets us exercise the card ticking, cancel, and
-        // process-death survival before the skill action wiring lands.
-        if (text.startsWith("/timer-demo")) {
-            handleTimerDemo(text)
+        // Debug hook: `/card-demo <secs> [name]` synthesises a fake card +
+        // alert into the repo so we can exercise the rendering and alert
+        // flow without needing a skill installed. Useful for the first
+        // post-refactor smoke; replaceable once the timer skill itself is
+        // emitting the new envelope.
+        if (text.startsWith("/card-demo")) {
+            handleCardDemo(text)
             return
         }
 
@@ -151,7 +156,7 @@ class ConversationViewModel @Inject constructor(
             val responseText = when (response) {
                 is FfiResponse.Text -> response.body
                 is FfiResponse.Action -> {
-                    val result = actionHandler.handle(response.json)
+                    val result = actionHandler.handle(response.json, response.skillId)
                     attachments = result.attachments
                     result.text
                 }
@@ -169,38 +174,79 @@ class ConversationViewModel @Inject constructor(
 
             // Speak text and action confirmations alike — both are just user-facing strings now
             if (response is FfiResponse.Text || response is FfiResponse.Action || response is FfiResponse.NotUnderstood) {
-                speechOutput.speak(responseText)
+                if (responseText.isNotBlank()) speechOutput.speak(responseText)
             }
         }
     }
 
-    private fun handleTimerDemo(raw: String) {
+    /**
+     * `/card-demo 30 pasta` — synthesise a card with a 30s countdown and
+     * an `on_complete.alert` directly into the repo, bypassing the skill.
+     * Lets us exercise the new presentation pipeline (card render, alarm
+     * fire, alert loop) without waiting for the timer skill rewrite.
+     */
+    private fun handleCardDemo(raw: String) {
         val parts = raw.trim().split(Regex("\\s+"))
-        // /timer-demo 30 pasta   or   /timer-demo 30s   or   /timer-demo 5m
         val durSecs = parts.getOrNull(1)?.let { parseDurationToSecs(it) } ?: 30L
         val name = parts.getOrNull(2)
         val now = System.currentTimeMillis()
-        val timer = Timer(
-            id = "demo-${now}",
-            name = name,
-            endTsMs = now + durSecs * 1000,
-            createdTsMs = now,
+        val cardId = "card_demo-$now"
+        val alertId = "alert_demo-$now"
+        val title = name?.let { "${capitaliseFirst(it)} timer" } ?: "Timer"
+        val card = Card(
+            id = cardId,
+            // demo skill id has no install dir → asset references won't resolve;
+            // GenericCard tolerates that and renders without an icon.
+            skillId = "demo.local",
+            title = title,
+            subtitle = null,
+            body = null,
+            icon = null,
+            countdownToTsMs = now + durSecs * 1000,
+            startedAtTsMs = now,
+            progress = null,
+            accent = Card.Accent.DEFAULT,
+            actions = emptyList(),
+            onComplete = OnComplete(
+                alert = AlertSpec(
+                    id = alertId,
+                    skillId = "demo.local",
+                    title = "$title done",
+                    body = null,
+                    urgency = AlertSpec.Urgency.CRITICAL,
+                    sound = AlertSpec.SoundToken.ALARM,
+                    speechLoop = title,
+                    autoStopMs = 120_000L,
+                    maxCycles = 12,
+                    fullTakeover = true,
+                    actions = listOf(
+                        AlertAction(
+                            id = "stop_alert",
+                            label = "Stop",
+                            utterance = null,
+                            style = AlertAction.Style.PRIMARY,
+                        ),
+                    ),
+                ),
+                dismissCard = true,
+            ),
         )
-        timerRepository.debugInsertTimer(timer)
-        timerAlarmScheduler.schedule(timer)
-        timerNotifier.showOngoing(timer)
+        cardRepository.debugInsertCard(card)
+        cardAlarmScheduler.schedule(card)
 
         val userMessage = Message(text = raw, isFromUser = true)
-        val ariText = "Demo timer injected: ${name ?: "anonymous"}, ${durSecs}s."
         val ariMessage = Message(
-            text = ariText,
+            text = "Demo card injected: ${name ?: "anonymous"}, ${durSecs}s.",
             isFromUser = false,
-            attachments = listOf(Attachment.Timer(timer.id, timer.name)),
+            attachments = listOf(Attachment.Card(cardId)),
         )
         _state.update {
             it.copy(messages = it.messages + userMessage + ariMessage, inputText = "")
         }
     }
+
+    private fun capitaliseFirst(s: String): String =
+        if (s.isEmpty()) s else s[0].uppercaseChar() + s.substring(1)
 
     private fun parseDurationToSecs(raw: String): Long {
         // "30", "30s", "5m", "1h", "1h30m" — tolerant of the common forms.
@@ -227,23 +273,36 @@ class ConversationViewModel @Inject constructor(
         return total.coerceAtLeast(1L)
     }
 
-    fun onTimerCancelRequested(timer: Timer) {
-        // Real path: ask the skill to cancel so storage_kv stays authoritative.
-        // The skill's response lands as a normal action envelope and
-        // TimerCoordinator reconciles alarms/notifications from the snapshot.
-        //
-        // Demo-prefix timers live outside the skill; we cancel them directly.
-        if (timer.id.startsWith("demo-")) {
-            timerRepository.removeById(timer.id)
-            timerAlarmScheduler.cancel(timer.id)
-            timerNotifier.dismissOngoing(timer.id)
-            return
-        }
-        val phrase = timer.name?.let { "cancel my $it timer" } ?: "cancel my timer"
-        viewModelScope.launch(Dispatchers.Default) {
-            val response = engine.processInput(phrase)
-            if (response is FfiResponse.Action) {
-                actionHandler.handle(response.json)
+    /**
+     * A user tapped an action button on a card. Reserved ids short-circuit
+     * locally; everything else routes through the engine via the action's
+     * `utterance`, which the skill handles like any other input. The
+     * resulting envelope flows back through the same processInput path
+     * and reconciles state.
+     */
+    fun onCardAction(cardId: String, action: CardAction) {
+        when (action.id) {
+            "stop_alert" -> {
+                // Local intercept — the alert id corresponds to the card's
+                // alert primitive; we don't have it directly, so look it up.
+                val card = cardRepository.state.value.firstOrNull { it.id == cardId }
+                val alertId = card?.onComplete?.alert?.id ?: return
+                application.startService(AlertService.stopIntent(application, alertId))
+            }
+            else -> {
+                val utterance = action.utterance ?: return
+                if (cardId.startsWith("card_demo-")) {
+                    // Demo card lives outside the skill — just drop it.
+                    cardRepository.removeById(cardId)
+                    cardAlarmScheduler.cancel(cardId)
+                    return
+                }
+                viewModelScope.launch(Dispatchers.Default) {
+                    val response = engine.processInput(utterance)
+                    if (response is FfiResponse.Action) {
+                        actionHandler.handle(response.json, response.skillId)
+                    }
+                }
             }
         }
     }

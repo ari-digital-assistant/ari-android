@@ -217,8 +217,9 @@ fun ConversationScreen(
                 items(state.messages, key = { it.id }) { message ->
                     MessageBubble(
                         message = message,
-                        timerRepository = viewModel.timerRepository,
-                        onCancelTimer = viewModel::onTimerCancelRequested,
+                        cardRepository = viewModel.cardRepository,
+                        assetResolver = viewModel.assetResolver,
+                        onCardAction = viewModel::onCardAction,
                     )
                 }
             }

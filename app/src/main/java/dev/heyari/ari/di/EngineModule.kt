@@ -156,8 +156,9 @@ object EngineModule {
     @Provides
     @Singleton
     fun provideActionHandler(
+        @ApplicationContext context: Context,
         appLauncher: AppLauncher,
         webSearchLauncher: WebSearchLauncher,
-        timerCoordinator: dev.heyari.ari.actions.TimerCoordinator,
-    ): ActionHandler = ActionHandler(appLauncher, webSearchLauncher, timerCoordinator)
+        presentationCoordinator: dev.heyari.ari.actions.PresentationCoordinator,
+    ): ActionHandler = ActionHandler(context, appLauncher, webSearchLauncher, presentationCoordinator)
 }

@@ -16,10 +16,10 @@ import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
 import dev.heyari.ari.MainActivity
 import dev.heyari.ari.R
-import dev.heyari.ari.actions.TimerAlarmScheduler
+import dev.heyari.ari.actions.CardAlarmScheduler
 import dev.heyari.ari.data.SettingsRepository
-import dev.heyari.ari.data.timer.TimerStateRepository
-import dev.heyari.ari.notifications.TimerNotifier
+import dev.heyari.ari.data.card.CardStateRepository
+import dev.heyari.ari.notifications.NotificationCoordinator
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
@@ -47,13 +47,13 @@ class BootReceiver : BroadcastReceiver() {
     lateinit var settingsRepository: SettingsRepository
 
     @Inject
-    lateinit var timerRepository: TimerStateRepository
+    lateinit var cardRepository: CardStateRepository
 
     @Inject
-    lateinit var timerAlarmScheduler: TimerAlarmScheduler
+    lateinit var cardAlarmScheduler: CardAlarmScheduler
 
     @Inject
-    lateinit var timerNotifier: TimerNotifier
+    lateinit var notificationCoordinator: NotificationCoordinator
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED &&
@@ -62,9 +62,10 @@ class BootReceiver : BroadcastReceiver() {
             return
         }
 
-        // Exact alarms don't survive reboot; re-schedule every still-live timer
-        // and fire completion for any that expired while the device was off.
-        rescheduleTimers()
+        // Exact alarms don't survive reboot; re-schedule every still-live
+        // card with a countdown + on_complete, and post a silent
+        // "missed while powered off" notification for any that lapsed.
+        rescheduleCards()
 
         val enabled = runBlocking { settingsRepository.startOnBoot.first() }
         if (!enabled) {
@@ -95,22 +96,22 @@ class BootReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun rescheduleTimers() {
+    private fun rescheduleCards() {
         // `awaitReady` blocks for the initial DataStore load. Without this
         // we'd read the still-empty in-memory state and silently drop every
-        // live timer. Short (tens of ms) and runBlocking is appropriate
+        // live card. Short (tens of ms) and runBlocking is appropriate
         // inside a BroadcastReceiver's 10-second budget.
-        kotlinx.coroutines.runBlocking { timerRepository.awaitReady() }
+        kotlinx.coroutines.runBlocking { cardRepository.awaitReady() }
         val now = System.currentTimeMillis()
-        for (timer in timerRepository.state.value) {
-            if (timer.endTsMs <= now) {
-                Log.i(TAG, "Timer ${timer.id} expired while powered off — silent notice")
-                timerNotifier.showExpiredWhilePoweredOff(timer.id, timer.name)
-                timerRepository.removeById(timer.id)
+        for (card in cardRepository.state.value) {
+            val end = card.countdownToTsMs ?: continue
+            if (end <= now) {
+                Log.i(TAG, "Card ${card.id} expired while powered off — silent notice")
+                notificationCoordinator.showExpiredWhilePoweredOff(card.id, card.title)
+                cardRepository.removeById(card.id)
             } else {
-                Log.i(TAG, "Rescheduling timer ${timer.id} after boot")
-                timerAlarmScheduler.schedule(timer)
-                timerNotifier.showOngoing(timer)
+                Log.i(TAG, "Rescheduling card ${card.id} after boot")
+                cardAlarmScheduler.schedule(card)
             }
         }
     }

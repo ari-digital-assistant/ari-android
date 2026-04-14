@@ -1,5 +1,6 @@
 package dev.heyari.ari.notifications
 
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
@@ -8,6 +9,7 @@ import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
@@ -19,6 +21,7 @@ import androidx.core.content.getSystemService
 import dagger.hilt.android.AndroidEntryPoint
 import dev.heyari.ari.MainActivity
 import dev.heyari.ari.R
+import dev.heyari.ari.assets.AssetResolver
 import dev.heyari.ari.data.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,27 +36,28 @@ import javax.inject.Inject
 import kotlin.coroutines.resume
 
 /**
- * Plays the Siri-style alert loop when a timer fires: SOUND → spoken name →
- * SOUND → spoken name → … on repeat until the user taps Stop or the cap
- * is reached. For anonymous timers the speech step is skipped so the cadence
- * stays the same.
+ * Plays a skill-declared alert: SOUND → speech → SOUND → speech → … on
+ * loop until the user dismisses or the cap fires. Generic — knows nothing
+ * about timers; the [AlertSpec] in the start intent declares everything
+ * (sound source, speech text, urgency, cycle/duration caps, actions).
  *
- * Runs as a foreground service (`mediaPlayback`) so the audio survives
- * screen-off and backgrounding. Owns its own [MediaPlayer] and a dedicated
- * [TextToSpeech] instance — not the shared [dev.heyari.ari.tts.SpeechOutput]
- * singleton — because alert audio needs `USAGE_ALARM` AudioAttributes and
+ * Foreground service (`mediaPlayback`) so audio survives screen-off and
+ * backgrounding. Owns its own [MediaPlayer] and a dedicated [TextToSpeech]
+ * instance — not the shared [dev.heyari.ari.tts.SpeechOutput] singleton —
+ * because alert audio routes through `USAGE_ALARM` AudioAttributes and
  * swapping attributes on the shared instance races with conversational TTS.
  */
 @AndroidEntryPoint
-class TimerAlertService : Service() {
+class AlertService : Service() {
 
     @Inject lateinit var settingsRepository: SettingsRepository
+    @Inject lateinit var assetResolver: AssetResolver
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var loopJob: Job? = null
     private var player: MediaPlayer? = null
     private var tts: TextToSpeech? = null
-    private var currentTimerId: String? = null
+    private var currentSpec: AlertSpec? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -64,67 +68,66 @@ class TimerAlertService : Service() {
                 return START_NOT_STICKY
             }
             ACTION_START, null -> {
-                val id = intent?.getStringExtra(EXTRA_TIMER_ID) ?: run {
+                val specJson = intent?.getStringExtra(EXTRA_ALERT_SPEC_JSON)
+                val spec = specJson?.let { AlertSpecCodec.decode(it) } ?: run {
+                    Log.w(TAG, "ACTION_START with no/malformed AlertSpec — stopping")
                     stopSelf()
                     return START_NOT_STICKY
                 }
-                val name = intent.getStringExtra(EXTRA_TIMER_NAME)
-                currentTimerId = id
-                startForegroundWithAlert(id, name, alerting = true)
-                startLoop(id, name)
+                currentSpec = spec
+                startForegroundWithAlert(spec, alerting = true)
+                startLoop(spec)
             }
         }
         return START_NOT_STICKY
     }
 
-    private fun startForegroundWithAlert(id: String, name: String?, alerting: Boolean) {
-        val notification = buildAlertNotification(this, id, name, alerting)
+    private fun startForegroundWithAlert(spec: AlertSpec, alerting: Boolean) {
+        val notification = buildAlertNotification(this, spec, alerting)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
-                notificationId(id),
+                notificationId(spec.id),
                 notification,
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
             )
         } else {
-            startForeground(notificationId(id), notification)
+            startForeground(notificationId(spec.id), notification)
         }
     }
 
-    private fun startLoop(id: String, name: String?) {
+    private fun startLoop(spec: AlertSpec) {
         loopJob?.cancel()
         loopJob = scope.launch {
             val started = System.currentTimeMillis()
             var cycles = 0
-            initMediaPlayer()
-            if (name != null) initTts()
+            initMediaPlayer(spec)
+            if (spec.speechLoop != null) initTts()
 
             while (shouldContinueAlerting(
                     cyclesCompleted = cycles,
                     elapsedMs = System.currentTimeMillis() - started,
+                    maxCycles = spec.maxCycles,
+                    maxDurationMs = spec.autoStopMs,
                 )
             ) {
                 playOnce()
                 delay(GAP_BETWEEN_SOUND_AND_SPEECH_MS)
-                if (name != null) {
-                    speak("${capitaliseFirst(name)} timer")
-                }
+                spec.speechLoop?.let { speak(it) }
                 delay(GAP_BETWEEN_CYCLES_MS)
                 cycles++
             }
 
             // Cap reached naturally — drop to a quiet "tap to dismiss"
             // notification and stop. User can still open/dismiss it.
-            startForegroundWithAlert(id, name, alerting = false)
+            startForegroundWithAlert(spec, alerting = false)
             releaseAudio()
             stopSelf()
         }
     }
 
-    private fun initMediaPlayer() {
-        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        if (uri == null) {
-            Log.w(TAG, "no default alarm/notification URI available — skipping sound")
+    private fun initMediaPlayer(spec: AlertSpec) {
+        val uri = resolveSound(spec) ?: run {
+            Log.w(TAG, "no sound URI for ${spec.sound}; alert will be speech-only")
             return
         }
         val mp = MediaPlayer()
@@ -138,11 +141,32 @@ class TimerAlertService : Service() {
             mp.setDataSource(this, uri)
             mp.prepare()
         }.onFailure {
-            Log.w(TAG, "MediaPlayer prepare failed", it)
+            Log.w(TAG, "MediaPlayer prepare failed for $uri", it)
             runCatching { mp.release() }
             return
         }
         player = mp
+    }
+
+    /**
+     * Resolve the spec's `sound` field to a playable Uri. Tokens map to
+     * platform default URIs; `asset:<path>` resolves against the emitting
+     * skill's bundle dir. Unknown tokens or missing assets fall through to
+     * `system.notification` so the user still hears something.
+     */
+    private fun resolveSound(spec: AlertSpec): Uri? {
+        if (spec.sound.startsWith(AlertSpec.SoundToken.ASSET_PREFIX)) {
+            assetResolver.uri(spec.skillId, spec.sound)?.let { return it }
+            Log.w(TAG, "asset ${spec.sound} unresolved for skill ${spec.skillId} — falling back")
+        }
+        val ringtoneType = when (spec.sound) {
+            AlertSpec.SoundToken.ALARM -> RingtoneManager.TYPE_ALARM
+            AlertSpec.SoundToken.SILENT -> return null
+            AlertSpec.SoundToken.NOTIFICATION -> RingtoneManager.TYPE_NOTIFICATION
+            else -> RingtoneManager.TYPE_NOTIFICATION
+        }
+        return RingtoneManager.getDefaultUri(ringtoneType)
+            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
     }
 
     private suspend fun initTts() = suspendCancellableCoroutine<Unit> { cont ->
@@ -196,7 +220,7 @@ class TimerAlertService : Service() {
 
     private suspend fun speak(text: String) = suspendCancellableCoroutine<Unit> { cont ->
         val engine = tts ?: run { cont.resume(Unit); return@suspendCancellableCoroutine }
-        val utteranceId = "timer-alert-${System.nanoTime()}"
+        val utteranceId = "alert-${System.nanoTime()}"
         engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(id: String?) {}
             override fun onDone(id: String?) {
@@ -221,9 +245,9 @@ class TimerAlertService : Service() {
         loopJob?.cancel()
         loopJob = null
         releaseAudio()
-        val id = currentTimerId
+        val id = currentSpec?.id
         if (dismissNotification && id != null) {
-            getSystemService<android.app.NotificationManager>()?.cancel(notificationId(id))
+            getSystemService<NotificationManager>()?.cancel(notificationId(id))
         }
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -251,55 +275,53 @@ class TimerAlertService : Service() {
     }
 
     companion object {
-        const val ACTION_START = "dev.heyari.ari.TIMER_ALERT_START"
-        const val ACTION_STOP = "dev.heyari.ari.TIMER_ALERT_STOP"
-        const val EXTRA_TIMER_ID = "timer_id"
-        const val EXTRA_TIMER_NAME = "timer_name"
+        const val ACTION_START = "dev.heyari.ari.ALERT_START"
+        const val ACTION_STOP = "dev.heyari.ari.ALERT_STOP"
+        const val EXTRA_ALERT_SPEC_JSON = "alert_spec_json"
+        const val EXTRA_ALERT_ID = "alert_id"
 
-        private const val TAG = "TimerAlertService"
+        private const val TAG = "AlertService"
         private const val GAP_BETWEEN_SOUND_AND_SPEECH_MS = 150L
         private const val GAP_BETWEEN_CYCLES_MS = 900L
 
-        fun startIntent(context: Context, id: String, name: String?): Intent =
-            Intent(context, TimerAlertService::class.java)
+        fun startIntent(context: Context, spec: AlertSpec): Intent =
+            Intent(context, AlertService::class.java)
                 .setAction(ACTION_START)
-                .putExtra(EXTRA_TIMER_ID, id)
-                .putExtra(EXTRA_TIMER_NAME, name)
+                .putExtra(EXTRA_ALERT_SPEC_JSON, AlertSpecCodec.encode(spec))
 
         fun stopIntent(context: Context, id: String): Intent =
-            Intent(context, TimerAlertService::class.java)
+            Intent(context, AlertService::class.java)
                 .setAction(ACTION_STOP)
-                .putExtra(EXTRA_TIMER_ID, id)
+                .putExtra(EXTRA_ALERT_ID, id)
 
-        fun notificationId(timerId: String): Int =
-            (timerId.hashCode() xor 0x71_4d_00_02) and 0x7FFFFFFF
+        fun notificationId(alertId: String): Int =
+            (alertId.hashCode() xor 0x71_4d_00_02) and 0x7FFFFFFF
     }
 }
 
 /**
- * Pure cadence-cap predicate — extracted as top-level for unit testability.
- * Returns `true` while the loop should keep cycling, `false` when either the
- * cycle count or the elapsed duration cap has been reached.
+ * Cycle/duration cap predicate. Pure — extracted as top-level for
+ * unit testability and so callers can verify cap-from-spec behaviour
+ * without standing up the service.
  */
 internal fun shouldContinueAlerting(
     cyclesCompleted: Int,
     elapsedMs: Long,
-    maxCycles: Int = 12,
-    maxDurationMs: Long = 120_000L,
+    maxCycles: Int,
+    maxDurationMs: Long,
 ): Boolean = cyclesCompleted < maxCycles && elapsedMs < maxDurationMs
 
 /**
  * Builds the alert notification the service posts via `startForeground`.
- * [alerting] true while the loop is running (shows a "Stop" action);
+ * Spec-driven: urgency / fullTakeover / actions all come from the AlertSpec.
+ * [alerting] true while the loop is running (shows skill-declared actions);
  * false after the cap is reached (shows only "Tap to dismiss").
  */
 internal fun buildAlertNotification(
     context: Context,
-    timerId: String,
-    name: String?,
+    spec: AlertSpec,
     alerting: Boolean,
 ): android.app.Notification {
-    val title = name?.let { "${capitaliseFirst(it)} timer done" } ?: "Timer done"
     val contentIntent = PendingIntent.getActivity(
         context,
         0,
@@ -308,29 +330,62 @@ internal fun buildAlertNotification(
         ),
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
-    val builder = NotificationCompat.Builder(context, NotificationChannels.TIMER_ALERT)
+    val priority = when (spec.urgency) {
+        AlertSpec.Urgency.NORMAL -> NotificationCompat.PRIORITY_DEFAULT
+        AlertSpec.Urgency.HIGH -> NotificationCompat.PRIORITY_HIGH
+        AlertSpec.Urgency.CRITICAL -> NotificationCompat.PRIORITY_MAX
+    }
+    val builder = NotificationCompat.Builder(context, NotificationChannels.ALERT)
         .setSmallIcon(R.drawable.ic_ari_symbolic)
-        .setContentTitle(title)
-        .setContentText(if (alerting) "Alerting…" else "Tap to dismiss")
+        .setContentTitle(spec.title)
+        .setContentText(spec.body ?: if (alerting) "Alerting…" else "Tap to dismiss")
         .setAutoCancel(!alerting)
         .setOngoing(alerting)
         .setCategory(NotificationCompat.CATEGORY_ALARM)
-        .setPriority(NotificationCompat.PRIORITY_MAX)
+        .setPriority(priority)
         .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
         .setOnlyAlertOnce(true)
         .setContentIntent(contentIntent)
 
+    // Full-takeover heads-up + lockscreen full-screen, gated on critical
+    // urgency as a safety check (skills can't get a takeover on a normal
+    // alert by accident).
+    if (alerting && spec.fullTakeover && spec.urgency == AlertSpec.Urgency.CRITICAL) {
+        builder.setFullScreenIntent(contentIntent, true)
+    }
+
     if (alerting) {
-        val stopIntent = PendingIntent.getService(
-            context,
-            timerId.hashCode() xor 0x5701,
-            TimerAlertService.stopIntent(context, timerId),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-        builder.addAction(0, "Stop", stopIntent)
+        for (action in spec.actions) {
+            val pi = pendingIntentFor(context, spec, action)
+            builder.addAction(0, action.label, pi)
+        }
     }
     return builder.build()
 }
 
-private fun capitaliseFirst(s: String): String =
-    if (s.isEmpty()) s else s[0].uppercaseChar() + s.substring(1)
+private fun pendingIntentFor(context: Context, spec: AlertSpec, action: AlertAction): PendingIntent {
+    return when (action.id) {
+        "stop_alert" -> PendingIntent.getService(
+            context,
+            (spec.id + action.id).hashCode(),
+            AlertService.stopIntent(context, spec.id),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        else -> {
+            // Generic action — route via NotificationActionReceiver so the
+            // utterance flows through engine.processInput.
+            val intent = dev.heyari.ari.actions.NotificationActionReceiver.intent(
+                context = context,
+                actionId = action.id,
+                utterance = action.utterance,
+                alertIdToStop = spec.id,
+            )
+            PendingIntent.getBroadcast(
+                context,
+                (spec.id + action.id).hashCode(),
+                intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+        }
+    }
+}

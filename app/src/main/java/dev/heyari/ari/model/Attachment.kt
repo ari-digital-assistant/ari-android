@@ -10,10 +10,14 @@ package dev.heyari.ari.model
  */
 sealed class Attachment {
     /**
-     * Renders a [TimerCard] bound to the timer with this id in
-     * [dev.heyari.ari.data.timer.TimerStateRepository]. The name is carried
-     * independently so the card can still render "Pasta timer done" after
-     * the repo drops the entry on expiry.
+     * Renders the card with this id from
+     * [dev.heyari.ari.data.card.CardStateRepository] beneath the message
+     * bubble. Card content (title, countdown, icon, actions, …) all flows
+     * from the repo; the attachment just points at it by id.
+     *
+     * If the repo has dropped the entry by recomposition time (e.g. after
+     * the deadline fired), the card composable falls back to a "Done"
+     * chip so the bubble doesn't lose context.
      */
-    data class Timer(val timerId: String, val name: String?) : Attachment()
+    data class Card(val cardId: String) : Attachment()
 }
