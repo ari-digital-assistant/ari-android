@@ -70,7 +70,11 @@ fun MessageBubble(
                             timerRepository.observe(attachment.timerId)
                         }
                         val timer = timerFlow.collectAsState(initial = null).value
-                        TimerCard(timer = timer, onCancel = onCancelTimer)
+                        TimerCard(
+                            timer = timer,
+                            onCancel = onCancelTimer,
+                            fallbackName = attachment.name,
+                        )
                     }
                 }
             }

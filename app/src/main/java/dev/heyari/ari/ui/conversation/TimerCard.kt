@@ -47,9 +47,10 @@ fun TimerCard(
     timer: Timer?,
     onCancel: (Timer) -> Unit,
     modifier: Modifier = Modifier,
+    fallbackName: String? = null,
 ) {
     if (timer == null) {
-        FinishedCard(label = "Timer done", modifier = modifier)
+        FinishedCard(label = doneLabel(fallbackName), modifier = modifier)
         return
     }
 
@@ -59,7 +60,7 @@ fun TimerCard(
 
     if (remaining <= 0) {
         FinishedCard(
-            label = timer.name?.let { "${capitaliseFirst(it)} timer done" } ?: "Timer done",
+            label = doneLabel(timer.name ?: fallbackName),
             modifier = modifier,
         )
         return
@@ -165,3 +166,7 @@ private fun formatRemaining(ms: Long): String {
 
 private fun capitaliseFirst(s: String): String =
     if (s.isEmpty()) s else s[0].uppercaseChar() + s.substring(1)
+
+private fun doneLabel(name: String?): String =
+    name?.takeIf { it.isNotBlank() }?.let { "${capitaliseFirst(it)} timer done" }
+        ?: "Timer done"

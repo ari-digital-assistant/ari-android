@@ -93,7 +93,10 @@ private fun firstCreatedAttachment(events: org.json.JSONArray?): List<Attachment
         val ev = events.optJSONObject(i) ?: continue
         if (ev.optString("kind") == "create") {
             val id = ev.optString("id")
-            if (id.isNotBlank()) return listOf(Attachment.Timer(id))
+            if (id.isNotBlank()) {
+                val name = if (ev.isNull("name")) null else ev.optString("name").ifBlank { null }
+                return listOf(Attachment.Timer(id, name))
+            }
         }
     }
     return emptyList()

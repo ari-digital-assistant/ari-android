@@ -195,7 +195,7 @@ class ConversationViewModel @Inject constructor(
         val ariMessage = Message(
             text = ariText,
             isFromUser = false,
-            attachments = listOf(Attachment.Timer(timer.id)),
+            attachments = listOf(Attachment.Timer(timer.id, timer.name)),
         )
         _state.update {
             it.copy(messages = it.messages + userMessage + ariMessage, inputText = "")

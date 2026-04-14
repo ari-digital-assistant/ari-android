@@ -34,7 +34,7 @@ class TimerCoordinatorTest {
             listOf(Timer(id = "t_pasta", name = "pasta", endTsMs = 1000480000, createdTsMs = 1000000000)),
             parsed.snapshot,
         )
-        assertEquals(listOf<Attachment>(Attachment.Timer("t_pasta")), parsed.attachments)
+        assertEquals(listOf<Attachment>(Attachment.Timer("t_pasta", "pasta")), parsed.attachments)
     }
 
     @Test
@@ -86,7 +86,7 @@ class TimerCoordinatorTest {
              "timers":[]}
             """.trimIndent(),
         )
-        assertEquals(listOf<Attachment>(Attachment.Timer("t_a")), parseEnvelope(envelope).attachments)
+        assertEquals(listOf<Attachment>(Attachment.Timer("t_a", null)), parseEnvelope(envelope).attachments)
     }
 
     @Test

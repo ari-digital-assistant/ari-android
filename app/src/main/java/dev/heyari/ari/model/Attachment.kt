@@ -9,6 +9,11 @@ package dev.heyari.ari.model
  * to pick the right composable underneath the text.
  */
 sealed class Attachment {
-    /** Renders a [TimerCard] bound to the timer with this id in [dev.heyari.ari.data.timer.TimerStateRepository]. */
-    data class Timer(val timerId: String) : Attachment()
+    /**
+     * Renders a [TimerCard] bound to the timer with this id in
+     * [dev.heyari.ari.data.timer.TimerStateRepository]. The name is carried
+     * independently so the card can still render "Pasta timer done" after
+     * the repo drops the entry on expiry.
+     */
+    data class Timer(val timerId: String, val name: String?) : Attachment()
 }
