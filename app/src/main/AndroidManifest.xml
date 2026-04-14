@@ -16,6 +16,13 @@
     -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!--
+      Timer expiry uses AlarmManager.setExactAndAllowWhileIdle so a 30-second
+      pasta timer actually fires on time. On API 33+ this is a user-grantable
+      permission; when not granted we fall back to the inexact variant in
+      TimerAlarmScheduler rather than nagging the user mid-setup.
+    -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!--
       SYSTEM_ALERT_WINDOW is held SOLELY to obtain Background Activity Launch
       privilege so WakeWordService can start VoiceOverlayActivity over the
       keyguard on every wake-word detection (not just the first one within the
@@ -104,6 +111,21 @@
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!--
+          Timer expiry + notification cancel broadcasts. Not exported — only
+          the app's own AlarmManager entries and notification actions target
+          this receiver.
+        -->
+        <receiver
+            android:name=".actions.TimerExpiryReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="dev.heyari.ari.TIMER_FIRE" />
+                <action android:name="dev.heyari.ari.TIMER_CANCEL_NOTIF" />
+                <action android:name="dev.heyari.ari.TIMER_DISMISS_ALERT" />
             </intent-filter>
         </receiver>
 

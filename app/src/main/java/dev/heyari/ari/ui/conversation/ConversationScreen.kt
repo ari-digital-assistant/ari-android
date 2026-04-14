@@ -215,7 +215,11 @@ fun ConversationScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(state.messages, key = { it.id }) { message ->
-                    MessageBubble(message)
+                    MessageBubble(
+                        message = message,
+                        timerRepository = viewModel.timerRepository,
+                        onCancelTimer = viewModel::onTimerCancelRequested,
+                    )
                 }
             }
 

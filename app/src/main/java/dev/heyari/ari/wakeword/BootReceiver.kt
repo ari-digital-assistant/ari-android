@@ -16,7 +16,10 @@ import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
 import dev.heyari.ari.MainActivity
 import dev.heyari.ari.R
+import dev.heyari.ari.actions.TimerAlarmScheduler
 import dev.heyari.ari.data.SettingsRepository
+import dev.heyari.ari.data.timer.TimerStateRepository
+import dev.heyari.ari.notifications.TimerNotifier
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
@@ -43,12 +46,25 @@ class BootReceiver : BroadcastReceiver() {
     @Inject
     lateinit var settingsRepository: SettingsRepository
 
+    @Inject
+    lateinit var timerRepository: TimerStateRepository
+
+    @Inject
+    lateinit var timerAlarmScheduler: TimerAlarmScheduler
+
+    @Inject
+    lateinit var timerNotifier: TimerNotifier
+
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED &&
             intent.action != Intent.ACTION_LOCKED_BOOT_COMPLETED
         ) {
             return
         }
+
+        // Exact alarms don't survive reboot; re-schedule every still-live timer
+        // and fire completion for any that expired while the device was off.
+        rescheduleTimers()
 
         val enabled = runBlocking { settingsRepository.startOnBoot.first() }
         if (!enabled) {
@@ -76,6 +92,26 @@ class BootReceiver : BroadcastReceiver() {
         } catch (t: Throwable) {
             Log.e(TAG, "Failed to start WakeWordService on boot", t)
             postTapToStartNotification(context)
+        }
+    }
+
+    private fun rescheduleTimers() {
+        // `awaitReady` blocks for the initial DataStore load. Without this
+        // we'd read the still-empty in-memory state and silently drop every
+        // live timer. Short (tens of ms) and runBlocking is appropriate
+        // inside a BroadcastReceiver's 10-second budget.
+        kotlinx.coroutines.runBlocking { timerRepository.awaitReady() }
+        val now = System.currentTimeMillis()
+        for (timer in timerRepository.state.value) {
+            if (timer.endTsMs <= now) {
+                Log.i(TAG, "Timer ${timer.id} expired while powered off — firing now")
+                timerNotifier.showCompletion(timer.id, timer.name)
+                timerRepository.removeById(timer.id)
+            } else {
+                Log.i(TAG, "Rescheduling timer ${timer.id} after boot")
+                timerAlarmScheduler.schedule(timer)
+                timerNotifier.showOngoing(timer)
+            }
         }
     }
 

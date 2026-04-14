@@ -13,10 +13,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.heyari.ari.actions.ActionHandler
+import dev.heyari.ari.actions.TimerAlarmScheduler
 import dev.heyari.ari.data.SettingsRepository
+import dev.heyari.ari.data.timer.Timer
+import dev.heyari.ari.data.timer.TimerStateRepository
 import dev.heyari.ari.llm.LlmDownloadManager
+import dev.heyari.ari.model.Attachment
 import dev.heyari.ari.model.ConversationState
 import dev.heyari.ari.model.Message
+import dev.heyari.ari.notifications.TimerNotifier
 import dev.heyari.ari.stt.ModelDownloadManager
 import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.stt.SttModelRegistry
@@ -45,6 +50,9 @@ class ConversationViewModel @Inject constructor(
     private val llmDownloadManager: LlmDownloadManager,
     private val settingsRepository: SettingsRepository,
     private val actionHandler: ActionHandler,
+    val timerRepository: TimerStateRepository,
+    private val timerAlarmScheduler: TimerAlarmScheduler,
+    private val timerNotifier: TimerNotifier,
     private val application: Application,
 ) : ViewModel() {
 
@@ -125,25 +133,117 @@ class ConversationViewModel @Inject constructor(
     fun onTextSubmitted(text: String) {
         if (text.isBlank()) return
 
+        // Debug hook for M3: `/timer-demo <secs> [name]` synthesises a fake
+        // timer straight into the repository + an Ari bubble with a
+        // TimerAttachment. Lets us exercise the card ticking, cancel, and
+        // process-death survival before the skill action wiring lands.
+        if (text.startsWith("/timer-demo")) {
+            handleTimerDemo(text)
+            return
+        }
+
         val userMessage = Message(text = text, isFromUser = true)
         _state.update { it.copy(messages = it.messages + userMessage, inputText = "", wakeWordDetected = false) }
 
         viewModelScope.launch(Dispatchers.Default) {
             val response = engine.processInput(text)
+            var attachments: List<Attachment> = emptyList()
             val responseText = when (response) {
                 is FfiResponse.Text -> response.body
-                is FfiResponse.Action -> actionHandler.handle(response.json)
+                is FfiResponse.Action -> {
+                    val result = actionHandler.handle(response.json)
+                    attachments = result.attachments
+                    result.text
+                }
                 is FfiResponse.Binary -> "[Binary: ${response.mime}, ${response.data.size} bytes]"
                 // Text-input path: no STT to retry, so NotUnderstood is just
                 // the apology body as-is.
                 is FfiResponse.NotUnderstood -> response.body
             }
-            val ariMessage = Message(text = responseText, isFromUser = false)
+            val ariMessage = Message(
+                text = responseText,
+                isFromUser = false,
+                attachments = attachments,
+            )
             _state.update { it.copy(messages = it.messages + ariMessage) }
 
             // Speak text and action confirmations alike — both are just user-facing strings now
             if (response is FfiResponse.Text || response is FfiResponse.Action || response is FfiResponse.NotUnderstood) {
                 speechOutput.speak(responseText)
+            }
+        }
+    }
+
+    private fun handleTimerDemo(raw: String) {
+        val parts = raw.trim().split(Regex("\\s+"))
+        // /timer-demo 30 pasta   or   /timer-demo 30s   or   /timer-demo 5m
+        val durSecs = parts.getOrNull(1)?.let { parseDurationToSecs(it) } ?: 30L
+        val name = parts.getOrNull(2)
+        val now = System.currentTimeMillis()
+        val timer = Timer(
+            id = "demo-${now}",
+            name = name,
+            endTsMs = now + durSecs * 1000,
+            createdTsMs = now,
+        )
+        timerRepository.debugInsertTimer(timer)
+        timerAlarmScheduler.schedule(timer)
+        timerNotifier.showOngoing(timer)
+
+        val userMessage = Message(text = raw, isFromUser = true)
+        val ariText = "Demo timer injected: ${name ?: "anonymous"}, ${durSecs}s."
+        val ariMessage = Message(
+            text = ariText,
+            isFromUser = false,
+            attachments = listOf(Attachment.Timer(timer.id)),
+        )
+        _state.update {
+            it.copy(messages = it.messages + userMessage + ariMessage, inputText = "")
+        }
+    }
+
+    private fun parseDurationToSecs(raw: String): Long {
+        // "30", "30s", "5m", "1h", "1h30m" — tolerant of the common forms.
+        var total = 0L
+        var number = 0L
+        var sawDigit = false
+        for (ch in raw) {
+            when {
+                ch.isDigit() -> {
+                    number = number * 10 + (ch - '0')
+                    sawDigit = true
+                }
+                ch == 's' || ch == 'm' || ch == 'h' -> {
+                    val mult = when (ch) { 's' -> 1L; 'm' -> 60L; else -> 3600L }
+                    total += number * mult
+                    number = 0
+                    sawDigit = false
+                }
+                else -> return 30L
+            }
+        }
+        // Trailing bare digits default to seconds.
+        if (sawDigit) total += number
+        return total.coerceAtLeast(1L)
+    }
+
+    fun onTimerCancelRequested(timer: Timer) {
+        // Real path: ask the skill to cancel so storage_kv stays authoritative.
+        // The skill's response lands as a normal action envelope and
+        // TimerCoordinator reconciles alarms/notifications from the snapshot.
+        //
+        // Demo-prefix timers live outside the skill; we cancel them directly.
+        if (timer.id.startsWith("demo-")) {
+            timerRepository.removeById(timer.id)
+            timerAlarmScheduler.cancel(timer.id)
+            timerNotifier.dismissOngoing(timer.id)
+            return
+        }
+        val phrase = timer.name?.let { "cancel my $it timer" } ?: "cancel my timer"
+        viewModelScope.launch(Dispatchers.Default) {
+            val response = engine.processInput(phrase)
+            if (response is FfiResponse.Action) {
+                actionHandler.handle(response.json)
             }
         }
     }

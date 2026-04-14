@@ -57,6 +57,10 @@ android {
         compose = true
         buildConfig = true
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 androidRust {
@@ -101,6 +105,10 @@ dependencies {
     implementation(libs.richtext.ui.material3)
 
     testImplementation(libs.junit)
+    // Real org.json for unit tests — the Android stub returns null from
+    // optString etc. when `isReturnDefaultValues = true`, which breaks any
+    // parser that relies on the real "" / JSONObject.NULL semantics.
+    testImplementation("org.json:json:20251224")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

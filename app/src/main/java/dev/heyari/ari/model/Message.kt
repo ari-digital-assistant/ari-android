@@ -6,5 +6,6 @@ data class Message(
     val id: String = UUID.randomUUID().toString(),
     val text: String,
     val isFromUser: Boolean,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val attachments: List<Attachment> = emptyList(),
 )

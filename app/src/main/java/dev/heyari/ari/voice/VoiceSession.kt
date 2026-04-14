@@ -222,7 +222,10 @@ class VoiceSession @Inject constructor(
 
         val responseText = when (response) {
             is FfiResponse.Text -> response.body
-            is FfiResponse.Action -> actionHandler.handle(response.json)
+            // Voice path doesn't render attachments (the overlay is text-only);
+            // coordinator side-effects on the repo still happen so the card
+            // shows up in the conversation screen next time it's opened.
+            is FfiResponse.Action -> actionHandler.handle(response.json).text
             is FfiResponse.Binary -> "[Binary: ${response.mime}, ${response.data.size} bytes]"
             is FfiResponse.NotUnderstood -> response.body
         }

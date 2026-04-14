@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
+import dev.heyari.ari.notifications.NotificationChannels
 import dev.heyari.ari.skills.SkillUpdateWorker
 import uniffi.ari_ffi.AriEngine
 import javax.inject.Inject
@@ -24,6 +25,7 @@ class AriApplication : Application(), Configuration.Provider {
         super.onCreate()
         // Idempotent — KEEP policy means reinstalls don't reset the schedule.
         SkillUpdateWorker.schedule(this)
+        NotificationChannels.ensureAll(this)
     }
 
     override fun onTrimMemory(level: Int) {

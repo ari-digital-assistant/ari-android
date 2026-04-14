@@ -7,29 +7,32 @@ import javax.inject.Singleton
 
 /**
  * Parses JSON action payloads from the engine and dispatches them to the
- * appropriate Android-side handler. Returns a human-friendly text response
- * suitable for display + TTS.
+ * appropriate Android-side handler. Returns an [ActionResult] carrying a
+ * human-friendly text response (used for display + TTS) plus any
+ * attachments the bubble should render underneath.
  */
 @Singleton
 class ActionHandler @Inject constructor(
     private val appLauncher: AppLauncher,
     private val webSearchLauncher: WebSearchLauncher,
+    private val timerCoordinator: TimerCoordinator,
 ) {
 
-    fun handle(json: String): String {
+    fun handle(json: String): ActionResult.Spoken {
         val obj = try {
             JSONObject(json)
         } catch (t: Throwable) {
             Log.e(TAG, "Invalid action JSON: $json", t)
-            return "I couldn't understand that action."
+            return ActionResult.Spoken("I couldn't understand that action.")
         }
 
         return when (val action = obj.optString("action")) {
-            "open" -> handleOpen(obj.optString("target"))
-            "search" -> handleSearch(obj.optString("query"))
+            "open" -> ActionResult.Spoken(handleOpen(obj.optString("target")))
+            "search" -> ActionResult.Spoken(handleSearch(obj.optString("query")))
+            "timer" -> timerCoordinator.handle(obj)
             else -> {
                 Log.w(TAG, "Unknown action type: $action")
-                "I don't know how to do that yet."
+                ActionResult.Spoken("I don't know how to do that yet.")
             }
         }
     }

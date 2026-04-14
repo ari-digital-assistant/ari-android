@@ -158,5 +158,6 @@ object EngineModule {
     fun provideActionHandler(
         appLauncher: AppLauncher,
         webSearchLauncher: WebSearchLauncher,
-    ): ActionHandler = ActionHandler(appLauncher, webSearchLauncher)
+        timerCoordinator: dev.heyari.ari.actions.TimerCoordinator,
+    ): ActionHandler = ActionHandler(appLauncher, webSearchLauncher, timerCoordinator)
 }
