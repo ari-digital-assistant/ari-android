@@ -227,6 +227,7 @@ class ConversationViewModel @Inject constructor(
                             style = AlertAction.Style.PRIMARY,
                         ),
                     ),
+                    icon = null,
                 ),
                 dismissCard = true,
                 dismissNotificationIds = emptyList(),

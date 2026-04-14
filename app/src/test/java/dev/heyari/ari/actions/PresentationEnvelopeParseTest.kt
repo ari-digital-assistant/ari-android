@@ -99,6 +99,7 @@ class PresentationEnvelopeParseTest {
                     "auto_stop_ms":120000,
                     "max_cycles":12,
                     "full_takeover":true,
+                    "icon":"asset:icons/timer.png",
                     "actions":[{"id":"stop_alert","label":"Stop","style":"primary"}]
                   },
                   "dismiss_card": true,
@@ -130,6 +131,7 @@ class PresentationEnvelopeParseTest {
         assertEquals(120_000L, alert.autoStopMs)
         assertEquals(12, alert.maxCycles)
         assertTrue(alert.fullTakeover)
+        assertEquals("asset:icons/timer.png", alert.icon)
         assertTrue(card.onComplete.dismissCard)
         assertEquals(listOf("notif_pasta"), card.onComplete.dismissNotificationIds)
     }

@@ -127,6 +127,22 @@
             android:foregroundServiceType="mediaPlayback"
             android:exported="false" />
 
+        <!--
+          Full-takeover lock-screen UI for skill-emitted alerts with
+          full_takeover && urgency == critical. Launched via the
+          notification's full-screen intent. Single-instance + own task
+          affinity so it never competes with MainActivity.
+        -->
+        <activity
+            android:name=".notifications.AlertActivity"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:taskAffinity="dev.heyari.ari.alert"
+            android:excludeFromRecents="true"
+            android:showOnLockScreen="true"
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.Ari" />
+
         <receiver
             android:name=".wakeword.BootReceiver"
             android:exported="true"

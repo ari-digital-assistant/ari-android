@@ -29,6 +29,7 @@ data class AlertSpec(
     val maxCycles: Int,
     val fullTakeover: Boolean,
     val actions: List<AlertAction>,
+    val icon: String?,
 ) {
     enum class Urgency { NORMAL, HIGH, CRITICAL }
 
@@ -74,6 +75,7 @@ object AlertSpecCodec {
         put("autoStopMs", spec.autoStopMs)
         put("maxCycles", spec.maxCycles)
         put("fullTakeover", spec.fullTakeover)
+        put("icon", spec.icon ?: JSONObject.NULL)
         put(
             "actions",
             JSONArray().apply {
@@ -97,6 +99,7 @@ object AlertSpecCodec {
             autoStopMs = o.optLong("autoStopMs", 120_000L),
             maxCycles = o.optInt("maxCycles", 12),
             fullTakeover = o.optBoolean("fullTakeover", false),
+            icon = if (o.isNull("icon")) null else o.optString("icon").takeIf { it.isNotEmpty() },
             actions = o.optJSONArray("actions")?.let(::decodeActions).orEmpty(),
         )
     }

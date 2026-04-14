@@ -163,6 +163,7 @@ private fun parseAlert(o: JSONObject, skillId: String): AlertSpec? {
         autoStopMs = o.optLongOrNull("auto_stop_ms") ?: DEFAULT_AUTO_STOP_MS,
         maxCycles = o.optInt("max_cycles", DEFAULT_MAX_CYCLES),
         fullTakeover = o.optBoolean("full_takeover", false),
+        icon = o.optStringOrNull("icon"),
         actions = o.optJSONArray("actions")?.let { parseAlertActions(it) }.orEmpty(),
     )
 }

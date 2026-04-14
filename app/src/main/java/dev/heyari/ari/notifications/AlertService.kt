@@ -83,6 +83,9 @@ class AlertService : Service() {
     }
 
     private fun startForegroundWithAlert(spec: AlertSpec, alerting: Boolean) {
+        // Register before posting the notification so the FSN-launched
+        // AlertActivity sees the id present when it starts collecting.
+        if (alerting) AlertRegistry.start(spec.id)
         val notification = buildAlertNotification(this, spec, alerting)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
@@ -246,6 +249,7 @@ class AlertService : Service() {
         loopJob = null
         releaseAudio()
         val id = currentSpec?.id
+        if (id != null) AlertRegistry.stop(id)
         if (dismissNotification && id != null) {
             getSystemService<NotificationManager>()?.cancel(notificationId(id))
         }
@@ -322,12 +326,22 @@ internal fun buildAlertNotification(
     spec: AlertSpec,
     alerting: Boolean,
 ): android.app.Notification {
+    // Tap-the-shade-entry target: opens the main app. Distinct from the
+    // full-screen-intent target below, which goes to the dedicated
+    // AlertActivity so the user lands on a Stop button instead of the
+    // PIN keypad → main UI two-step.
     val contentIntent = PendingIntent.getActivity(
         context,
         0,
         Intent(context, MainActivity::class.java).addFlags(
             Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP,
         ),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
+    val takeoverIntent = PendingIntent.getActivity(
+        context,
+        spec.id.hashCode(),
+        AlertActivity.intent(context, spec),
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
     val priority = when (spec.urgency) {
@@ -351,7 +365,7 @@ internal fun buildAlertNotification(
     // urgency as a safety check (skills can't get a takeover on a normal
     // alert by accident).
     if (alerting && spec.fullTakeover && spec.urgency == AlertSpec.Urgency.CRITICAL) {
-        builder.setFullScreenIntent(contentIntent, true)
+        builder.setFullScreenIntent(takeoverIntent, true)
     }
 
     if (alerting) {

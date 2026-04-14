@@ -26,6 +26,7 @@ class AlertSpecCodecTest {
                 style = AlertAction.Style.PRIMARY,
             ),
         ),
+        icon = "asset:icons/timer.png",
     )
 
     @Test
@@ -57,6 +58,7 @@ class AlertSpecCodecTest {
         assertEquals(false, decoded.fullTakeover)
         assertNull(decoded.body)
         assertNull(decoded.speechLoop)
+        assertNull(decoded.icon)
     }
 
     @Test
