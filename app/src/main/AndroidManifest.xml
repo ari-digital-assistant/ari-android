@@ -43,6 +43,29 @@
     -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
+    <!--
+      Calendar access — needed by the reminder skill's Calendar / Both
+      destination modes for enumerating the user's calendars
+      (CalendarContract.Calendars) and inserting VEVENT rows
+      (CalendarContract.Events). Both are runtime-granted dangerous
+      permissions; the skill settings panel triggers the request when
+      the user picks a Calendar destination or opens the calendar
+      picker, never at app launch.
+    -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+
+    <!--
+      OpenTasks access — needed by the reminder skill's Tasks / Both
+      destination modes. The OpenTasks ContentProvider authority is
+      `org.dmfs.tasks`, surfaced by Tasks.org / OpenTasks / jtx Board /
+      etc. The permissions are custom-defined by those apps, so the
+      grant is contingent on at least one provider being installed —
+      we silently no-op the Tasks branch when it isn't.
+    -->
+    <uses-permission android:name="org.dmfs.permission.READ_TASKS" />
+    <uses-permission android:name="org.dmfs.permission.WRITE_TASKS" />
+
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
@@ -55,6 +78,14 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>
+        <!--
+          Package visibility (API 30+) — without this we can't even
+          probe the OpenTasks ContentProvider authority to see if any
+          provider app is installed. Listing the authority by name is
+          the documented Android pattern for "let me talk to whoever
+          provides this".
+        -->
+        <provider android:authorities="org.dmfs.tasks" />
     </queries>
 
     <application

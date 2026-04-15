@@ -32,6 +32,7 @@ data class PresentationEnvelope(
     val search: String?,
     val openUrl: String?,
     val clipboardText: String?,
+    val createReminder: CreateReminderSpec?,
     val dismissCardIds: List<String>,
     val dismissNotificationIds: List<String>,
     val dismissAlertIds: List<String>,
@@ -62,6 +63,8 @@ data class PresentationEnvelope(
                     search = json.optStringOrNull("search"),
                     openUrl = json.optStringOrNull("open_url"),
                     clipboardText = json.optJSONObject("clipboard")?.optStringOrNull("text"),
+                    createReminder = json.optJSONObject("create_reminder")
+                        ?.let(CreateReminderSpec::parse),
                     dismissCardIds = json.optJSONObject("dismiss")
                         ?.optJSONArray("cards")?.toStringList().orEmpty(),
                     dismissNotificationIds = json.optJSONObject("dismiss")
@@ -261,3 +264,86 @@ private fun JSONArray.toStringList(): List<String> {
 
 private const val DEFAULT_AUTO_STOP_MS: Long = 120_000L
 private const val DEFAULT_MAX_CYCLES: Int = 12
+
+/**
+ * Top-level `create_reminder` slot — emitted by the reminder skill
+ * for "remind me to X" / "add Y to my Z list" utterances. The
+ * frontend handler reads the user's destination + default-list
+ * settings, resolves [when] against the local zone, fuzzy-matches
+ * [listHint] (if any) against the user's actual lists, performs the
+ * VTODO / VEVENT insert via [dev.heyari.ari.reminders.CalendarProvider]
+ * / [dev.heyari.ari.reminders.TasksProvider], then substitutes the
+ * placeholders in [speakTemplate] for the spoken response.
+ */
+data class CreateReminderSpec(
+    val title: String,
+    val whenSpec: WhenSpec,
+    val listHint: String?,
+    val speakTemplate: String?,
+) {
+    /**
+     * Structured time descriptor. Mirrors the four shapes the skill
+     * emits (see `ari-skills/skills/reminder/SKILL.md`):
+     *
+     * - [None] — no time, always routes to Tasks regardless of the
+     *   destination setting (calendar grids can't show a timeless event).
+     * - [InSeconds] — relative offset from now ("in 30 minutes").
+     * - [LocalClock] — absolute hour/minute on a particular day, in
+     *   the device's local zone.
+     * - [DateOnly] — a date with no time-of-day ("tomorrow") → VTODO
+     *   with due date but no due time.
+     */
+    sealed interface WhenSpec {
+        data object None : WhenSpec
+        data class InSeconds(val seconds: Long) : WhenSpec
+        data class LocalClock(val hour: Int, val minute: Int, val dayOffset: Int) : WhenSpec
+        data class DateOnly(val dayOffset: Int) : WhenSpec
+    }
+
+    companion object {
+        fun parse(o: JSONObject): CreateReminderSpec? {
+            val title = o.optStringOrNull("title")?.takeIf { it.isNotBlank() } ?: return null
+            val whenSpec = parseWhen(o.opt("when"))
+            return CreateReminderSpec(
+                title = title,
+                whenSpec = whenSpec,
+                listHint = o.optStringOrNull("list_hint"),
+                speakTemplate = o.optStringOrNull("speak_template"),
+            )
+        }
+
+        private fun parseWhen(any: Any?): WhenSpec {
+            // The skill emits `null` when no time was given. JSONObject
+            // surfaces that as JSONObject.NULL via .opt; treat both
+            // null and NULL as the no-time case.
+            if (any == null || any == JSONObject.NULL) return WhenSpec.None
+            val obj = any as? JSONObject ?: return WhenSpec.None
+
+            obj.optLongOrNull("in_seconds")?.let { return WhenSpec.InSeconds(it) }
+
+            val localTime = obj.optStringOrNull("local_time")
+            val dayOffset = obj.optInt("day_offset", 0)
+            if (localTime != null) {
+                // local_time is "HH:MM". Skill validates the format
+                // before emitting; we still defend against a malformed
+                // value rather than crashing the action handler.
+                val parts = localTime.split(":")
+                val hour = parts.getOrNull(0)?.toIntOrNull()
+                val minute = parts.getOrNull(1)?.toIntOrNull()
+                if (hour != null && minute != null) {
+                    return WhenSpec.LocalClock(hour, minute, dayOffset)
+                }
+            }
+
+            // day_offset alone → DateOnly. Only treat as date-only
+            // if the field was explicitly present; otherwise we'd
+            // misinterpret a malformed `when` block as "today" and
+            // create a spurious due-date entry.
+            if (obj.has("day_offset")) {
+                return WhenSpec.DateOnly(dayOffset)
+            }
+
+            return WhenSpec.None
+        }
+    }
+}

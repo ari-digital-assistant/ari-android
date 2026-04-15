@@ -8,6 +8,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.core.content.getSystemService
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.heyari.ari.reminders.ReminderActionHandler
 import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -30,6 +31,7 @@ class ActionHandler @Inject constructor(
     private val appLauncher: AppLauncher,
     private val webSearchLauncher: WebSearchLauncher,
     private val presentationCoordinator: PresentationCoordinator,
+    private val reminderActionHandler: ReminderActionHandler,
 ) {
 
     fun handle(json: String, skillId: String): ActionResult.Spoken {
@@ -49,6 +51,16 @@ class ActionHandler @Inject constructor(
         env.search?.let { return ActionResult.Spoken(env.speak ?: handleSearch(it)) }
         env.openUrl?.let { return ActionResult.Spoken(env.speak ?: handleOpenUrl(it)) }
         env.clipboardText?.let { copyToClipboard(it) }
+        // Reminder writes resolve their own spoken response from the
+        // skill-supplied template (with `{title}`/`{list_name}`/
+        // `{calendar_name}` substituted post-resolution), so we hand
+        // back whatever the handler returns rather than forcing a
+        // generic phrasing here. An explicit `speak` on the envelope
+        // still wins — same convention as the launch_app/search slots.
+        env.createReminder?.let {
+            val spoken = reminderActionHandler.handle(it)
+            return ActionResult.Spoken(env.speak ?: spoken)
+        }
 
         val attachments = if (env.hasPresentationPrimitives()) {
             presentationCoordinator.apply(env)

@@ -163,5 +163,12 @@ object EngineModule {
         appLauncher: AppLauncher,
         webSearchLauncher: WebSearchLauncher,
         presentationCoordinator: dev.heyari.ari.actions.PresentationCoordinator,
-    ): ActionHandler = ActionHandler(context, appLauncher, webSearchLauncher, presentationCoordinator)
+        reminderActionHandler: dev.heyari.ari.reminders.ReminderActionHandler,
+    ): ActionHandler = ActionHandler(
+        context,
+        appLauncher,
+        webSearchLauncher,
+        presentationCoordinator,
+        reminderActionHandler,
+    )
 }
