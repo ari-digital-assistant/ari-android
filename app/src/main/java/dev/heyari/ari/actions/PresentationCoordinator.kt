@@ -5,8 +5,13 @@ import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.data.card.CardStateRepository
 import dev.heyari.ari.model.Attachment
+import dev.heyari.ari.notifications.AlertRegistry
 import dev.heyari.ari.notifications.AlertService
 import dev.heyari.ari.notifications.NotificationCoordinator
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -33,6 +38,40 @@ class PresentationCoordinator @Inject constructor(
     private val alarmScheduler: CardAlarmScheduler,
     private val notifier: NotificationCoordinator,
 ) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    init {
+        observeAlertEndForCardRemoval()
+    }
+
+    /**
+     * When a card's alert ends — by user Stop, auto-stop cap, or external
+     * dismissal via `dismiss.alerts` — remove the card from the repo if
+     * the skill asked for it (`on_complete.dismiss_card: true`, the
+     * default). [CardExpiryReceiver] defers the removal for cards with an
+     * alert precisely so this observer has the chance to keep the card
+     * on-screen during the ring; without this handler those cards would
+     * linger indefinitely after the alert stopped.
+     */
+    private fun observeAlertEndForCardRemoval() {
+        scope.launch {
+            var previous: Set<String> = emptySet()
+            AlertRegistry.active.collect { current ->
+                val ended = previous - current
+                previous = current
+                if (ended.isEmpty()) return@collect
+                val cards = cardRepository.state.value
+                for (card in cards) {
+                    val alertId = card.onComplete?.alert?.id ?: continue
+                    val dismiss = card.onComplete.dismissCard
+                    if (alertId in ended && dismiss) {
+                        cardRepository.removeById(card.id)
+                    }
+                }
+            }
+        }
+    }
+
     fun apply(envelope: PresentationEnvelope): List<Attachment> {
         // 1. Dismissals — fire AlarmManager cancels, drop notifications.
         for (id in envelope.dismissCardIds) alarmScheduler.cancel(id)

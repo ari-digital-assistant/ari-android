@@ -206,7 +206,18 @@ class ConversationViewModel @Inject constructor(
             startedAtTsMs = now,
             progress = null,
             accent = Card.Accent.DEFAULT,
-            actions = emptyList(),
+            // Mirror the real timer skill's Cancel button so /card-demo
+            // exercises the same action-row path. Demo cards live outside
+            // the skill system, so the tap just locally drops the card —
+            // see the `card_demo-` branch in onCardAction.
+            actions = listOf(
+                CardAction(
+                    id = "cancel",
+                    label = "Cancel",
+                    utterance = "cancel demo timer",
+                    style = CardAction.Style.DESTRUCTIVE,
+                ),
+            ),
             onComplete = OnComplete(
                 alert = AlertSpec(
                     id = alertId,

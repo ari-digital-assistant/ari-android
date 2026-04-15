@@ -52,7 +52,14 @@ class CardExpiryReceiver : BroadcastReceiver() {
             ContextCompat.startForegroundService(context, AlertService.startIntent(context, spec))
             maybeLaunchTakeoverDirectly(context, spec)
         }
-        if (dismissCard) {
+        // Lifecycle rule:
+        // - No alert scheduled → remove at expiry (today's behaviour) if the
+        //   skill asked for dismissal.
+        // - Alert scheduled → defer removal until the alert actually ends,
+        //   handled by PresentationCoordinator's AlertRegistry observer.
+        //   This keeps the card visible during the ring so the user has a
+        //   Stop button right where their eye already is.
+        if (dismissCard && spec == null) {
             repository.removeById(cardId)
         }
     }
