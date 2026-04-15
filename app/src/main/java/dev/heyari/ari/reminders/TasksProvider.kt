@@ -106,6 +106,19 @@ class TasksProvider @Inject constructor(
     }
 
     /**
+     * Whether both read AND write permissions are granted. The
+     * picker asks for both up front so that enumerating task lists
+     * and inserting tasks later both succeed without a second prompt
+     * at action time.
+     */
+    fun hasAllPermissions(): Boolean {
+        val read = requiredReadPermission() ?: return false
+        val write = requiredWritePermission() ?: return false
+        return ContextCompat.checkSelfPermission(context, read) == PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(context, write) == PackageManager.PERMISSION_GRANTED
+    }
+
+    /**
      * Every task list the user has. Empty if no provider is installed
      * or the per-provider READ_TASKS permission isn't granted yet.
      * Sorted by display name.

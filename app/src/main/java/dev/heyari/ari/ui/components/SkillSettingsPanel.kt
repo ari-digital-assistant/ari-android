@@ -286,15 +286,26 @@ private fun DeviceCalendarField(
             .calendarProvider()
     }
 
-    var hasPerm by remember { mutableStateOf(provider.hasReadPermission()) }
+    // Ask for read AND write together — the user's already consenting
+    // to "this picker lists calendars that Ari will write to", so
+    // splitting into two prompts (one to see the list, another later
+    // at action time to actually insert) is gratuitous and risks the
+    // second prompt surprising the user while they're expecting the
+    // skill to just work.
+    var hasPerm by remember {
+        mutableStateOf(
+            provider.hasReadPermission() && provider.hasWritePermission(),
+        )
+    }
     var calendars by remember(hasPerm) {
         mutableStateOf(if (hasPerm) provider.listCalendars() else emptyList())
     }
     val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        hasPerm = granted
-        if (granted) calendars = provider.listCalendars()
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { results ->
+        val allGranted = results.values.all { it }
+        hasPerm = allGranted
+        if (allGranted) calendars = provider.listCalendars()
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -306,13 +317,17 @@ private fun DeviceCalendarField(
 
         if (!hasPerm) {
             Text(
-                text = "Calendar access is needed to list your calendars.",
+                text = "Calendar access is needed to list your calendars and save reminders to them.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 8.dp),
             )
             FilledTonalButton(
-                onClick = { launcher.launch(Manifest.permission.READ_CALENDAR) },
+                onClick = {
+                    launcher.launch(
+                        arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR),
+                    )
+                },
                 modifier = Modifier.padding(start = 8.dp, top = 4.dp),
             ) { Text("Allow calendar access") }
             return@Column
@@ -385,20 +400,24 @@ private fun DeviceTaskListField(
     // restart.
     var providerInstalled by remember { mutableStateOf(provider.isProviderInstalled()) }
     var hasPerm by remember(providerInstalled) {
-        mutableStateOf(providerInstalled && provider.hasReadPermission())
+        mutableStateOf(providerInstalled && provider.hasAllPermissions())
     }
     var taskLists by remember(providerInstalled, hasPerm) {
         mutableStateOf(if (providerInstalled && hasPerm) provider.listTaskLists() else emptyList())
     }
     LaunchedEffect(Unit) {
         providerInstalled = provider.isProviderInstalled()
-        hasPerm = providerInstalled && provider.hasReadPermission()
+        hasPerm = providerInstalled && provider.hasAllPermissions()
         if (providerInstalled && hasPerm) taskLists = provider.listTaskLists()
     }
 
+    // Ask for read AND write together — same reasoning as the
+    // calendar picker: consenting once up front beats a second
+    // prompt popping up at action time.
     val tasksPermLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted ->
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { results ->
+        val granted = results.values.all { it }
         hasPerm = granted
         if (granted) taskLists = provider.listTaskLists()
     }
@@ -423,21 +442,26 @@ private fun DeviceTaskListField(
         }
 
         if (!hasPerm) {
-            // Runtime-granted dangerous perm — each compatible app
+            // Runtime-granted dangerous perms — each compatible app
             // defines its own namespace (org.dmfs.* vs org.tasks.*).
-            // The provider helper hands back whichever one matches
-            // the resolved authority.
-            val perm = provider.requiredReadPermission()
+            // The provider helper hands back whichever two match the
+            // resolved authority.
+            val read = provider.requiredReadPermission()
+            val write = provider.requiredWritePermission()
             Text(
-                text = "Access to your tasks app is needed to list your task lists.",
+                text = "Access to your tasks app is needed to list your task lists and save reminders to them.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 8.dp),
             )
             FilledTonalButton(
-                onClick = { perm?.let(tasksPermLauncher::launch) },
+                onClick = {
+                    if (read != null && write != null) {
+                        tasksPermLauncher.launch(arrayOf(read, write))
+                    }
+                },
                 modifier = Modifier.padding(start = 8.dp, top = 4.dp),
-                enabled = perm != null,
+                enabled = read != null && write != null,
             ) { Text("Allow tasks access") }
             return@Column
         }
