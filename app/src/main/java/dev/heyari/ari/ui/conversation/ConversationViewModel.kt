@@ -146,6 +146,10 @@ class ConversationViewModel @Inject constructor(
             handleCardDemo(text)
             return
         }
+        if (text.startsWith("/alert-demo")) {
+            handleAlertDemo(text)
+            return
+        }
 
         val userMessage = Message(text = text, isFromUser = true)
         _state.update { it.copy(messages = it.messages + userMessage, inputText = "", wakeWordDetected = false) }
@@ -252,6 +256,56 @@ class ConversationViewModel @Inject constructor(
             text = "Demo card injected: ${name ?: "anonymous"}, ${durSecs}s.",
             isFromUser = false,
             attachments = listOf(Attachment.Card(cardId)),
+        )
+        _state.update {
+            it.copy(messages = it.messages + userMessage + ariMessage, inputText = "")
+        }
+    }
+
+    /**
+     * `/alert-demo [name]` — fire a critical, full-takeover alert right now,
+     * bypassing the countdown. Also explicitly starts [dev.heyari.ari.notifications.AlertActivity]
+     * from the foreground so the lock-screen-style takeover UI is visible
+     * immediately — without this, Android's FSN heuristic suppresses the
+     * full-screen activity in favour of a heads-up whenever the emitting
+     * app is already top-of-stack (which we are, we're running the VM).
+     * The debugger doesn't need to lock the screen to see the takeover.
+     */
+    private fun handleAlertDemo(raw: String) {
+        val parts = raw.trim().split(Regex("\\s+"))
+        val name = parts.getOrNull(1)
+        val now = System.currentTimeMillis()
+        val alertId = "alert_demo-$now"
+        val title = name?.let { "${capitaliseFirst(it)} timer done" } ?: "Timer done"
+        val speech = name?.let { "${capitaliseFirst(it)} timer" }
+        val spec = AlertSpec(
+            id = alertId,
+            skillId = "demo.local",
+            title = title,
+            body = null,
+            urgency = AlertSpec.Urgency.CRITICAL,
+            sound = AlertSpec.SoundToken.ALARM,
+            speechLoop = speech,
+            autoStopMs = 120_000L,
+            maxCycles = 12,
+            fullTakeover = true,
+            actions = listOf(
+                AlertAction(
+                    id = "stop_alert",
+                    label = "Stop",
+                    utterance = null,
+                    style = AlertAction.Style.PRIMARY,
+                ),
+            ),
+            icon = null,
+        )
+        application.startForegroundService(AlertService.startIntent(application, spec))
+        application.startActivity(dev.heyari.ari.notifications.AlertActivity.intent(application, spec))
+
+        val userMessage = Message(text = raw, isFromUser = true)
+        val ariMessage = Message(
+            text = "Demo alert firing: ${name ?: "anonymous"}.",
+            isFromUser = false,
         )
         _state.update {
             it.copy(messages = it.messages + userMessage + ariMessage, inputText = "")
