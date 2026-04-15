@@ -88,11 +88,19 @@ fun SkillSettingsPanel(
 ) {
     if (fields.isEmpty()) return
 
+    // Index by key so the visibility check can look up the
+    // referenced controller field in O(1). The state refreshes
+    // whenever the ViewModel re-fetches after a setSkillSetting
+    // write, so editing the controller reactively hides/shows gated
+    // fields without any extra wiring here.
+    val byKey = remember(fields) { fields.associateBy { it.key } }
+
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         for (field in fields) {
+            if (!isVisible(field, byKey)) continue
             when (field.fieldType) {
                 "text" -> TextField(field, onValueChange)
                 "secret" -> SecretField(field, onValueChange)
@@ -105,6 +113,26 @@ fun SkillSettingsPanel(
             }
         }
     }
+}
+
+/**
+ * Resolve `show_when` against the effective value of the referenced
+ * field. Effective value = currentValue (what the user's stored), or
+ * defaultValue (what the skill author declared) if nothing's stored
+ * yet. Missing controller → hide defensively (the parser should have
+ * rejected this at publish time, so seeing it here means either a
+ * stale client build or a tampered bundle — either way, show-nothing
+ * is the safer outcome than surfacing a field whose intended
+ * visibility gate we can't evaluate).
+ */
+private fun isVisible(
+    field: FfiConfigField,
+    byKey: Map<String, FfiConfigField>,
+): Boolean {
+    val controllerKey = field.showWhenKey ?: return true
+    val controller = byKey[controllerKey] ?: return false
+    val effective = controller.currentValue ?: controller.defaultValue ?: return false
+    return effective in field.showWhenEquals
 }
 
 @Composable

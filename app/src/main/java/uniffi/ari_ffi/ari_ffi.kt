@@ -3163,6 +3163,18 @@ data class FfiConfigField (
     var `currentValue`: kotlin.String?
     , 
     var `options`: List<FfiSelectOption>
+    , 
+    /**
+     * Optional visibility gate — when non-null, the field should
+     * only render if the field identified by [`show_when_key`] has a
+     * current-or-default value matching one of [`show_when_equals`].
+     * Null means "always visible". Flat-pair surface because uniffi
+     * nested optional records are more awkward to consume than a
+     * flag + a list.
+     */
+    var `showWhenKey`: kotlin.String?
+    , 
+    var `showWhenEquals`: List<kotlin.String>
     
 ){
     
@@ -3186,6 +3198,8 @@ public object FfiConverterTypeFfiConfigField: FfiConverterRustBuffer<FfiConfigFi
             FfiConverterOptionalString.read(buf),
             FfiConverterOptionalString.read(buf),
             FfiConverterSequenceTypeFfiSelectOption.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterSequenceString.read(buf),
         )
     }
 
@@ -3196,7 +3210,9 @@ public object FfiConverterTypeFfiConfigField: FfiConverterRustBuffer<FfiConfigFi
             FfiConverterBoolean.allocationSize(value.`required`) +
             FfiConverterOptionalString.allocationSize(value.`defaultValue`) +
             FfiConverterOptionalString.allocationSize(value.`currentValue`) +
-            FfiConverterSequenceTypeFfiSelectOption.allocationSize(value.`options`)
+            FfiConverterSequenceTypeFfiSelectOption.allocationSize(value.`options`) +
+            FfiConverterOptionalString.allocationSize(value.`showWhenKey`) +
+            FfiConverterSequenceString.allocationSize(value.`showWhenEquals`)
     )
 
     override fun write(value: FfiConfigField, buf: ByteBuffer) {
@@ -3207,6 +3223,8 @@ public object FfiConverterTypeFfiConfigField: FfiConverterRustBuffer<FfiConfigFi
             FfiConverterOptionalString.write(value.`defaultValue`, buf)
             FfiConverterOptionalString.write(value.`currentValue`, buf)
             FfiConverterSequenceTypeFfiSelectOption.write(value.`options`, buf)
+            FfiConverterOptionalString.write(value.`showWhenKey`, buf)
+            FfiConverterSequenceString.write(value.`showWhenEquals`, buf)
     }
 }
 
