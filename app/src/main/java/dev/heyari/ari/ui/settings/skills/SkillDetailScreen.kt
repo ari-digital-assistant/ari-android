@@ -4,6 +4,8 @@ import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,16 +13,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -57,6 +61,12 @@ import uniffi.ari_ffi.FfiSkillManifest
  * commit to a download first. If the sidecar isn't available (older
  * index format) the screen falls back to the lightweight
  * [uniffi.ari_ffi.FfiBrowseEntry] fields.
+ *
+ * The install/uninstall action lives in the top bar's trailing slot so
+ * it's always a thumb-tap away, no matter how long the markdown body
+ * scrolls. Any long-running operation (install, manifest fetch) shows a
+ * small spinner in that same slot so the primary action region is
+ * always where the user expects to find feedback.
  */
 @Composable
 fun SkillDetailScreen(
@@ -102,8 +112,8 @@ fun SkillDetailScreen(
     // path below doesn't care which source supplied each field. Manifest
     // wins when present; browse-entry fills the gaps (and, for browse-only
     // skills, provides everything the registry index carries).
-    val view = remember(manifest, browseEntry, skillId) {
-        SkillDetailView.from(manifest, browseEntry, skillId)
+    val view = remember(manifest, browseEntry, skillId, isInstalledLocally) {
+        SkillDetailView.from(manifest, browseEntry, skillId, isInstalledLocally)
     }
     val busy = skillId in state.installingIds
 
@@ -130,58 +140,55 @@ fun SkillDetailScreen(
     }
 
     Scaffold(
-        topBar = { AriTopBar(title = view.title, onBack = onBack) },
+        topBar = {
+            AriTopBar(
+                title = view.title,
+                onBack = onBack,
+                actions = {
+                    InstallAction(
+                        busy = busy,
+                        installed = view.installed,
+                        onInstall = { viewModel.installById(skillId) },
+                        onUninstallRequest = { pendingUninstall = true },
+                    )
+                },
+            )
+        },
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(
-                text = view.title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-            )
-            if (view.version.isNotBlank()) {
+            // Subtitle: version + reverse-DNS id on one subdued line.
+            // The top bar already shows the human name, so we don't repeat
+            // it here — this row is just the machine-facts context.
+            val subtitle = buildSubtitle(view.version, skillId)
+            if (subtitle.isNotBlank()) {
                 Text(
-                    text = stringResource(R.string.skills_detail_version, view.version),
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = subtitle,
+                    style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Text(
-                text = skillId,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
 
             if (view.description.isNotBlank()) {
-                Spacer(Modifier.height(4.dp))
                 Text(
                     text = view.description,
                     style = MaterialTheme.typography.bodyLarge,
                 )
             }
 
-            if (state.detailManifestLoading) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.dp,
-                    )
-                }
-            }
-
-            if (view.hasAnyFacts) {
-                Spacer(Modifier.height(4.dp))
-                HorizontalDivider()
-                ManifestFacts(view = view)
+            // Facts card: either a loading placeholder (so the fallback
+            // browse fields don't briefly flash while the richer preview
+            // is fetching) or the populated facts, wrapped in a tonal
+            // Surface for visual grouping.
+            when {
+                state.detailManifestLoading -> FactsLoadingCard()
+                view.hasAnyFacts -> FactsCard(view = view)
             }
 
             if (view.body.isNotBlank()) {
@@ -210,26 +217,97 @@ fun SkillDetailScreen(
             }
 
             Spacer(Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                when {
-                    busy -> CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.dp,
-                    )
-                    view.installed -> OutlinedButton(onClick = { pendingUninstall = true }) {
-                        Text(stringResource(R.string.skills_uninstall))
-                    }
-                    else -> Button(onClick = { viewModel.installById(skillId) }) {
-                        Text(stringResource(R.string.skills_install))
-                    }
-                }
+        }
+    }
+}
+
+/**
+ * Top-bar trailing action: Install / Uninstall / spinner depending on
+ * state. Kept as a private composable so the Scaffold call site above
+ * stays readable.
+ *
+ * Install uses a filled-tonal button so it reads as the primary call-to-
+ * action without fighting the top bar's own tonal background. Uninstall
+ * is outlined — a destructive action sitting in an easy-to-tap corner
+ * wants a quieter affordance, and the existing confirm dialog catches
+ * any misfire anyway.
+ */
+@Composable
+private fun InstallAction(
+    busy: Boolean,
+    installed: Boolean,
+    onInstall: () -> Unit,
+    onUninstallRequest: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(end = 8.dp),
+    ) {
+        when {
+            busy -> CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                strokeWidth = 2.dp,
+            )
+            installed -> OutlinedButton(onClick = onUninstallRequest) {
+                Text(stringResource(R.string.skills_uninstall))
+            }
+            else -> FilledTonalButton(onClick = onInstall) {
+                Text(stringResource(R.string.skills_install))
             }
         }
     }
+}
+
+/**
+ * Grouped facts block (author / homepage / licence / languages /
+ * capabilities) rendered inside a tonal surface so it reads as one
+ * cohesive card rather than a loose ladder of label/value pairs.
+ */
+@Composable
+private fun FactsCard(view: SkillDetailView) {
+    Surface(
+        tonalElevation = 1.dp,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        ManifestFacts(
+            view = view,
+            modifier = Modifier.padding(16.dp),
+        )
+    }
+}
+
+/**
+ * Skeleton stand-in for the facts card while the manifest is fetching.
+ * Sized roughly to match the real card so the page doesn't jump when
+ * the facts land.
+ */
+@Composable
+private fun FactsLoadingCard() {
+    Surface(
+        tonalElevation = 1.dp,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                strokeWidth = 2.dp,
+            )
+        }
+    }
+}
+
+private fun buildSubtitle(version: String, skillId: String): String {
+    val parts = mutableListOf<String>()
+    if (version.isNotBlank()) parts.add(version)
+    parts.add(skillId)
+    return parts.joinToString(" · ")
 }
 
 /**
@@ -263,6 +341,7 @@ private data class SkillDetailView(
             manifest: FfiSkillManifest?,
             browse: uniffi.ari_ffi.FfiBrowseEntry?,
             fallbackId: String,
+            installed: Boolean,
         ): SkillDetailView {
             val title = manifest?.name?.takeIf { it.isNotBlank() }
                 ?: browse?.name?.takeIf { it.isNotBlank() }
@@ -270,7 +349,6 @@ private data class SkillDetailView(
             val version = manifest?.version ?: browse?.version ?: ""
             val description = manifest?.description?.takeIf { it.isNotBlank() }
                 ?: browse?.description.orEmpty()
-            val installed = manifest != null || browse?.installed == true
             return SkillDetailView(
                 title = title,
                 version = version,
@@ -289,10 +367,14 @@ private data class SkillDetailView(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ManifestFacts(view: SkillDetailView) {
+private fun ManifestFacts(view: SkillDetailView, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         view.author?.takeIf { it.isNotBlank() }?.let {
             FactRow(label = stringResource(R.string.skills_detail_author), value = it)
         }
@@ -316,7 +398,7 @@ private fun ManifestFacts(view: SkillDetailView) {
                 value = view.languages.joinToString(", "),
             )
         }
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
                 text = stringResource(R.string.skills_detail_capabilities),
                 style = MaterialTheme.typography.labelLarge,
@@ -328,7 +410,13 @@ private fun ManifestFacts(view: SkillDetailView) {
                     style = MaterialTheme.typography.bodyMedium,
                 )
             } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // FlowRow wraps onto multiple rows if the chips don't fit
+                // — skills with many capabilities used to overflow the
+                // screen edge on narrow devices.
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     for (cap in view.capabilities) {
                         AssistChip(onClick = {}, label = { Text(cap) })
                     }
@@ -338,21 +426,22 @@ private fun ManifestFacts(view: SkillDetailView) {
     }
 }
 
+/**
+ * Two-column key/value row. Label is fixed-width on the left so the
+ * values line up across rows; homepage gets the clickable affordance
+ * and switches to the primary accent so it reads as a link.
+ */
 @Composable
 private fun FactRow(label: String, value: String, onClick: (() -> Unit)? = null) {
-    Column(
-        modifier = if (onClick != null) {
-            Modifier
-                .fillMaxWidth()
-                .padding(vertical = 2.dp)
-        } else {
-            Modifier.fillMaxWidth()
-        },
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(96.dp),
         )
         Text(
             text = value,
