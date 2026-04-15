@@ -56,15 +56,21 @@
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
 
     <!--
-      OpenTasks access — needed by the reminder skill's Tasks / Both
-      destination modes. The OpenTasks ContentProvider authority is
-      `org.dmfs.tasks`, surfaced by Tasks.org / OpenTasks / jtx Board /
-      etc. The permissions are custom-defined by those apps, so the
-      grant is contingent on at least one provider being installed —
-      we silently no-op the Tasks branch when it isn't.
+      OpenTasks-compatible task provider access — needed by the
+      reminder skill's Tasks / Both destination modes. Unfortunately
+      there's no single universal authority: OpenTasks-the-original
+      registers `org.dmfs.tasks` with `org.dmfs.permission.*`, Tasks.org
+      forks the same provider class under `org.tasks.opentasks` with
+      its own `org.tasks.permission.*` namespace, and other compatible
+      apps pick their own conventions again. We declare both
+      permission sets up front so the runtime grant works regardless
+      of which provider the user's chosen app exposes — Android
+      silently drops permissions whose target isn't installed.
     -->
     <uses-permission android:name="org.dmfs.permission.READ_TASKS" />
     <uses-permission android:name="org.dmfs.permission.WRITE_TASKS" />
+    <uses-permission android:name="org.tasks.permission.READ_TASKS" />
+    <uses-permission android:name="org.tasks.permission.WRITE_TASKS" />
 
     <queries>
         <intent>
@@ -80,12 +86,14 @@
         </intent>
         <!--
           Package visibility (API 30+) — without this we can't even
-          probe the OpenTasks ContentProvider authority to see if any
-          provider app is installed. Listing the authority by name is
-          the documented Android pattern for "let me talk to whoever
-          provides this".
+          probe the OpenTasks-compatible ContentProvider authorities to
+          see if any provider app is installed. Each compatible app
+          picks its own authority name, so we list every one we know
+          about up front. TasksProvider tries each in turn and uses
+          whichever the package manager reports as installed.
         -->
         <provider android:authorities="org.dmfs.tasks" />
+        <provider android:authorities="org.tasks.opentasks" />
     </queries>
 
     <application

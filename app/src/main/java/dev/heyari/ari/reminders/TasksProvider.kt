@@ -3,8 +3,10 @@ package dev.heyari.ari.reminders
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.util.Log
+import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -40,19 +42,72 @@ class TasksProvider @Inject constructor(
     )
 
     /**
-     * Whether any installed app provides the OpenTasks ContentProvider
-     * authority. Cheap call — just a `PackageManager.resolveContentProvider`
-     * lookup, no permission needed.
+     * The authority of the first installed OpenTasks-compatible
+     * provider, or null if none is installed. Resolved every call —
+     * cheap (PackageManager lookup) and correct across app
+     * install/uninstall without a caching dance.
      */
-    fun isProviderInstalled(): Boolean {
-        return runCatching {
-            context.packageManager.resolveContentProvider(AUTHORITY, 0) != null
-        }.getOrDefault(false)
+    private fun resolveAuthority(): String? {
+        for (authority in KNOWN_AUTHORITIES) {
+            val found = runCatching {
+                context.packageManager.resolveContentProvider(authority, 0) != null
+            }.getOrDefault(false)
+            if (found) return authority
+        }
+        return null
+    }
+
+    /**
+     * Whether any installed app provides an OpenTasks-compatible
+     * ContentProvider. Cheap call — `PackageManager.resolveContentProvider`
+     * against each known authority until one hits.
+     */
+    fun isProviderInstalled(): Boolean = resolveAuthority() != null
+
+    /**
+     * The authority string of the currently-installed provider, or
+     * null if none is installed. Exposed publicly so the UI can tune
+     * its messaging per provider — Tasks.org's OpenTasks bridge has a
+     * specific known limitation (CalDAV-synced lists only) that's
+     * worth calling out when the picker comes back empty.
+     */
+    fun currentAuthority(): String? = resolveAuthority()
+
+    /**
+     * The runtime read-permission the currently-installed provider
+     * expects, or null if no provider is installed. Each compatible
+     * app defines its own permission namespace: OpenTasks uses
+     * `org.dmfs.permission.*`, Tasks.org uses `org.tasks.permission.*`.
+     * We declare both in the manifest and look up the right one based
+     * on whichever provider we resolved.
+     */
+    fun requiredReadPermission(): String? = permissionFor(resolveAuthority())
+
+    /** Same as [requiredReadPermission] but for writes. */
+    fun requiredWritePermission(): String? = permissionFor(resolveAuthority(), write = true)
+
+    private fun permissionFor(authority: String?, write: Boolean = false): String? {
+        val perm = when (authority) {
+            "org.dmfs.tasks" -> if (write) "org.dmfs.permission.WRITE_TASKS" else "org.dmfs.permission.READ_TASKS"
+            "org.tasks.opentasks" -> if (write) "org.tasks.permission.WRITE_TASKS" else "org.tasks.permission.READ_TASKS"
+            else -> return null
+        }
+        return perm
+    }
+
+    /**
+     * Whether the runtime tasks read permission is granted for the
+     * currently-installed provider. Null authority → false (no
+     * provider to be granted against).
+     */
+    fun hasReadPermission(): Boolean {
+        val perm = requiredReadPermission() ?: return false
+        return ContextCompat.checkSelfPermission(context, perm) == PackageManager.PERMISSION_GRANTED
     }
 
     /**
      * Every task list the user has. Empty if no provider is installed
-     * or if the OpenTasks-defined READ_TASKS permission isn't granted.
+     * or the per-provider READ_TASKS permission isn't granted yet.
      * Sorted by display name.
      *
      * No "writable filter" like the calendar helper — OpenTasks
@@ -60,16 +115,16 @@ class TasksProvider @Inject constructor(
      * so we trust whatever the provider hands us.
      */
     fun listTaskLists(): List<DeviceTaskList> {
-        if (!isProviderInstalled()) return emptyList()
-
+        val authority = resolveAuthority() ?: return emptyList()
+        val listsUri = Uri.parse("content://$authority/tasklists")
         val out = mutableListOf<DeviceTaskList>()
         val projection = arrayOf(LISTS_ID, LISTS_NAME, LISTS_ACCOUNT_NAME)
 
         runCatching {
-            context.contentResolver.query(LISTS_URI, projection, null, null, null)
+            context.contentResolver.query(listsUri, projection, null, null, null)
         }
             .onFailure { e ->
-                Log.w(TAG, "task list query failed: ${e.message}")
+                Log.w(TAG, "task list query on $authority failed: ${e.message}")
             }
             .getOrNull()
             ?.use { cursor ->
@@ -108,10 +163,11 @@ class TasksProvider @Inject constructor(
         dueMillis: Long? = null,
         dueAllDay: Boolean = false,
     ): Long? {
-        if (!isProviderInstalled()) {
-            Log.w(TAG, "insertTask: no OpenTasks provider installed")
+        val authority = resolveAuthority() ?: run {
+            Log.w(TAG, "insertTask: no OpenTasks-compatible provider installed")
             return null
         }
+        val tasksUri = Uri.parse("content://$authority/tasks")
 
         val values = ContentValues().apply {
             put(TASKS_LIST_ID, taskListId)
@@ -135,7 +191,7 @@ class TasksProvider @Inject constructor(
         }
 
         val taskUri = runCatching {
-            context.contentResolver.insert(TASKS_URI, values)
+            context.contentResolver.insert(tasksUri, values)
         }
             .onFailure { e ->
                 Log.w(TAG, "task insert failed: ${e.message}")
@@ -149,8 +205,23 @@ class TasksProvider @Inject constructor(
     companion object {
         private const val TAG = "TasksProvider"
 
-        /** OpenTasks ContentProvider authority. Stable since 2014. */
-        const val AUTHORITY = "org.dmfs.tasks"
+        /**
+         * Authorities we'll probe for an OpenTasks-compatible provider,
+         * in probe order. Each compatible app picks its own name, so
+         * "does the user have a tasks app" is a list-scan rather than
+         * a single lookup. Keep the manifest `<queries><provider>`
+         * entries in sync with this list or API 30+ package visibility
+         * will hide otherwise-installed apps from us.
+         *
+         * Known entries:
+         * - `org.dmfs.tasks` — OpenTasks (the original reference app).
+         * - `org.tasks.opentasks` — Tasks.org (forks the OpenTasks
+         *   provider class but registers under its own authority).
+         */
+        private val KNOWN_AUTHORITIES = listOf(
+            "org.dmfs.tasks",
+            "org.tasks.opentasks",
+        )
 
         // Column names taken from the OpenTasks schema documented at
         // https://github.com/dmfs/opentasks/blob/master/opentasks-contract/
@@ -158,9 +229,9 @@ class TasksProvider @Inject constructor(
         // Hard-coded as strings rather than depending on the contract
         // library — adds a single transitive Maven dep for half a
         // dozen string constants we'd never want to change anyway.
-
-        private val LISTS_URI: Uri = Uri.parse("content://$AUTHORITY/tasklists")
-        private val TASKS_URI: Uri = Uri.parse("content://$AUTHORITY/tasks")
+        // Both Tasks.org and OpenTasks use these identical column
+        // names because Tasks.org uses the OpenTasks TaskProvider
+        // implementation directly.
 
         // tasklists columns
         private const val LISTS_ID = "_id"

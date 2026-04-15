@@ -356,12 +356,23 @@ private fun DeviceTaskListField(
     // come back, and we want the picker to light up without a
     // restart.
     var providerInstalled by remember { mutableStateOf(provider.isProviderInstalled()) }
-    var taskLists by remember(providerInstalled) {
-        mutableStateOf(if (providerInstalled) provider.listTaskLists() else emptyList())
+    var hasPerm by remember(providerInstalled) {
+        mutableStateOf(providerInstalled && provider.hasReadPermission())
+    }
+    var taskLists by remember(providerInstalled, hasPerm) {
+        mutableStateOf(if (providerInstalled && hasPerm) provider.listTaskLists() else emptyList())
     }
     LaunchedEffect(Unit) {
         providerInstalled = provider.isProviderInstalled()
-        if (providerInstalled) taskLists = provider.listTaskLists()
+        hasPerm = providerInstalled && provider.hasReadPermission()
+        if (providerInstalled && hasPerm) taskLists = provider.listTaskLists()
+    }
+
+    val tasksPermLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        hasPerm = granted
+        if (granted) taskLists = provider.listTaskLists()
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -376,15 +387,51 @@ private fun DeviceTaskListField(
                 modifier = Modifier.padding(start = 8.dp),
                 onRefresh = {
                     providerInstalled = provider.isProviderInstalled()
-                    if (providerInstalled) taskLists = provider.listTaskLists()
+                    hasPerm = providerInstalled && provider.hasReadPermission()
+                    if (providerInstalled && hasPerm) taskLists = provider.listTaskLists()
                 },
             )
             return@Column
         }
 
-        if (taskLists.isEmpty()) {
+        if (!hasPerm) {
+            // Runtime-granted dangerous perm — each compatible app
+            // defines its own namespace (org.dmfs.* vs org.tasks.*).
+            // The provider helper hands back whichever one matches
+            // the resolved authority.
+            val perm = provider.requiredReadPermission()
             Text(
-                text = "No task lists found. Open your tasks app and create one, then come back.",
+                text = "Access to your tasks app is needed to list your task lists.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 8.dp),
+            )
+            FilledTonalButton(
+                onClick = { perm?.let(tasksPermLauncher::launch) },
+                modifier = Modifier.padding(start = 8.dp, top = 4.dp),
+                enabled = perm != null,
+            ) { Text("Allow tasks access") }
+            return@Column
+        }
+
+        if (taskLists.isEmpty()) {
+            // Tasks.org's OpenTasks bridge deliberately only publishes
+            // CalDAV-synced lists, not local-only ones — a known
+            // limitation that will absolutely bite a user with a
+            // fresh Tasks.org install and no sync account. Call it
+            // out specifically rather than suggesting they "create a
+            // list", because their local lists already exist; the
+            // bridge just doesn't forward them.
+            val authority = provider.currentAuthority()
+            val message = if (authority == "org.tasks.opentasks") {
+                "Tasks.org only exposes CalDAV-synced lists here, not local-only lists. " +
+                    "Either add a CalDAV account in Tasks.org, or install OpenTasks for " +
+                    "local-list support."
+            } else {
+                "No task lists found. Open your tasks app and create one, then come back."
+            }
+            Text(
+                text = message,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 8.dp),
@@ -443,12 +490,13 @@ private fun NoTasksAppCard(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = "No tasks app installed",
+                text = "No compatible tasks app",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "Ari saves reminders to your tasks app. Install one of these and come back:",
+                text = "Ari saves reminders through the OpenTasks bridge. OpenTasks is recommended — " +
+                    "Tasks.org works too but only exposes its CalDAV-synced lists, not local-only ones.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -520,29 +568,29 @@ private data class TasksAppSuggestion(
 )
 
 /**
- * Hand-picked OpenTasks-compatible apps. All FOSS or close to it,
- * all on Play Store, all known to register the OpenTasks
- * ContentProvider authority at install time.
+ * Hand-picked OpenTasks-compatible apps, in recommendation order.
+ *
+ * OpenTasks (the dmfs reference app) leads because it's the only
+ * widely-used option that exposes *local* task lists through its
+ * ContentProvider — Tasks.org deliberately confines its OpenTasks
+ * bridge to CalDAV-synced lists, so a user running Tasks.org with no
+ * sync account will find Ari can't see any of their lists. The
+ * NoTasksAppCard copy calls that out.
  */
 private val TASKS_APP_SUGGESTIONS = listOf(
     TasksAppSuggestion(
-        "org.tasks",
-        "Tasks.org",
-        "Open-source, syncs with CalDAV / Google / Microsoft.",
+        "org.dmfs.tasks",
+        "OpenTasks",
+        "Recommended — reference implementation, exposes local task lists directly.",
     ),
     TasksAppSuggestion(
-        "at.bitfire.davdroid",
-        "DAVx⁵ + OpenTasks",
-        "Pair with the OpenTasks app for full CalDAV task sync.",
+        "org.tasks",
+        "Tasks.org",
+        "Only exposes CalDAV-synced lists to Ari. Local-only lists won't appear.",
     ),
     TasksAppSuggestion(
         "at.techbee.jtx",
         "jtx Board",
         "Journals, notes and tasks in one CalDAV-syncing app.",
-    ),
-    TasksAppSuggestion(
-        "org.dmfs.tasks",
-        "OpenTasks",
-        "Reference implementation of the OpenTasks provider.",
     ),
 )
