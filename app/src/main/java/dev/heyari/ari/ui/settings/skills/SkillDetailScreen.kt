@@ -21,12 +21,18 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -47,6 +53,8 @@ import com.halilibo.richtext.commonmark.Markdown
 import com.halilibo.richtext.ui.material3.RichText
 import dev.heyari.ari.R
 import dev.heyari.ari.ui.components.AriTopBar
+import dev.heyari.ari.ui.components.SkillSettingsPanel
+import uniffi.ari_ffi.FfiConfigField
 import uniffi.ari_ffi.FfiSkillManifest
 
 /**
@@ -73,10 +81,29 @@ fun SkillDetailScreen(
     skillId: String,
     source: String,
     onBack: () -> Unit,
+    /**
+     * Fires once when the user installs this skill from a browse-source
+     * detail view (i.e. arrived here via Browse, then tapped Install).
+     * The NavHost wires this to drop a one-shot signal on the previous
+     * back stack entry's SavedStateHandle so [SkillsScreen] can switch
+     * to the Installed tab on resume — saving the user from being
+     * dumped back into the Browse list when their intent is now clearly
+     * "go look at my installed skills".
+     */
+    onJustInstalledFromBrowse: () -> Unit = {},
     viewModel: SkillsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var pendingUninstall by remember { mutableStateOf(false) }
+    // Remember whether this skill was already installed when we arrived
+    // — only fire the "just installed from browse" signal on a real
+    // not-installed → installed transition, never for skills the user
+    // tapped in via Installed tab in the first place.
+    val wasInstalledOnEntry = remember(skillId) {
+        state.installed.any { it.id == skillId } ||
+            state.browse.firstOrNull { it.id == skillId }?.installed == true
+    }
+    var firedJustInstalled by remember(skillId) { mutableStateOf(false) }
 
     // Pull browse list if needed for browse-source deep links, and the
     // manifest for anything actually installed. Clear the cached manifest
@@ -89,18 +116,37 @@ fun SkillDetailScreen(
     }
     val isInstalledLocally = state.installed.any { it.id == skillId } ||
         state.browse.firstOrNull { it.id == skillId }?.installed == true
+    // Fire the "switch to Installed tab" signal exactly once, the moment
+    // we observe the install completing. Guarded by source == "browse"
+    // (so re-entries from Installed tab never trip it) and by a saved-
+    // state-backed flag (so a process restart between install and back
+    // doesn't replay the jump).
+    LaunchedEffect(isInstalledLocally) {
+        if (source == "browse" &&
+            isInstalledLocally &&
+            !wasInstalledOnEntry &&
+            !firedJustInstalled
+        ) {
+            firedJustInstalled = true
+            onJustInstalledFromBrowse()
+        }
+    }
     // Pick the right source for the rich manifest: local SKILL.md for
     // installed skills, registry preview sidecar for browse-only. Both
     // land in state.detailManifest, so the render path doesn't care.
     LaunchedEffect(skillId, isInstalledLocally) {
         if (isInstalledLocally) {
             viewModel.loadInstalledManifest(skillId)
+            viewModel.loadSkillSettings(skillId)
         } else {
             viewModel.loadBrowseManifestPreview(skillId)
         }
     }
     DisposableEffect(skillId) {
-        onDispose { viewModel.clearDetailManifest() }
+        onDispose {
+            viewModel.clearDetailManifest()
+            viewModel.clearSkillSettings()
+        }
     }
 
     val browseEntry = remember(state.browse, skillId) {
@@ -182,29 +228,55 @@ fun SkillDetailScreen(
                 )
             }
 
-            // Facts card: either a loading placeholder (so the fallback
-            // browse fields don't briefly flash while the richer preview
-            // is fetching) or the populated facts, wrapped in a tonal
-            // Surface for visual grouping.
-            when {
-                state.detailManifestLoading -> FactsLoadingCard()
-                view.hasAnyFacts -> FactsCard(view = view)
-            }
-
-            if (view.body.isNotBlank()) {
-                HorizontalDivider()
-                Text(
-                    text = stringResource(R.string.skills_detail_about),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+            // Two layout flavours:
+            //   - Installed: settings inline (always visible since they're
+            //     the thing the user opens this screen to tweak), then a
+            //     collapsible "Skill detail" wrapping the facts card +
+            //     about body. Collapsed by default — once installed,
+            //     description + settings are usually all you need.
+            //   - Browse: facts card and about body inline as before, no
+            //     settings (nothing to configure on a not-yet-installed
+            //     skill).
+            if (view.installed) {
+                val hasSettingsSection =
+                    state.detailSettings.isNotEmpty() || state.detailSettingsLoading
+                if (hasSettingsSection) {
+                    SettingsSection(
+                        loading = state.detailSettingsLoading,
+                        fields = state.detailSettings,
+                        onValueChange = { key, value, isSecret ->
+                            viewModel.setSkillSetting(skillId, key, value, isSecret)
+                        },
+                    )
+                }
+                // No settings to compete with → no reason to hide the
+                // detail behind a tap. Expand by default so the screen
+                // doesn't feel like an empty shell.
+                CollapsibleSkillDetail(
+                    view = view,
+                    manifestLoading = state.detailManifestLoading,
+                    initiallyExpanded = !hasSettingsSection,
                 )
-                // Render the SKILL.md body as GFM markdown via compose-richtext.
-                // The material3 bridge picks up our MaterialTheme typography
-                // and colour scheme automatically, so headings, inline code,
-                // bullet / numbered lists, bold/italic, links, and tables all
-                // come out theme-consistent without per-element styling here.
-                RichText {
-                    Markdown(content = view.body.trim())
+            } else {
+                when {
+                    state.detailManifestLoading -> FactsLoadingCard()
+                    view.hasAnyFacts -> FactsCard(view = view)
+                }
+                if (view.body.isNotBlank()) {
+                    HorizontalDivider()
+                    Text(
+                        text = stringResource(R.string.skills_detail_about),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    // Render the SKILL.md body as GFM markdown via compose-richtext.
+                    // The material3 bridge picks up our MaterialTheme typography
+                    // and colour scheme automatically, so headings, inline code,
+                    // bullet / numbered lists, bold/italic, links, and tables all
+                    // come out theme-consistent without per-element styling here.
+                    RichText {
+                        Markdown(content = view.body.trim())
+                    }
                 }
             }
 
@@ -217,6 +289,120 @@ fun SkillDetailScreen(
             }
 
             Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+/**
+ * Always-visible settings card for installed skills. Wraps the shared
+ * [SkillSettingsPanel] in a tonal Surface (matching the facts card
+ * styling) plus a "Settings" header so the section reads as a
+ * deliberate first-class part of the page rather than a loose form.
+ *
+ * Shown for any installed skill that declares one or more entries in
+ * its `metadata.ari.settings` schema. Skills with no settings simply
+ * don't get this section — the screen still has the description and
+ * the collapsible detail below it.
+ */
+@Composable
+private fun SettingsSection(
+    loading: Boolean,
+    fields: List<FfiConfigField>,
+    onValueChange: (key: String, value: String, isSecret: Boolean) -> Unit,
+) {
+    Surface(
+        tonalElevation = 1.dp,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Tune,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = stringResource(R.string.skills_detail_settings),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            if (loading) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                    )
+                }
+            } else {
+                SkillSettingsPanel(
+                    fields = fields,
+                    onValueChange = onValueChange,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Collapsible "Skill detail" wrapping the facts card + about body.
+ * Collapsed by default for installed skills — once you've installed
+ * something, the manifest body is reference material rather than
+ * decision material, and shouldn't push the settings off the screen.
+ */
+@Composable
+private fun CollapsibleSkillDetail(
+    view: SkillDetailView,
+    manifestLoading: Boolean,
+    initiallyExpanded: Boolean = false,
+) {
+    var expanded by remember(initiallyExpanded) { mutableStateOf(initiallyExpanded) }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded }
+                .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.skills_detail_skill_detail),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(onClick = { expanded = !expanded }) {
+                Icon(
+                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                )
+            }
+        }
+        if (expanded) {
+            when {
+                manifestLoading -> FactsLoadingCard()
+                view.hasAnyFacts -> FactsCard(view = view)
+            }
+            if (view.body.isNotBlank()) {
+                Text(
+                    text = stringResource(R.string.skills_detail_about),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                RichText {
+                    Markdown(content = view.body.trim())
+                }
+            }
         }
     }
 }

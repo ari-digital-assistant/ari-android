@@ -662,11 +662,15 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_assistantregistry_set_assistant_config_value(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_skillsettingsstore_set_value(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_skillregistry_browse_registry(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_skillregistry_check_for_updates(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_skillregistry_fetch_manifest_preview(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_skillregistry_get_skill_settings(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_skillregistry_install_skill_by_id(
     ): Short
@@ -676,11 +680,15 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_skillregistry_read_installed_manifest(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_skillregistry_set_skill_setting(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_skillregistry_uninstall_skill_by_id(
     ): Short
     external fun uniffi_ari_ffi_checksum_constructor_ariengine_new(
     ): Short
     external fun uniffi_ari_ffi_checksum_constructor_assistantregistry_new(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_constructor_skillsettingsstore_new(
     ): Short
     external fun uniffi_ari_ffi_checksum_constructor_skillregistry_new(
     ): Short
@@ -703,171 +711,183 @@ internal object UniffiLib {
         
     }
     external fun uniffi_ari_ffi_fn_clone_ariengine(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Long
-    external fun uniffi_ari_ffi_fn_free_ariengine(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    external fun uniffi_ari_ffi_fn_constructor_ariengine_new(uniffi_out_err: UniffiRustCallStatus, 
-    ): Long
-    external fun uniffi_ari_ffi_fn_method_ariengine_load_llm_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): Byte
-    external fun uniffi_ari_ffi_fn_method_ariengine_load_router_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): Byte
-    external fun uniffi_ari_ffi_fn_method_ariengine_process_input(`ptr`: Long,`input`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_ari_ffi_fn_method_ariengine_reload_community_skills(`ptr`: Long,`skillStoreDir`: RustBuffer.ByValue,`storageDir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): Int
-    external fun uniffi_ari_ffi_fn_method_ariengine_unload_llm_model(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    external fun uniffi_ari_ffi_fn_method_ariengine_unload_router_model(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    external fun uniffi_ari_ffi_fn_clone_assistantregistry(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Long
-    external fun uniffi_ari_ffi_fn_free_assistantregistry(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    external fun uniffi_ari_ffi_fn_constructor_assistantregistry_new(`skillStoreDir`: RustBuffer.ByValue,`storageDir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): Long
-    external fun uniffi_ari_ffi_fn_method_assistantregistry_apply_to_engine(`ptr`: Long,`engine`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    external fun uniffi_ari_ffi_fn_method_assistantregistry_get_active_assistant(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_ari_ffi_fn_method_assistantregistry_get_assistant_config(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_ari_ffi_fn_method_assistantregistry_list_assistants(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_ari_ffi_fn_method_assistantregistry_reload_community_assistants(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    external fun uniffi_ari_ffi_fn_method_assistantregistry_set_active_assistant(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    external fun uniffi_ari_ffi_fn_method_assistantregistry_set_assistant_config_value(`ptr`: Long,`skillId`: RustBuffer.ByValue,`key`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    external fun uniffi_ari_ffi_fn_clone_skillregistry(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Long
-    external fun uniffi_ari_ffi_fn_free_skillregistry(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    external fun uniffi_ari_ffi_fn_constructor_skillregistry_new(`skillStoreDir`: RustBuffer.ByValue,`storageDir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): Long
-    external fun uniffi_ari_ffi_fn_method_skillregistry_browse_registry(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_ari_ffi_fn_method_skillregistry_check_for_updates(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_ari_ffi_fn_method_skillregistry_fetch_manifest_preview(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_ari_ffi_fn_method_skillregistry_install_skill_by_id(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_ari_ffi_fn_method_skillregistry_install_skill_update(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_ari_ffi_fn_method_skillregistry_list_installed(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_ari_ffi_fn_method_skillregistry_read_installed_manifest(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_ari_ffi_fn_method_skillregistry_uninstall_skill_by_id(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    external fun ffi_ari_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun ffi_ari_ffi_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun ffi_ari_ffi_rustbuffer_free(`buf`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    external fun ffi_ari_ffi_rustbuffer_reserve(`buf`: RustBuffer.ByValue,`additional`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun ffi_ari_ffi_rust_future_poll_u8(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_cancel_u8(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_free_u8(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_complete_u8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Byte
-    external fun ffi_ari_ffi_rust_future_poll_i8(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_cancel_i8(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_free_i8(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_complete_i8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Byte
-    external fun ffi_ari_ffi_rust_future_poll_u16(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_cancel_u16(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_free_u16(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_complete_u16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Short
-    external fun ffi_ari_ffi_rust_future_poll_i16(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_cancel_i16(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_free_i16(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_complete_i16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Short
-    external fun ffi_ari_ffi_rust_future_poll_u32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_cancel_u32(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_free_u32(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_complete_u32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Int
-    external fun ffi_ari_ffi_rust_future_poll_i32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_cancel_i32(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_free_i32(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_complete_i32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Int
-    external fun ffi_ari_ffi_rust_future_poll_u64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_cancel_u64(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_free_u64(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_complete_u64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Long
-    external fun ffi_ari_ffi_rust_future_poll_i64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_cancel_i64(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_free_i64(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_complete_i64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Long
-    external fun ffi_ari_ffi_rust_future_poll_f32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_cancel_f32(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_free_f32(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_complete_f32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Float
-    external fun ffi_ari_ffi_rust_future_poll_f64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_cancel_f64(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_free_f64(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_complete_f64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Double
-    external fun ffi_ari_ffi_rust_future_poll_rust_buffer(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_cancel_rust_buffer(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_free_rust_buffer(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_complete_rust_buffer(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun ffi_ari_ffi_rust_future_poll_void(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_cancel_void(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_free_void(`handle`: Long,
-    ): Unit
-    external fun ffi_ari_ffi_rust_future_complete_void(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
+): Long
+external fun uniffi_ari_ffi_fn_free_ariengine(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_constructor_ariengine_new(uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun uniffi_ari_ffi_fn_method_ariengine_load_llm_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Byte
+external fun uniffi_ari_ffi_fn_method_ariengine_load_router_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Byte
+external fun uniffi_ari_ffi_fn_method_ariengine_process_input(`ptr`: Long,`input`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_ariengine_reload_community_skills(`ptr`: Long,`skillStoreDir`: RustBuffer.ByValue,`storageDir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Int
+external fun uniffi_ari_ffi_fn_method_ariengine_unload_llm_model(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ariengine_unload_router_model(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_clone_assistantregistry(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun uniffi_ari_ffi_fn_free_assistantregistry(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_constructor_assistantregistry_new(`skillStoreDir`: RustBuffer.ByValue,`storageDir`: RustBuffer.ByValue,`settingsStore`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun uniffi_ari_ffi_fn_method_assistantregistry_apply_to_engine(`ptr`: Long,`engine`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_assistantregistry_get_active_assistant(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_assistantregistry_get_assistant_config(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_assistantregistry_list_assistants(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_assistantregistry_reload_community_assistants(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_assistantregistry_set_active_assistant(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_assistantregistry_set_assistant_config_value(`ptr`: Long,`skillId`: RustBuffer.ByValue,`key`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_clone_skillsettingsstore(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun uniffi_ari_ffi_fn_free_skillsettingsstore(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_constructor_skillsettingsstore_new(uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun uniffi_ari_ffi_fn_method_skillsettingsstore_set_value(`ptr`: Long,`skillId`: RustBuffer.ByValue,`key`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_clone_skillregistry(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun uniffi_ari_ffi_fn_free_skillregistry(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_constructor_skillregistry_new(`skillStoreDir`: RustBuffer.ByValue,`storageDir`: RustBuffer.ByValue,`settingsStore`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun uniffi_ari_ffi_fn_method_skillregistry_browse_registry(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_skillregistry_check_for_updates(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_skillregistry_fetch_manifest_preview(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_skillregistry_get_skill_settings(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_skillregistry_install_skill_by_id(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_skillregistry_install_skill_update(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_skillregistry_list_installed(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_skillregistry_read_installed_manifest(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_skillregistry_set_skill_setting(`ptr`: Long,`skillId`: RustBuffer.ByValue,`key`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_skillregistry_uninstall_skill_by_id(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun ffi_ari_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun ffi_ari_ffi_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun ffi_ari_ffi_rustbuffer_free(`buf`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun ffi_ari_ffi_rustbuffer_reserve(`buf`: RustBuffer.ByValue,`additional`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun ffi_ari_ffi_rust_future_poll_u8(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_cancel_u8(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_free_u8(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_complete_u8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Byte
+external fun ffi_ari_ffi_rust_future_poll_i8(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_cancel_i8(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_free_i8(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_complete_i8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Byte
+external fun ffi_ari_ffi_rust_future_poll_u16(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_cancel_u16(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_free_u16(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_complete_u16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Short
+external fun ffi_ari_ffi_rust_future_poll_i16(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_cancel_i16(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_free_i16(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_complete_i16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Short
+external fun ffi_ari_ffi_rust_future_poll_u32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_cancel_u32(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_free_u32(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_complete_u32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Int
+external fun ffi_ari_ffi_rust_future_poll_i32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_cancel_i32(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_free_i32(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_complete_i32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Int
+external fun ffi_ari_ffi_rust_future_poll_u64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_cancel_u64(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_free_u64(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_complete_u64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun ffi_ari_ffi_rust_future_poll_i64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_cancel_i64(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_free_i64(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_complete_i64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun ffi_ari_ffi_rust_future_poll_f32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_cancel_f32(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_free_f32(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_complete_f32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Float
+external fun ffi_ari_ffi_rust_future_poll_f64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_cancel_f64(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_free_f64(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_complete_f64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Double
+external fun ffi_ari_ffi_rust_future_poll_rust_buffer(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_cancel_rust_buffer(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_free_rust_buffer(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_complete_rust_buffer(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun ffi_ari_ffi_rust_future_poll_void(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_cancel_void(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_free_void(`handle`: Long,
+): Unit
+external fun ffi_ari_ffi_rust_future_complete_void(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 
-        
+    
 }
 
 private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
@@ -917,7 +937,10 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_assistantregistry_set_active_assistant() != 65190.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_assistantregistry_set_assistant_config_value() != 11566.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_assistantregistry_set_assistant_config_value() != 37309.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_skillsettingsstore_set_value() != 42909.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_skillregistry_browse_registry() != 19077.toShort()) {
@@ -927,6 +950,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_skillregistry_fetch_manifest_preview() != 28579.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_skillregistry_get_skill_settings() != 22086.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_skillregistry_install_skill_by_id() != 24025.toShort()) {
@@ -941,16 +967,22 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_skillregistry_read_installed_manifest() != 7185.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ari_ffi_checksum_method_skillregistry_set_skill_setting() != 54661.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ari_ffi_checksum_method_skillregistry_uninstall_skill_by_id() != 56184.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_constructor_ariengine_new() != 23511.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_constructor_assistantregistry_new() != 58131.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_constructor_assistantregistry_new() != 53209.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_constructor_skillregistry_new() != 29338.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_constructor_skillsettingsstore_new() != 61835.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_constructor_skillregistry_new() != 44989.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -1803,7 +1835,10 @@ public interface AssistantRegistryInterface {
     fun `setActiveAssistant`(`id`: kotlin.String?)
     
     /**
-     * Set a config value for an assistant skill.
+     * Set a config value for an assistant skill. Equivalent to calling
+     * [`SkillSettingsStore::set_value`] directly — kept on this struct
+     * so the existing assistant settings UI doesn't need rewiring just
+     * to read its own writes.
      */
     fun `setAssistantConfigValue`(`skillId`: kotlin.String, `key`: kotlin.String, `value`: kotlin.String)
     
@@ -1834,12 +1869,12 @@ open class AssistantRegistry: Disposable, AutoCloseable, AssistantRegistryInterf
         this.handle = 0
         this.cleanable = null
     }
-    constructor(`skillStoreDir`: kotlin.String, `storageDir`: kotlin.String) :
+    constructor(`skillStoreDir`: kotlin.String, `storageDir`: kotlin.String, `settingsStore`: SkillSettingsStore) :
         this(UniffiWithHandle, 
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_ari_ffi_fn_constructor_assistantregistry_new(
     
-        FfiConverterString.lower(`skillStoreDir`),FfiConverterString.lower(`storageDir`),_status)
+        FfiConverterString.lower(`skillStoreDir`),FfiConverterString.lower(`storageDir`),FfiConverterTypeSkillSettingsStore.lower(`settingsStore`),_status)
 }
     )
 
@@ -2015,7 +2050,10 @@ open class AssistantRegistry: Disposable, AutoCloseable, AssistantRegistryInterf
 
     
     /**
-     * Set a config value for an assistant skill.
+     * Set a config value for an assistant skill. Equivalent to calling
+     * [`SkillSettingsStore::set_value`] directly — kept on this struct
+     * so the existing assistant settings UI doesn't need rewiring just
+     * to read its own writes.
      */override fun `setAssistantConfigValue`(`skillId`: kotlin.String, `key`: kotlin.String, `value`: kotlin.String)
         = 
     callWithHandle {
@@ -2216,6 +2254,28 @@ public interface SkillRegistryInterface {
     fun `fetchManifestPreview`(`id`: kotlin.String): FfiSkillManifest
     
     /**
+     * Read the user-configurable settings schema for an installed
+     * skill, with current values from the shared [`SkillSettingsStore`]
+     * merged in. Empty list if the skill declares no settings.
+     *
+     * Used by the per-skill detail page on Android to render an inline
+     * settings panel above the (collapsible) about/manifest section.
+     * Mirrors the shape of
+     * [`crate::AssistantRegistry::get_assistant_config`] so the same
+     * renderer composable works for both call sites — the only
+     * difference is the source of the schema (top-level
+     * `metadata.ari.settings` here, vs the assistant manifest there;
+     * after the migration both resolve to the same field, but we keep
+     * the dual entry points so neither caller has to know about the
+     * other's existence).
+     *
+     * Returns [`FfiRegistryError::NotInstalled`] if `id` isn't in the
+     * store, or [`FfiRegistryError::Manifest`] if SKILL.md fails to
+     * parse (shouldn't happen for skills we installed ourselves).
+     */
+    fun `getSkillSettings`(`id`: kotlin.String): List<FfiConfigField>
+    
+    /**
      * Download and install the registry's current version of `id`, even
      * if the skill isn't already installed locally. This is the "Browse →
      * tap install" path, complementing [`install_skill_update`] which is
@@ -2252,6 +2312,14 @@ public interface SkillRegistryInterface {
      * ourselves but possible if the user's tampered with the dir).
      */
     fun `readInstalledManifest`(`id`: kotlin.String): FfiSkillManifest
+    
+    /**
+     * Write a single setting value to the shared store. Equivalent to
+     * calling [`SkillSettingsStore::set_value`] directly — kept on this
+     * struct so the per-skill settings UI can flow through one
+     * dependency.
+     */
+    fun `setSkillSetting`(`skillId`: kotlin.String, `key`: kotlin.String, `value`: kotlin.String)
     
     /**
      * Remove an installed skill from disk and wipe its `storage_kv`
@@ -2299,14 +2367,16 @@ open class SkillRegistry: Disposable, AutoCloseable, SkillRegistryInterface
      * Open (or create) a skill store rooted at `skill_store_dir`, with
      * per-skill `storage_kv` files living under `storage_dir`. Both
      * paths should be inside the app's private files directory on
-     * Android (`context.filesDir`).
+     * Android (`context.filesDir`). `settings_store` is the shared
+     * in-memory mirror of per-skill settings — typically the same
+     * instance also handed to [`crate::AssistantRegistry::new`].
      */
-    constructor(`skillStoreDir`: kotlin.String, `storageDir`: kotlin.String) :
+    constructor(`skillStoreDir`: kotlin.String, `storageDir`: kotlin.String, `settingsStore`: SkillSettingsStore) :
         this(UniffiWithHandle, 
     uniffiRustCallWithError(FfiRegistryException) { _status ->
     UniffiLib.uniffi_ari_ffi_fn_constructor_skillregistry_new(
     
-        FfiConverterString.lower(`skillStoreDir`),FfiConverterString.lower(`storageDir`),_status)
+        FfiConverterString.lower(`skillStoreDir`),FfiConverterString.lower(`storageDir`),FfiConverterTypeSkillSettingsStore.lower(`settingsStore`),_status)
 }
     )
 
@@ -2464,6 +2534,40 @@ open class SkillRegistry: Disposable, AutoCloseable, SkillRegistryInterface
 
     
     /**
+     * Read the user-configurable settings schema for an installed
+     * skill, with current values from the shared [`SkillSettingsStore`]
+     * merged in. Empty list if the skill declares no settings.
+     *
+     * Used by the per-skill detail page on Android to render an inline
+     * settings panel above the (collapsible) about/manifest section.
+     * Mirrors the shape of
+     * [`crate::AssistantRegistry::get_assistant_config`] so the same
+     * renderer composable works for both call sites — the only
+     * difference is the source of the schema (top-level
+     * `metadata.ari.settings` here, vs the assistant manifest there;
+     * after the migration both resolve to the same field, but we keep
+     * the dual entry points so neither caller has to know about the
+     * other's existence).
+     *
+     * Returns [`FfiRegistryError::NotInstalled`] if `id` isn't in the
+     * store, or [`FfiRegistryError::Manifest`] if SKILL.md fails to
+     * parse (shouldn't happen for skills we installed ourselves).
+     */
+    @Throws(FfiRegistryException::class)override fun `getSkillSettings`(`id`: kotlin.String): List<FfiConfigField> {
+            return FfiConverterSequenceTypeFfiConfigField.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FfiRegistryException) { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_skillregistry_get_skill_settings(
+        it,
+        FfiConverterString.lower(`id`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
      * Download and install the registry's current version of `id`, even
      * if the skill isn't already installed locally. This is the "Browse →
      * tap install" path, complementing [`install_skill_update`] which is
@@ -2549,6 +2653,24 @@ open class SkillRegistry: Disposable, AutoCloseable, SkillRegistryInterface
 
     
     /**
+     * Write a single setting value to the shared store. Equivalent to
+     * calling [`SkillSettingsStore::set_value`] directly — kept on this
+     * struct so the per-skill settings UI can flow through one
+     * dependency.
+     */override fun `setSkillSetting`(`skillId`: kotlin.String, `key`: kotlin.String, `value`: kotlin.String)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_skillregistry_set_skill_setting(
+        it,
+        FfiConverterString.lower(`skillId`),FfiConverterString.lower(`key`),FfiConverterString.lower(`value`),_status)
+}
+    }
+    
+    
+
+    
+    /**
      * Remove an installed skill from disk and wipe its `storage_kv`
      * state. Returns [`FfiRegistryError::NotInstalled`] if `id` isn't in
      * the local store. The caller should invoke
@@ -2601,6 +2723,283 @@ public object FfiConverterTypeSkillRegistry: FfiConverter<SkillRegistry, Long> {
     override fun allocationSize(value: SkillRegistry) = 8UL
 
     override fun write(value: SkillRegistry, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a handle
+// to the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque handle to the underlying Rust struct.
+//     Method calls need to read this handle from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its handle should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the handle, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the handle, but is interrupted
+//      before it can pass the handle over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read handle value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * UniFFI handle exposed to Android. Construct once at app startup and
+ * inject into both registries; never construct two of these or the
+ * in-memory state will drift apart.
+ */
+public interface SkillSettingsStoreInterface {
+    
+    /**
+     * Write a single setting value into the shared store. Android calls
+     * this on every UI edit and during the startup hydration loop that
+     * reads from DataStore + EncryptedSharedPreferences.
+     */
+    fun `setValue`(`skillId`: kotlin.String, `key`: kotlin.String, `value`: kotlin.String)
+    
+    companion object
+}
+
+/**
+ * UniFFI handle exposed to Android. Construct once at app startup and
+ * inject into both registries; never construct two of these or the
+ * in-memory state will drift apart.
+ */
+open class SkillSettingsStore: Disposable, AutoCloseable, SkillSettingsStoreInterface
+{
+
+    @Suppress("UNUSED_PARAMETER")
+    /**
+     * @suppress
+     */
+    constructor(withHandle: UniffiWithHandle, handle: Long) {
+        this.handle = handle
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(handle))
+    }
+
+    /**
+     * @suppress
+     *
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noHandle: NoHandle) {
+        this.handle = 0
+        this.cleanable = null
+    }
+    constructor() :
+        this(UniffiWithHandle, 
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_constructor_skillsettingsstore_new(
+    
+        _status)
+}
+    )
+
+    protected val handle: Long
+    protected val cleanable: UniffiCleaner.Cleanable?
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithHandle(block: (handle: Long) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the handle being freed concurrently.
+        try {
+            return block(this.uniffiCloneHandle())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val handle: Long) : Runnable {
+        override fun run() {
+            if (handle == 0.toLong()) {
+                // Fake object created with `NoHandle`, don't try to free.
+                return;
+            }
+            uniffiRustCall { status ->
+                UniffiLib.uniffi_ari_ffi_fn_free_skillsettingsstore(handle, status)
+            }
+        }
+    }
+
+    /**
+     * @suppress
+     */
+    fun uniffiCloneHandle(): Long {
+        if (handle == 0.toLong()) {
+            throw InternalException("uniffiCloneHandle() called on NoHandle object");
+        }
+        return uniffiRustCall() { status ->
+            UniffiLib.uniffi_ari_ffi_fn_clone_skillsettingsstore(handle, status)
+        }
+    }
+
+    
+    /**
+     * Write a single setting value into the shared store. Android calls
+     * this on every UI edit and during the startup hydration loop that
+     * reads from DataStore + EncryptedSharedPreferences.
+     */override fun `setValue`(`skillId`: kotlin.String, `key`: kotlin.String, `value`: kotlin.String)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_skillsettingsstore_set_value(
+        it,
+        FfiConverterString.lower(`skillId`),FfiConverterString.lower(`key`),FfiConverterString.lower(`value`),_status)
+}
+    }
+    
+    
+
+    
+
+    
+
+
+    
+    
+    /**
+     * @suppress
+     */
+    companion object
+    
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSkillSettingsStore: FfiConverter<SkillSettingsStore, Long> {
+    override fun lower(value: SkillSettingsStore): Long {
+        return value.uniffiCloneHandle()
+    }
+
+    override fun lift(value: Long): SkillSettingsStore {
+        return SkillSettingsStore(UniffiWithHandle, value)
+    }
+
+    override fun read(buf: ByteBuffer): SkillSettingsStore {
+        return lift(buf.getLong())
+    }
+
+    override fun allocationSize(value: SkillSettingsStore) = 8UL
+
+    override fun write(value: SkillSettingsStore, buf: ByteBuffer) {
         buf.putLong(lower(value))
     }
 }

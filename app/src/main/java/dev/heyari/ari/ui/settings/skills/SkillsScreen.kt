@@ -50,11 +50,28 @@ import dev.heyari.ari.ui.components.AriTopBar
 import java.time.Duration
 import java.time.Instant
 
+/**
+ * SavedStateHandle key the [SkillDetailScreen] sets when an install
+ * happens during a browse-source visit. The Skills screen reads this
+ * one-shot signal on resume and switches to the Installed tab so the
+ * user lands on the row for the skill they just installed instead of
+ * being thrown back to the Browse list they came from.
+ */
+const val SKILLS_SHOW_INSTALLED_TAB_KEY = "skills_show_installed_tab"
+
 @Composable
 fun SkillsScreen(
     onBack: () -> Unit,
     onOpenDetail: (id: String, source: String) -> Unit,
     initialTypeFilter: String? = null,
+    /**
+     * Hook into the parent NavBackStackEntry's SavedStateHandle so the
+     * screen can pick up a "switch to Installed tab" signal that
+     * [SkillDetailScreen] dropped there after a browse-source install.
+     * Returns true once and only once; subsequent calls return false so
+     * recompositions don't replay the jump.
+     */
+    consumeShowInstalledTabFlag: () -> Boolean = { false },
     viewModel: SkillsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -67,6 +84,28 @@ fun SkillsScreen(
             0 -> viewModel.checkForUpdates()
             1 -> viewModel.browse()
         }
+    }
+
+    // Re-pull the installed list whenever this screen returns to the
+    // foreground. SkillsScreen and SkillDetailScreen are sibling
+    // composables in the NavHost, so each holds its own ViewModel
+    // instance — installs that happen on the detail screen don't
+    // automatically appear in this screen's `state.installed` list. A
+    // cheap full re-list on resume keeps the two views in sync without
+    // having to re-architect the VM scope, and it's just an in-memory
+    // store walk plus a sort, so the cost is negligible.
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.refresh()
+                if (consumeShowInstalledTabFlag()) {
+                    selectedTab = 0
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Scaffold(

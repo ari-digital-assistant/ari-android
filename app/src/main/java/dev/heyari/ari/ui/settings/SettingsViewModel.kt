@@ -591,6 +591,22 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Re-pull every assistant's config schema + current values from the
+     * shared in-memory store. Cheap call (just a HashMap walk per
+     * field), but necessary because the assistant list is otherwise
+     * only refreshed when [SettingsRepository.activeAssistantId]
+     * changes — and a setting written from the per-skill detail page
+     * doesn't trip that flow, so this screen can otherwise read stale
+     * values when revisited after such a write.
+     */
+    fun refreshActiveAssistantEntries() {
+        viewModelScope.launch {
+            val activeId = settingsRepository.activeAssistantId.first()
+            refreshAssistantEntries(activeId)
+        }
+    }
+
     fun setAssistantConfig(skillId: String, key: String, value: String, secret: Boolean = false) {
         viewModelScope.launch {
             assistantRegistry.setAssistantConfigValue(skillId, key, value)

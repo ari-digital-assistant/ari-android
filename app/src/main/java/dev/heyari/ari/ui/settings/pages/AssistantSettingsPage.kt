@@ -18,7 +18,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,14 +28,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.heyari.ari.di.EngineModule
 import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.llm.LlmModelRegistry
+import dev.heyari.ari.ui.components.SkillSettingsPanel
 import dev.heyari.ari.ui.settings.AssistantUiEntry
 import dev.heyari.ari.ui.settings.SettingsViewModel
 import dev.heyari.ari.ui.settings.components.SettingsScaffold
@@ -51,6 +49,23 @@ fun AssistantSettingsPage(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val hasCloudAssistant = state.assistantEntries.any { it.privacy == "cloud" }
+
+    // Re-pull every assistant's config on resume. The same setting can
+    // be edited from the per-skill detail page on the Skills screen,
+    // and that path doesn't trigger this VM's own
+    // `activeAssistantId.collect` flow, so without this nudge a value
+    // written there would still appear empty here until the user
+    // changed assistants. Cheap call — pure in-memory store walk.
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshActiveAssistantEntries()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     SettingsScaffold(
         title = "Assistant",
@@ -219,74 +234,14 @@ private fun AssistantCard(
                     onSelect = onSelectModel,
                 )
             } else if (selected && configFields.isNotEmpty()) {
-                // Cloud/other assistants: show generic config fields
+                // Cloud/other assistants: render the schema-driven fields
+                // through the shared SkillSettingsPanel — same widgets,
+                // same write semantics as the per-skill detail page.
                 Spacer(modifier = Modifier.height(8.dp))
-                for (field in configFields) {
-                    when (field.fieldType) {
-                        "text" -> {
-                            var localValue by remember(field.key) {
-                                mutableStateOf(field.currentValue ?: field.defaultValue ?: "")
-                            }
-                            OutlinedTextField(
-                                value = localValue,
-                                onValueChange = { localValue = it },
-                                label = { Text(field.label) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .onFocusChanged { state ->
-                                        if (!state.isFocused && localValue.isNotEmpty()) {
-                                            onConfigChange(field.key, localValue, false)
-                                        }
-                                    },
-                                singleLine = true,
-                            )
-                        }
-                        "secret" -> {
-                            var localValue by remember(field.key) {
-                                mutableStateOf("")
-                            }
-                            val hasExisting = field.currentValue == "••••••••"
-                            OutlinedTextField(
-                                value = localValue,
-                                onValueChange = { localValue = it },
-                                label = { Text(field.label) },
-                                placeholder = if (hasExisting) {{ Text("••••••••") }} else null,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .onFocusChanged { state ->
-                                        if (!state.isFocused && localValue.isNotEmpty()) {
-                                            onConfigChange(field.key, localValue, true)
-                                        }
-                                    },
-                                singleLine = true,
-                                visualTransformation = PasswordVisualTransformation(),
-                            )
-                        }
-                        "select" -> {
-                            Text(
-                                text = field.label,
-                                style = MaterialTheme.typography.labelMedium,
-                                modifier = Modifier.padding(top = 8.dp),
-                            )
-                            for (option in field.options) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(start = 8.dp),
-                                ) {
-                                    RadioButton(
-                                        selected = field.currentValue == option.value,
-                                        onClick = { onConfigChange(field.key, option.value, false) },
-                                    )
-                                    Text(
-                                        text = option.label,
-                                        style = MaterialTheme.typography.bodySmall,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                }
+                SkillSettingsPanel(
+                    fields = configFields,
+                    onValueChange = onConfigChange,
+                )
             }
 
             if (selected && privacy == "cloud") {

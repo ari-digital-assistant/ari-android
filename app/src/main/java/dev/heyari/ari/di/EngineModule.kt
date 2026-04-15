@@ -24,6 +24,7 @@ import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.tts.SpeechOutput
 import uniffi.ari_ffi.AriEngine
 import uniffi.ari_ffi.AssistantRegistry
+import uniffi.ari_ffi.SkillSettingsStore
 import java.io.File
 import javax.inject.Singleton
 
@@ -34,12 +35,14 @@ object EngineModule {
     @Singleton
     fun provideAssistantRegistry(
         @ApplicationContext context: Context,
+        settingsStore: SkillSettingsStore,
     ): AssistantRegistry {
         val skillsDir = File(context.filesDir, "skills").apply { mkdirs() }
         val storageDir = File(context.filesDir, "skill-storage").apply { mkdirs() }
         return AssistantRegistry(
             skillsDir.absolutePath,
             storageDir.absolutePath,
+            settingsStore,
         )
     }
 

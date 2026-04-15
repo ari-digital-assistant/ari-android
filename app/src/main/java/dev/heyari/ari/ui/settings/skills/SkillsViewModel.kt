@@ -15,8 +15,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import dev.heyari.ari.data.SecretStore
 import uniffi.ari_ffi.AriEngine
 import uniffi.ari_ffi.FfiBrowseEntry
+import uniffi.ari_ffi.FfiConfigField
 import uniffi.ari_ffi.FfiInstalledSkill
 import uniffi.ari_ffi.FfiRegistryException
 import uniffi.ari_ffi.FfiSkillManifest
@@ -38,6 +40,9 @@ class SkillsViewModel @Inject constructor(
     private val assistantRegistry: AssistantRegistry,
     private val notifier: SkillUpdateNotifier,
     private val prefs: SkillsPreferences,
+    private val settingsRepository: dev.heyari.ari.data.SettingsRepository,
+    private val secretStore: SecretStore,
+    @dev.heyari.ari.di.ApplicationScope private val appScope: kotlinx.coroutines.CoroutineScope,
 ) : ViewModel() {
 
     private val skillsDirPath: String by lazy {
@@ -315,6 +320,111 @@ class SkillsViewModel @Inject constructor(
         _state.update { it.copy(detailManifest = null, detailManifestLoading = false) }
     }
 
+    /**
+     * Hydrate persistent settings (DataStore for non-secrets,
+     * EncryptedSharedPreferences for secrets) into the in-memory
+     * [uniffi.ari_ffi.SkillSettingsStore], then publish the resulting
+     * field list to [SkillsScreenState.detailSettings] for the detail
+     * screen to render.
+     *
+     * Hydration on every open is a small inefficiency we accept so the
+     * settings panel always reflects on-disk truth — the alternative is
+     * a startup-wide rehydrate, which the codebase doesn't currently do
+     * for non-secret config (only secrets) and which is a separate piece
+     * of work to land properly.
+     */
+    fun loadSkillSettings(skillId: String) {
+        _state.update { it.copy(detailSettings = emptyList(), detailSettingsLoading = true) }
+        viewModelScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    // First pass: read the schema (currentValue may be empty
+                    // if the in-memory store hasn't been hydrated yet).
+                    val schema = skillRegistry.getSkillSettings(skillId)
+                    // Push persisted values into the shared in-memory store
+                    // for any field that's still empty. We treat missing
+                    // currentValue as "not yet hydrated" — works because the
+                    // store is process-wide and persists for the app's
+                    // lifetime, so the second visit is a no-op.
+                    for (field in schema) {
+                        if (field.currentValue != null) continue
+                        val persisted = if (field.fieldType == "secret") {
+                            secretStore.get(skillId, field.key)
+                        } else {
+                            settingsRepository.assistantConfigValue(skillId, field.key).first()
+                        }
+                        if (persisted != null) {
+                            skillRegistry.setSkillSetting(skillId, field.key, persisted)
+                        }
+                    }
+                    // Second pass: re-read so currentValue reflects any
+                    // values we just hydrated.
+                    skillRegistry.getSkillSettings(skillId)
+                }
+            }
+            _state.update { prev ->
+                result.fold(
+                    onSuccess = { fields ->
+                        prev.copy(detailSettings = fields, detailSettingsLoading = false)
+                    },
+                    onFailure = { e ->
+                        prev.copy(
+                            detailSettings = emptyList(),
+                            detailSettingsLoading = false,
+                            errorMessage = friendlyError(e),
+                        )
+                    },
+                )
+            }
+        }
+    }
+
+    /**
+     * Persist a setting change. Writes to:
+     *   1. The shared in-memory FFI store (so the engine sees the change
+     *      on the next outbound API call without needing a restart).
+     *   2. SecretStore (encrypted) for secrets, with the DataStore copy
+     *      cleared as a belt-and-braces precaution.
+     *   3. SettingsRepository / DataStore for non-secrets.
+     *
+     * Re-fetches the settings after writing so the UI reflects the new
+     * `currentValue` (e.g. the `••••••••` placeholder appearing for
+     * secrets the user just typed in).
+     */
+    fun setSkillSetting(skillId: String, key: String, value: String, isSecret: Boolean) {
+        // Persistence runs on the process-wide ApplicationScope, NOT
+        // viewModelScope. The common trigger for this method is the
+        // SkillSettingsPanel field's onDispose flush — fired exactly as
+        // the user pops back from the detail screen, which also clears
+        // this VM's viewModelScope. A coroutine launched into a scope
+        // that's about to be cancelled never gets to do its work, so
+        // any "type API key, press back" flow would silently lose the
+        // value. Persisting on a longer-lived scope fixes that without
+        // having to run blocking writes on the dispose thread.
+        appScope.launch {
+            skillRegistry.setSkillSetting(skillId, key, value)
+            if (isSecret) {
+                secretStore.set(skillId, key, value)
+                // Belt-and-braces: a previous build may have written a
+                // secret-typed field into DataStore before SecretStore
+                // existed. Wipe it so we never read a stale plaintext.
+                settingsRepository.setAssistantConfigValue(skillId, key, null)
+            } else {
+                settingsRepository.setAssistantConfigValue(skillId, key, value)
+            }
+            // Reflect the write in this VM's state if it's still alive.
+            // Safe to touch _state from any scope — MutableStateFlow is
+            // thread-safe.
+            val refreshed =
+                runCatching { skillRegistry.getSkillSettings(skillId) }.getOrDefault(emptyList())
+            _state.update { it.copy(detailSettings = refreshed) }
+        }
+    }
+
+    fun clearSkillSettings() {
+        _state.update { it.copy(detailSettings = emptyList(), detailSettingsLoading = false) }
+    }
+
     private fun friendlyError(t: Throwable): String = when (t) {
         is FfiRegistryException.Registry -> "Couldn't reach the registry — check your connection."
         is FfiRegistryException.Store -> "Local skill store error: ${t.message ?: "unknown"}"
@@ -343,6 +453,11 @@ data class SkillsScreenState(
     val lastCheckedBrowse: Instant? = null,
     val detailManifest: FfiSkillManifest? = null,
     val detailManifestLoading: Boolean = false,
+    /// Schema + current values for the active skill's user-configurable
+    /// settings. Empty for skills that declare no settings, or while
+    /// the load is in flight.
+    val detailSettings: List<FfiConfigField> = emptyList(),
+    val detailSettingsLoading: Boolean = false,
 )
 
 private fun List<FfiInstalledSkill>.replaceOrAppend(skill: FfiInstalledSkill): List<FfiInstalledSkill> {

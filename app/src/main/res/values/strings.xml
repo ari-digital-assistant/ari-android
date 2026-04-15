@@ -47,6 +47,8 @@
     <string name="skills_detail_languages">Languages</string>
     <string name="skills_detail_no_capabilities">None</string>
     <string name="skills_detail_about">About this skill</string>
+    <string name="skills_detail_settings">Settings</string>
+    <string name="skills_detail_skill_detail">Skill detail</string>
 
     <!-- Menu -->
     <string name="drawer_setup_wizard">Setup Wizard</string>

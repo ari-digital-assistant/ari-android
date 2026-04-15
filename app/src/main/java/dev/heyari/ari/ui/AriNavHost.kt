@@ -40,6 +40,7 @@ import dev.heyari.ari.ui.settings.pages.PermissionsSettingsPage
 import dev.heyari.ari.ui.settings.pages.SttSettingsPage
 import dev.heyari.ari.ui.settings.pages.TtsSettingsPage
 import dev.heyari.ari.ui.settings.pages.WakeWordSettingsPage
+import dev.heyari.ari.ui.settings.skills.SKILLS_SHOW_INSTALLED_TAB_KEY
 import dev.heyari.ari.ui.settings.skills.SkillDetailScreen
 import dev.heyari.ari.ui.settings.skills.SkillsScreen
 import dev.heyari.ari.wakeword.WakeWordService
@@ -181,6 +182,11 @@ fun AriNavHost(
                     navController.navigate(Routes.skillDetail(id, source))
                 },
                 initialTypeFilter = typeFilter,
+                consumeShowInstalledTabFlag = {
+                    val flag = entry.savedStateHandle
+                        .remove<Boolean>(SKILLS_SHOW_INSTALLED_TAB_KEY)
+                    flag == true
+                },
             )
         }
         composable(
@@ -199,6 +205,17 @@ fun AriNavHost(
                 skillId = skillId,
                 source = source,
                 onBack = { navController.popBackStack() },
+                onJustInstalledFromBrowse = {
+                    // Hand a one-shot flag back to whichever screen
+                    // pushed us here. SkillsScreen reads this on
+                    // resume and switches to the Installed tab so the
+                    // user lands on the row for the skill they just
+                    // installed instead of being thrown back to the
+                    // Browse list they came from.
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set(SKILLS_SHOW_INSTALLED_TAB_KEY, true)
+                },
             )
         }
         composable(Routes.ABOUT) {
