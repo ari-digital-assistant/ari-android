@@ -1,13 +1,17 @@
 package dev.heyari.ari.actions
 
+import android.app.KeyguardManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
 import androidx.core.content.ContextCompat
+import androidx.core.content.getSystemService
 import dagger.hilt.android.AndroidEntryPoint
 import dev.heyari.ari.data.card.CardStateRepository
+import dev.heyari.ari.notifications.AlertActivity
 import dev.heyari.ari.notifications.AlertService
+import dev.heyari.ari.notifications.AlertSpec
 import dev.heyari.ari.notifications.AlertSpecCodec
 import dev.heyari.ari.notifications.NotificationCoordinator
 import javax.inject.Inject
@@ -46,10 +50,39 @@ class CardExpiryReceiver : BroadcastReceiver() {
         }
         if (spec != null) {
             ContextCompat.startForegroundService(context, AlertService.startIntent(context, spec))
+            maybeLaunchTakeoverDirectly(context, spec)
         }
         if (dismissCard) {
             repository.removeById(cardId)
         }
+    }
+
+    /**
+     * Android's FSN heuristic suppresses the full-screen-intent activity
+     * launch in favour of a heads-up when the emitting app is already
+     * top-of-stack at alert-fire time — so users whose device locked with
+     * Ari foregrounded never see [AlertActivity]. Bypass it by starting
+     * the activity directly from this receiver while the alarm's
+     * `tempAllowListReason: ALARM_MANAGER_WHILE_IDLE` 10-second
+     * Background Activity Launch grace window is still in effect.
+     *
+     * Gated on `keyguardLocked` — when the device is unlocked, heads-up is
+     * the right UX (don't rip an active user out of their task). The FSN
+     * on the alert notification stays wired as the fallback for devices
+     * that lock between alert-fire and user action.
+     *
+     * Doing this at the receiver (vs. inside [AlertService]) matters:
+     * Android's BAL rules revoke the alarm's grace as soon as we hand off
+     * to the FGS, so the service-level `startActivity` call gets
+     * `BAL_BLOCK`. The receiver still holds the grace.
+     */
+    private fun maybeLaunchTakeoverDirectly(context: Context, spec: AlertSpec) {
+        if (!spec.fullTakeover || spec.urgency != AlertSpec.Urgency.CRITICAL) return
+        val keyguard = context.getSystemService<KeyguardManager>() ?: return
+        if (!keyguard.isKeyguardLocked) return
+        runCatching {
+            context.startActivity(AlertActivity.intent(context, spec))
+        }.onFailure { Log.w(TAG, "direct takeover launch failed", it) }
     }
 
     companion object {
