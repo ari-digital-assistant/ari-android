@@ -246,10 +246,8 @@ class SkillsViewModel @Inject constructor(
     }
 
     /**
-     * Populate [SkillsScreenState.detailManifest] for an installed skill.
-     * Browse-only skills can't use this — the manifest only exists on disk
-     * once the skill's actually been installed. The UI falls back to
-     * `FfiBrowseEntry` fields for browse-tab detail views.
+     * Populate [SkillsScreenState.detailManifest] for an installed skill
+     * by reading the on-disk `SKILL.md`.
      */
     fun loadInstalledManifest(id: String) {
         _state.update { it.copy(detailManifest = null, detailManifestLoading = true) }
@@ -274,6 +272,45 @@ class SkillsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Populate [SkillsScreenState.detailManifest] for a not-yet-installed
+     * skill by downloading the registry's preview SKILL.md sidecar. Lets
+     * the browse → detail view show the full author/homepage/capabilities
+     * and full markdown body before the user decides to install.
+     *
+     * Silently no-ops (rather than surfacing an error) when the registry
+     * doesn't carry a sidecar for this skill — the detail screen then
+     * falls back to the browse-entry fields, which is still useful.
+     */
+    fun loadBrowseManifestPreview(id: String) {
+        _state.update { it.copy(detailManifest = null, detailManifestLoading = true) }
+        viewModelScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) { skillRegistry.fetchManifestPreview(id) }
+            }
+            _state.update { prev ->
+                result.fold(
+                    onSuccess = { manifest ->
+                        prev.copy(detailManifest = manifest, detailManifestLoading = false)
+                    },
+                    onFailure = { e ->
+                        // No-sidecar is expected for older registry entries —
+                        // drop the spinner but don't bark at the user.
+                        if (e is FfiRegistryException.ManifestUnavailable) {
+                            prev.copy(detailManifest = null, detailManifestLoading = false)
+                        } else {
+                            prev.copy(
+                                detailManifest = null,
+                                detailManifestLoading = false,
+                                errorMessage = friendlyError(e),
+                            )
+                        }
+                    },
+                )
+            }
+        }
+    }
+
     fun clearDetailManifest() {
         _state.update { it.copy(detailManifest = null, detailManifestLoading = false) }
     }
@@ -284,6 +321,8 @@ class SkillsViewModel @Inject constructor(
         is FfiRegistryException.NotFound -> "The registry no longer has that skill."
         is FfiRegistryException.NotInstalled -> "That skill isn't installed."
         is FfiRegistryException.Manifest -> "Couldn't read the skill manifest."
+        is FfiRegistryException.ManifestUnavailable ->
+            "The registry has no preview for that skill yet."
         is FfiRegistryException.TrustKey -> "Signing key error — reinstall Ari."
         else -> t.message ?: "Something went wrong."
     }

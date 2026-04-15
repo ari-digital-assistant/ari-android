@@ -666,6 +666,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_skillregistry_check_for_updates(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_skillregistry_fetch_manifest_preview(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_skillregistry_install_skill_by_id(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_skillregistry_install_skill_update(
@@ -747,6 +749,8 @@ internal object UniffiLib {
     external fun uniffi_ari_ffi_fn_method_skillregistry_browse_registry(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_ari_ffi_fn_method_skillregistry_check_for_updates(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_ari_ffi_fn_method_skillregistry_fetch_manifest_preview(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_ari_ffi_fn_method_skillregistry_install_skill_by_id(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -920,6 +924,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_skillregistry_check_for_updates() != 62854.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_skillregistry_fetch_manifest_preview() != 28579.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_skillregistry_install_skill_by_id() != 24025.toShort()) {
@@ -2182,6 +2189,33 @@ public interface SkillRegistryInterface {
     fun `checkForUpdates`(): List<FfiSkillUpdate>
     
     /**
+     * Download the registry's preview manifest sidecar for `id` and
+     * return it as a rich [`FfiSkillManifest`] — same shape as
+     * [`Self::read_installed_manifest`], but sourced from the registry
+     * instead of the local store, so the Browse → detail view can
+     * render the full SKILL.md body *before* the user commits to an
+     * install.
+     *
+     * The sidecar is a verbatim copy of the skill's SKILL.md published
+     * alongside the signed bundle. It is **not** covered by the bundle
+     * signature — good enough for a read-only preview, not suitable for
+     * anything load-bearing. Install still goes through the full
+     * signature + sha256 pipeline.
+     *
+     * Errors:
+     * * [`FfiRegistryError::NotFound`] — the id isn't in the registry.
+     * * [`FfiRegistryError::ManifestUnavailable`] — the index row has
+     * no sidecar (older index format); UI should fall back to the
+     * lightweight browse entry.
+     * * [`FfiRegistryError::Registry`] — network / HTTP failure.
+     * * [`FfiRegistryError::Manifest`] — the sidecar doesn't parse as
+     * a valid Skillfile.
+     *
+     * Blocks on the network — callers must run this off the main thread.
+     */
+    fun `fetchManifestPreview`(`id`: kotlin.String): FfiSkillManifest
+    
+    /**
      * Download and install the registry's current version of `id`, even
      * if the skill isn't already installed locally. This is the "Browse →
      * tap install" path, complementing [`install_skill_update`] which is
@@ -2383,6 +2417,45 @@ open class SkillRegistry: Disposable, AutoCloseable, SkillRegistryInterface
     UniffiLib.uniffi_ari_ffi_fn_method_skillregistry_check_for_updates(
         it,
         _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Download the registry's preview manifest sidecar for `id` and
+     * return it as a rich [`FfiSkillManifest`] — same shape as
+     * [`Self::read_installed_manifest`], but sourced from the registry
+     * instead of the local store, so the Browse → detail view can
+     * render the full SKILL.md body *before* the user commits to an
+     * install.
+     *
+     * The sidecar is a verbatim copy of the skill's SKILL.md published
+     * alongside the signed bundle. It is **not** covered by the bundle
+     * signature — good enough for a read-only preview, not suitable for
+     * anything load-bearing. Install still goes through the full
+     * signature + sha256 pipeline.
+     *
+     * Errors:
+     * * [`FfiRegistryError::NotFound`] — the id isn't in the registry.
+     * * [`FfiRegistryError::ManifestUnavailable`] — the index row has
+     * no sidecar (older index format); UI should fall back to the
+     * lightweight browse entry.
+     * * [`FfiRegistryError::Registry`] — network / HTTP failure.
+     * * [`FfiRegistryError::Manifest`] — the sidecar doesn't parse as
+     * a valid Skillfile.
+     *
+     * Blocks on the network — callers must run this off the main thread.
+     */
+    @Throws(FfiRegistryException::class)override fun `fetchManifestPreview`(`id`: kotlin.String): FfiSkillManifest {
+            return FfiConverterTypeFfiSkillManifest.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FfiRegistryException) { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_skillregistry_fetch_manifest_preview(
+        it,
+        FfiConverterString.lower(`id`),_status)
 }
     }
     )
@@ -3002,6 +3075,14 @@ sealed class FfiRegistryException(message: String): kotlin.Exception(message) {
         
         class Manifest(message: String) : FfiRegistryException(message)
         
+    /**
+     * The registry knows about this skill but doesn't carry a preview
+     * manifest sidecar — typically an index row generated before the
+     * sidecar pipeline was introduced. UI should fall back to the
+     * lightweight [`FfiBrowseEntry`] fields rather than showing an error.
+     */
+        class ManifestUnavailable(message: String) : FfiRegistryException(message)
+        
         class TrustKey(message: String) : FfiRegistryException(message)
         
 
@@ -3022,7 +3103,8 @@ public object FfiConverterTypeFfiRegistryError : FfiConverterRustBuffer<FfiRegis
             3 -> FfiRegistryException.NotFound(FfiConverterString.read(buf))
             4 -> FfiRegistryException.NotInstalled(FfiConverterString.read(buf))
             5 -> FfiRegistryException.Manifest(FfiConverterString.read(buf))
-            6 -> FfiRegistryException.TrustKey(FfiConverterString.read(buf))
+            6 -> FfiRegistryException.ManifestUnavailable(FfiConverterString.read(buf))
+            7 -> FfiRegistryException.TrustKey(FfiConverterString.read(buf))
             else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
         }
         
@@ -3054,8 +3136,12 @@ public object FfiConverterTypeFfiRegistryError : FfiConverterRustBuffer<FfiRegis
                 buf.putInt(5)
                 Unit
             }
-            is FfiRegistryException.TrustKey -> {
+            is FfiRegistryException.ManifestUnavailable -> {
                 buf.putInt(6)
+                Unit
+            }
+            is FfiRegistryException.TrustKey -> {
+                buf.putInt(7)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }

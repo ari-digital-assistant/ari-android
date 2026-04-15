@@ -51,9 +51,12 @@ import uniffi.ari_ffi.FfiSkillManifest
  * For installed skills we fetch the rich on-disk manifest (author,
  * homepage, capabilities, supported languages, full SKILL.md body) via
  * [SkillsViewModel.loadInstalledManifest]. For browse-only entries we
- * fall back to the fields the registry index carries on the
- * `FfiBrowseEntry` itself — which is less rich but still enough for the
- * user to decide whether to install.
+ * fetch the registry's preview manifest sidecar via
+ * [SkillsViewModel.loadBrowseManifestPreview] so the user gets the same
+ * full-body markdown view before deciding to install — no need to
+ * commit to a download first. If the sidecar isn't available (older
+ * index format) the screen falls back to the lightweight
+ * [uniffi.ari_ffi.FfiBrowseEntry] fields.
  */
 @Composable
 fun SkillDetailScreen(
@@ -66,9 +69,9 @@ fun SkillDetailScreen(
     var pendingUninstall by remember { mutableStateOf(false) }
 
     // Pull browse list if needed for browse-source deep links, and the
-    // on-disk manifest for anything actually installed. Clear the cached
-    // manifest on leave so the next detail screen doesn't briefly flash
-    // the previous skill's data.
+    // manifest for anything actually installed. Clear the cached manifest
+    // on leave so the next detail screen doesn't briefly flash the
+    // previous skill's data.
     LaunchedEffect(skillId) {
         if (source == "browse" && state.browse.isEmpty()) {
             viewModel.browse()
@@ -76,11 +79,14 @@ fun SkillDetailScreen(
     }
     val isInstalledLocally = state.installed.any { it.id == skillId } ||
         state.browse.firstOrNull { it.id == skillId }?.installed == true
+    // Pick the right source for the rich manifest: local SKILL.md for
+    // installed skills, registry preview sidecar for browse-only. Both
+    // land in state.detailManifest, so the render path doesn't care.
     LaunchedEffect(skillId, isInstalledLocally) {
         if (isInstalledLocally) {
             viewModel.loadInstalledManifest(skillId)
         } else {
-            viewModel.clearDetailManifest()
+            viewModel.loadBrowseManifestPreview(skillId)
         }
     }
     DisposableEffect(skillId) {
