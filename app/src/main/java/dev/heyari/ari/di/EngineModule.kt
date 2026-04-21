@@ -55,8 +55,30 @@ object EngineModule {
         secretStore: SecretStore,
         llmDownloadManager: LlmDownloadManager,
         assistantRegistry: AssistantRegistry,
+        skillSettingsStore: SkillSettingsStore,
     ): AriEngine {
         val engine = AriEngine.withLogSink(AndroidSkillLogSink())
+
+        // Rehydrate non-secret skill settings from DataStore into the
+        // in-memory FFI store BEFORE any skill runs. The store is
+        // intentionally amnesiac across process restarts; without this
+        // loop, skill code (e.g. the reminder handler reading its
+        // `default_task_list`) sees null for every setting until the
+        // user manually visits that skill's settings page and
+        // SkillsViewModel.loadSkillSettings does per-screen hydration.
+        // That was the cause of reminders silently landing on
+        // `available.first()` instead of the user's selected default.
+        // Secrets live in EncryptedSharedPreferences and are still
+        // hydrated per-active-assistant below.
+        val nonSecretHydrated = runBlocking {
+            val entries = settingsRepository.allAssistantConfigEntries()
+            for (entry in entries) {
+                skillSettingsStore.setValue(entry.skillId, entry.key, entry.value)
+            }
+            entries.size
+        }
+        Log.i(TAG, "hydrated $nonSecretHydrated non-secret skill setting(s) from DataStore")
+
         val skillsDir = File(context.filesDir, "skills").apply { mkdirs() }
         val storageDir = File(context.filesDir, "skill-storage").apply { mkdirs() }
         val loaded = engine.reloadCommunitySkills(

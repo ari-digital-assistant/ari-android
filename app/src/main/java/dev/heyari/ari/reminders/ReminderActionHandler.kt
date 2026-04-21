@@ -222,6 +222,14 @@ class ReminderActionHandler @Inject constructor(
      * "Shopping list" / "Shopping Personal"). On no match falls back
      * to the stored default; if that's also missing, picks the first
      * available entry so the user always gets *something* useful.
+     *
+     * The stored default is compared by provider id (what the picker
+     * persists), but provider ids can drift on the emulator — Tasks.org
+     * reinstall, data clear, different CalDAV account — leaving a
+     * stored id that matches no list. Rather than silently slide onto
+     * whatever `available.first()` is, we log the mismatch so it's
+     * debuggable from logcat instead of showing up as "it went to the
+     * wrong list" in a bug report.
      */
     private fun <T : Any> resolveListTarget(
         available: List<T>,
@@ -236,10 +244,16 @@ class ReminderActionHandler @Inject constructor(
             available.firstOrNull { byName(it).lowercase() == needle }?.let { return it }
             // Then substring match — handles "shopping" → "Shopping list".
             available.firstOrNull { byName(it).lowercase().contains(needle) }?.let { return it }
-            // Hint failed to resolve; fall through to the default.
+            Log.w(TAG, "voice hint '$hint' matched no list in ${available.map(byName)}; using default")
         }
         if (!storedDefault.isNullOrBlank()) {
             available.firstOrNull { byId(it) == storedDefault }?.let { return it }
+            Log.w(
+                TAG,
+                "stored default id='$storedDefault' no longer matches any available list " +
+                    "(ids=${available.map(byId)}, names=${available.map(byName)}); " +
+                    "falling back to first available. User should re-select in skill settings.",
+            )
         }
         return available.first()
     }

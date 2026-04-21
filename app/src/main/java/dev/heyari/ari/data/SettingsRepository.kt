@@ -7,9 +7,12 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
+
+private const val ASSISTANT_CONFIG_PREFIX = "assistant_config_"
 
 private val Context.dataStore by preferencesDataStore(name = "ari_settings")
 
@@ -103,6 +106,39 @@ class SettingsRepository @Inject constructor(
             else prefs[prefKey] = value
         }
     }
+
+    /**
+     * Snapshot of every `assistant_config_*` entry currently on disk,
+     * decoded back into `(skillId, key, value)` triples. Used at app
+     * startup to rehydrate the in-memory `SkillSettingsStore` so skill
+     * code (e.g. the reminder handler) sees the user's chosen defaults
+     * without first having to visit the skill's settings page.
+     *
+     * The DataStore key format `assistant_config_<skillId>_<fieldKey>`
+     * has no unambiguous separator, so we rely on the convention that
+     * skill IDs are reverse-DNS (dots, no underscores) and field keys
+     * are snake_case (underscores, no dots). The first underscore after
+     * the `assistant_config_` prefix marks the boundary. A skill author
+     * who introduces an underscore into their reverse-DNS id would
+     * break this; no enforcement exists today.
+     */
+    suspend fun allAssistantConfigEntries(): List<AssistantConfigEntry> {
+        val prefs = context.dataStore.data.first()
+        return prefs.asMap().entries.mapNotNull { (dsKey, rawValue) ->
+            val name = dsKey.name
+            if (!name.startsWith(ASSISTANT_CONFIG_PREFIX) || rawValue !is String) return@mapNotNull null
+            val remainder = name.removePrefix(ASSISTANT_CONFIG_PREFIX)
+            val boundary = remainder.indexOf('_')
+            if (boundary <= 0 || boundary >= remainder.length - 1) return@mapNotNull null
+            AssistantConfigEntry(
+                skillId = remainder.substring(0, boundary),
+                key = remainder.substring(boundary + 1),
+                value = rawValue,
+            )
+        }
+    }
+
+    data class AssistantConfigEntry(val skillId: String, val key: String, val value: String)
 
     /** Whether the first-run onboarding wizard has been completed (or skipped). */
     val onboardingCompleted: Flow<Boolean> = context.dataStore.data.map { prefs ->
