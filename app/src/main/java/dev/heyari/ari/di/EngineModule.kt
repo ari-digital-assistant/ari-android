@@ -17,6 +17,7 @@ import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.llm.LlmDownloadManager
 import dev.heyari.ari.llm.LlmModelRegistry
 import dev.heyari.ari.router.RouterDownloadManager
+import dev.heyari.ari.skills.AndroidSkillLogSink
 import dev.heyari.ari.stt.ModelDownloadManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -55,7 +56,7 @@ object EngineModule {
         llmDownloadManager: LlmDownloadManager,
         assistantRegistry: AssistantRegistry,
     ): AriEngine {
-        val engine = AriEngine()
+        val engine = AriEngine.withLogSink(AndroidSkillLogSink())
         val skillsDir = File(context.filesDir, "skills").apply { mkdirs() }
         val storageDir = File(context.filesDir, "skill-storage").apply { mkdirs() }
         val loaded = engine.reloadCommunitySkills(
