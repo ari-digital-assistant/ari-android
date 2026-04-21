@@ -57,7 +57,10 @@ class ReminderActionHandler @Inject constructor(
                 // spoken reply since that's the more visible
                 // destination. If either side fails the other still
                 // succeeds — degrades to a single-destination outcome
-                // rather than a hard failure.
+                // rather than a hard failure. Note: the confirmation
+                // card's Cancel in partial-confidence flows only rolls
+                // back the chosen primary (calendar here); a "both"
+                // destination user has to tidy the task row manually.
                 val taskOutcome = insertIntoTasks(spec, settings, resolved)
                 val calOutcome = insertIntoCalendar(spec, settings, resolved)
                 calOutcome.takeIf { it !is Outcome.Failure } ?: taskOutcome
@@ -108,6 +111,38 @@ class ReminderActionHandler @Inject constructor(
                 ResolvedWhen(ms, isUntimed = false, isDateOnly = false)
             }
 
+            is CreateReminderSpec.WhenSpec.LocalClockOnWeekday -> {
+                // "at 3pm on Friday": land on the next local-time
+                // Friday that still has the requested time in the
+                // future. If today matches the target weekday and
+                // the time is already past, bump to next week —
+                // same defensive behaviour as plain LocalClock, just
+                // with a 7-day bump instead of 1.
+                val today = LocalDate.now(zone)
+                val time = LocalTime.of(whenSpec.hour, whenSpec.minute)
+                val daysAhead = daysUntilWeekday(today.dayOfWeek, whenSpec.weekday)
+                var date = today.plusDays(daysAhead.toLong())
+                if (daysAhead == 0 && LocalDateTime.of(date, time).isBefore(LocalDateTime.now(zone))) {
+                    date = date.plusDays(7)
+                }
+                val ms = LocalDateTime.of(date, time).atZone(zone).toInstant().toEpochMilli()
+                ResolvedWhen(ms, isUntimed = false, isDateOnly = false)
+            }
+
+            is CreateReminderSpec.WhenSpec.LocalClockOnDate -> {
+                // "at 10am on the 27th of April": this year if the
+                // requested moment is still in the future, next
+                // year otherwise. The skill doesn't emit a year —
+                // that's the frontend's job so different locales
+                // (and users in different timezones) get the same
+                // "next occurrence" interpretation of a bare date.
+                val now = LocalDateTime.now(zone)
+                val time = LocalTime.of(whenSpec.hour, whenSpec.minute)
+                val date = resolveYear(now.toLocalDate(), whenSpec.month, whenSpec.day, time, now)
+                val ms = LocalDateTime.of(date, time).atZone(zone).toInstant().toEpochMilli()
+                ResolvedWhen(ms, isUntimed = false, isDateOnly = false)
+            }
+
             is CreateReminderSpec.WhenSpec.DateOnly -> {
                 // Date-only: pick midnight at the start of the target
                 // date in local time. The Tasks insert flips
@@ -117,7 +152,80 @@ class ReminderActionHandler @Inject constructor(
                 val ms = date.atStartOfDay(zone).toInstant().toEpochMilli()
                 ResolvedWhen(ms, isUntimed = false, isDateOnly = true)
             }
+
+            is CreateReminderSpec.WhenSpec.DateOnlyWeekday -> {
+                // Date-only weekday: next occurrence of the target
+                // weekday, inclusive of today. "On Friday" said on a
+                // Friday creates a task for today, which is the
+                // closest reading of the user's intent without a
+                // time-of-day to guide a bump decision.
+                val today = LocalDate.now(zone)
+                val daysAhead = daysUntilWeekday(today.dayOfWeek, whenSpec.weekday)
+                val date = today.plusDays(daysAhead.toLong())
+                val ms = date.atStartOfDay(zone).toInstant().toEpochMilli()
+                ResolvedWhen(ms, isUntimed = false, isDateOnly = true)
+            }
+
+            is CreateReminderSpec.WhenSpec.DateOnlyDate -> {
+                // Date-only calendar date. Without a time-of-day
+                // there's no "has the moment already passed" comparison
+                // — the bump is purely about date. Today at the target
+                // month+day counts as still-current (user might be
+                // setting a task for the whole of today); anything in
+                // the past rolls to next year.
+                val today = LocalDate.now(zone)
+                val date = resolveYear(today, whenSpec.month, whenSpec.day, null, null)
+                val ms = date.atStartOfDay(zone).toInstant().toEpochMilli()
+                ResolvedWhen(ms, isUntimed = false, isDateOnly = true)
+            }
         }
+    }
+
+    /**
+     * Days from `today` (inclusive) to the next occurrence of `target`.
+     * Returns 0 when they match — callers decide whether to bump.
+     */
+    private fun daysUntilWeekday(
+        today: java.time.DayOfWeek,
+        target: java.time.DayOfWeek,
+    ): Int = ((target.value - today.value) + 7) % 7
+
+    /**
+     * Choose the year for a bare (month, day) so the resulting date is
+     * in the future. If `time` and `now` are provided, the comparison
+     * is against the exact moment; otherwise it's a date-only
+     * comparison (midnight).
+     *
+     * Feb 29 in a non-leap year would normally throw — we catch
+     * DateTimeException and roll forward until we land on a valid
+     * leap year rather than crashing the action.
+     */
+    private fun resolveYear(
+        today: LocalDate,
+        month: Int,
+        day: Int,
+        time: LocalTime?,
+        now: LocalDateTime?,
+    ): LocalDate {
+        var year = today.year
+        // Try up to 4 years forward to handle Feb 29 near leap-year
+        // boundaries. In practice one bump is almost always enough.
+        repeat(4) {
+            val candidate = runCatching { LocalDate.of(year, month, day) }.getOrNull()
+            if (candidate != null) {
+                val stillFuture = if (time != null && now != null) {
+                    !LocalDateTime.of(candidate, time).isBefore(now)
+                } else {
+                    !candidate.isBefore(today)
+                }
+                if (stillFuture) return candidate
+            }
+            year += 1
+        }
+        // Shouldn't reach here for any sane input. Fall back to today
+        // rather than throwing out of the action handler.
+        Log.w(TAG, "resolveYear couldn't find a valid date for month=$month day=$day; using today")
+        return today
     }
 
     // ── Destination dispatchers ────────────────────────────────────

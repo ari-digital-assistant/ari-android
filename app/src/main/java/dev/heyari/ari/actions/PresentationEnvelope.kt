@@ -36,7 +36,18 @@ data class PresentationEnvelope(
     val dismissCardIds: List<String>,
     val dismissNotificationIds: List<String>,
     val dismissAlertIds: List<String>,
+    /**
+     * How sure the emitting skill is about its own output. Generic
+     * envelope-level signal (Layer A of the parse-confidence work):
+     * `HIGH` is the default when the skill didn't say — keeps old
+     * skill builds compatible. Other skills can opt in by emitting
+     * the same two fields at envelope top-level.
+     */
+    val confidence: ParseConfidence,
+    /** The residue phrase the skill noticed but couldn't consume. Null when [confidence] is HIGH. */
+    val unparsed: String?,
 ) {
+    enum class ParseConfidence { HIGH, PARTIAL, LOW }
 
     fun hasPresentationPrimitives(): Boolean =
         cards.isNotEmpty() || alerts.isNotEmpty() || notifications.isNotEmpty() ||
@@ -71,10 +82,19 @@ data class PresentationEnvelope(
                         ?.optJSONArray("notifications")?.toStringList().orEmpty(),
                     dismissAlertIds = json.optJSONObject("dismiss")
                         ?.optJSONArray("alerts")?.toStringList().orEmpty(),
+                    confidence = parseConfidence(json.optStringOrNull("confidence")),
+                    unparsed = json.optStringOrNull("unparsed"),
                 )
             }.onFailure {
                 Log.w(TAG, "envelope parse failed", it)
             }.getOrNull()
+        }
+
+        private fun parseConfidence(raw: String?): ParseConfidence = when (raw?.lowercase()) {
+            "partial" -> ParseConfidence.PARTIAL
+            "low" -> ParseConfidence.LOW
+            // Unknown / missing → assume HIGH so pre-signal skills work unchanged.
+            else -> ParseConfidence.HIGH
         }
 
         private const val TAG = "PresentationEnvelope"
@@ -282,22 +302,48 @@ data class CreateReminderSpec(
     val speakTemplate: String?,
 ) {
     /**
-     * Structured time descriptor. Mirrors the four shapes the skill
-     * emits (see `ari-skills/skills/reminder/SKILL.md`):
+     * Structured time descriptor. Mirrors the shapes the skill emits
+     * (see `ari-skills/skills/reminder/SKILL.md`):
      *
      * - [None] — no time, always routes to Tasks regardless of the
      *   destination setting (calendar grids can't show a timeless event).
      * - [InSeconds] — relative offset from now ("in 30 minutes").
      * - [LocalClock] — absolute hour/minute on a particular day, in
      *   the device's local zone.
+     * - [LocalClockOnWeekday] — absolute hour/minute on a named
+     *   weekday ("at 3pm on Friday"). The skill can't compute the day
+     *   offset because it doesn't know the host's local weekday, so
+     *   this handler resolves to the next occurrence in local time.
      * - [DateOnly] — a date with no time-of-day ("tomorrow") → VTODO
      *   with due date but no due time.
+     * - [DateOnlyWeekday] — a date on a named weekday with no time
+     *   ("on Friday") → same resolution rules as [LocalClockOnWeekday]
+     *   but without the time component.
+     *
+     * The weekday variants carry a `DayOfWeek` directly; `java.time`'s
+     * own enum is nicer than a 0..6 index and saves the resolver a
+     * conversion step.
      */
     sealed interface WhenSpec {
         data object None : WhenSpec
         data class InSeconds(val seconds: Long) : WhenSpec
         data class LocalClock(val hour: Int, val minute: Int, val dayOffset: Int) : WhenSpec
+        data class LocalClockOnWeekday(
+            val hour: Int,
+            val minute: Int,
+            val weekday: java.time.DayOfWeek,
+        ) : WhenSpec
+        /** Absolute clock + calendar date ("at 10am on the 27th of April"). */
+        data class LocalClockOnDate(
+            val hour: Int,
+            val minute: Int,
+            val month: Int,
+            val day: Int,
+        ) : WhenSpec
         data class DateOnly(val dayOffset: Int) : WhenSpec
+        data class DateOnlyWeekday(val weekday: java.time.DayOfWeek) : WhenSpec
+        /** Calendar date with no time-of-day ("on the 27th of April"). */
+        data class DateOnlyDate(val month: Int, val day: Int) : WhenSpec
     }
 
     companion object {
@@ -322,28 +368,68 @@ data class CreateReminderSpec(
             obj.optLongOrNull("in_seconds")?.let { return WhenSpec.InSeconds(it) }
 
             val localTime = obj.optStringOrNull("local_time")
-            val dayOffset = obj.optInt("day_offset", 0)
+            val weekdayName = obj.optStringOrNull("weekday")
+            val weekday = weekdayName?.let(::parseWeekday)
+            val calendarDate = parseCalendarDate(obj)
+
             if (localTime != null) {
-                // local_time is "HH:MM". Skill validates the format
-                // before emitting; we still defend against a malformed
-                // value rather than crashing the action handler.
                 val parts = localTime.split(":")
                 val hour = parts.getOrNull(0)?.toIntOrNull()
                 val minute = parts.getOrNull(1)?.toIntOrNull()
                 if (hour != null && minute != null) {
-                    return WhenSpec.LocalClock(hour, minute, dayOffset)
+                    // Priority matches the skill-side priority:
+                    // calendar date > weekday > day_offset. The skill
+                    // only emits one shape at a time today, but this
+                    // belt-and-braces so future ambiguous payloads
+                    // land on the most specific semantic.
+                    return when {
+                        calendarDate != null -> WhenSpec.LocalClockOnDate(
+                            hour,
+                            minute,
+                            calendarDate.first,
+                            calendarDate.second,
+                        )
+                        weekday != null -> WhenSpec.LocalClockOnWeekday(hour, minute, weekday)
+                        else -> WhenSpec.LocalClock(hour, minute, obj.optInt("day_offset", 0))
+                    }
                 }
             }
 
-            // day_offset alone → DateOnly. Only treat as date-only
-            // if the field was explicitly present; otherwise we'd
-            // misinterpret a malformed `when` block as "today" and
-            // create a spurious due-date entry.
+            // Date-only shapes: prefer calendar date, then weekday,
+            // then day_offset. Only treat the block as date-only if
+            // one of those fields is explicitly present; otherwise a
+            // malformed `when` shouldn't accidentally create a
+            // spurious due-date entry.
+            if (calendarDate != null) {
+                return WhenSpec.DateOnlyDate(calendarDate.first, calendarDate.second)
+            }
+            if (weekday != null) {
+                return WhenSpec.DateOnlyWeekday(weekday)
+            }
             if (obj.has("day_offset")) {
-                return WhenSpec.DateOnly(dayOffset)
+                return WhenSpec.DateOnly(obj.optInt("day_offset", 0))
             }
 
             return WhenSpec.None
+        }
+
+        /** Pull `month` + `day` out of a `when` block, or null if either is missing or invalid. */
+        private fun parseCalendarDate(obj: JSONObject): Pair<Int, Int>? {
+            if (!obj.has("month") || !obj.has("day")) return null
+            val month = obj.optInt("month", 0).takeIf { it in 1..12 } ?: return null
+            val day = obj.optInt("day", 0).takeIf { it in 1..31 } ?: return null
+            return month to day
+        }
+
+        private fun parseWeekday(name: String): java.time.DayOfWeek? = when (name.lowercase()) {
+            "monday" -> java.time.DayOfWeek.MONDAY
+            "tuesday" -> java.time.DayOfWeek.TUESDAY
+            "wednesday" -> java.time.DayOfWeek.WEDNESDAY
+            "thursday" -> java.time.DayOfWeek.THURSDAY
+            "friday" -> java.time.DayOfWeek.FRIDAY
+            "saturday" -> java.time.DayOfWeek.SATURDAY
+            "sunday" -> java.time.DayOfWeek.SUNDAY
+            else -> null
         }
     }
 }
