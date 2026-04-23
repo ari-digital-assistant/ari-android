@@ -14,7 +14,7 @@ import uniffi.ari_ffi.FfiLogSink
  * you can grep for a specific skill from the combined stream:
  *
  *     adb logcat -s AriSkill              # everything
- *     adb logcat -s AriSkill | grep reminder
+ *     adb logcat -s AriSkill | grep dev.heyari.timer
  */
 class AndroidSkillLogSink : FfiLogSink {
     override fun log(skillId: String, level: FfiLogLevel, message: String) {

@@ -1,4 +1,4 @@
-package dev.heyari.ari.reminders
+package dev.heyari.ari.calendar
 
 import android.Manifest
 import android.content.ContentUris
@@ -13,19 +13,23 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Thin wrapper around `CalendarContract` for the reminder skill's
- * Calendar / Both destination modes. Two responsibilities:
+ * Thin wrapper around Android's `CalendarContract` — the standard
+ * cross-app calendar API. Two responsibilities:
  *
- * 1. Enumerating the user's writable calendars so the
- *    `device_calendar` setting picker can render them.
- * 2. Inserting a VEVENT row with a 5-minute pop-up alarm into the
- *    user's chosen calendar (or the primary if no choice was made).
+ * 1. Enumerating the user's writable calendars (for picker UI and
+ *    skills that want to show a destination chooser).
+ * 2. Inserting and deleting VEVENT rows, each paired with a pop-up
+ *    reminder row so the event actually notifies.
  *
- * Permission gating lives at the call sites — the picker composable
- * triggers the runtime grant before invoking [listCalendars], and the
- * action handler does the same before [insertEvent]. Methods here
- * return null / empty on permission denial so the caller can render a
- * sensible empty state instead of crashing.
+ * This is a **platform wrapper**, not a skill feature. Any skill
+ * declaring `Capability::Calendar` can reach it via the
+ * `ari::calendar_*` host imports; this Kotlin surface is also used
+ * by generic UI (the `device_calendar` picker in
+ * `SkillSettingsPanel`).
+ *
+ * Permission gating lives at the call sites. Methods here return
+ * null / empty / false on permission denial so the caller can
+ * render a sensible empty state instead of crashing.
  */
 @Singleton
 class CalendarProvider @Inject constructor(
@@ -42,6 +46,7 @@ class CalendarProvider @Inject constructor(
         val displayName: String,
         val accountName: String,
         val isPrimary: Boolean,
+        val colorArgb: Int?,
     )
 
     fun hasReadPermission(): Boolean =
@@ -72,6 +77,7 @@ class CalendarProvider @Inject constructor(
             CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
             CalendarContract.Calendars.ACCOUNT_NAME,
             CalendarContract.Calendars.IS_PRIMARY,
+            CalendarContract.Calendars.CALENDAR_COLOR,
         )
         // CALENDAR_ACCESS_LEVEL >= CAL_ACCESS_CONTRIBUTOR (500) is the
         // documented "can insert events" threshold. Constants: CONTRIBUTOR
@@ -103,7 +109,8 @@ class CalendarProvider @Inject constructor(
                     // null as "not primary" so we don't accidentally promote
                     // every calendar.
                     val isPrimary = (cursor.getString(3) ?: "0") == "1"
-                    out.add(DeviceCalendar(id, displayName, accountName, isPrimary))
+                    val colorArgb = if (!cursor.isNull(4)) cursor.getInt(4) else null
+                    out.add(DeviceCalendar(id, displayName, accountName, isPrimary, colorArgb))
                 }
             }
 
@@ -126,14 +133,16 @@ class CalendarProvider @Inject constructor(
 
     /**
      * Insert a VEVENT into [calendarId] starting at [startMillis] and
-     * lasting [durationMinutes]. Adds a single 5-minute-before pop-up
-     * reminder so the event actually notifies the user — bare events
-     * with no reminders are useless for the "remind me" use case.
+     * lasting [durationMinutes]. Adds a single pop-up reminder
+     * [reminderMinutesBefore] minutes before so the event actually
+     * notifies — bare events with no reminders are useless for the
+     * "remind me" use case.
      *
      * Returns the inserted event's row id, or null on failure (most
      * commonly: WRITE_CALENDAR not granted, or the calendar id no
-     * longer exists). Failures are logged but not thrown — the caller
-     * usually wants to fall back to a Tasks insert rather than crash.
+     * longer exists). Failures are logged but not thrown — callers
+     * usually want to fall back to a Tasks insert or a "not stored"
+     * message rather than crash.
      */
     fun insertEvent(
         calendarId: Long,
@@ -141,6 +150,7 @@ class CalendarProvider @Inject constructor(
         startMillis: Long,
         durationMinutes: Int = DEFAULT_EVENT_DURATION_MINUTES,
         reminderMinutesBefore: Int = DEFAULT_REMINDER_MINUTES_BEFORE,
+        tzId: String = java.util.TimeZone.getDefault().id,
     ): Long? {
         if (!hasWritePermission()) {
             Log.w(TAG, "insertEvent: WRITE_CALENDAR not granted")
@@ -148,11 +158,6 @@ class CalendarProvider @Inject constructor(
         }
 
         val endMillis = startMillis + (durationMinutes.toLong() * 60_000L)
-        // EVENT_TIMEZONE is required by the calendar provider — the
-        // device's default zone is what we want since the skill emits
-        // local-clock descriptors that the action handler resolved
-        // against the same zone before getting here.
-        val tzId = java.util.TimeZone.getDefault().id
         val values = ContentValues().apply {
             put(CalendarContract.Events.CALENDAR_ID, calendarId)
             put(CalendarContract.Events.TITLE, title)
@@ -176,24 +181,44 @@ class CalendarProvider @Inject constructor(
         // Reminder row — the calendar provider treats reminders as
         // separate rows joined by EVENT_ID. Without this row the event
         // exists but the user gets no notification.
-        val reminderValues = ContentValues().apply {
-            put(CalendarContract.Reminders.EVENT_ID, eventId)
-            put(CalendarContract.Reminders.MINUTES, reminderMinutesBefore)
-            put(
-                CalendarContract.Reminders.METHOD,
-                CalendarContract.Reminders.METHOD_ALERT,
-            )
-        }
-        runCatching {
-            context.contentResolver.insert(
-                CalendarContract.Reminders.CONTENT_URI,
-                reminderValues,
-            )
-        }.onFailure { e ->
-            Log.w(TAG, "reminder insert failed: ${e.message}")
+        if (reminderMinutesBefore > 0) {
+            val reminderValues = ContentValues().apply {
+                put(CalendarContract.Reminders.EVENT_ID, eventId)
+                put(CalendarContract.Reminders.MINUTES, reminderMinutesBefore)
+                put(
+                    CalendarContract.Reminders.METHOD,
+                    CalendarContract.Reminders.METHOD_ALERT,
+                )
+            }
+            runCatching {
+                context.contentResolver.insert(
+                    CalendarContract.Reminders.CONTENT_URI,
+                    reminderValues,
+                )
+            }.onFailure { e ->
+                Log.w(TAG, "reminder insert failed: ${e.message}")
+            }
         }
 
         return eventId
+    }
+
+    /**
+     * Delete an event by id. CalendarContract cascades to the paired
+     * Reminder rows automatically. Returns true if the row existed
+     * and was removed.
+     */
+    fun deleteEvent(eventId: Long): Boolean {
+        if (!hasWritePermission()) {
+            Log.w(TAG, "deleteEvent: WRITE_CALENDAR not granted")
+            return false
+        }
+        val uri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId)
+        val deleted = runCatching { context.contentResolver.delete(uri, null, null) }
+            .onFailure { Log.w(TAG, "event delete failed for id=$eventId: ${it.message}") }
+            .getOrNull()
+            ?: return false
+        return deleted > 0
     }
 
     companion object {

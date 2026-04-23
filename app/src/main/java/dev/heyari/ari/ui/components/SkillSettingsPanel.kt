@@ -39,8 +39,8 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
-import dev.heyari.ari.reminders.CalendarProvider
-import dev.heyari.ari.reminders.TasksProvider
+import dev.heyari.ari.calendar.CalendarProvider
+import dev.heyari.ari.tasks.TasksProvider
 import uniffi.ari_ffi.FfiConfigField
 
 /**
@@ -52,7 +52,7 @@ import uniffi.ari_ffi.FfiConfigField
  */
 @EntryPoint
 @InstallIn(SingletonComponent::class)
-private interface RemindersProviderEntryPoint {
+private interface PlatformProviderEntryPoint {
     fun calendarProvider(): CalendarProvider
     fun tasksProvider(): TasksProvider
 }
@@ -282,7 +282,7 @@ private fun DeviceCalendarField(
     val context = LocalContext.current
     val provider = remember(context) {
         EntryPointAccessors
-            .fromApplication(context.applicationContext, RemindersProviderEntryPoint::class.java)
+            .fromApplication(context.applicationContext, PlatformProviderEntryPoint::class.java)
             .calendarProvider()
     }
 
@@ -317,7 +317,7 @@ private fun DeviceCalendarField(
 
         if (!hasPerm) {
             Text(
-                text = "Calendar access is needed to list your calendars and save reminders to them.",
+                text = "Calendar access is needed to list your calendars and save events to them.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 8.dp),
@@ -390,7 +390,7 @@ private fun DeviceTaskListField(
     val context = LocalContext.current
     val provider = remember(context) {
         EntryPointAccessors
-            .fromApplication(context.applicationContext, RemindersProviderEntryPoint::class.java)
+            .fromApplication(context.applicationContext, PlatformProviderEntryPoint::class.java)
             .tasksProvider()
     }
 
@@ -449,7 +449,7 @@ private fun DeviceTaskListField(
             val read = provider.requiredReadPermission()
             val write = provider.requiredWritePermission()
             Text(
-                text = "Access to your tasks app is needed to list your task lists and save reminders to them.",
+                text = "Access to your tasks app is needed to list your task lists and save tasks to them.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 8.dp),
@@ -547,7 +547,7 @@ private fun NoTasksAppCard(
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "Ari saves reminders through the OpenTasks bridge. OpenTasks is recommended — " +
+                text = "Skills that create tasks go through the OpenTasks bridge. OpenTasks is recommended — " +
                     "Tasks.org works too but only exposes its CalDAV-synced lists, not local-only ones.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

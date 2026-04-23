@@ -12,6 +12,8 @@ import dev.heyari.ari.actions.ActionHandler
 import dev.heyari.ari.actions.AppLauncher
 import dev.heyari.ari.actions.WebSearchLauncher
 import dev.heyari.ari.audio.CaptureBus
+import dev.heyari.ari.calendar.AriFfiCalendarProvider
+import dev.heyari.ari.clock.AriFfiLocalClock
 import dev.heyari.ari.data.SecretStore
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.llm.LlmDownloadManager
@@ -19,6 +21,7 @@ import dev.heyari.ari.llm.LlmModelRegistry
 import dev.heyari.ari.router.RouterDownloadManager
 import dev.heyari.ari.skills.AndroidSkillLogSink
 import dev.heyari.ari.stt.ModelDownloadManager
+import dev.heyari.ari.tasks.AriFfiTasksProvider
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import dev.heyari.ari.stt.SpeechRecognizer
@@ -56,8 +59,21 @@ object EngineModule {
         llmDownloadManager: LlmDownloadManager,
         assistantRegistry: AssistantRegistry,
         skillSettingsStore: SkillSettingsStore,
+        ariFfiTasksProvider: AriFfiTasksProvider,
+        ariFfiCalendarProvider: AriFfiCalendarProvider,
+        ariFfiLocalClock: AriFfiLocalClock,
     ): AriEngine {
-        val engine = AriEngine.withLogSink(AndroidSkillLogSink())
+        // Hand the engine a full set of platform providers. Any skill
+        // declaring `Capability::Tasks` / `Capability::Calendar`, or
+        // reading `ari::local_now_components()`, ends up routed to
+        // these Android-specific implementations. The skill code is
+        // platform-agnostic; everything Android-shaped lives here.
+        val engine = AriEngine.withPlatformProviders(
+            sink = AndroidSkillLogSink(),
+            tasks = ariFfiTasksProvider,
+            calendar = ariFfiCalendarProvider,
+            clock = ariFfiLocalClock,
+        )
 
         // Rehydrate non-secret skill settings from DataStore into the
         // in-memory FFI store BEFORE any skill runs. The store is

@@ -1,4 +1,4 @@
-package dev.heyari.ari.reminders
+package dev.heyari.ari.tasks
 
 import android.content.ContentUris
 import android.content.ContentValues
@@ -13,16 +13,21 @@ import javax.inject.Singleton
 
 /**
  * Wrapper around the OpenTasks `ContentProvider` (authority
- * `org.dmfs.tasks`) for the reminder skill's Tasks / Both destination
- * modes. OpenTasks isn't a system component — it's surfaced by
- * Tasks.org / jtx Board / OpenTasks (the app) / etc, so the first
- * thing every method does is check the authority is actually
- * resolvable.
+ * `org.dmfs.tasks`) — the de-facto cross-app tasks API on Android.
+ * OpenTasks isn't a system component; it's surfaced by Tasks.org /
+ * jtx Board / OpenTasks (the app) / etc, each under their own
+ * authority. The first thing every method does is check the
+ * authority is actually resolvable.
+ *
+ * This is a **platform wrapper**, not a skill feature. Any skill
+ * declaring `Capability::Tasks` can reach it via the `ari::tasks_*`
+ * host imports; this Kotlin surface is also used by generic Android
+ * UI (e.g. the `device_task_list` picker in `SkillSettingsPanel`).
  *
  * On a device with no provider installed every method gracefully
  * degrades: [isProviderInstalled] returns false, [listTaskLists] and
  * [primaryTaskList] return empty / null, and [insertTask] is a no-op.
- * The picker composable and action handler use this to short-circuit
+ * The picker composable and action handlers use this to short-circuit
  * the Tasks branch without throwing.
  */
 @Singleton
@@ -165,8 +170,8 @@ class TasksProvider @Inject constructor(
      * untimed tasks (the shopping-list use case) pass null and the
      * task ends up with no due date. `dueAllDay` controls whether
      * OpenTasks treats a present `dueMillis` as a wall-clock date or
-     * as a precise instant; the action handler sets this to true for
-     * date-only descriptors and false for local-clock ones.
+     * as a precise instant; the caller sets this based on whether
+     * the source descriptor had a time-of-day.
      *
      * Returns the inserted task's row id, or null on failure.
      */
@@ -175,6 +180,7 @@ class TasksProvider @Inject constructor(
         title: String,
         dueMillis: Long? = null,
         dueAllDay: Boolean = false,
+        tzId: String? = null,
     ): Long? {
         val authority = resolveAuthority() ?: run {
             Log.w(TAG, "insertTask: no OpenTasks-compatible provider installed")
@@ -198,7 +204,7 @@ class TasksProvider @Inject constructor(
                     put(TASKS_IS_ALLDAY, 1)
                 } else {
                     put(TASKS_IS_ALLDAY, 0)
-                    put(TASKS_TZ, java.util.TimeZone.getDefault().id)
+                    put(TASKS_TZ, tzId ?: java.util.TimeZone.getDefault().id)
                 }
             }
         }
@@ -213,6 +219,61 @@ class TasksProvider @Inject constructor(
             ?: return null
 
         return ContentUris.parseId(taskUri)
+    }
+
+    /**
+     * Hard-delete a task by id. Returns true if the row existed and
+     * was removed.
+     *
+     * OpenTasks has two delete modes:
+     *   1. Plain `delete()` → soft-delete (`_DELETED=1`, queues for
+     *      CalDAV sync). Tasks.org's UI keeps showing the row until
+     *      the next sync purges it — wrong UX for a user-initiated
+     *      cancel of a just-inserted row.
+     *   2. Delete with `caller_is_syncadapter=true` + `account_name` +
+     *      `account_type` query params → hard-delete, row gone
+     *      immediately.
+     *
+     * We go for (2): query the account fields off the task row
+     * first, then pass them to the delete. Falls back to soft-delete
+     * if the account query fails — the user still gets some action,
+     * and the sync will eventually clean up.
+     */
+    fun deleteTask(taskId: Long): Boolean {
+        val authority = resolveAuthority() ?: return false
+        val tasksBase = Uri.parse("content://$authority/tasks")
+        val rowUri = ContentUris.withAppendedId(tasksBase, taskId)
+
+        val account = runCatching {
+            context.contentResolver.query(
+                rowUri,
+                arrayOf(TASKS_ACCOUNT_NAME, TASKS_ACCOUNT_TYPE),
+                null, null, null,
+            )?.use { c ->
+                if (c.moveToFirst()) {
+                    val name = c.getString(0)
+                    val type = c.getString(1)
+                    if (!name.isNullOrBlank() && !type.isNullOrBlank()) name to type else null
+                } else null
+            }
+        }.getOrNull()
+
+        val deleteUri = if (account != null) {
+            rowUri.buildUpon()
+                .appendQueryParameter("caller_is_syncadapter", "true")
+                .appendQueryParameter("account_name", account.first)
+                .appendQueryParameter("account_type", account.second)
+                .build()
+        } else {
+            Log.w(TAG, "task $taskId: account query returned nothing; falling back to soft delete")
+            rowUri
+        }
+
+        val deleted = runCatching { context.contentResolver.delete(deleteUri, null, null) }
+            .onFailure { Log.w(TAG, "task delete failed for id=$taskId: ${it.message}") }
+            .getOrNull()
+            ?: return false
+        return deleted > 0
     }
 
     companion object {
@@ -242,9 +303,6 @@ class TasksProvider @Inject constructor(
         // Hard-coded as strings rather than depending on the contract
         // library — adds a single transitive Maven dep for half a
         // dozen string constants we'd never want to change anyway.
-        // Both Tasks.org and OpenTasks use these identical column
-        // names because Tasks.org uses the OpenTasks TaskProvider
-        // implementation directly.
 
         // tasklists columns
         private const val LISTS_ID = "_id"
@@ -257,5 +315,10 @@ class TasksProvider @Inject constructor(
         private const val TASKS_DUE = "due"
         private const val TASKS_IS_ALLDAY = "is_allday"
         private const val TASKS_TZ = "tz"
+        // Denormalised account columns on the tasks URI — used by the
+        // hard-delete path to satisfy Tasks.org's "sync adapters must
+        // specify an account" check.
+        private const val TASKS_ACCOUNT_NAME = "account_name"
+        private const val TASKS_ACCOUNT_TYPE = "account_type"
     }
 }

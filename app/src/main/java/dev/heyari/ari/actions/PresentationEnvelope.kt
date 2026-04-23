@@ -304,8 +304,8 @@ private const val DEFAULT_MAX_CYCLES: Int = 12
  * frontend handler reads the user's destination + default-list
  * settings, resolves [when] against the local zone, fuzzy-matches
  * [listHint] (if any) against the user's actual lists, performs the
- * VTODO / VEVENT insert via [dev.heyari.ari.reminders.CalendarProvider]
- * / [dev.heyari.ari.reminders.TasksProvider], then substitutes the
+ * VTODO / VEVENT insert via [dev.heyari.ari.calendar.CalendarProvider]
+ * / [dev.heyari.ari.tasks.TasksProvider], then substitutes the
  * placeholders in [speakTemplate] for the spoken response.
  */
 data class CreateReminderSpec(
