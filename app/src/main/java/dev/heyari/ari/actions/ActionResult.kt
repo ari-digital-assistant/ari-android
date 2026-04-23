@@ -12,10 +12,15 @@ import dev.heyari.ari.model.Attachment
 sealed class ActionResult {
     /**
      * A bubble with [text] for display + TTS, plus an optional list of
-     * [attachments] rendered below the bubble.
+     * [attachments] rendered below the bubble. [followupUtterance] is
+     * populated when the envelope carried a `run_utterance` primitive —
+     * the ViewModel should re-dispatch it through the engine after
+     * rendering the spoken text. Used for skill-round-trip flows
+     * inside card `on_cancel` payloads.
      */
     data class Spoken(
         val text: String,
         val attachments: List<Attachment> = emptyList(),
+        val followupUtterance: String? = null,
     ) : ActionResult()
 }

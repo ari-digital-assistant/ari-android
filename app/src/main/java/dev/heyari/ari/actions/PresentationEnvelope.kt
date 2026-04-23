@@ -37,6 +37,13 @@ data class PresentationEnvelope(
     val dismissNotificationIds: List<String>,
     val dismissAlertIds: List<String>,
     /**
+     * Optional utterance the frontend re-dispatches through the engine
+     * after handling the rest of the envelope. Useful inside a card's
+     * `on_cancel` payload so a skill can round-trip a cancel back to
+     * itself without needing a skill-specific envelope primitive.
+     */
+    val runUtterance: String?,
+    /**
      * How sure the emitting skill is about its own output. Generic
      * envelope-level signal (Layer A of the parse-confidence work):
      * `HIGH` is the default when the skill didn't say — keeps old
@@ -84,6 +91,7 @@ data class PresentationEnvelope(
                         ?.optJSONArray("alerts")?.toStringList().orEmpty(),
                     confidence = parseConfidence(json.optStringOrNull("confidence")),
                     unparsed = json.optStringOrNull("unparsed"),
+                    runUtterance = json.optStringOrNull("run_utterance"),
                 )
             }.onFailure {
                 Log.w(TAG, "envelope parse failed", it)
@@ -122,6 +130,11 @@ private fun parseCards(arr: JSONArray, skillId: String): List<Card> {
             accent = parseAccent(o.optStringOrNull("accent")),
             actions = o.optJSONArray("actions")?.let { parseCardActions(it) }.orEmpty(),
             onComplete = o.optJSONObject("on_complete")?.let { parseOnComplete(it, skillId) },
+            // Stored as the raw JSON string. The frontend re-parses it
+            // into a PresentationEnvelope via ActionHandler when the
+            // user taps the Cancel button — skills can use any
+            // envelope primitive they like here.
+            onCancel = o.optJSONObject("on_cancel")?.toString(),
         )
     }
     return out

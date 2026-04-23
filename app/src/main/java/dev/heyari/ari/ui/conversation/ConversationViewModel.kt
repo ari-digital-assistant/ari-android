@@ -247,6 +247,7 @@ class ConversationViewModel @Inject constructor(
                 dismissCard = true,
                 dismissNotificationIds = emptyList(),
             ),
+            onCancel = null,
         )
         cardRepository.debugInsertCard(card)
         cardAlarmScheduler.schedule(card)
@@ -355,6 +356,48 @@ class ConversationViewModel @Inject constructor(
                 val card = cardRepository.state.value.firstOrNull { it.id == cardId }
                 val alertId = card?.onComplete?.alert?.id ?: return
                 application.startService(AlertService.stopIntent(application, alertId))
+            }
+            "cancel" -> {
+                // Generic cancel-reserved id. If the card declared an
+                // on_cancel envelope, dispatch it through the normal
+                // action handler; every primitive in that envelope
+                // (speak, run_utterance, dismiss, …) runs as if a
+                // skill had just produced it.
+                val card = cardRepository.state.value.firstOrNull { it.id == cardId }
+                if (cardId.startsWith("card_demo-")) {
+                    // Demo card lives outside the skill — drop locally.
+                    cardRepository.removeById(cardId)
+                    cardAlarmScheduler.cancel(cardId)
+                    return
+                }
+                if (card?.onCancel != null) {
+                    viewModelScope.launch(Dispatchers.Default) {
+                        val result = actionHandler.handle(card.onCancel, card.skillId)
+                        // If the on_cancel envelope asked the frontend
+                        // to bounce an utterance back through the
+                        // engine (the clean way for a skill to handle
+                        // its own cancellation without inventing a
+                        // skill-specific envelope primitive), do so.
+                        val followup = (result as? dev.heyari.ari.actions.ActionResult.Spoken)?.followupUtterance
+                        if (!followup.isNullOrBlank()) {
+                            val response = engine.processInput(followup)
+                            if (response is FfiResponse.Action) {
+                                actionHandler.handle(response.json, response.skillId)
+                            }
+                        }
+                    }
+                    cardRepository.removeById(cardId)
+                } else if (action.utterance != null) {
+                    // Back-compat: a skill that sets utterance but no
+                    // on_cancel still round-trips through the engine.
+                    val utterance = action.utterance
+                    viewModelScope.launch(Dispatchers.Default) {
+                        val response = engine.processInput(utterance)
+                        if (response is FfiResponse.Action) {
+                            actionHandler.handle(response.json, response.skillId)
+                        }
+                    }
+                }
             }
             else -> {
                 val utterance = action.utterance ?: return

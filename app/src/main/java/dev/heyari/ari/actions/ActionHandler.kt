@@ -67,7 +67,7 @@ class ActionHandler @Inject constructor(
         } else {
             emptyList()
         }
-        return ActionResult.Spoken(env.speak ?: "", attachments)
+        return ActionResult.Spoken(env.speak ?: "", attachments, env.runUtterance)
     }
 
     private fun handleOpen(target: String): String {

@@ -28,6 +28,20 @@ data class Card(
     val accent: Accent,
     val actions: List<CardAction>,
     val onComplete: OnComplete?,
+    /**
+     * Optional envelope the frontend runs when the user taps a
+     * `CardAction` with id `"cancel"` (reserved). Stored as the
+     * raw JSON string the skill emitted — `ActionHandler.handle`
+     * parses it through the normal presentation envelope path, so
+     * any skill can use any envelope primitive here (speak, dismiss,
+     * launch_app, clipboard, `run_utterance`, ...). Null if the card
+     * has no cancel action.
+     *
+     * Generic on purpose: a skill that wants an undoable-card-action
+     * just populates this field; the frontend has zero skill-specific
+     * knowledge about what "cancel" should do for any given skill.
+     */
+    val onCancel: String?,
 ) {
     enum class Accent { DEFAULT, WARNING, SUCCESS, CRITICAL }
 }

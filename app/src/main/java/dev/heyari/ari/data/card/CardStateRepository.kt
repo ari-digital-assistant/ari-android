@@ -157,6 +157,11 @@ private fun encodeCard(c: Card): JSONObject = JSONObject().apply {
         },
     )
     c.onComplete?.let { put("onComplete", encodeOnComplete(it)) }
+    // onCancel is already JSON — store as a nested object by parsing
+    // and re-attaching rather than double-escaping into a string.
+    c.onCancel?.let {
+        runCatching { JSONObject(it) }.getOrNull()?.let { obj -> put("onCancel", obj) }
+    }
 }
 
 private fun encodeCardAction(a: CardAction): JSONObject = JSONObject().apply {
@@ -198,6 +203,7 @@ private fun decodeCard(o: JSONObject): Card? {
             .getOrDefault(Card.Accent.DEFAULT),
         actions = o.optJSONArray("actions")?.let(::decodeCardActions).orEmpty(),
         onComplete = o.optJSONObject("onComplete")?.let(::decodeOnComplete),
+        onCancel = o.optJSONObject("onCancel")?.toString(),
     )
 }
 
