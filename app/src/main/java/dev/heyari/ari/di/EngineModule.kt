@@ -73,17 +73,21 @@ object EngineModule {
             tasks = ariFfiTasksProvider,
             calendar = ariFfiCalendarProvider,
             clock = ariFfiLocalClock,
+            // Threading the shared settings store through so the
+            // engine's `ari::setting_get` WASM import reads live
+            // values the Android settings UI wrote. The same
+            // `skillSettingsStore` is injected into AssistantRegistry
+            // and SkillRegistry — single source of truth.
+            settings = skillSettingsStore,
         )
 
         // Rehydrate non-secret skill settings from DataStore into the
         // in-memory FFI store BEFORE any skill runs. The store is
         // intentionally amnesiac across process restarts; without this
-        // loop, skill code (e.g. the reminder handler reading its
-        // `default_task_list`) sees null for every setting until the
-        // user manually visits that skill's settings page and
+        // loop, a skill reading its own settings via
+        // `ari::setting_get` sees null for every key until the user
+        // manually visits the skill's settings page and
         // SkillsViewModel.loadSkillSettings does per-screen hydration.
-        // That was the cause of reminders silently landing on
-        // `available.first()` instead of the user's selected default.
         // Secrets live in EncryptedSharedPreferences and are still
         // hydrated per-active-assistant below.
         val nonSecretHydrated = runBlocking {
@@ -202,12 +206,10 @@ object EngineModule {
         appLauncher: AppLauncher,
         webSearchLauncher: WebSearchLauncher,
         presentationCoordinator: dev.heyari.ari.actions.PresentationCoordinator,
-        reminderActionHandler: dev.heyari.ari.reminders.ReminderActionHandler,
     ): ActionHandler = ActionHandler(
         context,
         appLauncher,
         webSearchLauncher,
         presentationCoordinator,
-        reminderActionHandler,
     )
 }

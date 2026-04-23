@@ -878,7 +878,7 @@ external fun uniffi_ari_ffi_fn_constructor_ariengine_new(uniffi_out_err: UniffiR
 ): Long
 external fun uniffi_ari_ffi_fn_constructor_ariengine_with_log_sink(`sink`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
-external fun uniffi_ari_ffi_fn_constructor_ariengine_with_platform_providers(`sink`: RustBuffer.ByValue,`tasks`: RustBuffer.ByValue,`calendar`: RustBuffer.ByValue,`clock`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+external fun uniffi_ari_ffi_fn_constructor_ariengine_with_platform_providers(`sink`: RustBuffer.ByValue,`tasks`: RustBuffer.ByValue,`calendar`: RustBuffer.ByValue,`clock`: RustBuffer.ByValue,`settings`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
 external fun uniffi_ari_ffi_fn_method_ariengine_load_llm_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
@@ -1222,7 +1222,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_constructor_ariengine_with_log_sink() != 21525.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_constructor_ariengine_with_platform_providers() != 11633.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_constructor_ariengine_with_platform_providers() != 21034.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_constructor_assistantregistry_new() != 53209.toShort()) {
@@ -2044,12 +2044,12 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
      * the Null defaults. Any provider argument can be left `None`
      * to fall back to the corresponding Null/UTC default — useful
      * for frontends that only wire up part of the surface.
-     */ fun `withPlatformProviders`(`sink`: FfiLogSink?, `tasks`: FfiTasksProvider?, `calendar`: FfiCalendarProvider?, `clock`: FfiLocalClock?): AriEngine {
+     */ fun `withPlatformProviders`(`sink`: FfiLogSink?, `tasks`: FfiTasksProvider?, `calendar`: FfiCalendarProvider?, `clock`: FfiLocalClock?, `settings`: SkillSettingsStore?): AriEngine {
             return FfiConverterTypeAriEngine.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_ari_ffi_fn_constructor_ariengine_with_platform_providers(
     
-        FfiConverterOptionalTypeFfiLogSink.lower(`sink`),FfiConverterOptionalTypeFfiTasksProvider.lower(`tasks`),FfiConverterOptionalTypeFfiCalendarProvider.lower(`calendar`),FfiConverterOptionalTypeFfiLocalClock.lower(`clock`),_status)
+        FfiConverterOptionalTypeFfiLogSink.lower(`sink`),FfiConverterOptionalTypeFfiTasksProvider.lower(`tasks`),FfiConverterOptionalTypeFfiCalendarProvider.lower(`calendar`),FfiConverterOptionalTypeFfiLocalClock.lower(`clock`),FfiConverterOptionalTypeSkillSettingsStore.lower(`settings`),_status)
 }
     )
     }
@@ -6136,6 +6136,38 @@ public object FfiConverterOptionalTypeFfiTasksProvider: FfiConverterRustBuffer<F
         } else {
             buf.put(1)
             FfiConverterTypeFfiTasksProvider.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeSkillSettingsStore: FfiConverterRustBuffer<SkillSettingsStore?> {
+    override fun read(buf: ByteBuffer): SkillSettingsStore? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeSkillSettingsStore.read(buf)
+    }
+
+    override fun allocationSize(value: SkillSettingsStore?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeSkillSettingsStore.allocationSize(value)
+        }
+    }
+
+    override fun write(value: SkillSettingsStore?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeSkillSettingsStore.write(value, buf)
         }
     }
 }

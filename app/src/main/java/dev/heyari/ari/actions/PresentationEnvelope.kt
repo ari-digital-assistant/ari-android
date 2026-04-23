@@ -32,7 +32,6 @@ data class PresentationEnvelope(
     val search: String?,
     val openUrl: String?,
     val clipboardText: String?,
-    val createReminder: CreateReminderSpec?,
     val dismissCardIds: List<String>,
     val dismissNotificationIds: List<String>,
     val dismissAlertIds: List<String>,
@@ -81,8 +80,6 @@ data class PresentationEnvelope(
                     search = json.optStringOrNull("search"),
                     openUrl = json.optStringOrNull("open_url"),
                     clipboardText = json.optJSONObject("clipboard")?.optStringOrNull("text"),
-                    createReminder = json.optJSONObject("create_reminder")
-                        ?.let(CreateReminderSpec::parse),
                     dismissCardIds = json.optJSONObject("dismiss")
                         ?.optJSONArray("cards")?.toStringList().orEmpty(),
                     dismissNotificationIds = json.optJSONObject("dismiss")
@@ -298,151 +295,3 @@ private fun JSONArray.toStringList(): List<String> {
 private const val DEFAULT_AUTO_STOP_MS: Long = 120_000L
 private const val DEFAULT_MAX_CYCLES: Int = 12
 
-/**
- * Top-level `create_reminder` slot — emitted by the reminder skill
- * for "remind me to X" / "add Y to my Z list" utterances. The
- * frontend handler reads the user's destination + default-list
- * settings, resolves [when] against the local zone, fuzzy-matches
- * [listHint] (if any) against the user's actual lists, performs the
- * VTODO / VEVENT insert via [dev.heyari.ari.calendar.CalendarProvider]
- * / [dev.heyari.ari.tasks.TasksProvider], then substitutes the
- * placeholders in [speakTemplate] for the spoken response.
- */
-data class CreateReminderSpec(
-    val title: String,
-    val whenSpec: WhenSpec,
-    val listHint: String?,
-    val speakTemplate: String?,
-) {
-    /**
-     * Structured time descriptor. Mirrors the shapes the skill emits
-     * (see `ari-skills/skills/reminder/SKILL.md`):
-     *
-     * - [None] — no time, always routes to Tasks regardless of the
-     *   destination setting (calendar grids can't show a timeless event).
-     * - [InSeconds] — relative offset from now ("in 30 minutes").
-     * - [LocalClock] — absolute hour/minute on a particular day, in
-     *   the device's local zone.
-     * - [LocalClockOnWeekday] — absolute hour/minute on a named
-     *   weekday ("at 3pm on Friday"). The skill can't compute the day
-     *   offset because it doesn't know the host's local weekday, so
-     *   this handler resolves to the next occurrence in local time.
-     * - [DateOnly] — a date with no time-of-day ("tomorrow") → VTODO
-     *   with due date but no due time.
-     * - [DateOnlyWeekday] — a date on a named weekday with no time
-     *   ("on Friday") → same resolution rules as [LocalClockOnWeekday]
-     *   but without the time component.
-     *
-     * The weekday variants carry a `DayOfWeek` directly; `java.time`'s
-     * own enum is nicer than a 0..6 index and saves the resolver a
-     * conversion step.
-     */
-    sealed interface WhenSpec {
-        data object None : WhenSpec
-        data class InSeconds(val seconds: Long) : WhenSpec
-        data class LocalClock(val hour: Int, val minute: Int, val dayOffset: Int) : WhenSpec
-        data class LocalClockOnWeekday(
-            val hour: Int,
-            val minute: Int,
-            val weekday: java.time.DayOfWeek,
-        ) : WhenSpec
-        /** Absolute clock + calendar date ("at 10am on the 27th of April"). */
-        data class LocalClockOnDate(
-            val hour: Int,
-            val minute: Int,
-            val month: Int,
-            val day: Int,
-        ) : WhenSpec
-        data class DateOnly(val dayOffset: Int) : WhenSpec
-        data class DateOnlyWeekday(val weekday: java.time.DayOfWeek) : WhenSpec
-        /** Calendar date with no time-of-day ("on the 27th of April"). */
-        data class DateOnlyDate(val month: Int, val day: Int) : WhenSpec
-    }
-
-    companion object {
-        fun parse(o: JSONObject): CreateReminderSpec? {
-            val title = o.optStringOrNull("title")?.takeIf { it.isNotBlank() } ?: return null
-            val whenSpec = parseWhen(o.opt("when"))
-            return CreateReminderSpec(
-                title = title,
-                whenSpec = whenSpec,
-                listHint = o.optStringOrNull("list_hint"),
-                speakTemplate = o.optStringOrNull("speak_template"),
-            )
-        }
-
-        private fun parseWhen(any: Any?): WhenSpec {
-            // The skill emits `null` when no time was given. JSONObject
-            // surfaces that as JSONObject.NULL via .opt; treat both
-            // null and NULL as the no-time case.
-            if (any == null || any == JSONObject.NULL) return WhenSpec.None
-            val obj = any as? JSONObject ?: return WhenSpec.None
-
-            obj.optLongOrNull("in_seconds")?.let { return WhenSpec.InSeconds(it) }
-
-            val localTime = obj.optStringOrNull("local_time")
-            val weekdayName = obj.optStringOrNull("weekday")
-            val weekday = weekdayName?.let(::parseWeekday)
-            val calendarDate = parseCalendarDate(obj)
-
-            if (localTime != null) {
-                val parts = localTime.split(":")
-                val hour = parts.getOrNull(0)?.toIntOrNull()
-                val minute = parts.getOrNull(1)?.toIntOrNull()
-                if (hour != null && minute != null) {
-                    // Priority matches the skill-side priority:
-                    // calendar date > weekday > day_offset. The skill
-                    // only emits one shape at a time today, but this
-                    // belt-and-braces so future ambiguous payloads
-                    // land on the most specific semantic.
-                    return when {
-                        calendarDate != null -> WhenSpec.LocalClockOnDate(
-                            hour,
-                            minute,
-                            calendarDate.first,
-                            calendarDate.second,
-                        )
-                        weekday != null -> WhenSpec.LocalClockOnWeekday(hour, minute, weekday)
-                        else -> WhenSpec.LocalClock(hour, minute, obj.optInt("day_offset", 0))
-                    }
-                }
-            }
-
-            // Date-only shapes: prefer calendar date, then weekday,
-            // then day_offset. Only treat the block as date-only if
-            // one of those fields is explicitly present; otherwise a
-            // malformed `when` shouldn't accidentally create a
-            // spurious due-date entry.
-            if (calendarDate != null) {
-                return WhenSpec.DateOnlyDate(calendarDate.first, calendarDate.second)
-            }
-            if (weekday != null) {
-                return WhenSpec.DateOnlyWeekday(weekday)
-            }
-            if (obj.has("day_offset")) {
-                return WhenSpec.DateOnly(obj.optInt("day_offset", 0))
-            }
-
-            return WhenSpec.None
-        }
-
-        /** Pull `month` + `day` out of a `when` block, or null if either is missing or invalid. */
-        private fun parseCalendarDate(obj: JSONObject): Pair<Int, Int>? {
-            if (!obj.has("month") || !obj.has("day")) return null
-            val month = obj.optInt("month", 0).takeIf { it in 1..12 } ?: return null
-            val day = obj.optInt("day", 0).takeIf { it in 1..31 } ?: return null
-            return month to day
-        }
-
-        private fun parseWeekday(name: String): java.time.DayOfWeek? = when (name.lowercase()) {
-            "monday" -> java.time.DayOfWeek.MONDAY
-            "tuesday" -> java.time.DayOfWeek.TUESDAY
-            "wednesday" -> java.time.DayOfWeek.WEDNESDAY
-            "thursday" -> java.time.DayOfWeek.THURSDAY
-            "friday" -> java.time.DayOfWeek.FRIDAY
-            "saturday" -> java.time.DayOfWeek.SATURDAY
-            "sunday" -> java.time.DayOfWeek.SUNDAY
-            else -> null
-        }
-    }
-}

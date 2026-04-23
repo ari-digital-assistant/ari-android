@@ -110,9 +110,10 @@ class SettingsRepository @Inject constructor(
     /**
      * Snapshot of every `assistant_config_*` entry currently on disk,
      * decoded back into `(skillId, key, value)` triples. Used at app
-     * startup to rehydrate the in-memory `SkillSettingsStore` so skill
-     * code (e.g. the reminder handler) sees the user's chosen defaults
-     * without first having to visit the skill's settings page.
+     * startup to rehydrate the in-memory `SkillSettingsStore` so a
+     * skill reading `ari::setting_get` sees the user's chosen
+     * defaults without first having to visit the skill's settings
+     * page.
      *
      * The DataStore key format `assistant_config_<skillId>_<fieldKey>`
      * has no unambiguous separator, so we rely on the convention that
