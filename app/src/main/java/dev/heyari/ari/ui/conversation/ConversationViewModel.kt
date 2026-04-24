@@ -13,6 +13,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.heyari.ari.actions.ActionHandler
+import dev.heyari.ari.actions.AsyncEnvelopeChannel
 import dev.heyari.ari.actions.CardAlarmScheduler
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.data.card.Card
@@ -57,6 +58,7 @@ class ConversationViewModel @Inject constructor(
     val cardRepository: CardStateRepository,
     val assetResolver: dev.heyari.ari.assets.AssetResolver,
     private val cardAlarmScheduler: CardAlarmScheduler,
+    private val asyncEnvelopeChannel: AsyncEnvelopeChannel,
     private val application: Application,
 ) : ViewModel() {
 
@@ -111,6 +113,17 @@ class ConversationViewModel @Inject constructor(
         // (VoiceSession + VoiceOverlayManager) — the activity no longer
         // collects them. Keeps the activity focused on typed input + chat
         // history while voice runs entirely from the foreground service.
+
+        // Subscribe to async envelopes the engine pushes after
+        // background-threaded work (currently Layer C phase-2: skill
+        // emits a consult_assistant directive, engine carries the
+        // assistant round-trip, then pushes the continuation envelope
+        // here). Rendered exactly like a synchronous action envelope.
+        viewModelScope.launch {
+            asyncEnvelopeChannel.flow.collect { pushed ->
+                handlePushedEnvelope(pushed.envelopeJson, pushed.skillId)
+            }
+        }
 
         // Poll the wake word service state every second. The service has its own
         // lifecycle (notification action, OS kill, etc.) so the UI cannot rely on
@@ -181,6 +194,29 @@ class ConversationViewModel @Inject constructor(
                 if (responseText.isNotBlank()) speechOutput.speak(responseText)
             }
         }
+    }
+
+    /**
+     * Handle an envelope pushed to [AsyncEnvelopeChannel] from the
+     * engine's background thread (currently only Layer C phase-2
+     * continuation envelopes). Parse via [ActionHandler] identically
+     * to a synchronous `FfiResponse.Action`, then append as a new
+     * assistant message and speak the text. The skill id parameter
+     * lets the action handler resolve `asset:` references back to the
+     * emitting skill's bundle.
+     *
+     * Runs on the viewmodel scope; suspendable action-handler work
+     * (TTS, card writes, etc.) awaits naturally.
+     */
+    private suspend fun handlePushedEnvelope(envelopeJson: String, skillId: String?) {
+        val result = actionHandler.handle(envelopeJson, skillId ?: "")
+        val message = Message(
+            text = result.text,
+            isFromUser = false,
+            attachments = result.attachments,
+        )
+        _state.update { it.copy(messages = it.messages + message) }
+        if (result.text.isNotBlank()) speechOutput.speak(result.text)
     }
 
     /**
@@ -407,11 +443,32 @@ class ConversationViewModel @Inject constructor(
                     cardAlarmScheduler.cancel(cardId)
                     return
                 }
+                // Dismiss the card up-front: the button it belongs to
+                // has served its purpose, the utterance has been
+                // dispatched, and leaving the card in place invites a
+                // double-tap that would commit the same action twice.
+                cardRepository.removeById(cardId)
                 viewModelScope.launch(Dispatchers.Default) {
                     val response = engine.processInput(utterance)
-                    if (response is FfiResponse.Action) {
-                        actionHandler.handle(response.json, response.skillId)
+                    var attachments: List<Attachment> = emptyList()
+                    val responseText = when (response) {
+                        is FfiResponse.Text -> response.body
+                        is FfiResponse.Action -> {
+                            val result = actionHandler.handle(response.json, response.skillId)
+                            attachments = result.attachments
+                            result.text
+                        }
+                        is FfiResponse.NotUnderstood -> response.body
+                        is FfiResponse.Binary -> "[Binary: ${response.mime}, ${response.data.size} bytes]"
                     }
+                    if (responseText.isBlank() && attachments.isEmpty()) return@launch
+                    val ariMessage = Message(
+                        text = responseText,
+                        isFromUser = false,
+                        attachments = attachments,
+                    )
+                    _state.update { it.copy(messages = it.messages + ariMessage) }
+                    if (responseText.isNotBlank()) speechOutput.speak(responseText)
                 }
             }
         }

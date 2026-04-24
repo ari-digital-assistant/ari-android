@@ -10,6 +10,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.heyari.ari.actions.ActionHandler
 import dev.heyari.ari.actions.AppLauncher
+import dev.heyari.ari.actions.AriFfiEnvelopeSink
 import dev.heyari.ari.actions.WebSearchLauncher
 import dev.heyari.ari.audio.CaptureBus
 import dev.heyari.ari.calendar.AriFfiCalendarProvider
@@ -62,12 +63,20 @@ object EngineModule {
         ariFfiTasksProvider: AriFfiTasksProvider,
         ariFfiCalendarProvider: AriFfiCalendarProvider,
         ariFfiLocalClock: AriFfiLocalClock,
+        ariFfiEnvelopeSink: AriFfiEnvelopeSink,
     ): AriEngine {
         // Hand the engine a full set of platform providers. Any skill
         // declaring `Capability::Tasks` / `Capability::Calendar`, or
         // reading `ari::local_now_components()`, ends up routed to
         // these Android-specific implementations. The skill code is
         // platform-agnostic; everything Android-shaped lives here.
+        //
+        // `envelopeSink` is the async push channel the engine uses to
+        // deliver Layer C phase-2 envelopes (after the assistant
+        // round-trip) back to the viewmodel. Without it, the engine
+        // falls back to pre-Layer-C behaviour: skill's phase-1
+        // envelope is returned unchanged and the round-trip is
+        // suppressed.
         val engine = AriEngine.withPlatformProviders(
             sink = AndroidSkillLogSink(),
             tasks = ariFfiTasksProvider,
@@ -79,6 +88,7 @@ object EngineModule {
             // `skillSettingsStore` is injected into AssistantRegistry
             // and SkillRegistry — single source of truth.
             settings = skillSettingsStore,
+            envelopeSink = ariFfiEnvelopeSink,
         )
 
         // Rehydrate non-secret skill settings from DataStore into the
