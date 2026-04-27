@@ -3,6 +3,7 @@ package dev.heyari.ari.calendar
 import javax.inject.Inject
 import javax.inject.Singleton
 import uniffi.ari_ffi.FfiCalendar
+import uniffi.ari_ffi.FfiCalendarEventRow
 import uniffi.ari_ffi.FfiCalendarProvider
 import uniffi.ari_ffi.FfiInsertCalendarEventParams
 
@@ -41,4 +42,23 @@ class AriFfiCalendarProvider @Inject constructor(
     }
 
     override fun delete(id: ULong): Boolean = calendar.deleteEvent(id.toLong())
+
+    override fun queryInRange(
+        startMs: Long,
+        endMs: Long,
+        limit: UInt,
+    ): List<FfiCalendarEventRow> = calendar.queryEventsInRange(
+        startMillis = startMs,
+        endMillis = endMs,
+        limit = limit.toInt(),
+    ).map { row ->
+        FfiCalendarEventRow(
+            id = row.id.toULong(),
+            title = row.title,
+            startMs = row.startMillis,
+            endMs = row.endMillis,
+            allDay = row.allDay,
+            calendarId = row.calendarId.toULong(),
+        )
+    }
 }

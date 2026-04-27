@@ -222,6 +222,74 @@ class TasksProvider @Inject constructor(
     }
 
     /**
+     * One row from the OpenTasks `tasks` table reduced to query-
+     * relevant fields. `dueMillis` is always non-null in the result
+     * set because [queryTasksInRange] filters by due time; untimed
+     * tasks (no due date) don't fit a range query and are skipped.
+     */
+    data class DeviceTaskRow(
+        val id: Long,
+        val title: String,
+        val dueMillis: Long,
+        val dueAllDay: Boolean,
+        val listId: Long,
+    )
+
+    /**
+     * Tasks with `due` in the half-open interval `[startMillis,
+     * endMillis)`, ordered by due ascending and capped at [limit].
+     * Untimed tasks are skipped (no `due` column value to filter on).
+     * Soft-deleted rows are excluded — OpenTasks marks them with
+     * `_deleted=1` rather than removing the row, and we don't want
+     * "what's on my list" to surface stale entries the user already
+     * cancelled.
+     *
+     * Empty list when no provider is installed, the per-provider
+     * READ_TASKS permission is missing, or the range is empty.
+     */
+    fun queryTasksInRange(
+        startMillis: Long,
+        endMillis: Long,
+        limit: Int,
+    ): List<DeviceTaskRow> {
+        if (limit <= 0 || endMillis <= startMillis) return emptyList()
+        val authority = resolveAuthority() ?: return emptyList()
+        val tasksUri = Uri.parse("content://$authority/tasks")
+        val projection = arrayOf(
+            TASKS_ID,
+            TASKS_TITLE,
+            TASKS_DUE,
+            TASKS_IS_ALLDAY,
+            TASKS_LIST_ID,
+        )
+        // OpenTasks soft-deletion column. Filtering with `IS NOT 1`
+        // (rather than `=0`) catches both NULL and 0, in case the
+        // provider stops setting an explicit zero.
+        val selection = "$TASKS_DUE >= ? AND $TASKS_DUE < ? AND ($TASKS_DELETED IS NULL OR $TASKS_DELETED != 1)"
+        val args = arrayOf(startMillis.toString(), endMillis.toString())
+        val sortOrder = "$TASKS_DUE ASC"
+
+        val out = mutableListOf<DeviceTaskRow>()
+        runCatching {
+            context.contentResolver.query(tasksUri, projection, selection, args, sortOrder)
+        }
+            .onFailure { e -> Log.w(TAG, "task range query failed: ${e.message}") }
+            .getOrNull()
+            ?.use { cursor ->
+                while (cursor.moveToNext() && out.size < limit) {
+                    val id = cursor.getLong(0)
+                    val title = cursor.getString(1) ?: continue
+                    if (cursor.isNull(2)) continue
+                    val due = cursor.getLong(2)
+                    val allDay = cursor.getInt(3) == 1
+                    val listId = cursor.getLong(4)
+                    out.add(DeviceTaskRow(id, title, due, allDay, listId))
+                }
+            }
+        return out
+    }
+
+    /**
      * Hard-delete a task by id. Returns true if the row existed and
      * was removed.
      *
@@ -310,11 +378,13 @@ class TasksProvider @Inject constructor(
         private const val LISTS_ACCOUNT_NAME = "account_name"
 
         // tasks columns
+        private const val TASKS_ID = "_id"
         private const val TASKS_LIST_ID = "list_id"
         private const val TASKS_TITLE = "title"
         private const val TASKS_DUE = "due"
         private const val TASKS_IS_ALLDAY = "is_allday"
         private const val TASKS_TZ = "tz"
+        private const val TASKS_DELETED = "_deleted"
         // Denormalised account columns on the tasks URI — used by the
         // hard-delete path to satisfy Tasks.org's "sync adapters must
         // specify an account" check.

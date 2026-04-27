@@ -6,6 +6,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import uniffi.ari_ffi.FfiInsertTaskParams
 import uniffi.ari_ffi.FfiTaskList
+import uniffi.ari_ffi.FfiTaskRow
 import uniffi.ari_ffi.FfiTasksProvider
 
 /**
@@ -46,4 +47,22 @@ class AriFfiTasksProvider @Inject constructor(
     }
 
     override fun delete(id: ULong): Boolean = tasks.deleteTask(id.toLong())
+
+    override fun queryInRange(
+        startMs: Long,
+        endMs: Long,
+        limit: UInt,
+    ): List<FfiTaskRow> = tasks.queryTasksInRange(
+        startMillis = startMs,
+        endMillis = endMs,
+        limit = limit.toInt(),
+    ).map { row ->
+        FfiTaskRow(
+            id = row.id.toULong(),
+            title = row.title,
+            dueMs = row.dueMillis,
+            dueAllDay = row.dueAllDay,
+            listId = row.listId.toULong(),
+        )
+    }
 }

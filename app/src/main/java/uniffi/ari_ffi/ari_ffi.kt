@@ -625,6 +625,9 @@ internal interface UniffiCallbackInterfaceFfiCalendarProviderMethod2 : com.sun.j
 internal interface UniffiCallbackInterfaceFfiCalendarProviderMethod3 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`id`: Long,`uniffiOutReturn`: ByteByReference,uniffiCallStatus: UniffiRustCallStatus,)
 }
+internal interface UniffiCallbackInterfaceFfiCalendarProviderMethod4 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`startMs`: Long,`endMs`: Long,`limit`: Int,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+}
 internal interface UniffiCallbackInterfaceFfiEnvelopeSinkMethod0 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`envelopeJson`: RustBuffer.ByValue,`skillId`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
@@ -649,7 +652,10 @@ internal interface UniffiCallbackInterfaceFfiTasksProviderMethod2 : com.sun.jna.
 internal interface UniffiCallbackInterfaceFfiTasksProviderMethod3 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`id`: Long,`uniffiOutReturn`: ByteByReference,uniffiCallStatus: UniffiRustCallStatus,)
 }
-@Structure.FieldOrder("uniffiFree", "uniffiClone", "hasWritePermission", "listCalendars", "insert", "delete")
+internal interface UniffiCallbackInterfaceFfiTasksProviderMethod4 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`startMs`: Long,`endMs`: Long,`limit`: Int,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+}
+@Structure.FieldOrder("uniffiFree", "uniffiClone", "hasWritePermission", "listCalendars", "insert", "delete", "queryInRange")
 internal open class UniffiVTableCallbackInterfaceFfiCalendarProvider(
     @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
     @JvmField internal var `uniffiClone`: UniffiCallbackInterfaceClone? = null,
@@ -657,6 +663,7 @@ internal open class UniffiVTableCallbackInterfaceFfiCalendarProvider(
     @JvmField internal var `listCalendars`: UniffiCallbackInterfaceFfiCalendarProviderMethod1? = null,
     @JvmField internal var `insert`: UniffiCallbackInterfaceFfiCalendarProviderMethod2? = null,
     @JvmField internal var `delete`: UniffiCallbackInterfaceFfiCalendarProviderMethod3? = null,
+    @JvmField internal var `queryInRange`: UniffiCallbackInterfaceFfiCalendarProviderMethod4? = null,
 ) : Structure() {
     class UniffiByValue(
         `uniffiFree`: UniffiCallbackInterfaceFree? = null,
@@ -665,7 +672,8 @@ internal open class UniffiVTableCallbackInterfaceFfiCalendarProvider(
         `listCalendars`: UniffiCallbackInterfaceFfiCalendarProviderMethod1? = null,
         `insert`: UniffiCallbackInterfaceFfiCalendarProviderMethod2? = null,
         `delete`: UniffiCallbackInterfaceFfiCalendarProviderMethod3? = null,
-    ): UniffiVTableCallbackInterfaceFfiCalendarProvider(`uniffiFree`,`uniffiClone`,`hasWritePermission`,`listCalendars`,`insert`,`delete`,), Structure.ByValue
+        `queryInRange`: UniffiCallbackInterfaceFfiCalendarProviderMethod4? = null,
+    ): UniffiVTableCallbackInterfaceFfiCalendarProvider(`uniffiFree`,`uniffiClone`,`hasWritePermission`,`listCalendars`,`insert`,`delete`,`queryInRange`,), Structure.ByValue
 
    internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceFfiCalendarProvider) {
         `uniffiFree` = other.`uniffiFree`
@@ -674,6 +682,7 @@ internal open class UniffiVTableCallbackInterfaceFfiCalendarProvider(
         `listCalendars` = other.`listCalendars`
         `insert` = other.`insert`
         `delete` = other.`delete`
+        `queryInRange` = other.`queryInRange`
     }
 
 }
@@ -737,7 +746,7 @@ internal open class UniffiVTableCallbackInterfaceFfiLogSink(
     }
 
 }
-@Structure.FieldOrder("uniffiFree", "uniffiClone", "isProviderInstalled", "listLists", "insert", "delete")
+@Structure.FieldOrder("uniffiFree", "uniffiClone", "isProviderInstalled", "listLists", "insert", "delete", "queryInRange")
 internal open class UniffiVTableCallbackInterfaceFfiTasksProvider(
     @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
     @JvmField internal var `uniffiClone`: UniffiCallbackInterfaceClone? = null,
@@ -745,6 +754,7 @@ internal open class UniffiVTableCallbackInterfaceFfiTasksProvider(
     @JvmField internal var `listLists`: UniffiCallbackInterfaceFfiTasksProviderMethod1? = null,
     @JvmField internal var `insert`: UniffiCallbackInterfaceFfiTasksProviderMethod2? = null,
     @JvmField internal var `delete`: UniffiCallbackInterfaceFfiTasksProviderMethod3? = null,
+    @JvmField internal var `queryInRange`: UniffiCallbackInterfaceFfiTasksProviderMethod4? = null,
 ) : Structure() {
     class UniffiByValue(
         `uniffiFree`: UniffiCallbackInterfaceFree? = null,
@@ -753,7 +763,8 @@ internal open class UniffiVTableCallbackInterfaceFfiTasksProvider(
         `listLists`: UniffiCallbackInterfaceFfiTasksProviderMethod1? = null,
         `insert`: UniffiCallbackInterfaceFfiTasksProviderMethod2? = null,
         `delete`: UniffiCallbackInterfaceFfiTasksProviderMethod3? = null,
-    ): UniffiVTableCallbackInterfaceFfiTasksProvider(`uniffiFree`,`uniffiClone`,`isProviderInstalled`,`listLists`,`insert`,`delete`,), Structure.ByValue
+        `queryInRange`: UniffiCallbackInterfaceFfiTasksProviderMethod4? = null,
+    ): UniffiVTableCallbackInterfaceFfiTasksProvider(`uniffiFree`,`uniffiClone`,`isProviderInstalled`,`listLists`,`insert`,`delete`,`queryInRange`,), Structure.ByValue
 
    internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceFfiTasksProvider) {
         `uniffiFree` = other.`uniffiFree`
@@ -762,6 +773,7 @@ internal open class UniffiVTableCallbackInterfaceFfiTasksProvider(
         `listLists` = other.`listLists`
         `insert` = other.`insert`
         `delete` = other.`delete`
+        `queryInRange` = other.`queryInRange`
     }
 
 }
@@ -808,6 +820,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_fficalendarprovider_delete(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_fficalendarprovider_query_in_range(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ffienvelopesink_push(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ffilocalclock_now_components(
@@ -823,6 +837,8 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_ari_ffi_checksum_method_ffitasksprovider_insert(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ffitasksprovider_delete(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_ffitasksprovider_query_in_range(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_assistantregistry_apply_to_engine(
     ): Short
@@ -931,6 +947,8 @@ external fun uniffi_ari_ffi_fn_method_fficalendarprovider_insert(`ptr`: Long,`pa
 ): Long
 external fun uniffi_ari_ffi_fn_method_fficalendarprovider_delete(`ptr`: Long,`id`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
+external fun uniffi_ari_ffi_fn_method_fficalendarprovider_query_in_range(`ptr`: Long,`startMs`: Long,`endMs`: Long,`limit`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_clone_ffienvelopesink(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
 external fun uniffi_ari_ffi_fn_free_ffienvelopesink(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -971,6 +989,8 @@ external fun uniffi_ari_ffi_fn_method_ffitasksprovider_insert(`ptr`: Long,`param
 ): Long
 external fun uniffi_ari_ffi_fn_method_ffitasksprovider_delete(`ptr`: Long,`id`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
+external fun uniffi_ari_ffi_fn_method_ffitasksprovider_query_in_range(`ptr`: Long,`startMs`: Long,`endMs`: Long,`limit`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_clone_assistantregistry(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
 external fun uniffi_ari_ffi_fn_free_assistantregistry(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -1174,6 +1194,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_fficalendarprovider_delete() != 37169.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ari_ffi_checksum_method_fficalendarprovider_query_in_range() != 24454.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ari_ffi_checksum_method_ffienvelopesink_push() != 641.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1196,6 +1219,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ffitasksprovider_delete() != 41471.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffitasksprovider_query_in_range() != 5644.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_assistantregistry_apply_to_engine() != 26810.toShort()) {
@@ -2633,6 +2659,13 @@ public interface FfiCalendarProvider {
     
     fun `delete`(`id`: kotlin.ULong): kotlin.Boolean
     
+    /**
+     * Event instances starting in `[start_ms, end_ms)`, ordered by
+     * start time ascending and capped at `limit`. Recurring events
+     * expand to one row per instance whose start lands in range.
+     */
+    fun `queryInRange`(`startMs`: kotlin.Long, `endMs`: kotlin.Long, `limit`: kotlin.UInt): List<FfiCalendarEventRow>
+    
     companion object
 }
 
@@ -2788,6 +2821,24 @@ open class FfiCalendarProviderImpl: Disposable, AutoCloseable, FfiCalendarProvid
     
 
     
+    /**
+     * Event instances starting in `[start_ms, end_ms)`, ordered by
+     * start time ascending and capped at `limit`. Recurring events
+     * expand to one row per instance whose start lands in range.
+     */override fun `queryInRange`(`startMs`: kotlin.Long, `endMs`: kotlin.Long, `limit`: kotlin.UInt): List<FfiCalendarEventRow> {
+            return FfiConverterSequenceTypeFfiCalendarEventRow.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_fficalendarprovider_query_in_range(
+        it,
+        FfiConverterLong.lower(`startMs`),FfiConverterLong.lower(`endMs`),FfiConverterUInt.lower(`limit`),_status)
+}
+    }
+    )
+    }
+    
+
+    
 
     
 
@@ -2851,6 +2902,20 @@ internal object uniffiCallbackInterfaceFfiCalendarProvider {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
+    internal object `queryInRange`: UniffiCallbackInterfaceFfiCalendarProviderMethod4 {
+        override fun callback(`uniffiHandle`: Long,`startMs`: Long,`endMs`: Long,`limit`: Int,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeFfiCalendarProvider.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`queryInRange`(
+                    FfiConverterLong.lift(`startMs`),
+                    FfiConverterLong.lift(`endMs`),
+                    FfiConverterUInt.lift(`limit`),
+                )
+            }
+            val writeReturn = { value: List<FfiCalendarEventRow> -> uniffiOutReturn.setValue(FfiConverterSequenceTypeFfiCalendarEventRow.lower(value)) }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
 
     internal object uniffiFree: UniffiCallbackInterfaceFree {
         override fun callback(handle: Long) {
@@ -2871,6 +2936,7 @@ internal object uniffiCallbackInterfaceFfiCalendarProvider {
         `listCalendars`,
         `insert`,
         `delete`,
+        `queryInRange`,
     )
 
     // Registers the foreign callback with the Rust side.
@@ -4035,6 +4101,13 @@ public interface FfiTasksProvider {
     
     fun `delete`(`id`: kotlin.ULong): kotlin.Boolean
     
+    /**
+     * Tasks with due time in `[start_ms, end_ms)`, ordered by due
+     * time ascending and capped at `limit`. Implementers must
+     * exclude untimed tasks (no due date set).
+     */
+    fun `queryInRange`(`startMs`: kotlin.Long, `endMs`: kotlin.Long, `limit`: kotlin.UInt): List<FfiTaskRow>
+    
     companion object
 }
 
@@ -4197,6 +4270,24 @@ open class FfiTasksProviderImpl: Disposable, AutoCloseable, FfiTasksProvider
     
 
     
+    /**
+     * Tasks with due time in `[start_ms, end_ms)`, ordered by due
+     * time ascending and capped at `limit`. Implementers must
+     * exclude untimed tasks (no due date set).
+     */override fun `queryInRange`(`startMs`: kotlin.Long, `endMs`: kotlin.Long, `limit`: kotlin.UInt): List<FfiTaskRow> {
+            return FfiConverterSequenceTypeFfiTaskRow.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffitasksprovider_query_in_range(
+        it,
+        FfiConverterLong.lower(`startMs`),FfiConverterLong.lower(`endMs`),FfiConverterUInt.lower(`limit`),_status)
+}
+    }
+    )
+    }
+    
+
+    
 
     
 
@@ -4260,6 +4351,20 @@ internal object uniffiCallbackInterfaceFfiTasksProvider {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
+    internal object `queryInRange`: UniffiCallbackInterfaceFfiTasksProviderMethod4 {
+        override fun callback(`uniffiHandle`: Long,`startMs`: Long,`endMs`: Long,`limit`: Int,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeFfiTasksProvider.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`queryInRange`(
+                    FfiConverterLong.lift(`startMs`),
+                    FfiConverterLong.lift(`endMs`),
+                    FfiConverterUInt.lift(`limit`),
+                )
+            }
+            val writeReturn = { value: List<FfiTaskRow> -> uniffiOutReturn.setValue(FfiConverterSequenceTypeFfiTaskRow.lower(value)) }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
 
     internal object uniffiFree: UniffiCallbackInterfaceFree {
         override fun callback(handle: Long) {
@@ -4280,6 +4385,7 @@ internal object uniffiCallbackInterfaceFfiTasksProvider {
         `listLists`,
         `insert`,
         `delete`,
+        `queryInRange`,
     )
 
     // Registers the foreign callback with the Rust side.
@@ -5420,6 +5526,68 @@ public object FfiConverterTypeFfiCalendar: FfiConverterRustBuffer<FfiCalendar> {
 
 
 
+/**
+ * Row returned by [`FfiCalendarProvider::query_in_range`]. Mirrors
+ * [`ari_skill_loader::CalendarEventRow`].
+ */
+data class FfiCalendarEventRow (
+    var `id`: kotlin.ULong
+    , 
+    var `title`: kotlin.String
+    , 
+    var `startMs`: kotlin.Long
+    , 
+    var `endMs`: kotlin.Long
+    , 
+    var `allDay`: kotlin.Boolean
+    , 
+    var `calendarId`: kotlin.ULong
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiCalendarEventRow: FfiConverterRustBuffer<FfiCalendarEventRow> {
+    override fun read(buf: ByteBuffer): FfiCalendarEventRow {
+        return FfiCalendarEventRow(
+            FfiConverterULong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiCalendarEventRow) = (
+            FfiConverterULong.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterLong.allocationSize(value.`startMs`) +
+            FfiConverterLong.allocationSize(value.`endMs`) +
+            FfiConverterBoolean.allocationSize(value.`allDay`) +
+            FfiConverterULong.allocationSize(value.`calendarId`)
+    )
+
+    override fun write(value: FfiCalendarEventRow, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`id`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterLong.write(value.`startMs`, buf)
+            FfiConverterLong.write(value.`endMs`, buf)
+            FfiConverterBoolean.write(value.`allDay`, buf)
+            FfiConverterULong.write(value.`calendarId`, buf)
+    }
+}
+
+
+
 data class FfiConfigField (
     var `key`: kotlin.String
     , 
@@ -5969,6 +6137,63 @@ public object FfiConverterTypeFfiTaskList: FfiConverterRustBuffer<FfiTaskList> {
             FfiConverterULong.write(value.`id`, buf)
             FfiConverterString.write(value.`displayName`, buf)
             FfiConverterString.write(value.`accountName`, buf)
+    }
+}
+
+
+
+/**
+ * Row returned by [`FfiTasksProvider::query_in_range`]. Mirrors
+ * [`ari_skill_loader::TaskRow`] across the UniFFI boundary.
+ */
+data class FfiTaskRow (
+    var `id`: kotlin.ULong
+    , 
+    var `title`: kotlin.String
+    , 
+    var `dueMs`: kotlin.Long
+    , 
+    var `dueAllDay`: kotlin.Boolean
+    , 
+    var `listId`: kotlin.ULong
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiTaskRow: FfiConverterRustBuffer<FfiTaskRow> {
+    override fun read(buf: ByteBuffer): FfiTaskRow {
+        return FfiTaskRow(
+            FfiConverterULong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiTaskRow) = (
+            FfiConverterULong.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterLong.allocationSize(value.`dueMs`) +
+            FfiConverterBoolean.allocationSize(value.`dueAllDay`) +
+            FfiConverterULong.allocationSize(value.`listId`)
+    )
+
+    override fun write(value: FfiTaskRow, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`id`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterLong.write(value.`dueMs`, buf)
+            FfiConverterBoolean.write(value.`dueAllDay`, buf)
+            FfiConverterULong.write(value.`listId`, buf)
     }
 }
 
@@ -6696,6 +6921,34 @@ public object FfiConverterSequenceTypeFfiCalendar: FfiConverterRustBuffer<List<F
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiCalendarEventRow: FfiConverterRustBuffer<List<FfiCalendarEventRow>> {
+    override fun read(buf: ByteBuffer): List<FfiCalendarEventRow> {
+        val len = buf.getInt()
+        return List<FfiCalendarEventRow>(len) {
+            FfiConverterTypeFfiCalendarEventRow.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiCalendarEventRow>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiCalendarEventRow.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiCalendarEventRow>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiCalendarEventRow.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiConfigField: FfiConverterRustBuffer<List<FfiConfigField>> {
     override fun read(buf: ByteBuffer): List<FfiConfigField> {
         val len = buf.getInt()
@@ -6826,6 +7079,34 @@ public object FfiConverterSequenceTypeFfiTaskList: FfiConverterRustBuffer<List<F
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeFfiTaskList.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiTaskRow: FfiConverterRustBuffer<List<FfiTaskRow>> {
+    override fun read(buf: ByteBuffer): List<FfiTaskRow> {
+        val len = buf.getInt()
+        return List<FfiTaskRow>(len) {
+            FfiConverterTypeFfiTaskRow.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiTaskRow>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiTaskRow.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiTaskRow>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiTaskRow.write(it, buf)
         }
     }
 }

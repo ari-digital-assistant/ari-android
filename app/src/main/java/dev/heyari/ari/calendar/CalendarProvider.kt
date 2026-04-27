@@ -204,6 +204,74 @@ class CalendarProvider @Inject constructor(
     }
 
     /**
+     * One event instance from a [queryEventsInRange] lookup.
+     * Recurring events expand into multiple rows — one per concrete
+     * instance whose start lands in the queried window — matching
+     * the way `CalendarContract.Instances` works.
+     */
+    data class DeviceEventRow(
+        val id: Long,
+        val title: String,
+        val startMillis: Long,
+        val endMillis: Long,
+        val allDay: Boolean,
+        val calendarId: Long,
+    )
+
+    /**
+     * Event instances starting in `[startMillis, endMillis)`,
+     * ordered by start ascending and capped at [limit]. Goes through
+     * `CalendarContract.Instances` (rather than `Events`) so
+     * recurring events expand correctly — one row per occurrence in
+     * the window. Empty list if READ_CALENDAR isn't granted or the
+     * range is empty.
+     */
+    fun queryEventsInRange(
+        startMillis: Long,
+        endMillis: Long,
+        limit: Int,
+    ): List<DeviceEventRow> {
+        if (limit <= 0 || endMillis <= startMillis) return emptyList()
+        if (!hasReadPermission()) return emptyList()
+
+        // Instances queries take the start/end as path segments
+        // appended to the base URI rather than as selection args —
+        // CalendarContract reads the window from the URI itself.
+        val uri = CalendarContract.Instances.CONTENT_URI.buildUpon()
+            .appendPath(startMillis.toString())
+            .appendPath(endMillis.toString())
+            .build()
+        val projection = arrayOf(
+            CalendarContract.Instances.EVENT_ID,
+            CalendarContract.Instances.TITLE,
+            CalendarContract.Instances.BEGIN,
+            CalendarContract.Instances.END,
+            CalendarContract.Instances.ALL_DAY,
+            CalendarContract.Instances.CALENDAR_ID,
+        )
+        val sortOrder = "${CalendarContract.Instances.BEGIN} ASC"
+
+        val out = mutableListOf<DeviceEventRow>()
+        runCatching {
+            context.contentResolver.query(uri, projection, null, null, sortOrder)
+        }
+            .onFailure { e -> Log.w(TAG, "event range query failed: ${e.message}") }
+            .getOrNull()
+            ?.use { cursor ->
+                while (cursor.moveToNext() && out.size < limit) {
+                    val id = cursor.getLong(0)
+                    val title = cursor.getString(1) ?: continue
+                    val begin = cursor.getLong(2)
+                    val end = cursor.getLong(3)
+                    val allDay = cursor.getInt(4) == 1
+                    val calId = cursor.getLong(5)
+                    out.add(DeviceEventRow(id, title, begin, end, allDay, calId))
+                }
+            }
+        return out
+    }
+
+    /**
      * Delete an event by id. CalendarContract cascades to the paired
      * Reminder rows automatically. Returns true if the row existed
      * and was removed.
