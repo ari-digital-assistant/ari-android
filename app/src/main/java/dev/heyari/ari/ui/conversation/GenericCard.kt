@@ -301,6 +301,7 @@ private fun actionsForState(card: CardModel, isRinging: Boolean): List<CardActio
             id = "stop_alert",
             label = "Stop",
             utterance = null,
+            speak = null,
             style = CardAction.Style.DESTRUCTIVE,
         ),
     )

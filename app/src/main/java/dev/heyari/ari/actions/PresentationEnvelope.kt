@@ -154,6 +154,7 @@ private fun parseCardActions(arr: JSONArray): List<CardAction> {
             id = id,
             label = label,
             utterance = o.optStringOrNull("utterance"),
+            speak = o.optStringOrNull("speak"),
             style = parseCardStyle(o.optStringOrNull("style")),
         )
     }

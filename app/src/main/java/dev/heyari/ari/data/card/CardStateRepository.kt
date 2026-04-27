@@ -168,6 +168,7 @@ private fun encodeCardAction(a: CardAction): JSONObject = JSONObject().apply {
     put("id", a.id)
     put("label", a.label)
     putOrNull("utterance", a.utterance)
+    putOrNull("speak", a.speak)
     put("style", a.style.name)
 }
 
@@ -215,6 +216,7 @@ private fun decodeCardActions(arr: JSONArray): List<CardAction> {
             id = o.optString("id"),
             label = o.optString("label"),
             utterance = o.optStringOrNull("utterance"),
+            speak = o.optStringOrNull("speak"),
             style = runCatching { CardAction.Style.valueOf(o.optString("style", "DEFAULT")) }
                 .getOrDefault(CardAction.Style.DEFAULT),
         )

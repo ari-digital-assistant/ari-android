@@ -50,6 +50,15 @@ data class CardAction(
     val id: String,
     val label: String,
     val utterance: String?,
+    /**
+     * Optional acknowledgement text the dispatcher emits directly when
+     * the button has no [utterance]. Lets a skill produce a "got it"
+     * bubble + TTS for a no-op button (e.g. "No" on a Yes/No card)
+     * without inventing a magic-prefix utterance just to round-trip
+     * back through the engine. Ignored when [utterance] is set —
+     * the engine response provides the feedback in that case.
+     */
+    val speak: String?,
     val style: Style,
 ) {
     enum class Style { DEFAULT, PRIMARY, DESTRUCTIVE }

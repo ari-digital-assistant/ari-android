@@ -14,6 +14,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.heyari.ari.actions.ActionHandler
 import dev.heyari.ari.actions.AsyncEnvelopeChannel
+import dev.heyari.ari.actions.CardActionDispatcher
 import dev.heyari.ari.actions.CardActionVoiceIntercept
 import dev.heyari.ari.actions.CardAlarmScheduler
 import dev.heyari.ari.data.SettingsRepository
@@ -61,6 +62,7 @@ class ConversationViewModel @Inject constructor(
     private val cardAlarmScheduler: CardAlarmScheduler,
     private val asyncEnvelopeChannel: AsyncEnvelopeChannel,
     private val cardActionVoiceIntercept: CardActionVoiceIntercept,
+    private val cardActionDispatcher: CardActionDispatcher,
     private val application: Application,
 ) : ViewModel() {
 
@@ -276,6 +278,7 @@ class ConversationViewModel @Inject constructor(
                     id = "cancel",
                     label = "Cancel",
                     utterance = "cancel demo timer",
+                    speak = null,
                     style = CardAction.Style.DESTRUCTIVE,
                 ),
             ),
@@ -406,90 +409,18 @@ class ConversationViewModel @Inject constructor(
      * and reconciles state.
      */
     fun onCardAction(cardId: String, action: CardAction) {
-        when (action.id) {
-            "stop_alert" -> {
-                // Local intercept — the alert id corresponds to the card's
-                // alert primitive; we don't have it directly, so look it up.
-                val card = cardRepository.state.value.firstOrNull { it.id == cardId }
-                val alertId = card?.onComplete?.alert?.id ?: return
-                application.startService(AlertService.stopIntent(application, alertId))
-            }
-            "cancel" -> {
-                // Generic cancel-reserved id. If the card declared an
-                // on_cancel envelope, dispatch it through the normal
-                // action handler; every primitive in that envelope
-                // (speak, run_utterance, dismiss, …) runs as if a
-                // skill had just produced it.
-                val card = cardRepository.state.value.firstOrNull { it.id == cardId }
-                if (cardId.startsWith("card_demo-")) {
-                    // Demo card lives outside the skill — drop locally.
-                    cardRepository.removeById(cardId)
-                    cardAlarmScheduler.cancel(cardId)
-                    return
-                }
-                if (card?.onCancel != null) {
-                    viewModelScope.launch(Dispatchers.Default) {
-                        val result = actionHandler.handle(card.onCancel, card.skillId)
-                        // If the on_cancel envelope asked the frontend
-                        // to bounce an utterance back through the
-                        // engine (the clean way for a skill to handle
-                        // its own cancellation without inventing a
-                        // skill-specific envelope primitive), do so.
-                        val followup = (result as? dev.heyari.ari.actions.ActionResult.Spoken)?.followupUtterance
-                        if (!followup.isNullOrBlank()) {
-                            val response = engine.processInput(followup)
-                            if (response is FfiResponse.Action) {
-                                actionHandler.handle(response.json, response.skillId)
-                            }
-                        }
-                    }
-                    cardRepository.removeById(cardId)
-                } else if (action.utterance != null) {
-                    // Back-compat: a skill that sets utterance but no
-                    // on_cancel still round-trips through the engine.
-                    val utterance = action.utterance
-                    viewModelScope.launch(Dispatchers.Default) {
-                        val response = engine.processInput(utterance)
-                        if (response is FfiResponse.Action) {
-                            actionHandler.handle(response.json, response.skillId)
-                        }
-                    }
-                }
-            }
-            else -> {
-                val utterance = action.utterance ?: return
-                if (cardId.startsWith("card_demo-")) {
-                    // Demo card lives outside the skill — just drop it.
-                    cardRepository.removeById(cardId)
-                    cardAlarmScheduler.cancel(cardId)
-                    return
-                }
-                // Dismiss the card up-front: the button it belongs to
-                // has served its purpose, the utterance has been
-                // dispatched, and leaving the card in place invites a
-                // double-tap that would commit the same action twice.
-                cardRepository.removeById(cardId)
-                viewModelScope.launch(Dispatchers.Default) {
-                    val response = engine.processInput(utterance)
-                    var attachments: List<Attachment> = emptyList()
-                    val responseText = when (response) {
-                        is FfiResponse.Text -> response.body
-                        is FfiResponse.Action -> {
-                            val result = actionHandler.handle(response.json, response.skillId)
-                            attachments = result.attachments
-                            result.text
-                        }
-                        is FfiResponse.NotUnderstood -> response.body
-                        is FfiResponse.Binary -> "[Binary: ${response.mime}, ${response.data.size} bytes]"
-                    }
-                    if (responseText.isBlank() && attachments.isEmpty()) return@launch
+        viewModelScope.launch(Dispatchers.Default) {
+            when (val outcome = cardActionDispatcher.dispatch(cardId, action)) {
+                is CardActionDispatcher.Outcome.Silent -> Unit
+                is CardActionDispatcher.Outcome.Spoken -> {
+                    if (outcome.text.isBlank() && outcome.attachments.isEmpty()) return@launch
                     val ariMessage = Message(
-                        text = responseText,
+                        text = outcome.text,
                         isFromUser = false,
-                        attachments = attachments,
+                        attachments = outcome.attachments,
                     )
                     _state.update { it.copy(messages = it.messages + ariMessage) }
-                    if (responseText.isNotBlank()) speechOutput.speak(responseText)
+                    if (outcome.text.isNotBlank()) speechOutput.speak(outcome.text)
                 }
             }
         }
