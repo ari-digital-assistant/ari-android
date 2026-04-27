@@ -14,6 +14,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.heyari.ari.actions.ActionHandler
 import dev.heyari.ari.actions.AsyncEnvelopeChannel
+import dev.heyari.ari.actions.CardActionVoiceIntercept
 import dev.heyari.ari.actions.CardAlarmScheduler
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.data.card.Card
@@ -59,6 +60,7 @@ class ConversationViewModel @Inject constructor(
     val assetResolver: dev.heyari.ari.assets.AssetResolver,
     private val cardAlarmScheduler: CardAlarmScheduler,
     private val asyncEnvelopeChannel: AsyncEnvelopeChannel,
+    private val cardActionVoiceIntercept: CardActionVoiceIntercept,
     private val application: Application,
 ) : ViewModel() {
 
@@ -166,6 +168,17 @@ class ConversationViewModel @Inject constructor(
 
         val userMessage = Message(text = text, isFromUser = true)
         _state.update { it.copy(messages = it.messages + userMessage, inputText = "", wakeWordDetected = false) }
+
+        // If the most recent active card has a button whose id or
+        // label matches the user's word, dispatch that button as if
+        // tapped — short-circuits the engine so "yes" / "no" /
+        // "cancel" / "keep" answer a clarification card naturally
+        // without the assistant ever seeing the word. Skill-agnostic:
+        // any card with actions inherits this UX for free.
+        cardActionVoiceIntercept.resolve(text)?.let { match ->
+            onCardAction(match.cardId, match.action)
+            return
+        }
 
         viewModelScope.launch(Dispatchers.Default) {
             val response = engine.processInput(text)

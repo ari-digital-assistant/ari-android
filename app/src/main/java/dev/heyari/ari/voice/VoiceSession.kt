@@ -59,6 +59,8 @@ class VoiceSession @Inject constructor(
     private val speechRecognizer: SpeechRecognizer,
     private val speechOutput: SpeechOutput,
     private val actionHandler: ActionHandler,
+    private val cardActionVoiceIntercept: dev.heyari.ari.actions.CardActionVoiceIntercept,
+    private val cardRepository: dev.heyari.ari.data.card.CardStateRepository,
 ) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var sessionJob: Job? = null
@@ -176,7 +178,28 @@ class VoiceSession @Inject constructor(
 
         _state.value = VoiceState.Thinking
 
-        var response = engine.processInput(text)
+        // If the spoken word matches an active card's button (Yes /
+        // No / Cancel / Keep — or whatever labels the skill chose),
+        // dismiss the card and send the action's utterance through
+        // the engine instead of the raw transcript. Lets a user
+        // answer a clarification card with their voice the same way
+        // they could tap it. Falls through to normal engine dispatch
+        // when no card is active or no button matches.
+        val intercept = cardActionVoiceIntercept.resolve(text)
+        var response = if (intercept != null) {
+            cardRepository.removeById(intercept.cardId)
+            val utterance = intercept.action.utterance
+            if (utterance.isNullOrBlank()) {
+                // Action with no utterance is a visual no-op (e.g. a
+                // "Keep" button) — don't bother the engine, just
+                // dismiss the overlay.
+                dismiss()
+                return
+            }
+            engine.processInput(utterance)
+        } else {
+            engine.processInput(text)
+        }
         var usedText = text
 
         // --- Layer 2: parallel-stream transcript ---
