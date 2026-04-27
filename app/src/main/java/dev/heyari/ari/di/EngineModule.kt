@@ -135,11 +135,45 @@ object EngineModule {
             // If the active assistant is the built-in local LLM, set the
             // model path so it loads lazily on first skill miss.
             if (activeAssistantId == BUILTIN_ASSISTANT_ID) {
-                val modelId = runBlocking { settingsRepository.activeLlmModelId.first() }
+                var modelId = runBlocking { settingsRepository.activeLlmModelId.first() }
+                // Recovery: an onboarding user can finish a tier download
+                // before SettingsViewModel ever subscribes to its
+                // completion event, in which case `activeLlmModelId`
+                // never gets written. If we see Builtin active but no
+                // model id, scan the LLM directory and pick the first
+                // downloaded one — the user's intent was to use it.
+                if (modelId == null) {
+                    val recovered = LlmModelRegistry.all
+                        .firstOrNull { llmDownloadManager.isDownloaded(it) }
+                    if (recovered != null) {
+                        runBlocking { settingsRepository.setActiveLlmModelId(recovered.id) }
+                        modelId = recovered.id
+                        Log.i(TAG, "recovered activeLlmModelId from disk scan: $modelId")
+                    }
+                }
                 val model = LlmModelRegistry.byId(modelId)
                 if (model != null && llmDownloadManager.isDownloaded(model)) {
                     val ok = engine.loadLlmModel(llmDownloadManager.modelFile(model).absolutePath)
                     Log.i(TAG, if (ok) "LLM path set: ${model.id} (lazy)" else "LLM path invalid: ${model.id}")
+                    // Derive model_tier from the LlmModel.size and ensure it's
+                    // written to both the FFI store and DataStore. Existing
+                    // installs (pre-Layer-C-on-device) had no model_tier
+                    // persisted; without this, apply_to_engine would default
+                    // to no active assistant and Layer C would silently
+                    // fall through to warn-and-commit.
+                    val tier = model.size.name.lowercase()
+                    runBlocking {
+                        assistantRegistry.setAssistantConfigValue(
+                            BUILTIN_ASSISTANT_ID,
+                            "model_tier",
+                            tier,
+                        )
+                        settingsRepository.setAssistantConfigValue(
+                            BUILTIN_ASSISTANT_ID,
+                            "model_tier",
+                            tier,
+                        )
+                    }
                 }
             }
 

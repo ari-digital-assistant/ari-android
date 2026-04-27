@@ -30,19 +30,19 @@ data class PushedEnvelope(
  * Singleton channel between the native `FfiEnvelopeSink` implementation
  * (called from a Rust background thread after a Layer C assistant
  * round-trip) and whatever Compose-side observer wants to surface the
- * envelope. Uses [MutableSharedFlow] with a modest replay buffer so a
- * late subscriber after rotation doesn't miss a push that landed
- * moments earlier.
+ * envelope.
  *
  * Emission is non-suspending ([MutableSharedFlow.tryEmit]) — the
  * background thread delivering from JNI can't afford to block on
  * backpressure. `DROP_OLDEST` keeps the buffer bounded without losing
- * the most recent pushes.
+ * the most recent pushes. `replay = 0` deliberately: any
+ * ConversationViewModel re-attachment (navigation, config change) must
+ * not see a previous envelope replayed and double-speak its contents.
  */
 @Singleton
 class AsyncEnvelopeChannel @Inject constructor() {
     private val _flow = MutableSharedFlow<PushedEnvelope>(
-        replay = 1,
+        replay = 0,
         extraBufferCapacity = 16,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )

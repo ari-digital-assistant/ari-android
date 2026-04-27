@@ -90,7 +90,7 @@ fun AssistantSettingsPage(
             // "None" option
             AssistantCard(
                 name = "None",
-                description = "No assistant. Ari only answers via matched skills.",
+                description = "No AI assistant. Ari will only respond to direct commands and won't attempt to understand natural language.",
                 privacy = null,
                 selected = state.activeAssistantId == null,
                 onSelect = { viewModel.selectAssistant(null) },

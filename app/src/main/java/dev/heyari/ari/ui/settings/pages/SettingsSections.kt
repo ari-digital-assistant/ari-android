@@ -386,7 +386,7 @@ internal fun StartOnBootSection(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Start listening on boot",
+                        text = "Start Ari on boot",
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Spacer(Modifier.height(4.dp))

@@ -89,13 +89,13 @@
     <string name="onboarding_assistant_title">Assistant</string>
     <string name="onboarding_assistant_body">Ari uses skills to answer most things. For everything else, you can pick an assistant — or not.</string>
     <string name="onboarding_assistant_none">None</string>
-    <string name="onboarding_assistant_none_blurb">No assistant. Ari answers only what matching skills can handle.</string>
+    <string name="onboarding_assistant_none_blurb">No AI assistant. Ari will only respond to direct commands and won\'t attempt to understand natural language.</string>
     <string name="onboarding_assistant_none_pro_1">Fastest response time</string>
     <string name="onboarding_assistant_none_pro_2">Works fully offline</string>
     <string name="onboarding_assistant_none_pro_3">Nothing to configure</string>
     <string name="onboarding_assistant_none_con_1">Ari will tell you when it can\'t help</string>
     <string name="onboarding_assistant_ondevice">On-device</string>
-    <string name="onboarding_assistant_ondevice_blurb">Runs a language model entirely on your phone.</string>
+    <string name="onboarding_assistant_ondevice_blurb">Ari will use local AI models to understand your commands. Requires no internet connection, but may have limited capabilities compared to cloud assistants, depending on model chosen.</string>
     <string name="onboarding_assistant_ondevice_pro_1">100% private — nothing leaves your phone</string>
     <string name="onboarding_assistant_ondevice_pro_2">No accounts, no API keys, no internet needed</string>
     <string name="onboarding_assistant_ondevice_con_1">Smaller and less capable than cloud assistants</string>

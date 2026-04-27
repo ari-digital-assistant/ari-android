@@ -1224,7 +1224,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_ffitasksprovider_query_in_range() != 5644.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_assistantregistry_apply_to_engine() != 26810.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_assistantregistry_apply_to_engine() != 17337.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_assistantregistry_get_active_assistant() != 13209.toShort()) {
@@ -2247,7 +2247,13 @@ public interface AssistantRegistryInterface {
     /**
      * Apply the current active assistant selection to the engine.
      * Must be called after `set_active_assistant` and whenever the
-     * engine is rebuilt (e.g. after `reload_community_skills`).
+     * engine is rebuilt (e.g. after `reload_community_skills`). For
+     * the built-in assistant, reads `model_tier` from the settings
+     * store and threads it into [`ActiveAssistant::Builtin`] so Layer
+     * C can gate consultation by tier. If `model_tier` is missing or
+     * unparseable (fresh install before the user has picked a model),
+     * the active assistant is set to `None` rather than silent-defaulting,
+     * to avoid masking misconfiguration.
      */
     fun `applyToEngine`(`engine`: AriEngine)
     
@@ -2399,7 +2405,13 @@ open class AssistantRegistry: Disposable, AutoCloseable, AssistantRegistryInterf
     /**
      * Apply the current active assistant selection to the engine.
      * Must be called after `set_active_assistant` and whenever the
-     * engine is rebuilt (e.g. after `reload_community_skills`).
+     * engine is rebuilt (e.g. after `reload_community_skills`). For
+     * the built-in assistant, reads `model_tier` from the settings
+     * store and threads it into [`ActiveAssistant::Builtin`] so Layer
+     * C can gate consultation by tier. If `model_tier` is missing or
+     * unparseable (fresh install before the user has picked a model),
+     * the active assistant is set to `None` rather than silent-defaulting,
+     * to avoid masking misconfiguration.
      */override fun `applyToEngine`(`engine`: AriEngine)
         = 
     callWithHandle {

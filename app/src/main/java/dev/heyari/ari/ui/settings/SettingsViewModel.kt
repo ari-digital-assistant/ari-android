@@ -204,6 +204,16 @@ class SettingsViewModel @Inject constructor(
                 ) {
                     val model = LlmModelRegistry.byId(dlState.modelId) ?: return@collect
                     settingsRepository.setActiveLlmModelId(model.id)
+                    // Mirror the size into the built-in assistant's model_tier
+                    // config so apply_to_engine can construct
+                    // ActiveAssistant::Builtin { tier } and Layer C can gate
+                    // on it. setAssistantConfig writes through to the FFI
+                    // store + DataStore + re-applies the engine.
+                    setAssistantConfig(
+                        EngineModule.BUILTIN_ASSISTANT_ID,
+                        "model_tier",
+                        model.size.name.lowercase(),
+                    )
                 }
             }
         }
@@ -541,9 +551,23 @@ class SettingsViewModel @Inject constructor(
      * the choice as `activeLlmModelId` so the engine can load it.
      */
     fun selectLlmModel(model: LlmModel) {
-        if (!llmDownloadManager.isDownloaded(model)) return
+        // Persist the user's choice immediately — even if the file isn't
+        // on disk yet. The load/unload observer below picks up the model
+        // and feeds it to the engine once isDownloaded becomes true.
+        // Without this, an onboarding user whose SettingsViewModel is
+        // torn down before the download completes loses the selection.
         viewModelScope.launch {
             settingsRepository.setActiveLlmModelId(model.id)
+            // Mirror the size into model_tier on the built-in assistant
+            // so apply_to_engine can construct ActiveAssistant::Builtin
+            // { tier } and Layer C can gate consultation by tier.
+            // setAssistantConfig writes to the FFI store + DataStore +
+            // re-applies the engine.
+            setAssistantConfig(
+                EngineModule.BUILTIN_ASSISTANT_ID,
+                "model_tier",
+                model.size.name.lowercase(),
+            )
         }
     }
 
