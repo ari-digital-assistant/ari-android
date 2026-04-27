@@ -182,6 +182,14 @@ class ConversationViewModel @Inject constructor(
                 // the apology body as-is.
                 is FfiResponse.NotUnderstood -> response.body
             }
+
+            // Skip rendering an empty bubble. Layer C phase-1 envelopes
+            // are deliberately silent (no speak, no cards) so the
+            // assistant round-trip can run quietly; only the phase-2
+            // result and any delay phrase render as bubbles. Without
+            // this skip we'd flash a ghost bubble per phase-1.
+            if (responseText.isBlank() && attachments.isEmpty()) return@launch
+
             val ariMessage = Message(
                 text = responseText,
                 isFromUser = false,
