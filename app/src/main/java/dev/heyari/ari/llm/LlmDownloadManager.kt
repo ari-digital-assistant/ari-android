@@ -9,7 +9,9 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import dev.heyari.ari.models.InstalledModelMetadata
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.io.File
 import javax.inject.Inject
@@ -38,6 +40,20 @@ class LlmDownloadManager @Inject constructor(
     fun isDownloaded(model: LlmModel): Boolean = modelFile(model).isFile
 
     fun delete(model: LlmModel): Boolean = modelDir(model).deleteRecursively()
+
+    /** Read the installed sidecar version. Missing/corrupt → `unknown`. */
+    fun installedVersion(model: LlmModel): String =
+        InstalledModelMetadata.readVersion(modelDir(model))
+
+    /**
+     * Auto-update entry point. Triggers the worker, then suspends until
+     * the work reaches a terminal state. Returns the final state so
+     * callers can switch on Completed / Failed.
+     */
+    suspend fun downloadAndAwait(model: LlmModel): LlmDownloadState {
+        download(model)
+        return state.first { it is LlmDownloadState.Completed || it is LlmDownloadState.Failed }
+    }
 
     fun cancel() {
         workManager.cancelUniqueWork(UNIQUE_WORK_NAME)

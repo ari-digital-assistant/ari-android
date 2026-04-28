@@ -36,6 +36,7 @@ import dev.heyari.ari.ui.onboarding.WelcomeScreen
 import dev.heyari.ari.ui.settings.SettingsScreen
 import dev.heyari.ari.ui.settings.SettingsViewModel
 import dev.heyari.ari.ui.settings.pages.AssistantSettingsPage
+import dev.heyari.ari.ui.settings.pages.AutoUpdateSettingsPage
 import dev.heyari.ari.ui.settings.pages.GeneralSettingsPage
 import dev.heyari.ari.ui.settings.pages.PermissionsSettingsPage
 import dev.heyari.ari.ui.settings.pages.SttSettingsPage
@@ -59,6 +60,7 @@ object Routes {
     const val SETTINGS_STT = "settings/stt"
     const val SETTINGS_TTS = "settings/tts"
     const val SETTINGS_LLM = "settings/llm"
+    const val SETTINGS_AUTO_UPDATE = "settings/auto-update"
     const val SKILLS = "skills?type={type}"
     const val SKILL_DETAIL = "skills/detail/{skillId}?source={source}"
     const val ABOUT = "about"
@@ -142,6 +144,7 @@ fun AriNavHost(
                 onOpenStt = { navController.navigate(Routes.SETTINGS_STT) },
                 onOpenTts = { navController.navigate(Routes.SETTINGS_TTS) },
                 onOpenLlm = { navController.navigate(Routes.SETTINGS_LLM) },
+                onOpenAutoUpdate = { navController.navigate(Routes.SETTINGS_AUTO_UPDATE) },
             )
         }
         composable(Routes.SETTINGS_GENERAL) {
@@ -166,6 +169,9 @@ fun AriNavHost(
                     navController.navigate(Routes.skills(type = "assistant")) { launchSingleTop = true }
                 },
             )
+        }
+        composable(Routes.SETTINGS_AUTO_UPDATE) {
+            AutoUpdateSettingsPage(onBack = { navController.popBackStack() })
         }
         composable(
             route = Routes.SKILLS,

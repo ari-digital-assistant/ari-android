@@ -9,7 +9,9 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import dev.heyari.ari.models.InstalledModelMetadata
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.io.File
 import javax.inject.Inject
@@ -47,6 +49,20 @@ class ModelDownloadManager @Inject constructor(
     fun delete(model: SttModel): Boolean {
         val dir = modelDir(model)
         return dir.deleteRecursively()
+    }
+
+    /** Read the installed sidecar version. Missing/corrupt → `unknown`. */
+    fun installedVersion(model: SttModel): String =
+        InstalledModelMetadata.readVersion(modelDir(model))
+
+    /**
+     * Auto-update entry point. Triggers the worker, then suspends until
+     * the work reaches a terminal state. Returns the final state so
+     * callers can switch on Completed / Failed.
+     */
+    suspend fun downloadAndAwait(model: SttModel): ModelDownloadState {
+        download(model)
+        return state.first { it is ModelDownloadState.Completed || it is ModelDownloadState.Failed }
     }
 
     fun cancel() {

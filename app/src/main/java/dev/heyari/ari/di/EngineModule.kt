@@ -204,6 +204,14 @@ object EngineModule {
     const val ROUTER_MODEL_FILENAME = "ari-functiongemma-q4_k_m.gguf"
     const val ROUTER_MODEL_URL = "https://github.com/ari-digital-assistant/ari-tools/releases/download/functiongemma-v1/ari-functiongemma-q4_k_m.gguf"
     const val ROUTER_MODEL_BYTES = 253_000_000L
+    /**
+     * Manifest URL for the FunctionGemma router. CI publishes a fresh
+     * manifest to the `functiongemma-latest` release on every nightly
+     * retrain; auto-update polls this URL on its 24h cadence.
+     */
+    const val ROUTER_MODEL_MANIFEST_URL = "https://github.com/ari-digital-assistant/ari-tools/releases/download/functiongemma-latest/manifest.json"
+    /** Stable identifier for the router across DataStore keys + sidecars. */
+    const val ROUTER_MODEL_KEY = "router"
     private const val TAG = "EngineModule"
 
     @Provides

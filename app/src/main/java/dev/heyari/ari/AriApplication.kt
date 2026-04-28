@@ -6,7 +6,9 @@ import android.util.Log
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
+import dev.heyari.ari.data.AutoUpdatePreferences
 import dev.heyari.ari.data.SettingsRepository
+import dev.heyari.ari.models.ModelUpdateWorker
 import dev.heyari.ari.notifications.NotificationChannels
 import dev.heyari.ari.skills.SkillUpdateWorker
 import dev.heyari.ari.stt.ModelDownloadManager
@@ -27,6 +29,7 @@ class AriApplication : Application(), Configuration.Provider {
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var speechRecognizer: SpeechRecognizer
     @Inject lateinit var downloadManager: ModelDownloadManager
+    @Inject lateinit var autoUpdatePreferences: AutoUpdatePreferences
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -39,8 +42,28 @@ class AriApplication : Application(), Configuration.Provider {
         super.onCreate()
         // Idempotent — KEEP policy means reinstalls don't reset the schedule.
         SkillUpdateWorker.schedule(this)
+        scheduleModelUpdateWorker()
         NotificationChannels.ensureAll(this)
         eagerLoadActiveSttModel()
+    }
+
+    /**
+     * Schedule the model auto-update worker. Reads the user's metered-data
+     * preference so the constraint matches their consent. Settings UI calls
+     * [ModelUpdateWorker.schedule] with `replace = true` when the toggle is
+     * flipped at runtime; this start-up call uses `KEEP` so it doesn't
+     * clobber an in-flight reschedule.
+     */
+    private fun scheduleModelUpdateWorker() {
+        scope.launch {
+            val allowMetered = autoUpdatePreferences.allowMetered.first()
+            val enabled = autoUpdatePreferences.enabled.first()
+            if (enabled) {
+                ModelUpdateWorker.schedule(this@AriApplication, allowMetered = allowMetered)
+            } else {
+                ModelUpdateWorker.cancel(this@AriApplication)
+            }
+        }
     }
 
     /**

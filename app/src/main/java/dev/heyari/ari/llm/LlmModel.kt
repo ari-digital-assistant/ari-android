@@ -22,6 +22,13 @@ data class LlmModel(
     val fileName: String,
     val downloadUrl: String,
     val size: LlmSize,
+    /**
+     * Manifest endpoint for this tier. Empty string means "no manifest
+     * published yet — fall back to [downloadUrl] with no SHA verify and
+     * sidecar version=unknown". Auto-update polls this URL on its 24h
+     * cadence.
+     */
+    val manifestUrl: String = "",
 )
 
 object LlmModelRegistry {
@@ -35,6 +42,7 @@ object LlmModelRegistry {
         fileName = "gemma-3-1b-it-Q4_K_M.gguf",
         downloadUrl = "https://huggingface.co/unsloth/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q4_K_M.gguf",
         size = LlmSize.Small,
+        manifestUrl = "https://github.com/ari-digital-assistant/ari-tools/releases/download/llm-small-latest/manifest.json",
     )
 
     val MEDIUM = LlmModel(
@@ -45,6 +53,7 @@ object LlmModelRegistry {
         fileName = "gemma-4-E2B-it-Q4_K_M.gguf",
         downloadUrl = "https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_K_M.gguf",
         size = LlmSize.Medium,
+        manifestUrl = "https://github.com/ari-digital-assistant/ari-tools/releases/download/llm-medium-latest/manifest.json",
     )
 
     val LARGE = LlmModel(
@@ -55,6 +64,7 @@ object LlmModelRegistry {
         fileName = "gemma-4-E4B-it-Q4_K_M.gguf",
         downloadUrl = "https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf",
         size = LlmSize.Large,
+        manifestUrl = "https://github.com/ari-digital-assistant/ari-tools/releases/download/llm-large-latest/manifest.json",
     )
 
     val all = listOf(SMALL, MEDIUM, LARGE)

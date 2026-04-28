@@ -1,0 +1,87 @@
+package dev.heyari.ari.models
+
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import androidx.core.app.NotificationCompat
+import androidx.core.content.getSystemService
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.heyari.ari.MainActivity
+import dev.heyari.ari.R
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/**
+ * Builds and posts the "model updates available" notification.
+ *
+ * Mirrors [dev.heyari.ari.skills.SkillUpdateNotifier] in spirit but is a
+ * separate channel + ID so users can mute one without muting the other.
+ * Tapping deep-links into Settings → Auto-update where the user can
+ * apply or skip per-update.
+ */
+@Singleton
+class ModelUpdateNotifier @Inject constructor(
+    @param:ApplicationContext private val context: Context,
+) {
+    fun showOrUpdate(updates: List<ModelUpdate>) {
+        val manager = context.getSystemService<NotificationManager>() ?: return
+        if (updates.isEmpty()) {
+            manager.cancel(NOTIFICATION_ID)
+            return
+        }
+        ensureChannel(manager)
+
+        val intent = Intent(context, MainActivity::class.java).apply {
+            action = ACTION_OPEN_AUTO_UPDATE_SETTINGS
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(EXTRA_OPEN_AUTO_UPDATE, true)
+        }
+        val pending = PendingIntent.getActivity(
+            context,
+            REQUEST_OPEN_AUTO_UPDATE,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+        val title = if (updates.size == 1) "1 model update available" else "${updates.size} model updates available"
+        val body = updates.joinToString(", ") { it.target.displayName }
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_ari_symbolic)
+            .setContentTitle(title)
+            .setContentText("Open Ari to review and install. ($body)")
+            .setStyle(NotificationCompat.BigTextStyle().bigText("Open Ari to review and install.\n$body"))
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setContentIntent(pending)
+            .setAutoCancel(true)
+            .build()
+        manager.notify(NOTIFICATION_ID, notification)
+    }
+
+    fun cancel() {
+        context.getSystemService<NotificationManager>()?.cancel(NOTIFICATION_ID)
+    }
+
+    private fun ensureChannel(manager: NotificationManager) {
+        if (manager.getNotificationChannel(CHANNEL_ID) != null) return
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "Model updates",
+            NotificationManager.IMPORTANCE_LOW,
+        ).apply {
+            description = "Notifies you when on-device model updates are available."
+            setShowBadge(true)
+        }
+        manager.createNotificationChannel(channel)
+    }
+
+    companion object {
+        const val CHANNEL_ID = "model-updates"
+        const val NOTIFICATION_ID = 0x5CE3
+        const val ACTION_OPEN_AUTO_UPDATE_SETTINGS = "dev.heyari.ari.action.OPEN_AUTO_UPDATE_SETTINGS"
+        const val EXTRA_OPEN_AUTO_UPDATE = "dev.heyari.ari.extra.OPEN_AUTO_UPDATE"
+        private const val REQUEST_OPEN_AUTO_UPDATE = 0x5CE4
+    }
+}

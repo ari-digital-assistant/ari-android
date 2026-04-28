@@ -8,6 +8,8 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import dev.heyari.ari.models.InstalledModelMetadata
+import dev.heyari.ari.models.ModelManifest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -16,9 +18,24 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * WorkManager-backed LLM model downloader. Same pattern as
- * [dev.heyari.ari.stt.ModelDownloadWorker] — survives process death,
- * reports progress via [setProgress].
+ * WorkManager-backed LLM model downloader.
+ *
+ * Two paths:
+ *
+ * - **Manifest-driven** (auto-update + new installs): the worker fetches
+ *   the manifest URL specified on the [LlmModel], pulls down the GGUF
+ *   from `manifest.url`, verifies SHA-256 against `manifest.sha256`,
+ *   then writes a `version.json` sidecar.
+ *
+ * - **Legacy direct** (existing installs predating manifests, or when
+ *   the manifest endpoint is unreachable): falls back to
+ *   [LlmModel.downloadUrl], skips SHA verification, writes a sidecar
+ *   with `version=unknown`. The next auto-update check then offers to
+ *   replace it with a properly-versioned copy.
+ *
+ * SHA verification happens on the `.part` file *before* the existing
+ * target is touched, so a corrupt download never destroys an
+ * already-installed model.
  */
 @HiltWorker
 class LlmDownloadWorker @AssistedInject constructor(
@@ -40,7 +57,13 @@ class LlmDownloadWorker @AssistedInject constructor(
         try {
             partFile.delete()
 
-            val connection = (URL(model.downloadUrl).openConnection() as HttpURLConnection).apply {
+            val manifest = if (model.manifestUrl.isNotBlank()) fetchManifest(model.manifestUrl) else null
+            val downloadUrl = manifest?.files?.firstOrNull()?.url ?: model.downloadUrl
+            val expectedSha = manifest?.files?.firstOrNull()?.sha256
+            val expectedTotal = manifest?.files?.firstOrNull()?.sizeBytes ?: model.totalBytes
+            val version = manifest?.version ?: InstalledModelMetadata.UNKNOWN_VERSION
+
+            val connection = (URL(downloadUrl).openConnection() as HttpURLConnection).apply {
                 instanceFollowRedirects = true
                 connectTimeout = 30_000
                 readTimeout = 60_000
@@ -50,7 +73,7 @@ class LlmDownloadWorker @AssistedInject constructor(
             try {
                 val responseCode = connection.responseCode
                 if (responseCode !in 200..299) {
-                    throw RuntimeException("HTTP $responseCode for ${model.downloadUrl}")
+                    throw RuntimeException("HTTP $responseCode for $downloadUrl")
                 }
 
                 var bytesSoFar = 0L
@@ -71,7 +94,7 @@ class LlmDownloadWorker @AssistedInject constructor(
                             if (now - lastEmit > 100) {
                                 setProgress(workDataOf(
                                     KEY_BYTES_SO_FAR to bytesSoFar,
-                                    KEY_TOTAL_BYTES to model.totalBytes,
+                                    KEY_TOTAL_BYTES to expectedTotal,
                                     KEY_MODEL_ID to modelId,
                                 ))
                                 lastEmit = now
@@ -83,15 +106,28 @@ class LlmDownloadWorker @AssistedInject constructor(
                     }
                 }
 
+                val actualSha = InstalledModelMetadata.sha256Hex(partFile)
+                if (expectedSha != null && !actualSha.equals(expectedSha, ignoreCase = true)) {
+                    partFile.delete()
+                    throw RuntimeException("Checksum mismatch — file may be corrupted")
+                }
+
+                // SHA passed (or wasn't available). Now atomic-replace the target.
                 target.delete()
                 if (!partFile.renameTo(target)) {
                     throw RuntimeException("Failed to rename ${partFile.name} to ${target.name}")
                 }
+                InstalledModelMetadata.writeSingle(
+                    modelDir = dir,
+                    version = version,
+                    fileName = model.fileName,
+                    sha256 = actualSha,
+                )
             } finally {
                 connection.disconnect()
             }
 
-            Log.i(TAG, "LLM download completed for $modelId (${target.length()} bytes)")
+            Log.i(TAG, "LLM download completed for $modelId v$version (${target.length()} bytes)")
             Result.success(workDataOf(KEY_MODEL_ID to modelId))
         } catch (t: Throwable) {
             partFile.delete()
@@ -101,6 +137,27 @@ class LlmDownloadWorker @AssistedInject constructor(
                 KEY_ERROR to friendlyError(t),
             ))
         }
+    }
+
+    private fun fetchManifest(manifestUrl: String): ModelManifest? = try {
+        val conn = (URL(manifestUrl).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 15_000
+            readTimeout = 30_000
+            instanceFollowRedirects = true
+            connect()
+        }
+        if (conn.responseCode !in 200..299) {
+            Log.w(TAG, "manifest fetch returned HTTP ${conn.responseCode}: $manifestUrl")
+            null
+        } else {
+            val text = conn.inputStream.bufferedReader().use { it.readText() }
+            ModelManifest.parse(text).also {
+                Log.i(TAG, "Fetched LLM manifest: version=${it.version}")
+            }
+        }
+    } catch (e: Exception) {
+        Log.w(TAG, "LLM manifest fetch failed, will use legacy URL: ${e.message}")
+        null
     }
 
     companion object {

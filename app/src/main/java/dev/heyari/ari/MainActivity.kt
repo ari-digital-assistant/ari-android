@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
 import dev.heyari.ari.data.SettingsRepository
+import dev.heyari.ari.models.ModelUpdateNotifier
 import dev.heyari.ari.skills.SkillUpdateNotifier
 import dev.heyari.ari.ui.AriNavHost
 import dev.heyari.ari.ui.Routes
@@ -45,6 +46,7 @@ class MainActivity : ComponentActivity() {
 
         handleWakeWordIntent(intent)
         handleSkillUpdatesIntent(intent)
+        handleModelUpdatesIntent(intent)
         setContent {
             AriTheme {
                 AriNavHost(
@@ -62,6 +64,7 @@ class MainActivity : ComponentActivity() {
         }
         handleWakeWordIntent(intent)
         handleSkillUpdatesIntent(intent)
+        handleModelUpdatesIntent(intent)
     }
 
     private fun handleSkillUpdatesIntent(intent: Intent?) {
@@ -70,6 +73,13 @@ class MainActivity : ComponentActivity() {
             // so it never suspends and the most recent intent always wins.
             deepLinkCommands.trySend(Routes.skills())
             intent.removeExtra(SkillUpdateNotifier.EXTRA_OPEN_SKILLS)
+        }
+    }
+
+    private fun handleModelUpdatesIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra(ModelUpdateNotifier.EXTRA_OPEN_AUTO_UPDATE, false) == true) {
+            deepLinkCommands.trySend(Routes.SETTINGS_AUTO_UPDATE)
+            intent.removeExtra(ModelUpdateNotifier.EXTRA_OPEN_AUTO_UPDATE)
         }
     }
 

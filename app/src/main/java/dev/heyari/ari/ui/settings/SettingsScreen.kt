@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Settings
@@ -34,6 +35,7 @@ fun SettingsScreen(
     onOpenStt: () -> Unit,
     onOpenTts: () -> Unit,
     onOpenLlm: () -> Unit,
+    onOpenAutoUpdate: () -> Unit,
 ) {
     SettingsScaffold(
         title = stringResource(R.string.settings_title),
@@ -100,6 +102,11 @@ fun SettingsScreen(
                 icon = Icons.Default.AutoAwesome,
                 title = stringResource(R.string.settings_category_assistant),
                 onClick = onOpenLlm,
+            )
+            SettingsCategoryRow(
+                icon = Icons.Default.CloudDownload,
+                title = stringResource(R.string.settings_category_auto_update),
+                onClick = onOpenAutoUpdate,
             )
         }
     }

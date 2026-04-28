@@ -18,6 +18,33 @@
     <string name="settings_category_llm">On-device LLM</string>
     <string name="settings_category_assistant">Assistant</string>
     <string name="settings_category_tts">Voice</string>
+    <string name="settings_category_auto_update">Auto-update</string>
+
+    <!-- Auto-update settings -->
+    <string name="auto_update_master_title">Auto-update on-device models</string>
+    <string name="auto_update_master_summary">Periodically check for new versions of the FunctionGemma router, on-device LLM, and speech-to-text models. Updates are never installed automatically — you\'ll get a notification.</string>
+    <string name="auto_update_metered_title">Use mobile data</string>
+    <string name="auto_update_metered_summary">Off by default. Models can be hundreds of MB to several GB; leave this off to only check on Wi-Fi.</string>
+    <string name="auto_update_check_now">Check now</string>
+    <string name="auto_update_checking">Checking…</string>
+    <string name="auto_update_last_checked_never">Never checked</string>
+    <string name="auto_update_last_checked_just_now">Checked just now</string>
+    <string name="auto_update_last_checked_minutes">Checked %1$d min ago</string>
+    <string name="auto_update_last_checked_hours">Checked %1$d h ago</string>
+    <string name="auto_update_last_checked_days">Checked %1$d d ago</string>
+    <string name="auto_update_section_pending">Available updates</string>
+    <string name="auto_update_section_installed">Installed models</string>
+    <string name="auto_update_no_updates">All on-device models are up to date.</string>
+    <string name="auto_update_pending_size">%1$s — %2$s</string>
+    <string name="auto_update_pending_versions">v%1$s → v%2$s</string>
+    <string name="auto_update_apply">Update now</string>
+    <string name="auto_update_skip">Skip this version</string>
+    <string name="auto_update_applying">Updating…</string>
+    <string name="auto_update_apply_failed">Update failed: %1$s</string>
+    <string name="auto_update_apply_succeeded">%1$s updated to v%2$s</string>
+    <string name="auto_update_reset_skipped">Reset skipped versions</string>
+    <string name="auto_update_installed_version">Installed: v%1$s</string>
+    <string name="auto_update_no_models_installed">No on-device models installed yet. Auto-update will become active once you install at least one.</string>
 
     <!-- Skills -->
     <string name="skills_title">Skills</string>

@@ -17,6 +17,13 @@ data class SttModel(
     val tokensFile: String = "tokens.txt",
     val baseUrl: String,
     val modelType: String = "zipformer",
+    /**
+     * Bundle manifest endpoint covering all four component files. Empty
+     * means "no manifest published — fall back to per-file legacy URLs
+     * derived from [baseUrl] with SHA verification skipped and sidecar
+     * version=unknown".
+     */
+    val manifestUrl: String = "",
 )
 
 object SttModelRegistry {
@@ -30,6 +37,7 @@ object SttModelRegistry {
         joinerFile = "joiner.onnx",
         baseUrl = "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06/resolve/main",
         modelType = "zipformer2",
+        manifestUrl = "https://github.com/ari-digital-assistant/ari-tools/releases/download/stt-kroko-latest/manifest.json",
     )
 
     val NEMOTRON = SttModel(
@@ -41,6 +49,7 @@ object SttModelRegistry {
         decoderFile = "decoder.int8.onnx",
         joinerFile = "joiner.int8.onnx",
         baseUrl = "https://huggingface.co/csukuangfj/sherpa-onnx-nemotron-speech-streaming-en-0.6b-int8-2026-01-14/resolve/main",
+        manifestUrl = "https://github.com/ari-digital-assistant/ari-tools/releases/download/stt-nemotron-latest/manifest.json",
     )
 
     val all = listOf(KROKO, NEMOTRON)
