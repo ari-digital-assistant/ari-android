@@ -183,7 +183,36 @@ class ConversationViewModel @Inject constructor(
         }
 
         viewModelScope.launch(Dispatchers.Default) {
-            val response = engine.processInput(text)
+            // Generic "still working" filler. If processInput hasn't
+            // returned within STILL_WORKING_DELAY_MS, push a
+            // placeholder bubble so the user knows Ari is still on
+            // it instead of staring at silence. Same UX shape as
+            // Layer C's delay phrase but applies to ANY slow path —
+            // built-in LLM QA, cloud assistant, slow skill, anything
+            // that makes processInput block past the threshold.
+            // Cancelled when processInput returns; if the bubble was
+            // already emitted, the response renders as a fresh
+            // assistant message below it.
+            val fillerJob = launch {
+                delay(STILL_WORKING_DELAY_MS)
+                val filler = Message(
+                    text = STILL_WORKING_PHRASE,
+                    isFromUser = false,
+                )
+                _state.update { it.copy(messages = it.messages + filler) }
+                // Match Layer C's behaviour: the delay phrase is spoken
+                // as well as shown so the user gets audible confirmation
+                // that Ari is still working, particularly useful in
+                // hands-free / driving contexts.
+                speechOutput.speak(STILL_WORKING_PHRASE)
+            }
+
+            val response = try {
+                engine.processInput(text)
+            } finally {
+                fillerJob.cancel()
+            }
+
             var attachments: List<Attachment> = emptyList()
             val responseText = when (response) {
                 is FfiResponse.Text -> response.body
@@ -217,6 +246,15 @@ class ConversationViewModel @Inject constructor(
                 if (responseText.isNotBlank()) speechOutput.speak(responseText)
             }
         }
+    }
+
+    private companion object {
+        /** How long processInput can block before we surface a "still working" bubble. */
+        const val STILL_WORKING_DELAY_MS: Long = 4000
+
+        /** Phrase shown when the threshold trips. Mirrors Layer C's vocabulary
+         * deliberately so the two paths feel like one feature to the user. */
+        const val STILL_WORKING_PHRASE: String = "Working…"
     }
 
     /**
