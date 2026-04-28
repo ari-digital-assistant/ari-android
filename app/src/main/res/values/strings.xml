@@ -110,6 +110,10 @@
     <string name="onboarding_assistant_cloud_privacy">Your voice is transcribed on-device. Only the text is sent to the cloud provider. Ari never streams audio to a third party.</string>
     <string name="onboarding_assistant_cloud_later">Cloud assistants are installed as skills. Ari supports various skill providers including ChatGPT, Claude and Gemini. You can browse and install your preferred provider from the Skills screen after onboarding.</string>
 
+    <string name="onboarding_router_title">Smart skill routing</string>
+    <string name="onboarding_router_body">Ari can use a small on-device model to understand paraphrases the keyword matcher misses. \"Launch my music player\" routes to the open-app skill even though no keyword matched. Disable if you\'d rather skip the ~253 MB download.</string>
+    <string name="onboarding_router_continue_hint">You can continue — the model downloads in the background and starts working as soon as it\'s ready.</string>
+
     <string name="onboarding_general_title">Finishing touches</string>
     <string name="onboarding_general_body">A couple of options to make Ari work the way you want.</string>
 

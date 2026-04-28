@@ -29,6 +29,7 @@ import dev.heyari.ari.ui.onboarding.CompleteScreen
 import dev.heyari.ari.ui.onboarding.GeneralScreen
 import dev.heyari.ari.ui.onboarding.OnboardingViewModel
 import dev.heyari.ari.ui.onboarding.PermissionsScreen
+import dev.heyari.ari.ui.onboarding.RouterScreen
 import dev.heyari.ari.ui.onboarding.SttScreen
 import dev.heyari.ari.ui.onboarding.WakeWordScreen
 import dev.heyari.ari.ui.onboarding.WelcomeScreen
@@ -68,6 +69,7 @@ object Routes {
     const val ONBOARDING_WAKE_WORD = "onboarding/wakeword"
     const val ONBOARDING_STT = "onboarding/stt"
     const val ONBOARDING_ASSISTANT = "onboarding/assistant"
+    const val ONBOARDING_ROUTER = "onboarding/router"
     const val ONBOARDING_GENERAL = "onboarding/general"
     const val ONBOARDING_COMPLETE = "onboarding/complete"
 
@@ -325,6 +327,15 @@ fun AriNavHost(
                 AssistantScreen(
                     settingsViewModel = settingsViewModel,
                     onboardingViewModel = onboardingViewModel,
+                    onNext = { navController.navigate(Routes.ONBOARDING_ROUTER) },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(Routes.ONBOARDING_ROUTER) {
+                val settingsViewModel: SettingsViewModel = hiltViewModel()
+                RouterScreen(
+                    settingsViewModel = settingsViewModel,
                     onNext = { navController.navigate(Routes.ONBOARDING_GENERAL) },
                     onBack = { navController.popBackStack() },
                 )
