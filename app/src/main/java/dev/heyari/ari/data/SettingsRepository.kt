@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.heyari.ari.locale.SupportedLocales
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -175,6 +176,31 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    /**
+     * The user's currently-selected language, ISO 639-1 lowercase.
+     * Defaults to the system language if Ari supports it, otherwise
+     * `"en"`. The frontend is the single source of truth for locale;
+     * the engine and skills read through here via the
+     * `FfiLocaleProvider` host capability.
+     *
+     * Default is computed on every read rather than stored on first
+     * launch, so a user who changes their phone's system language
+     * before the onboarding wizard runs sees the right starting value.
+     * Once they pick explicitly, [setActiveLocale] writes it through.
+     */
+    val activeLocale: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[KEY_ACTIVE_LOCALE] ?: SupportedLocales.defaultFromSystem()
+    }
+
+    suspend fun setActiveLocale(code: String) {
+        require(SupportedLocales.isSupported(code)) {
+            "Unsupported locale: $code (supported: ${SupportedLocales.codes})"
+        }
+        context.dataStore.edit { prefs ->
+            prefs[KEY_ACTIVE_LOCALE] = code
+        }
+    }
+
     companion object {
         private val KEY_ACTIVE_STT_MODEL = stringPreferencesKey("active_stt_model")
         private val KEY_ACTIVE_WAKE_WORD = stringPreferencesKey("active_wake_word")
@@ -182,6 +208,7 @@ class SettingsRepository @Inject constructor(
         private val KEY_ACTIVE_LLM_MODEL = stringPreferencesKey("active_llm_model")
         private val KEY_ACTIVE_ASSISTANT = stringPreferencesKey("active_assistant")
         private val KEY_ACTIVE_TTS_VOICE = stringPreferencesKey("active_tts_voice")
+        private val KEY_ACTIVE_LOCALE = stringPreferencesKey("active_locale")
         private val KEY_START_ON_BOOT = booleanPreferencesKey("start_on_boot")
         private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         private val KEY_ROUTER_ENABLED = booleanPreferencesKey("router_enabled")

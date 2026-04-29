@@ -19,6 +19,7 @@ import dev.heyari.ari.data.SecretStore
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.llm.LlmDownloadManager
 import dev.heyari.ari.llm.LlmModelRegistry
+import dev.heyari.ari.locale.AriFfiLocaleProvider
 import dev.heyari.ari.router.RouterDownloadManager
 import dev.heyari.ari.skills.AndroidSkillLogSink
 import dev.heyari.ari.stt.ModelDownloadManager
@@ -64,6 +65,7 @@ object EngineModule {
         ariFfiCalendarProvider: AriFfiCalendarProvider,
         ariFfiLocalClock: AriFfiLocalClock,
         ariFfiEnvelopeSink: AriFfiEnvelopeSink,
+        ariFfiLocaleProvider: AriFfiLocaleProvider,
     ): AriEngine {
         // Hand the engine a full set of platform providers. Any skill
         // declaring `Capability::Tasks` / `Capability::Calendar`, or
@@ -89,6 +91,11 @@ object EngineModule {
             // and SkillRegistry — single source of truth.
             settings = skillSettingsStore,
             envelopeSink = ariFfiEnvelopeSink,
+            // The user's chosen language. Engine reads through this
+            // whenever it needs to dispatch on locale (text
+            // normalisers, prompt selection, skill regex filtering).
+            // Single source of truth lives in SettingsRepository.
+            locale = ariFfiLocaleProvider,
         )
 
         // Rehydrate non-secret skill settings from DataStore into the
