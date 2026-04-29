@@ -26,6 +26,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -219,10 +220,12 @@ private fun InstalledTab(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
+            val updatableIds = remember(state.updates) { state.updates.map { it.id }.toSet() }
             for (skill in state.installed) {
                 InstalledRow(
                     id = skill.id,
                     version = skill.version,
+                    updateAvailable = skill.id in updatableIds,
                     onClick = { onOpenDetail(skill.id, "installed") },
                     onUninstall = { pendingUninstall = skill.id },
                     busy = skill.id in state.installingIds,
@@ -236,6 +239,7 @@ private fun InstalledTab(
 private fun InstalledRow(
     id: String,
     version: String,
+    updateAvailable: Boolean,
     onClick: () -> Unit,
     onUninstall: () -> Unit,
     busy: Boolean,
@@ -259,11 +263,17 @@ private fun InstalledRow(
                     text = id,
                     style = MaterialTheme.typography.titleMedium,
                 )
-                Text(
-                    text = stringResource(R.string.skills_detail_version, version),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(R.string.skills_detail_version, version),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (updateAvailable) {
+                        Spacer(Modifier.size(8.dp))
+                        UpdateAvailablePill()
+                    }
+                }
             }
             if (busy) {
                 CircularProgressIndicator(
@@ -280,6 +290,21 @@ private fun InstalledRow(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun UpdateAvailablePill() {
+    Surface(
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+    ) {
+        Text(
+            text = stringResource(R.string.skills_update_available_pill),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onTertiaryContainer,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+        )
     }
 }
 

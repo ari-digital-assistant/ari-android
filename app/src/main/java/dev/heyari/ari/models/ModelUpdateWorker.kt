@@ -13,6 +13,8 @@ import androidx.work.WorkerParameters
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import dev.heyari.ari.data.AutoUpdatePreferences
+import dev.heyari.ari.updates.UpdatesPreferences
+import dev.heyari.ari.updates.UpdatesRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -41,14 +43,14 @@ class ModelUpdateWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
     private val checker: ModelUpdateChecker,
-    private val notifier: ModelUpdateNotifier,
     private val prefs: AutoUpdatePreferences,
+    private val updatesRepository: UpdatesRepository,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         if (!prefs.enabled.first()) {
             Log.i(TAG, "auto-update disabled by user, skipping")
-            notifier.cancel()
+            updatesRepository.recordCheck(UpdatesPreferences.Category.MODEL, emptyList())
             return@withContext Result.success()
         }
         try {
@@ -64,7 +66,10 @@ class ModelUpdateWorker @AssistedInject constructor(
                 prefs.setLastChecked(category, Instant.now())
             }
             Log.i(TAG, "model update check: ${updates.size} update(s) available")
-            notifier.showOrUpdate(updates)
+            updatesRepository.recordCheck(
+                UpdatesPreferences.Category.MODEL,
+                UpdatesRepository.summariesFromModelUpdates(updates),
+            )
             Result.success()
         } catch (e: Exception) {
             Log.w(TAG, "model update check failed: ${e.message}")

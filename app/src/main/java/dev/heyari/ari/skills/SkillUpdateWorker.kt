@@ -12,6 +12,8 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import dev.heyari.ari.updates.UpdatesPreferences
+import dev.heyari.ari.updates.UpdatesRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import uniffi.ari_ffi.FfiRegistryException
@@ -33,7 +35,7 @@ class SkillUpdateWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
     private val skillRegistry: SkillRegistry,
-    private val notifier: SkillUpdateNotifier,
+    private val updatesRepository: UpdatesRepository,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
@@ -43,12 +45,15 @@ class SkillUpdateWorker @AssistedInject constructor(
             // round trip on fresh installs.
             if (skillRegistry.listInstalled().isEmpty()) {
                 Log.i(TAG, "skill update check: no skills installed, skipping")
-                notifier.showOrUpdate(0)
+                updatesRepository.recordCheck(UpdatesPreferences.Category.SKILL, emptyList())
                 return@withContext Result.success()
             }
             val updates = skillRegistry.checkForUpdates()
             Log.i(TAG, "skill update check: ${updates.size} update(s) available")
-            notifier.showOrUpdate(updates.size)
+            updatesRepository.recordCheck(
+                UpdatesPreferences.Category.SKILL,
+                UpdatesRepository.summariesFromSkillUpdates(updates),
+            )
             Result.success()
         } catch (e: FfiRegistryException) {
             // Network blip, bad DNS, registry down — retry next cycle.

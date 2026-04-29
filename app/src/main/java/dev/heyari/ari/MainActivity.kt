@@ -16,16 +16,22 @@ import dev.heyari.ari.skills.SkillUpdateNotifier
 import dev.heyari.ari.ui.AriNavHost
 import dev.heyari.ari.ui.Routes
 import dev.heyari.ari.ui.theme.AriTheme
+import dev.heyari.ari.updates.UpdatesRepository
 import dev.heyari.ari.wakeword.WakeWordService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var settingsRepository: SettingsRepository
+    @Inject lateinit var updatesRepository: UpdatesRepository
 
     // Channel, not SharedFlow: intents arrive before setContent runs, so we
     // need a buffer that survives until the NavHost collector shows up.
@@ -35,6 +41,13 @@ class MainActivity : ComponentActivity() {
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
 
+    // Activity-lifetime scope for the launch-time bookkeeping (recordLaunch
+    // does a DataStore write + cancels system notifications). We don't want
+    // these tied to viewModelScope or a Compose effect because they should
+    // run even if the user immediately presses back before the NavHost
+    // commits its first composition.
+    private val activityScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -43,6 +56,12 @@ class MainActivity : ComponentActivity() {
         if (isWakeWordIntent(intent)) {
             showOverLockScreen()
         }
+
+        // The user is in-app: stamp lastLaunchedAt so the worker's
+        // inactive-user gate stays accurate, and cancel any system
+        // notifications about pending updates (the in-app banner takes
+        // over from here).
+        activityScope.launch { updatesRepository.recordLaunch() }
 
         handleWakeWordIntent(intent)
         handleSkillUpdatesIntent(intent)
@@ -65,6 +84,15 @@ class MainActivity : ComponentActivity() {
         handleWakeWordIntent(intent)
         handleSkillUpdatesIntent(intent)
         handleModelUpdatesIntent(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // onCreate fires once per process, but the user can background +
+        // foreground for days without restarting. Stamp lastLaunchedAt
+        // here too so the inactive-user gate sees fresh activity on every
+        // return-to-foreground.
+        activityScope.launch { updatesRepository.recordLaunch() }
     }
 
     private fun handleSkillUpdatesIntent(intent: Intent?) {

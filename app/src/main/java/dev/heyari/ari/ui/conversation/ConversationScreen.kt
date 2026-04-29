@@ -68,9 +68,13 @@ import dev.heyari.ari.stt.SttState
 @Composable
 fun ConversationScreen(
     onOpenMenu: () -> Unit = {},
+    onOpenAutoUpdate: () -> Unit = {},
+    onOpenSkills: () -> Unit = {},
     viewModel: ConversationViewModel = hiltViewModel(),
+    updateBannerViewModel: UpdateBannerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val bannerState by updateBannerViewModel.state.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -205,7 +209,30 @@ fun ConversationScreen(
                 OnboardingCard(onOpenMenu = onOpenMenu)
             }
 
-            DownloadProgressCard(state)
+            UpdateBanners(
+                state = bannerState,
+                onApplyAllModels = updateBannerViewModel::applyAllModels,
+                onApplyAllSkills = updateBannerViewModel::applyAllSkills,
+                onOpenModelDetails = {
+                    updateBannerViewModel.acknowledgeModels()
+                    onOpenAutoUpdate()
+                },
+                onOpenSkillDetails = {
+                    updateBannerViewModel.acknowledgeSkills()
+                    onOpenSkills()
+                },
+                onDismissModels = updateBannerViewModel::dismissModelBanner,
+                onDismissSkills = updateBannerViewModel::dismissSkillBanner,
+                onDismissTerminal = updateBannerViewModel::dismissTerminalMessage,
+            )
+
+            // Suppress the generic per-model "Downloading in the background"
+            // card while an Update All is in flight — the UpdateBanners
+            // progress banner already covers the same ground with better
+            // context (X of Y, current item name).
+            if (bannerState.applying == null) {
+                DownloadProgressCard(state)
+            }
 
             LazyColumn(
                 state = listState,

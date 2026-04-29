@@ -113,6 +113,14 @@ fun SkillDetailScreen(
         if (source == "browse" && state.browse.isEmpty()) {
             viewModel.browse()
         }
+        // Detail screen has its own VM (sibling composables in the
+        // NavHost), so its state.updates list starts empty even if the
+        // Skills tab fetched one. Refresh on land so the Update button
+        // shows up correctly without the user having to bounce out and
+        // back.
+        if (source == "installed" && state.updates.isEmpty()) {
+            viewModel.checkForUpdates()
+        }
     }
     val isInstalledLocally = state.installed.any { it.id == skillId } ||
         state.browse.firstOrNull { it.id == skillId }?.installed == true
@@ -161,6 +169,9 @@ fun SkillDetailScreen(
     val view = remember(manifest, browseEntry, skillId, isInstalledLocally) {
         SkillDetailView.from(manifest, browseEntry, skillId, isInstalledLocally)
     }
+    val pendingUpdate = remember(state.updates, skillId) {
+        state.updates.firstOrNull { it.id == skillId }
+    }
     val busy = skillId in state.installingIds
 
     if (pendingUninstall) {
@@ -194,7 +205,9 @@ fun SkillDetailScreen(
                     InstallAction(
                         busy = busy,
                         installed = view.installed,
+                        availableUpdateVersion = pendingUpdate?.availableVersion,
                         onInstall = { viewModel.installById(skillId) },
+                        onUpdate = { viewModel.installUpdate(skillId) },
                         onUninstallRequest = { pendingUninstall = true },
                     )
                 },
@@ -422,20 +435,38 @@ private fun CollapsibleSkillDetail(
 private fun InstallAction(
     busy: Boolean,
     installed: Boolean,
+    availableUpdateVersion: String?,
     onInstall: () -> Unit,
+    onUpdate: () -> Unit,
     onUninstallRequest: () -> Unit,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.padding(end = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         when {
             busy -> CircularProgressIndicator(
                 modifier = Modifier.size(24.dp),
                 strokeWidth = 2.dp,
             )
-            installed -> OutlinedButton(onClick = onUninstallRequest) {
-                Text(stringResource(R.string.skills_uninstall))
+            installed -> {
+                // Update button takes the primary call-to-action slot when
+                // there's a newer version available; uninstall stays as a
+                // quieter outlined affordance to its right.
+                if (availableUpdateVersion != null) {
+                    FilledTonalButton(onClick = onUpdate) {
+                        Text(
+                            stringResource(
+                                R.string.skills_update_to_version,
+                                availableUpdateVersion,
+                            ),
+                        )
+                    }
+                }
+                OutlinedButton(onClick = onUninstallRequest) {
+                    Text(stringResource(R.string.skills_uninstall))
+                }
             }
             else -> FilledTonalButton(onClick = onInstall) {
                 Text(stringResource(R.string.skills_install))

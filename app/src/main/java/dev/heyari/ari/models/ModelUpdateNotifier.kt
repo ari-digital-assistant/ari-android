@@ -25,9 +25,21 @@ import javax.inject.Singleton
 class ModelUpdateNotifier @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
+    @JvmName("showOrUpdateUpdates")
     fun showOrUpdate(updates: List<ModelUpdate>) {
+        showOrUpdate(updates.map { it.target.displayName })
+    }
+
+    /**
+     * Lightweight overload — the notifier only ever reads display names off
+     * the update list, so passing names directly lets non-Settings callers
+     * (e.g. the in-app banner repository) post the same notification
+     * without resurrecting full [ModelUpdate] objects from disk.
+     */
+    @JvmName("showOrUpdateNames")
+    fun showOrUpdate(displayNames: List<String>) {
         val manager = context.getSystemService<NotificationManager>() ?: return
-        if (updates.isEmpty()) {
+        if (displayNames.isEmpty()) {
             manager.cancel(NOTIFICATION_ID)
             return
         }
@@ -45,8 +57,8 @@ class ModelUpdateNotifier @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val title = if (updates.size == 1) "1 model update available" else "${updates.size} model updates available"
-        val body = updates.joinToString(", ") { it.target.displayName }
+        val title = if (displayNames.size == 1) "1 model update available" else "${displayNames.size} model updates available"
+        val body = displayNames.joinToString(", ")
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_ari_symbolic)

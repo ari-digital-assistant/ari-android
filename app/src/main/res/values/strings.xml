@@ -54,6 +54,8 @@
     <string name="skills_refresh">Refresh</string>
     <string name="skills_install">Install</string>
     <string name="skills_uninstall">Uninstall</string>
+    <string name="skills_update_to_version">Update to v%1$s</string>
+    <string name="skills_update_available_pill">Update available</string>
     <string name="skills_uninstall_confirm_title">Uninstall skill?</string>
     <string name="skills_uninstall_confirm_message">%1$s will be removed and its stored data wiped. This can\'t be undone.</string>
     <string name="skills_uninstall_confirm_ok">Uninstall</string>
@@ -159,4 +161,18 @@
     <string name="about_version">Version %1$s</string>
     <string name="about_github">View on GitHub</string>
     <string name="about_github_url">https://github.com/ari-digital-assistant/ari-android</string>
+
+    <!-- In-app update banner -->
+    <string name="update_banner_model_one">1 model update available</string>
+    <string name="update_banner_model_many">%1$d model updates available</string>
+    <string name="update_banner_skill_one">1 skill update available</string>
+    <string name="update_banner_skill_many">%1$d skill updates available</string>
+    <string name="update_banner_update_all">Update all</string>
+    <string name="update_banner_details">Details</string>
+    <string name="update_banner_dismiss">Dismiss</string>
+    <string name="update_banner_progress_model">Updating %1$s — %2$d of %3$d</string>
+    <string name="update_banner_progress_skill">Installing %1$s — %2$d of %3$d</string>
+    <string name="update_banner_terminal_all_success">%1$d update(s) installed</string>
+    <string name="update_banner_terminal_all_failed">All %1$d updates failed</string>
+    <string name="update_banner_terminal_partial">%1$d of %2$d updates installed — tap details for the rest</string>
 </resources>

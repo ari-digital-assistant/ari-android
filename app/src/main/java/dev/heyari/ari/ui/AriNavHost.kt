@@ -118,6 +118,12 @@ fun AriNavHost(
         composable(Routes.CONVERSATION) {
             ConversationScreen(
                 onOpenMenu = { navController.navigate(Routes.MENU) { launchSingleTop = true } },
+                onOpenAutoUpdate = {
+                    navController.navigate(Routes.SETTINGS_AUTO_UPDATE) { launchSingleTop = true }
+                },
+                onOpenSkills = {
+                    navController.navigate(Routes.skills()) { launchSingleTop = true }
+                },
             )
         }
         composable(
