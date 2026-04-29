@@ -848,6 +848,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_assistantregistry_list_assistants(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_assistantregistry_reload_and_apply(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_assistantregistry_reload_community_assistants(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_assistantregistry_set_active_assistant(
@@ -1005,6 +1007,8 @@ external fun uniffi_ari_ffi_fn_method_assistantregistry_get_assistant_config(`pt
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_assistantregistry_list_assistants(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_assistantregistry_reload_and_apply(`ptr`: Long,`engine`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 external fun uniffi_ari_ffi_fn_method_assistantregistry_reload_community_assistants(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_method_assistantregistry_set_active_assistant(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1234,6 +1238,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_assistantregistry_list_assistants() != 35393.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_assistantregistry_reload_and_apply() != 5797.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_assistantregistry_reload_community_assistants() != 64764.toShort()) {
@@ -2273,6 +2280,17 @@ public interface AssistantRegistryInterface {
     fun `listAssistants`(): List<FfiAssistantEntry>
     
     /**
+     * Rescan the skill store for community assistants AND push the
+     * active+named assistant state to the engine in one call. This is
+     * the install/update/uninstall entry point — calling
+     * `reload_community_assistants` alone wouldn't propagate the new
+     * alias list to the engine until the next `apply_to_engine`, so
+     * the frontend should always use this wrapper after a skill
+     * install completes.
+     */
+    fun `reloadAndApply`(`engine`: AriEngine)
+    
+    /**
      * Rescan the skill store for community assistant skills (call after
      * install/uninstall).
      */
@@ -2470,6 +2488,27 @@ open class AssistantRegistry: Disposable, AutoCloseable, AssistantRegistryInterf
     }
     )
     }
+    
+
+    
+    /**
+     * Rescan the skill store for community assistants AND push the
+     * active+named assistant state to the engine in one call. This is
+     * the install/update/uninstall entry point — calling
+     * `reload_community_assistants` alone wouldn't propagate the new
+     * alias list to the engine until the next `apply_to_engine`, so
+     * the frontend should always use this wrapper after a skill
+     * install completes.
+     */override fun `reloadAndApply`(`engine`: AriEngine)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_assistantregistry_reload_and_apply(
+        it,
+        FfiConverterTypeAriEngine.lower(`engine`),_status)
+}
+    }
+    
     
 
     

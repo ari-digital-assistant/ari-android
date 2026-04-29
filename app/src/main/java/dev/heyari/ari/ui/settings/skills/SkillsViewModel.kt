@@ -55,7 +55,14 @@ class SkillsViewModel @Inject constructor(
     private fun reloadEngineSkills() {
         viewModelScope.launch(Dispatchers.IO) {
             engine.reloadCommunitySkills(skillsDirPath, storageDirPath)
-            assistantRegistry.reloadCommunityAssistants()
+            // reloadAndApply re-scans the community assistant directory
+            // AND re-pushes the (active + named) assistant state into
+            // the engine. Without the apply step, a freshly-installed
+            // cloud assistant's aliases wouldn't reach the engine until
+            // the user next touched assistant Settings — meaning "ask
+            // <new alias> X" would silently fall through to the active
+            // fallback.
+            assistantRegistry.reloadAndApply(engine)
         }
     }
 

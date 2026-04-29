@@ -177,15 +177,23 @@ object EngineModule {
                 }
             }
 
-            // Restore encrypted secrets into the in-memory FFI config store
-            // so the engine can use API keys etc. at runtime.
-            for ((ids, value) in secretStore.allEntries()) {
-                assistantRegistry.setAssistantConfigValue(ids.first, ids.second, value)
-            }
-
-            assistantRegistry.applyToEngine(engine)
             Log.i(TAG, "active assistant: $activeAssistantId")
         }
+
+        // Restore encrypted secrets for ALL installed assistants (not
+        // just the active one) — named-assistant routing dispatches to
+        // any installed cloud assistant by alias regardless of which is
+        // active, and that needs API keys in the FFI config store.
+        for ((ids, value) in secretStore.allEntries()) {
+            assistantRegistry.setAssistantConfigValue(ids.first, ids.second, value)
+        }
+
+        // Always apply to the engine. When no assistant is active this
+        // sets active=None, but it's still required because the call
+        // also pushes the named-assistant binding list — without it,
+        // "ask <alias> X" routing wouldn't see installed assistants
+        // until the user next touched assistant Settings.
+        assistantRegistry.applyToEngine(engine)
 
         // Load the FunctionGemma router if enabled and downloaded.
         val routerEnabled = runBlocking { settingsRepository.routerEnabled.first() }
