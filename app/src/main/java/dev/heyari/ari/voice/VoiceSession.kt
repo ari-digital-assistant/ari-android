@@ -322,7 +322,16 @@ class VoiceSession @Inject constructor(
 
     companion object {
         private const val TAG = "VoiceSession"
-        private const val SILENCE_TIMEOUT_MS = 8000L
+        // 30 s — accommodates the offline Whisper path which produces
+        // no streaming partials, so `lastActivityAt` can't be refreshed
+        // during the utterance + decode window. Online streaming
+        // refreshes lastActivityAt on every non-blank partial, so the
+        // timeout effectively trips after 30 s of mic-silence; offline
+        // gets ~30 s for capture + endpoint-detection + whisper decode
+        // combined. Tighter than this and slow x86 emulator decodes
+        // (whisper-turbo int8 takes 5-10 s on emulator x86_64) trip
+        // the watcher before Done lands.
+        private const val SILENCE_TIMEOUT_MS = 30_000L
         // How long to flash the corrected transcript in the overlay before
         // transitioning to the response. Long enough for the user to notice
         // the text changed, short enough not to feel like a stall.

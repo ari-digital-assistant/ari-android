@@ -86,6 +86,19 @@ class SpeechRecognizer @Inject constructor(
     private var loadedModelId: String? = null
     private var listenJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    /**
+     * Serialises [loadModel] so a flurry of concurrent callers (multiple
+     * Hilt-injected ViewModels each reacting to an `activeSttModelId`
+     * change at the same moment) doesn't load the same ~1 GB model
+     * multiple times in parallel — each parallel load instantiates a
+     * fresh native ONNX runtime, and on a Whisper-turbo install that
+     * was tipping the emulator into memory-pressure-event territory
+     * and getting the WakeWordService killed.
+     *
+     * Callers waiting on the lock see the model already loaded once
+     * the first one completes and short-circuit out of the load.
+     */
+    private val loadLock = Any()
 
     private val _state = MutableStateFlow<SttState>(SttState.Idle)
     val state: StateFlow<SttState> = _state.asStateFlow()
@@ -108,31 +121,44 @@ class SpeechRecognizer @Inject constructor(
      * into its config — there's no per-decode override).
      */
     fun loadModel(model: SttModel, modelDir: File) {
-        val sameModelLoaded = loadedModelId == model.id && isModelLoaded
-        if (sameModelLoaded) {
-            // For whisper, also check that the locale hasn't changed.
-            if (model.modelType == "whisper") {
-                val currentLocale = localeProvider.currentLocale()
-                if (offlineLocale == currentLocale) {
-                    Log.d(TAG, "Whisper model ${model.id} already loaded for locale=$currentLocale")
-                    return
-                }
-                Log.i(TAG, "Whisper locale changed (${offlineLocale} -> $currentLocale); reloading")
-            } else {
-                Log.d(TAG, "Model ${model.id} already loaded")
+        // Fast path — no lock contention if the model is already loaded
+        // with the right config. Multiple concurrent callers will all
+        // hit this once the first one has finished its load.
+        if (isLoadedWithMatchingConfig(model)) {
+            Log.d(TAG, "Model ${model.id} already loaded (fast path)")
+            return
+        }
+
+        synchronized(loadLock) {
+            // Re-check inside the lock: another caller may have completed
+            // the load while this one was waiting. Without this re-check
+            // we'd unload-and-reload immediately after a sibling finished,
+            // wasting the same ~3-10 s of warmup we just paid.
+            if (isLoadedWithMatchingConfig(model)) {
+                Log.d(TAG, "Model ${model.id} already loaded (after lock)")
                 return
             }
-        }
 
-        unload()
+            unload()
 
-        when (model.modelType) {
-            "whisper" -> loadOfflineWhisperModel(model, modelDir)
-            "zipformer", "zipformer2" -> loadOnlineModel(model, modelDir)
-            else -> throw IllegalArgumentException(
-                "Unknown STT modelType: ${model.modelType} (id=${model.id})",
-            )
+            when (model.modelType) {
+                "whisper" -> loadOfflineWhisperModel(model, modelDir)
+                "zipformer", "zipformer2" -> loadOnlineModel(model, modelDir)
+                else -> throw IllegalArgumentException(
+                    "Unknown STT modelType: ${model.modelType} (id=${model.id})",
+                )
+            }
         }
+    }
+
+    private fun isLoadedWithMatchingConfig(model: SttModel): Boolean {
+        if (loadedModelId != model.id || !isModelLoaded) return false
+        // Online transducer models have no per-locale config — id match
+        // is sufficient.
+        if (model.modelType != "whisper") return true
+        // Whisper bakes the language into its recogniser config. A locale
+        // change requires a fresh load even when the model id matches.
+        return offlineLocale == localeProvider.currentLocale()
     }
 
     private fun loadOnlineModel(model: SttModel, modelDir: File) {

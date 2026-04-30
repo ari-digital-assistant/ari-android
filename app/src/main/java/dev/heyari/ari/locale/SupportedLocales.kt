@@ -27,13 +27,25 @@ object SupportedLocales {
      * The system language code if Ari supports it, otherwise English.
      * Used as the default when no explicit locale has been set yet.
      *
+     * Resolved **once per process** via `lazy` and cached for the
+     * lifetime of the JVM. `Locale.getDefault()` is NOT a stable
+     * read on Android during the first few hundred ms of startup —
+     * Android applies per-app locale overrides asynchronously, and
+     * different threads can observe different values until that
+     * settles. Caching the first read sidesteps the race entirely:
+     * whatever locale was active when the first caller asked is
+     * what every subsequent caller (skill loader, recogniser config,
+     * prompt selector, …) sees too.
+     *
      * `Locale.getDefault().language` returns the ISO 639-1 lowercase
      * code on Android (with the legacy "iw"/"in"/"ji" overrides for
      * Hebrew/Indonesian/Yiddish — none of which are in our supported
      * set, so the legacy quirk doesn't bite us).
      */
-    fun defaultFromSystem(): String {
+    fun defaultFromSystem(): String = systemDefault
+
+    private val systemDefault: String by lazy {
         val systemCode = Locale.getDefault().language
-        return if (isSupported(systemCode)) systemCode else "en"
+        if (isSupported(systemCode)) systemCode else "en"
     }
 }
