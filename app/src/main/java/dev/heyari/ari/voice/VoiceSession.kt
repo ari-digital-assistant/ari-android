@@ -206,6 +206,14 @@ class VoiceSession @Inject constructor(
         var response = engine.processInput(text)
         var usedText = text
 
+        // --- Layer 2 + 3 retries apply to the online streaming path only ---
+        // The offline whisper path (non-English locales) sees the full
+        // utterance before committing any token, so there's nothing for a
+        // parallel decoder or a re-decode to improve. SpeechRecognizer
+        // signals the offline path by emitting parallel = null, audio =
+        // null in SttState.Done — the null guards below skip the retries
+        // automatically. No explicit modelType / locale check needed.
+
         // --- Layer 2: parallel-stream transcript ---
         if (response is FfiResponse.NotUnderstood &&
             !parallel.isNullOrBlank() && parallel != text

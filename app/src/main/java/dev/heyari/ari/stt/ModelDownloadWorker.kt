@@ -56,9 +56,11 @@ class ModelDownloadWorker @AssistedInject constructor(
         val version = manifest?.version ?: InstalledModelMetadata.UNKNOWN_VERSION
 
         // Resolve each expected file: prefer manifest entry, fall back to
-        // the per-file convention derived from baseUrl. The four file
-        // names are stable per-model so we can match by name.
-        val plannedFiles = listOf(
+        // the per-file convention derived from baseUrl. File names are
+        // stable per-model so we can match by name. Whisper has no joiner
+        // — `joinerFile` is null for encoder-decoder models — so the
+        // download list is filtered to skip null entries.
+        val plannedFiles = listOfNotNull(
             model.encoderFile, model.decoderFile, model.joinerFile, model.tokensFile,
         ).map { fileName ->
             val manifestEntry = manifest?.files?.firstOrNull { it.name == fileName }

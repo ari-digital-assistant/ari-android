@@ -229,10 +229,9 @@ object EngineModule {
     const val ROUTER_MODEL_KEY = "router"
     private const val TAG = "EngineModule"
 
-    @Provides
-    @Singleton
-    fun provideSpeechRecognizer(captureBus: CaptureBus): SpeechRecognizer =
-        SpeechRecognizer(captureBus)
+    // SpeechRecognizer is constructed by Hilt via its own @Inject constructor —
+    // no @Provides needed. It depends on CaptureBus + AriFfiLocaleProvider,
+    // both of which Hilt resolves automatically.
 
     @Provides
     @Singleton
