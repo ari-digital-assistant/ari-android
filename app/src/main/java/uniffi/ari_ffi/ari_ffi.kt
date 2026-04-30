@@ -6242,6 +6242,17 @@ data class FfiInstalledSkill (
      * Absolute path to the extracted skill directory on disk.
      */
     var `installDir`: kotlin.String
+    , 
+    /**
+     * Locale codes the skill actually supports for end users. Auto-
+     * derived from on-disk file presence: a locale is supported iff
+     * `SKILL.{locale}.md` is present, AND (if the skill ships any
+     * `strings/` files at all) `strings/{locale}.json` is also
+     * present. The skill browser uses this for language badges and
+     * the install flow uses it for the locale-mismatch warning when
+     * the user's active locale isn't in the list.
+     */
+    var `languages`: List<kotlin.String>
     
 ){
     
@@ -6261,19 +6272,22 @@ public object FfiConverterTypeFfiInstalledSkill: FfiConverterRustBuffer<FfiInsta
             FfiConverterString.read(buf),
             FfiConverterString.read(buf),
             FfiConverterString.read(buf),
+            FfiConverterSequenceString.read(buf),
         )
     }
 
     override fun allocationSize(value: FfiInstalledSkill) = (
             FfiConverterString.allocationSize(value.`id`) +
             FfiConverterString.allocationSize(value.`version`) +
-            FfiConverterString.allocationSize(value.`installDir`)
+            FfiConverterString.allocationSize(value.`installDir`) +
+            FfiConverterSequenceString.allocationSize(value.`languages`)
     )
 
     override fun write(value: FfiInstalledSkill, buf: ByteBuffer) {
             FfiConverterString.write(value.`id`, buf)
             FfiConverterString.write(value.`version`, buf)
             FfiConverterString.write(value.`installDir`, buf)
+            FfiConverterSequenceString.write(value.`languages`, buf)
     }
 }
 
