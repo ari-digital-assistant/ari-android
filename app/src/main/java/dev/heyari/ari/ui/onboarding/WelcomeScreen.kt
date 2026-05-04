@@ -30,7 +30,7 @@ fun WelcomeScreen(
 
     OnboardingScaffold(
         title = "",
-        currentStep = 1,
+        currentStep = 2,
         onBack = if (wizardState.isRevisit) onBack else null,
         primaryLabel = stringResource(R.string.onboarding_get_started),
         onPrimary = onGetStarted,

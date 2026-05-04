@@ -28,7 +28,7 @@ fun SttScreen(
 
     OnboardingScaffold(
         title = stringResource(R.string.onboarding_stt_title),
-        currentStep = 4,
+        currentStep = 5,
         onBack = onBack,
         onPrimary = onNext,
     ) {

@@ -52,7 +52,7 @@ fun PermissionsScreen(
 
     OnboardingScaffold(
         title = stringResource(R.string.onboarding_permissions_title),
-        currentStep = 2,
+        currentStep = 3,
         onBack = onBack,
         onPrimary = {
             val perms = state.permissions

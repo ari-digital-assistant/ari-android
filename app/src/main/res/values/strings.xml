@@ -88,6 +88,9 @@
     <string name="settings_section_ai">AI</string>
 
     <!-- Onboarding -->
+    <string name="onboarding_language_title">Choose your language</string>
+    <string name="onboarding_language_body">Pick the language Ari should listen and speak in. You can change this anytime in settings.</string>
+    <string name="onboarding_language_continue">Continue</string>
     <string name="onboarding_welcome_title">Welcome to Ari!</string>
     <string name="onboarding_welcome_title_revisit">Welcome back!</string>
     <string name="onboarding_welcome_body">Ari is an open-source digital assistant that puts your privacy first. This wizard will help you set up your preferences. You can always change these later in settings, or re-run this wizard from the menu.</string>

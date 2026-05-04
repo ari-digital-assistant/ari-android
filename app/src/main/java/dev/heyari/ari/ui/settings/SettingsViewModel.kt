@@ -441,6 +441,25 @@ class SettingsViewModel @Inject constructor(
         downloadManager.download(model)
     }
 
+    /**
+     * Onboarding-wizard convenience: pin `model` as the active STT
+     * and kick off its download in the background. Bypasses the
+     * normal `selectModel` "must be downloaded first" guard so a
+     * non-English user can be auto-routed past the STT picker
+     * straight to assistant configuration — Whisper-turbo finishes
+     * downloading while they fill in the rest of the wizard, and
+     * the existing activeSttModelId observer loads it into the
+     * recogniser as soon as the download completes.
+     */
+    fun selectAndDownloadModel(model: SttModel) {
+        viewModelScope.launch(Dispatchers.IO) {
+            settingsRepository.setActiveSttModelId(model.id)
+        }
+        if (!downloadManager.isDownloaded(model)) {
+            downloadManager.download(model)
+        }
+    }
+
     fun cancelDownload() {
         downloadManager.cancel()
     }
