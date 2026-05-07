@@ -1072,7 +1072,7 @@ external fun uniffi_ari_ffi_fn_method_skillregistry_check_for_updates(`ptr`: Lon
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_skillregistry_fetch_manifest_preview(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
-external fun uniffi_ari_ffi_fn_method_skillregistry_get_skill_settings(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+external fun uniffi_ari_ffi_fn_method_skillregistry_get_skill_settings(`ptr`: Long,`id`: RustBuffer.ByValue,`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_skillregistry_install_skill_by_id(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1307,7 +1307,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_skillregistry_fetch_manifest_preview() != 28579.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_skillregistry_get_skill_settings() != 22086.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_skillregistry_get_skill_settings() != 58446.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_skillregistry_install_skill_by_id() != 24025.toShort()) {
@@ -5049,10 +5049,17 @@ public interface SkillRegistryInterface {
      * other's existence).
      *
      * Returns [`FfiRegistryError::NotInstalled`] if `id` isn't in the
-     * store, or [`FfiRegistryError::Manifest`] if SKILL.md fails to
-     * parse (shouldn't happen for skills we installed ourselves).
+     * store, or [`FfiRegistryError::Manifest`] if the manifest fails
+     * to parse (shouldn't happen for skills we installed ourselves).
+     *
+     * `locale` follows the same rule as
+     * [`Self::read_installed_manifest`] — pass the user's active ISO
+     * 639-1 code so field labels (`Save reminders to` vs
+     * `Salva i promemoria in`) and select-option labels render in
+     * the user's language. Falls back to canonical English when the
+     * skill hasn't translated for the requested locale.
      */
-    fun `getSkillSettings`(`id`: kotlin.String): List<FfiConfigField>
+    fun `getSkillSettings`(`id`: kotlin.String, `locale`: kotlin.String): List<FfiConfigField>
     
     /**
      * Download and install the registry's current version of `id`, even
@@ -5336,16 +5343,23 @@ open class SkillRegistry: Disposable, AutoCloseable, SkillRegistryInterface
      * other's existence).
      *
      * Returns [`FfiRegistryError::NotInstalled`] if `id` isn't in the
-     * store, or [`FfiRegistryError::Manifest`] if SKILL.md fails to
-     * parse (shouldn't happen for skills we installed ourselves).
+     * store, or [`FfiRegistryError::Manifest`] if the manifest fails
+     * to parse (shouldn't happen for skills we installed ourselves).
+     *
+     * `locale` follows the same rule as
+     * [`Self::read_installed_manifest`] — pass the user's active ISO
+     * 639-1 code so field labels (`Save reminders to` vs
+     * `Salva i promemoria in`) and select-option labels render in
+     * the user's language. Falls back to canonical English when the
+     * skill hasn't translated for the requested locale.
      */
-    @Throws(FfiRegistryException::class)override fun `getSkillSettings`(`id`: kotlin.String): List<FfiConfigField> {
+    @Throws(FfiRegistryException::class)override fun `getSkillSettings`(`id`: kotlin.String, `locale`: kotlin.String): List<FfiConfigField> {
             return FfiConverterSequenceTypeFfiConfigField.lift(
     callWithHandle {
     uniffiRustCallWithError(FfiRegistryException) { _status ->
     UniffiLib.uniffi_ari_ffi_fn_method_skillregistry_get_skill_settings(
         it,
-        FfiConverterString.lower(`id`),_status)
+        FfiConverterString.lower(`id`),FfiConverterString.lower(`locale`),_status)
 }
     }
     )

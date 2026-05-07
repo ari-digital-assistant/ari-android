@@ -429,11 +429,15 @@ class SkillsViewModel @Inject constructor(
     fun loadSkillSettings(skillId: String) {
         _state.update { it.copy(detailSettings = emptyList(), detailSettingsLoading = true) }
         viewModelScope.launch {
+            // Pass active locale through so labels render in the user's
+            // language — `Salva i promemoria in` for Italian, not the
+            // canonical English `Save reminders to`.
+            val locale = settingsRepository.activeLocale.first()
             val result = runCatching {
                 withContext(Dispatchers.IO) {
                     // First pass: read the schema (currentValue may be empty
                     // if the in-memory store hasn't been hydrated yet).
-                    val schema = skillRegistry.getSkillSettings(skillId)
+                    val schema = skillRegistry.getSkillSettings(skillId, locale)
                     // Push persisted values into the shared in-memory store
                     // for any field that's still empty. We treat missing
                     // currentValue as "not yet hydrated" — works because the
@@ -452,7 +456,7 @@ class SkillsViewModel @Inject constructor(
                     }
                     // Second pass: re-read so currentValue reflects any
                     // values we just hydrated.
-                    skillRegistry.getSkillSettings(skillId)
+                    skillRegistry.getSkillSettings(skillId, locale)
                 }
             }
             _state.update { prev ->
@@ -508,8 +512,10 @@ class SkillsViewModel @Inject constructor(
             // Reflect the write in this VM's state if it's still alive.
             // Safe to touch _state from any scope — MutableStateFlow is
             // thread-safe.
+            val locale = settingsRepository.activeLocale.first()
             val refreshed =
-                runCatching { skillRegistry.getSkillSettings(skillId) }.getOrDefault(emptyList())
+                runCatching { skillRegistry.getSkillSettings(skillId, locale) }
+                    .getOrDefault(emptyList())
             _state.update { it.copy(detailSettings = refreshed) }
         }
     }
