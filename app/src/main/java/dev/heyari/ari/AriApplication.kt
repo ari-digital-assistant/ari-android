@@ -1,7 +1,10 @@
 package dev.heyari.ari
 
 import android.app.Application
+import android.app.LocaleManager
 import android.content.ComponentCallbacks2
+import android.os.Build
+import android.os.LocaleList
 import android.util.Log
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
@@ -45,6 +48,45 @@ class AriApplication : Application(), Configuration.Provider {
         scheduleModelUpdateWorker()
         NotificationChannels.ensureAll(this)
         eagerLoadActiveSttModel()
+        applyPersistedAppLocale()
+    }
+
+    /**
+     * Mirror the persisted [SettingsRepository.activeLocale] into
+     * Android's per-app locale via [LocaleManager] (API 33+).
+     * Without this, picking a language in onboarding only flips the
+     * engine's view (via `AriFfiLocaleProvider`'s flow subscription)
+     * — Android's resource resolution would still pick chrome strings
+     * from the system locale, so an Italian user on an English phone
+     * would see English UI even though the assistant replies in
+     * Italian.
+     *
+     * No-op on API 29-32 — per-app locale isn't supported. Those
+     * users get system-locale chrome but still get the engine's
+     * locale-aware behaviour (assistant replies, skill matching,
+     * fallback text) because that path goes through SettingsRepository
+     * directly, not Android resource resolution.
+     *
+     * Per-app locale set via LocaleManager is sticky across reboots —
+     * Android persists it itself.
+     */
+    private fun applyPersistedAppLocale() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            return
+        }
+        scope.launch {
+            runCatching {
+                val locale = settingsRepository.activeLocale.first()
+                val localeManager = getSystemService(LocaleManager::class.java)
+                val current = localeManager.applicationLocales
+                val currentTag = if (current.isEmpty) "" else current[0].toLanguageTag()
+                // No-op when already in sync — setting the same locale
+                // triggers an Activity recreate, which would interrupt
+                // the user mid-task on every cold start.
+                if (currentTag.startsWith(locale)) return@runCatching
+                localeManager.applicationLocales = LocaleList.forLanguageTags(locale)
+            }.onFailure { Log.w(TAG, "applyPersistedAppLocale failed", it) }
+        }
     }
 
     /**

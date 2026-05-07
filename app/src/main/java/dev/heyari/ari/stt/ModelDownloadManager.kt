@@ -37,11 +37,13 @@ class ModelDownloadManager @Inject constructor(
 
     fun isDownloaded(model: SttModel): Boolean {
         val dir = modelDir(model)
-        return dir.isDirectory &&
-            File(dir, model.encoderFile).isFile &&
-            File(dir, model.decoderFile).isFile &&
-            File(dir, model.joinerFile).isFile &&
-            File(dir, model.tokensFile).isFile
+        if (!dir.isDirectory) return false
+        if (!File(dir, model.encoderFile).isFile) return false
+        if (!File(dir, model.decoderFile).isFile) return false
+        if (!File(dir, model.tokensFile).isFile) return false
+        // Whisper and other encoder-decoder models have no joiner.
+        val joiner = model.joinerFile ?: return true
+        return File(dir, joiner).isFile
     }
 
     fun downloadedModels(): List<SttModel> = SttModelRegistry.all.filter { isDownloaded(it) }

@@ -28,8 +28,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.heyari.ari.R
 import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.llm.LlmModel
 import dev.heyari.ari.stt.ModelDownloadState
@@ -53,38 +55,50 @@ internal fun PermissionsSection(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         PermissionRow(
-            label = "Microphone",
-            description = "Required for wake word and speech input",
+            label = stringResource(R.string.permission_microphone_label),
+            description = stringResource(R.string.permission_microphone_description),
             granted = permissions.recordAudio,
             required = true,
-            actionLabel = if (permissions.recordAudio) "Granted" else "Grant",
+            actionLabel = stringResource(
+                if (permissions.recordAudio) R.string.permission_status_granted
+                else R.string.permission_status_grant
+            ),
             onAction = if (permissions.recordAudio) onOpenAppSettings else onRequestRecordAudio,
         )
 
         PermissionRow(
-            label = "Notifications",
-            description = "Required to show wake word listening status",
+            label = stringResource(R.string.permission_notifications_label),
+            description = stringResource(R.string.permission_notifications_description),
             granted = permissions.postNotifications,
             required = true,
-            actionLabel = if (permissions.postNotifications) "Granted" else "Grant",
+            actionLabel = stringResource(
+                if (permissions.postNotifications) R.string.permission_status_granted
+                else R.string.permission_status_grant
+            ),
             onAction = if (permissions.postNotifications) onOpenAppSettings else onRequestNotifications,
         )
 
         PermissionRow(
-            label = "Lock screen wake word",
-            description = "Required for the wake word to keep working when your phone is locked — like how phone calls appear on the lock screen. Android calls this \"Display over other apps\", but Ari does not draw on top of your other apps. It only uses this permission to open its own voice screen when you say the wake word. Without it, the wake word will only work once per session.",
+            label = stringResource(R.string.permission_lockscreen_label),
+            description = stringResource(R.string.permission_lockscreen_description),
             granted = permissions.systemAlertWindow,
             required = true,
-            actionLabel = if (permissions.systemAlertWindow) "Granted" else "Open Android settings",
+            actionLabel = stringResource(
+                if (permissions.systemAlertWindow) R.string.permission_status_granted
+                else R.string.permission_status_open_android_settings
+            ),
             onAction = onOpenOverlaySettings,
         )
 
         PermissionRow(
-            label = "Full-screen notifications",
-            description = "Optional. Legacy fallback path — not used by Ari's current wake word flow, but kept available in case Android tightens overlay rules in future.",
+            label = stringResource(R.string.permission_fsn_label),
+            description = stringResource(R.string.permission_fsn_description),
             granted = permissions.fullScreenIntent,
             required = false,
-            actionLabel = if (permissions.fullScreenIntent) "Granted" else "Open settings",
+            actionLabel = stringResource(
+                if (permissions.fullScreenIntent) R.string.permission_status_granted
+                else R.string.action_open_settings
+            ),
             onAction = onOpenFsnSettings,
         )
     }
@@ -127,7 +141,10 @@ private fun PermissionRow(
                     modifier = Modifier.weight(1f),
                 )
                 Text(
-                    text = if (required) "RECOMMENDED" else "OPTIONAL",
+                    text = stringResource(
+                        if (required) R.string.permission_chip_recommended
+                        else R.string.permission_chip_optional
+                    ),
                     style = MaterialTheme.typography.labelSmall,
                     color = if (required) Color(0xFFF57C00) else MaterialTheme.colorScheme.outline,
                 )
@@ -141,7 +158,11 @@ private fun PermissionRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
             ) {
-                TextButton(onClick = onAction, enabled = !granted || actionLabel != "Granted") {
+                // Disable when granted; the only "label != something to do"
+                // case is the localised "Granted" stamp, and we now drive
+                // disable purely off the boolean to keep this branch
+                // language-independent.
+                TextButton(onClick = onAction, enabled = !granted) {
                     Text(actionLabel)
                 }
             }
@@ -156,7 +177,7 @@ internal fun WakeWordSection(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "The phrase Ari listens for. \"Hey Jarvis\" is the original microWakeWord model and is included as a fallback.",
+            text = stringResource(R.string.settings_wakeword_blurb),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -198,7 +219,7 @@ internal fun WakeWordSensitivitySection(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "Sensitivity — how eagerly Ari responds to your voice. If Ari activates when it shouldn't, lower this. If it doesn't activate when you want it to, raise this.",
+            text = stringResource(R.string.settings_wakeword_sensitivity_blurb),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -224,12 +245,12 @@ internal fun WakeWordSensitivitySection(
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = option.displayName,
+                            text = stringResource(option.displayNameRes),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
-                            text = option.description,
+                            text = stringResource(option.descriptionRes),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -251,7 +272,7 @@ internal fun ModelsSection(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "Choose a voice recognition model. Larger models are more accurate but use more storage and RAM.",
+            text = stringResource(R.string.settings_stt_models_blurb),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -329,7 +350,7 @@ private fun ModelRow(
                             text = "${formatBytes(dl.bytesSoFar)} / ${formatBytes(dl.totalBytes)} (${String.format(Locale.US, "%.0f", progress * 100)}%)",
                             style = MaterialTheme.typography.bodySmall,
                         )
-                        TextButton(onClick = onCancel) { Text("Cancel") }
+                        TextButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) }
                     }
                 }
                 status.downloaded -> {
@@ -340,14 +361,14 @@ private fun ModelRow(
                         OutlinedButton(onClick = onDelete) {
                             Icon(Icons.Default.Delete, contentDescription = null)
                             Spacer(Modifier.width(4.dp))
-                            Text("Delete")
+                            Text(stringResource(R.string.action_delete))
                         }
                     }
                 }
                 else -> {
                     if (downloadFailed) {
                         Text(
-                            text = "Last download failed: ${(downloadState as ModelDownloadState.Failed).error}",
+                            text = stringResource(R.string.settings_last_download_failed, (downloadState as ModelDownloadState.Failed).error),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                         )
@@ -359,10 +380,125 @@ private fun ModelRow(
                         Button(onClick = onDownload) {
                             Icon(Icons.Default.Download, contentDescription = null)
                             Spacer(Modifier.width(4.dp))
-                            Text("Download ${formatBytes(status.model.totalBytes)}")
+                            Text(stringResource(R.string.download_button_with_size, formatBytes(status.model.totalBytes)))
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Per-locale display data for the post-onboarding language picker.
+ * Keep in lockstep with onboarding's `LANGUAGE_OPTIONS` and
+ * `SupportedLocales.codes`. `displayName` is the language's self-name
+ * — never translated, since a user picking a language they don't yet
+ * speak needs to recognise it in its own form.
+ */
+private data class LanguageOption(val code: String, val displayName: String)
+
+private val LANGUAGE_OPTIONS: List<LanguageOption> = listOf(
+    LanguageOption("en", "English"),
+    LanguageOption("it", "Italiano"),
+)
+
+/**
+ * Lets the user change Ari's language after onboarding. Switching here
+ * fans out the same way the onboarding picker does:
+ * SettingsRepository.activeLocale → engine (via FfiLocaleProvider) →
+ * Android per-app locale (mirrored on next process start) → all
+ * composables observing `state.activeLocale`.
+ *
+ * Switching language does NOT auto-swap the STT model. A user who
+ * picks Italian here keeps whatever STT model they had — the picker
+ * lower down in the page is where they trade Kroko/Nemotron for
+ * Whisper-turbo if they need non-English transcription.
+ */
+@Composable
+internal fun LanguageSection(
+    activeLocale: String,
+    onSelect: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = stringResource(R.string.settings_language_blurb),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(4.dp))
+
+        LANGUAGE_OPTIONS.forEach { option ->
+            val active = option.code == activeLocale
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                ),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(
+                        selected = active,
+                        onClick = { onSelect(option.code) },
+                    )
+                    Text(
+                        text = option.displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Opt-in toggle: route non-English transcription through the user's
+ * configured cloud assistant instead of on-device Whisper-turbo.
+ * Off by default — only meaningful when a cloud assistant is
+ * configured. Surfaced on the STT settings page; the actual cloud-STT
+ * call path reads `SettingsRepository.cloudSttForNonEnglish` when it
+ * decides which transcriber to invoke.
+ */
+@Composable
+internal fun CloudSttForNonEnglishSection(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.settings_cloud_stt_for_non_english_title),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.settings_cloud_stt_for_non_english_blurb),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = onToggle,
+                )
             }
         }
     }
@@ -386,12 +522,12 @@ internal fun StartOnBootSection(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Start Ari on boot",
+                        text = stringResource(R.string.settings_start_on_boot_title),
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "When your device boots, Ari will start listening for the wake word automatically. Uses a bit more battery since the microphone is always on — leave it off if you'd rather start Ari manually.",
+                        text = stringResource(R.string.settings_start_on_boot_blurb),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -426,12 +562,12 @@ internal fun SkillRouterSection(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Smart skill routing",
+                        text = stringResource(R.string.settings_router_title),
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Uses a small on-device model (~253 MB) to understand paraphrases that keyword matching misses. For example, \"launch my music player\" routes to the open-app skill even though no keyword matched.",
+                        text = stringResource(R.string.settings_router_blurb),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -453,7 +589,11 @@ internal fun SkillRouterSection(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Text(
-                        text = "Downloading router model... ${formatBytes(downloadState.bytesSoFar)} / ${formatBytes(downloadState.totalBytes)}",
+                        text = stringResource(
+                            R.string.settings_router_downloading,
+                            formatBytes(downloadState.bytesSoFar),
+                            formatBytes(downloadState.totalBytes),
+                        ),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -461,7 +601,7 @@ internal fun SkillRouterSection(
                 is dev.heyari.ari.router.RouterDownloadState.Failed -> {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Download failed: ${downloadState.error}",
+                        text = stringResource(R.string.settings_router_download_failed, downloadState.error),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )
@@ -482,18 +622,18 @@ internal fun IntegrationSection(onSetAsAssistant: () -> Unit) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Default digital assistant",
+                text = stringResource(R.string.settings_default_assistant_title),
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(
-                text = "Set Ari as your default digital assistant so it can be invoked with the assist gesture (long-press home button or power button).",
+                text = stringResource(R.string.settings_default_assistant_blurb),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 Button(onClick = onSetAsAssistant) {
-                    Text("Open settings")
+                    Text(stringResource(R.string.action_open_settings))
                 }
             }
         }
@@ -513,7 +653,7 @@ internal fun LlmModelsSection(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "Choose an on-device language model. When enabled, Ari can answer general questions and reroute misheard commands to the right skill. Larger models give better answers but use more storage and RAM.",
+            text = stringResource(R.string.settings_llm_blurb),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -538,12 +678,12 @@ internal fun LlmModelsSection(
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "None",
+                        text = stringResource(R.string.settings_llm_none_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        text = "No on-device LLM. Ari only answers via matched skills.",
+                        text = stringResource(R.string.settings_llm_none_blurb),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -624,7 +764,7 @@ private fun LlmModelRow(
                             text = "${formatBytes(dl.bytesSoFar)} / ${formatBytes(dl.totalBytes)} (${String.format(Locale.US, "%.0f", progress * 100)}%)",
                             style = MaterialTheme.typography.bodySmall,
                         )
-                        TextButton(onClick = onCancel) { Text("Cancel") }
+                        TextButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) }
                     }
                 }
                 status.downloaded -> {
@@ -635,14 +775,14 @@ private fun LlmModelRow(
                         OutlinedButton(onClick = onDelete) {
                             Icon(Icons.Default.Delete, contentDescription = null)
                             Spacer(Modifier.width(4.dp))
-                            Text("Delete")
+                            Text(stringResource(R.string.action_delete))
                         }
                     }
                 }
                 else -> {
                     if (downloadFailed) {
                         Text(
-                            text = "Last download failed: ${(downloadState as LlmDownloadState.Failed).error}",
+                            text = stringResource(R.string.settings_last_download_failed, (downloadState as LlmDownloadState.Failed).error),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                         )
@@ -654,7 +794,7 @@ private fun LlmModelRow(
                         Button(onClick = onDownload) {
                             Icon(Icons.Default.Download, contentDescription = null)
                             Spacer(Modifier.width(4.dp))
-                            Text("Download ${formatBytes(status.model.totalBytes)}")
+                            Text(stringResource(R.string.download_button_with_size, formatBytes(status.model.totalBytes)))
                         }
                     }
                 }

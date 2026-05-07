@@ -30,6 +30,7 @@ import dev.heyari.ari.ui.onboarding.GeneralScreen
 import dev.heyari.ari.ui.onboarding.OnboardingViewModel
 import dev.heyari.ari.ui.onboarding.PermissionsScreen
 import dev.heyari.ari.ui.onboarding.RouterScreen
+import dev.heyari.ari.ui.onboarding.LanguageScreen
 import dev.heyari.ari.ui.onboarding.SttScreen
 import dev.heyari.ari.ui.onboarding.WakeWordScreen
 import dev.heyari.ari.ui.onboarding.WelcomeScreen
@@ -66,6 +67,7 @@ object Routes {
     const val ABOUT = "about"
 
     // Onboarding wizard
+    const val ONBOARDING_LANGUAGE = "onboarding/language"
     const val ONBOARDING_WELCOME = "onboarding/welcome"
     const val ONBOARDING_PERMISSIONS = "onboarding/permissions"
     const val ONBOARDING_WAKE_WORD = "onboarding/wakeword"
@@ -123,6 +125,11 @@ fun AriNavHost(
                 },
                 onOpenSkills = {
                     navController.navigate(Routes.skills()) { launchSingleTop = true }
+                },
+                onOpenAssistantSkills = {
+                    navController.navigate(Routes.skills(type = "assistant")) {
+                        launchSingleTop = true
+                    }
                 },
             )
         }
@@ -245,9 +252,27 @@ fun AriNavHost(
         // during exit transitions (which would crash because the graph
         // entry has already been popped).
         navigation(
-            startDestination = Routes.ONBOARDING_WELCOME,
+            startDestination = Routes.ONBOARDING_LANGUAGE,
             route = "onboarding",
         ) {
+            composable(Routes.ONBOARDING_LANGUAGE) {
+                val graphEntry = remember(it) { navController.getBackStackEntry("onboarding") }
+                val onboardingViewModel: OnboardingViewModel = hiltViewModel(graphEntry)
+                LanguageScreen(
+                    onboardingViewModel = onboardingViewModel,
+                    onNext = { navController.navigate(Routes.ONBOARDING_WELCOME) },
+                    onBack = {
+                        // Revisit-only back: returns to conversation
+                        // without committing onboarding (the user
+                        // already completed it once).
+                        navController.navigate(Routes.CONVERSATION) {
+                            popUpTo("onboarding") { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
+                )
+            }
+
             composable(Routes.ONBOARDING_WELCOME) {
                 val graphEntry = remember(it) { navController.getBackStackEntry("onboarding") }
                 val onboardingViewModel: OnboardingViewModel = hiltViewModel(graphEntry)
@@ -261,12 +286,7 @@ fun AriNavHost(
                             launchSingleTop = true
                         }
                     },
-                    onBack = {
-                        navController.navigate(Routes.CONVERSATION) {
-                            popUpTo("onboarding") { inclusive = true }
-                            launchSingleTop = true
-                        }
-                    },
+                    onBack = { navController.popBackStack() },
                 )
             }
 
@@ -317,7 +337,21 @@ fun AriNavHost(
                             val intent = Intent(context, WakeWordService::class.java)
                             ContextCompat.startForegroundService(context, intent)
                         }
-                        navController.navigate(Routes.ONBOARDING_STT)
+                        // Phase 6: non-English users skip the STT model
+                        // picker — Whisper-turbo is the only option for
+                        // them. Pin it as the active model and start the
+                        // download in the background; the existing
+                        // activeSttModelId observer loads it into the
+                        // recogniser when the download completes.
+                        if (wizardState.selectedLocale == "en"
+                            || wizardState.selectedLocale == null) {
+                            navController.navigate(Routes.ONBOARDING_STT)
+                        } else {
+                            settingsViewModel.selectAndDownloadModel(
+                                dev.heyari.ari.stt.SttModelRegistry.WHISPER_TURBO,
+                            )
+                            navController.navigate(Routes.ONBOARDING_ASSISTANT)
+                        }
                     },
                     onBack = { navController.popBackStack() },
                 )
@@ -336,10 +370,25 @@ fun AriNavHost(
                 val graphEntry = remember(it) { navController.getBackStackEntry("onboarding") }
                 val settingsViewModel: SettingsViewModel = hiltViewModel()
                 val onboardingViewModel: OnboardingViewModel = hiltViewModel(graphEntry)
+                val wizardState by onboardingViewModel.state.collectAsStateWithLifecycle()
                 AssistantScreen(
                     settingsViewModel = settingsViewModel,
                     onboardingViewModel = onboardingViewModel,
-                    onNext = { navController.navigate(Routes.ONBOARDING_ROUTER) },
+                    onNext = {
+                        // FunctionGemma is English-only (per the multi-language
+                        // plan: "FunctionGemma as English-only tie-breaker").
+                        // Skip the router screen entirely for non-English users
+                        // and explicitly disable the toggle so the default-on
+                        // flag doesn't kick off a 253 MB download they'll never
+                        // benefit from.
+                        if (wizardState.selectedLocale == "en"
+                            || wizardState.selectedLocale == null) {
+                            navController.navigate(Routes.ONBOARDING_ROUTER)
+                        } else {
+                            settingsViewModel.setRouterEnabled(false)
+                            navController.navigate(Routes.ONBOARDING_GENERAL)
+                        }
+                    },
                     onBack = { navController.popBackStack() },
                 )
             }

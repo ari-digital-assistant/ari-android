@@ -25,7 +25,7 @@ fun GeneralScreen(
 
     OnboardingScaffold(
         title = stringResource(R.string.onboarding_general_title),
-        currentStep = 7,
+        currentStep = 8,
         onBack = onBack,
         onPrimary = onNext,
     ) {

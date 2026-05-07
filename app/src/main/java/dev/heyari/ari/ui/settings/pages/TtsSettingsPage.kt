@@ -66,6 +66,7 @@ fun TtsSettingsPage(
             TtsVoicesSection(
                 voices = state.ttsVoices,
                 activeTtsVoice = state.activeTtsVoice,
+                activeAriLocale = state.activeLocale,
                 onSelect = viewModel::selectTtsVoice,
                 onPreview = viewModel::previewTtsVoice,
             )
@@ -78,6 +79,7 @@ fun TtsSettingsPage(
 private fun TtsVoicesSection(
     voices: List<TtsVoiceOption>,
     activeTtsVoice: String?,
+    activeAriLocale: String,
     onSelect: (String?) -> Unit,
     onPreview: (String) -> Unit,
 ) {
@@ -85,11 +87,21 @@ private fun TtsVoicesSection(
         voices.map { it.locale }.distinct().sorted()
     }
 
+    // Default the dropdown to a voice locale matching Ari's active language
+    // (e.g. Italian Ari → first Italian voice locale, regardless of system
+    // locale). Falls back to the system locale if no voice for Ari's language
+    // exists, then to the first available voice. The picker still lets the
+    // user override.
+    val firstAriMatchLocale = remember(voices, activeAriLocale) {
+        voices.firstOrNull { it.localeLanguage == activeAriLocale }?.locale
+    }
     val systemLocaleDisplay = Locale.getDefault().displayName
-    var selectedLocale by remember(locales) {
+    var selectedLocale by remember(locales, firstAriMatchLocale) {
         mutableStateOf(
-            if (locales.contains(systemLocaleDisplay)) systemLocaleDisplay
-            else locales.firstOrNull() ?: ""
+            firstAriMatchLocale
+                ?: systemLocaleDisplay.takeIf { locales.contains(it) }
+                ?: locales.firstOrNull()
+                ?: ""
         )
     }
 
@@ -160,7 +172,7 @@ private fun TtsVoicesSection(
                 value = selectedLocale,
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Language") },
+                label = { Text(stringResource(R.string.tts_language_label)) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -240,19 +252,19 @@ private fun VoiceCard(
                         FilterChip(
                             selected = !option.activeIsNetwork,
                             onClick = { onSelect(option.localName) },
-                            label = { Text("On device", style = MaterialTheme.typography.labelSmall) },
+                            label = { Text(stringResource(R.string.tts_chip_on_device), style = MaterialTheme.typography.labelSmall) },
                             modifier = Modifier.height(28.dp),
                         )
                         FilterChip(
                             selected = option.activeIsNetwork,
                             onClick = { onSelect(option.networkName) },
-                            label = { Text("Cloud", style = MaterialTheme.typography.labelSmall) },
+                            label = { Text(stringResource(R.string.tts_chip_cloud), style = MaterialTheme.typography.labelSmall) },
                             modifier = Modifier.height(28.dp),
                         )
                     }
                 } else if (option.networkName != null && option.localName == null) {
                     Text(
-                        text = "Cloud only",
+                        text = stringResource(R.string.tts_chip_cloud_only),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -261,7 +273,7 @@ private fun VoiceCard(
             IconButton(onClick = { onPreview(previewName) }) {
                 Icon(
                     imageVector = Icons.Default.VolumeUp,
-                    contentDescription = "Preview voice",
+                    contentDescription = stringResource(R.string.tts_preview_voice_description),
                     modifier = Modifier.size(20.dp),
                 )
             }

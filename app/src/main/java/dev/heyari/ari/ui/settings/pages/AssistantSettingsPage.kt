@@ -28,9 +28,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.heyari.ari.R
 import dev.heyari.ari.di.EngineModule
 import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.llm.LlmModelRegistry
@@ -153,7 +155,7 @@ fun AssistantSettingsPage(
                             onClick = onOpenSkills,
                             modifier = Modifier.padding(top = 4.dp),
                         ) {
-                            Text("Browse skills")
+                            Text(stringResource(R.string.assistant_browse_skills))
                         }
                     }
                 }
@@ -331,7 +333,7 @@ private fun BuiltinModelSection(
                             style = MaterialTheme.typography.labelSmall,
                         )
                         TextButton(onClick = onCancel) {
-                            Text("Cancel")
+                            Text(stringResource(R.string.action_cancel))
                         }
                     }
                 } else if (status.downloaded) {
@@ -345,7 +347,7 @@ private fun BuiltinModelSection(
                                 contentColor = MaterialTheme.colorScheme.error,
                             ),
                         ) {
-                            Text("Delete")
+                            Text(stringResource(R.string.action_delete))
                         }
                     }
                 } else {
@@ -365,7 +367,7 @@ private fun BuiltinModelSection(
                             )
                         }
                         Button(onClick = { onDownload(model) }) {
-                            Text("Download ${formatBytes(model.totalBytes)}")
+                            Text(stringResource(R.string.download_button_with_size, formatBytes(model.totalBytes)))
                         }
                     }
                 }

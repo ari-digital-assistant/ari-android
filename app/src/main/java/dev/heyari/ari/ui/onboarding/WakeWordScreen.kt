@@ -36,7 +36,7 @@ fun WakeWordScreen(
 
     OnboardingScaffold(
         title = stringResource(R.string.onboarding_wakeword_title),
-        currentStep = 3,
+        currentStep = 4,
         onBack = onBack,
         onPrimary = onNext,
     ) {

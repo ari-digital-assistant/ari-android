@@ -140,7 +140,7 @@ class BootReceiver : BroadcastReceiver() {
 
     private fun postFixUpNotification(context: Context, missing: List<String>) {
         val nm = context.getSystemService(NotificationManager::class.java) ?: return
-        createBootChannel(nm)
+        createBootChannel(nm, context)
 
         val openApp = Intent(context, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -152,11 +152,11 @@ class BootReceiver : BroadcastReceiver() {
 
         val missingText = missing.joinToString(", ")
         val notification = Notification.Builder(context, CHANNEL_BOOT)
-            .setContentTitle("Ari couldn't start listening")
-            .setContentText("Tap to fix: $missingText")
+            .setContentTitle(context.getString(R.string.notif_boot_couldnt_start_title))
+            .setContentText(context.getString(R.string.notif_boot_tap_to_fix, missingText))
             .setStyle(
                 Notification.BigTextStyle().bigText(
-                    "Ari is set to start listening when your device boots, but these need attention: $missingText. Tap to open Ari."
+                    context.getString(R.string.notif_boot_tap_to_fix_big, missingText)
                 )
             )
             .setSmallIcon(R.drawable.ic_ari_symbolic)
@@ -177,13 +177,13 @@ internal const val CHANNEL_BOOT = "start_on_boot"
 internal const val BOOT_NOTIFICATION_ID = 3
 private const val REQUEST_TAP_TO_START = 11
 
-internal fun createBootChannel(nm: NotificationManager) {
+internal fun createBootChannel(nm: NotificationManager, context: Context) {
     val channel = NotificationChannel(
         CHANNEL_BOOT,
-        "Start on boot",
+        context.getString(R.string.notif_channel_boot_name),
         NotificationManager.IMPORTANCE_DEFAULT
     ).apply {
-        description = "Shown when Ari needs your tap to start listening after boot"
+        description = context.getString(R.string.notif_channel_boot_description)
     }
     nm.createNotificationChannel(channel)
 }
@@ -196,7 +196,7 @@ internal fun createBootChannel(nm: NotificationManager) {
  */
 internal fun postTapToStartNotification(context: Context) {
     val nm = context.getSystemService(NotificationManager::class.java) ?: return
-    createBootChannel(nm)
+    createBootChannel(nm, context)
 
     val startIntent = Intent(context, StartListeningActivity::class.java).apply {
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -207,8 +207,8 @@ internal fun postTapToStartNotification(context: Context) {
     )
 
     val notification = Notification.Builder(context, CHANNEL_BOOT)
-        .setContentTitle("Ari")
-        .setContentText("Tap to start listening")
+        .setContentTitle(context.getString(R.string.notif_boot_idle_title))
+        .setContentText(context.getString(R.string.notif_boot_idle_text))
         .setSmallIcon(R.drawable.ic_ari_symbolic)
         .setContentIntent(pi)
         .setAutoCancel(true)

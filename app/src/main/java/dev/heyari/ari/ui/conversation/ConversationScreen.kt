@@ -54,8 +54,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.ImeAction
+import dev.heyari.ari.R
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -70,6 +72,13 @@ fun ConversationScreen(
     onOpenMenu: () -> Unit = {},
     onOpenAutoUpdate: () -> Unit = {},
     onOpenSkills: () -> Unit = {},
+    /**
+     * Opens the Skills browser pre-filtered to assistant-type skills.
+     * Used by the cloud-assistant empty-state hint card. The unfiltered
+     * `onOpenSkills` is kept separate so other entry points (top-bar,
+     * onboarding nudge) don't pick up the filter as a side effect.
+     */
+    onOpenAssistantSkills: () -> Unit = {},
     viewModel: ConversationViewModel = hiltViewModel(),
     updateBannerViewModel: UpdateBannerViewModel = hiltViewModel(),
 ) {
@@ -122,19 +131,19 @@ fun ConversationScreen(
     if (state.needsFsnPermission) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissFsnPrompt() },
-            title = { Text("Full-screen notifications") },
-            text = { Text("For hands-free wake word activation, Ari needs permission to show full-screen notifications. Without this, you'll get a banner notification instead.") },
+            title = { Text(stringResource(R.string.conversation_fsn_dialog_title)) },
+            text = { Text(stringResource(R.string.conversation_fsn_dialog_body)) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.dismissFsnPrompt()
                     viewModel.openFsnSettings()
                 }) {
-                    Text("Open settings")
+                    Text(stringResource(R.string.action_open_settings))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.dismissFsnPrompt() }) {
-                    Text("Later")
+                    Text(stringResource(R.string.action_later))
                 }
             }
         )
@@ -150,7 +159,10 @@ fun ConversationScreen(
                         modifier = Modifier.padding(end = 4.dp),
                     ) {
                         Text(
-                            text = if (state.isListening) "Listening" else "Not listening",
+                            text = stringResource(
+                                if (state.isListening) R.string.conversation_listening_status_on
+                                else R.string.conversation_listening_status_off
+                            ),
                             style = MaterialTheme.typography.labelMedium,
                             color = if (state.isListening) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(end = 8.dp),
@@ -209,6 +221,10 @@ fun ConversationScreen(
                 OnboardingCard(onOpenMenu = onOpenMenu)
             }
 
+            if (state.needsCloudAssistantSetup) {
+                CloudAssistantSetupCard(onOpenSkills = onOpenAssistantSkills)
+            }
+
             UpdateBanners(
                 state = bannerState,
                 onApplyAllModels = updateBannerViewModel::applyAllModels,
@@ -261,7 +277,7 @@ fun ConversationScreen(
                     value = state.inputText,
                     onValueChange = viewModel::onInputChanged,
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Ask Ari something...") },
+                    placeholder = { Text(stringResource(R.string.conversation_input_placeholder)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                     keyboardActions = KeyboardActions(
@@ -298,21 +314,72 @@ private fun OnboardingCard(onOpenMenu: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Setup needed",
+                    text = stringResource(R.string.conversation_setup_needed_title),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onTertiaryContainer,
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Voice features need a microphone permission and a downloaded speech model. You can still type queries below.",
+                text = stringResource(R.string.conversation_voice_disabled_body),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onTertiaryContainer,
             )
             Spacer(modifier = Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onOpenMenu) {
-                    Text("Open menu")
+                    Text(stringResource(R.string.conversation_open_menu))
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Empty-state hint for users who picked the Cloud assistant option
+ * during onboarding but haven't installed and activated a cloud
+ * assistant skill yet. Without this nudge they get a "Scusa, non ho
+ * capito"-class fallback for any non-skill-matched query and have no
+ * signal that the install step is still pending.
+ *
+ * Cleared automatically (via `selectAssistant`) once the user picks
+ * any assistant — the underlying flag in
+ * `SettingsRepository.pendingCloudAssistantSetup` flips to `false`.
+ */
+@Composable
+private fun CloudAssistantSetupCard(onOpenSkills: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+        ),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.conversation_cloud_setup_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.conversation_cloud_setup_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onOpenSkills) {
+                    Text(stringResource(R.string.conversation_cloud_setup_button))
                 }
             }
         }
@@ -336,7 +403,7 @@ private fun DownloadProgressCard(state: ConversationState) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Downloading in the background",
+                text = stringResource(R.string.conversation_downloading_header),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
             )
@@ -344,13 +411,13 @@ private fun DownloadProgressCard(state: ConversationState) {
 
             if (sttDownloading) {
                 DownloadRow(
-                    label = "Voice recognition model",
+                    label = stringResource(R.string.conversation_downloading_stt_model),
                     state = state.sttDownload,
                 )
             }
             if (llmDownloading) {
                 DownloadRow(
-                    label = "Assistant model",
+                    label = stringResource(R.string.conversation_downloading_llm_model),
                     state = state.llmDownload,
                 )
             }

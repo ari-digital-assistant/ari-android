@@ -110,7 +110,7 @@ class NotificationCoordinator @Inject constructor(
         val builder = NotificationCompat.Builder(context, NotificationChannels.ALERT)
             .setSmallIcon(R.drawable.ic_ari_symbolic)
             .setContentTitle(displayTitle)
-            .setContentText("Expired while your device was off")
+            .setContentText(context.getString(R.string.notif_alert_expired))
             .setAutoCancel(true)
             .setOnlyAlertOnce(true)
             .setCategory(NotificationCompat.CATEGORY_ALARM)

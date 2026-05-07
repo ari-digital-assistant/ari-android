@@ -95,6 +95,7 @@ fun SkillDetailScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var pendingUninstall by remember { mutableStateOf(false) }
+    var pendingLocaleMismatchInstall by remember { mutableStateOf(false) }
     // Remember whether this skill was already installed when we arrived
     // — only fire the "just installed from browse" signal on a real
     // not-installed → installed transition, never for skills the user
@@ -196,6 +197,72 @@ fun SkillDetailScreen(
         )
     }
 
+    // Post-install assistant prompt — fires after a successful install
+    // of a `type: assistant` skill when the user has no active
+    // assistant configured. The ViewModel detects the condition and
+    // sets `pendingAssistantPromptId`/`Name`; we render the dialog
+    // here. Cleared either by `confirmPendingAssistantPrompt` (which
+    // activates the assistant via the same path Settings uses) or
+    // `dismissPendingAssistantPrompt` (which just clears the fields).
+    if (state.pendingAssistantPromptId != null) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissPendingAssistantPrompt() },
+            title = { Text(stringResource(R.string.skills_set_as_default_assistant_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.skills_set_as_default_assistant_message,
+                        state.pendingAssistantPromptName,
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.confirmPendingAssistantPrompt() }) {
+                    Text(stringResource(R.string.skills_set_as_default_assistant_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissPendingAssistantPrompt() }) {
+                    Text(stringResource(R.string.skills_set_as_default_assistant_dismiss))
+                }
+            },
+        )
+    }
+
+    if (pendingLocaleMismatchInstall) {
+        // Skill doesn't list the user's active language. Per wtf.md
+        // Phase 6: install is still allowed, but force a one-time
+        // confirmation so the user knows the skill will respond in
+        // a language they haven't picked. No "don't ask again" — the
+        // decision is per-install on purpose.
+        AlertDialog(
+            onDismissRequest = { pendingLocaleMismatchInstall = false },
+            title = { Text(stringResource(R.string.skills_install_locale_mismatch_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.skills_install_locale_mismatch_message,
+                        displayLanguageName(state.activeLocale),
+                        view.languages.joinToString(", ") { it.uppercase() }.ifBlank { "—" },
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.installById(skillId)
+                    pendingLocaleMismatchInstall = false
+                }) {
+                    Text(stringResource(R.string.skills_install_locale_mismatch_continue))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingLocaleMismatchInstall = false }) {
+                    Text(stringResource(R.string.skills_uninstall_confirm_cancel))
+                }
+            },
+        )
+    }
+
     Scaffold(
         topBar = {
             AriTopBar(
@@ -206,7 +273,18 @@ fun SkillDetailScreen(
                         busy = busy,
                         installed = view.installed,
                         availableUpdateVersion = pendingUpdate?.availableVersion,
-                        onInstall = { viewModel.installById(skillId) },
+                        onInstall = {
+                            // Gate installs of language-mismatched skills behind
+                            // a confirmation. Skills with no declared languages
+                            // are treated as universal — no prompt.
+                            val supports = view.languages.isEmpty() ||
+                                view.languages.any { it.equals(state.activeLocale, ignoreCase = true) }
+                            if (supports) {
+                                viewModel.installById(skillId)
+                            } else {
+                                pendingLocaleMismatchInstall = true
+                            }
+                        },
                         onUpdate = { viewModel.installUpdate(skillId) },
                         onUninstallRequest = { pendingUninstall = true },
                     )
@@ -675,4 +753,16 @@ private fun FactRow(label: String, value: String, onClick: (() -> Unit)? = null)
             },
         )
     }
+}
+
+/**
+ * Map an ISO 639-1 code to its self-name for the locale-mismatch
+ * dialog (e.g. `"it"` → `"Italian"`). Self-name rather than
+ * translated name keeps the dialog readable when the user is
+ * thinking in Italian and the chrome is still English.
+ */
+private fun displayLanguageName(code: String): String = when (code.lowercase()) {
+    "en" -> "English"
+    "it" -> "Italian"
+    else -> code.uppercase()
 }

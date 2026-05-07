@@ -83,6 +83,12 @@ data class TtsVoiceOption(
     val networkName: String?,
     val displayLabel: String,
     val locale: String,
+    /**
+     * ISO 639-1 lowercase language code (e.g. `"en"`, `"it"`) for this voice's
+     * locale. Used by the picker to pre-select voices matching the user's
+     * active Ari language without parsing [locale]'s display name.
+     */
+    val localeLanguage: String,
     val active: Boolean,
     val activeIsNetwork: Boolean,
 )
@@ -104,6 +110,14 @@ data class SettingsState(
     val routerDownloadState: RouterDownloadState = RouterDownloadState.Idle,
     val ttsVoices: List<TtsVoiceOption> = emptyList(),
     val activeTtsVoice: String? = null,
+    /** ISO 639-1 lowercase code of the user's active language. */
+    val activeLocale: String = "en",
+    /**
+     * Opt-in: route non-English transcription through the cloud assistant
+     * instead of on-device Whisper-turbo. Off by default, only meaningful
+     * when a cloud assistant is configured.
+     */
+    val cloudSttForNonEnglish: Boolean = false,
 )
 
 @HiltViewModel
@@ -266,15 +280,22 @@ class SettingsViewModel @Inject constructor(
                 val voices = speechOutput.getAvailableVoices()
 
                 // Group by variant: strip -local / -network suffix to merge
-                // pairs into a single UI entry.
-                data class Variant(val key: String, val locale: String)
+                // pairs into a single UI entry. `language` is captured
+                // alongside `locale` (display name) so the picker can
+                // pre-select voices matching the user's active Ari locale
+                // without having to round-trip through Locale parsing.
+                data class Variant(val key: String, val locale: String, val language: String)
 
                 val groups = mutableMapOf<Variant, MutableMap<Boolean, String>>()
                 for (voice in voices) {
                     val raw = voice.name
                     val net = voice.isNetworkConnectionRequired
                     val key = raw.removeSuffix("-local").removeSuffix("-network")
-                    val variant = Variant(key, voice.locale.displayName)
+                    val variant = Variant(
+                        key = key,
+                        locale = voice.locale.displayName,
+                        language = voice.locale.language.lowercase(),
+                    )
                     groups.getOrPut(variant) { mutableMapOf() }[net] = raw
                 }
 
@@ -290,11 +311,28 @@ class SettingsViewModel @Inject constructor(
                         networkName = networkName,
                         displayLabel = "Voice $n",
                         locale = variant.locale,
+                        localeLanguage = variant.language,
                         active = isActive,
                         activeIsNetwork = activeVoiceName == networkName,
                     )
                 }
                 _state.update { it.copy(ttsVoices = options, activeTtsVoice = activeVoiceName) }
+            }
+        }
+
+        // Active language — mirror SettingsRepository.activeLocale into UI state
+        // so the General settings page can render it and the language picker
+        // can read the current selection.
+        viewModelScope.launch {
+            settingsRepository.activeLocale.collect { code ->
+                _state.update { it.copy(activeLocale = code) }
+            }
+        }
+
+        // Cloud-STT-for-non-English opt-in
+        viewModelScope.launch {
+            settingsRepository.cloudSttForNonEnglish.collect { enabled ->
+                _state.update { it.copy(cloudSttForNonEnglish = enabled) }
             }
         }
 
@@ -344,6 +382,28 @@ class SettingsViewModel @Inject constructor(
                     engine.unloadRouterModel()
                 }
             }
+        }
+    }
+
+    /**
+     * Persist the user's chosen language. The DataStore flow then
+     * fans out to: the engine (via `AriFfiLocaleProvider`'s subscription
+     * for assistant replies + skill matching), Android's per-app locale
+     * (mirrored on next process start via `applyPersistedAppLocale`),
+     * and any composables observing `state.activeLocale`. Wrapped in
+     * runCatching so an unsupported code surfaces as a no-op rather than
+     * crashing the settings screen.
+     */
+    fun setActiveLocale(code: String) {
+        viewModelScope.launch {
+            runCatching { settingsRepository.setActiveLocale(code) }
+                .onFailure { Log.w(TAG, "setActiveLocale($code) failed", it) }
+        }
+    }
+
+    fun setCloudSttForNonEnglish(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setCloudSttForNonEnglish(enabled)
         }
     }
 
@@ -439,6 +499,25 @@ class SettingsViewModel @Inject constructor(
 
     fun downloadModel(model: SttModel) {
         downloadManager.download(model)
+    }
+
+    /**
+     * Onboarding-wizard convenience: pin `model` as the active STT
+     * and kick off its download in the background. Bypasses the
+     * normal `selectModel` "must be downloaded first" guard so a
+     * non-English user can be auto-routed past the STT picker
+     * straight to assistant configuration — Whisper-turbo finishes
+     * downloading while they fill in the rest of the wizard, and
+     * the existing activeSttModelId observer loads it into the
+     * recogniser as soon as the download completes.
+     */
+    fun selectAndDownloadModel(model: SttModel) {
+        viewModelScope.launch(Dispatchers.IO) {
+            settingsRepository.setActiveSttModelId(model.id)
+        }
+        if (!downloadManager.isDownloaded(model)) {
+            downloadManager.download(model)
+        }
     }
 
     fun cancelDownload() {
@@ -609,6 +688,15 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.setActiveAssistantId(id)
             assistantRegistry.setActiveAssistant(id)
+            // Clear the "you chose Cloud during onboarding but haven't
+            // installed one yet" nag flag — the user has now picked
+            // an assistant, so the conversation-screen hint card has
+            // served its purpose. Doesn't matter which kind they
+            // picked (cloud or builtin); the flag's job was to
+            // remind them to pick *something*.
+            if (id != null) {
+                settingsRepository.setPendingCloudAssistantSetup(false)
+            }
             viewModelScope.launch(Dispatchers.IO) {
                 assistantRegistry.applyToEngine(engine)
             }

@@ -58,7 +58,7 @@ fun AssistantScreen(
 
     OnboardingScaffold(
         title = stringResource(R.string.onboarding_assistant_title),
-        currentStep = 5,
+        currentStep = 6,
         onBack = onBack,
         onPrimary = {
             // If on-device is selected and a model is chosen, start the download

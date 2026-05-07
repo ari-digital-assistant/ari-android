@@ -54,6 +54,19 @@ class SkillsViewModel @Inject constructor(
 
     private fun reloadEngineSkills() {
         viewModelScope.launch(Dispatchers.IO) {
+            reloadEngineSkillsBlocking()
+        }
+    }
+
+    /**
+     * Synchronous version of `reloadEngineSkills` — callers that need
+     * the registry to be queryable immediately after install (e.g. the
+     * post-install assistant prompt detection) call this from a
+     * coroutine and `await` it before checking `listAssistants()`.
+     * Otherwise the registry's still empty when we look.
+     */
+    private suspend fun reloadEngineSkillsBlocking() {
+        withContext(Dispatchers.IO) {
             engine.reloadCommunitySkills(skillsDirPath, storageDirPath)
             // reloadAndApply re-scans the community assistant directory
             // AND re-pushes the (active + named) assistant state into
@@ -81,6 +94,14 @@ class SkillsViewModel @Inject constructor(
                     lastCheckedInstalled = installedAt,
                     lastCheckedBrowse = browseAt,
                 )
+            }
+        }
+        // Mirror the user's active language into screen state so the browse
+        // list can flag locale-matched skills and the detail screen can
+        // warn before installing a skill that doesn't speak our language.
+        viewModelScope.launch {
+            settingsRepository.activeLocale.collect { code ->
+                _state.update { it.copy(activeLocale = code) }
             }
         }
     }
@@ -196,16 +217,45 @@ class SkillsViewModel @Inject constructor(
             val result = runCatching {
                 withContext(Dispatchers.IO) { skillRegistry.installSkillById(id) }
             }
+            // Run the post-install assistant detection BEFORE the state
+            // update so the prompt fields land in the same atomic
+            // transition as the install completion. The registry
+            // reload must complete *synchronously* — the previous
+            // fire-and-forget version raced the listAssistants() call
+            // and `match` always came back null on first install.
+            val (promptId, promptName) = result.fold(
+                onSuccess = { installed ->
+                    reloadEngineSkillsBlocking()
+                    val active = settingsRepository.activeAssistantId.first()
+                    val match = if (active == null) {
+                        assistantRegistry.listAssistants().firstOrNull { it.id == installed.id }
+                    } else {
+                        null
+                    }
+                    if (match != null) match.id to match.name else null to ""
+                },
+                onFailure = { null to "" },
+            )
             _state.update { prev ->
                 val newInstalling = prev.installingIds - id
                 result.fold(
                     onSuccess = { installed ->
-                        reloadEngineSkills()
                         prev.copy(
                             installingIds = newInstalling,
                             installed = prev.installed.replaceOrAppend(installed),
                             browse = prev.browse.map { row ->
                                 if (row.id == installed.id) row.copy(installed = true) else row
+                            },
+                            // Only overwrite the prompt fields when this
+                            // install qualifies — preserves a prior
+                            // pending prompt if the user races two
+                            // installs (unlikely but harmless).
+                            pendingAssistantPromptId = promptId
+                                ?: prev.pendingAssistantPromptId,
+                            pendingAssistantPromptName = if (promptId != null) {
+                                promptName
+                            } else {
+                                prev.pendingAssistantPromptName
                             },
                         )
                     },
@@ -217,6 +267,37 @@ class SkillsViewModel @Inject constructor(
                     },
                 )
             }
+        }
+    }
+
+    /**
+     * User tapped "Set as default" on the post-install prompt.
+     * Activates the assistant via the same path
+     * `SettingsViewModel.selectAssistant` uses (engine apply + flag
+     * cleanup), then clears the prompt fields.
+     */
+    fun confirmPendingAssistantPrompt() {
+        val id = _state.value.pendingAssistantPromptId ?: return
+        viewModelScope.launch {
+            settingsRepository.setActiveAssistantId(id)
+            assistantRegistry.setActiveAssistant(id)
+            settingsRepository.setPendingCloudAssistantSetup(false)
+            withContext(Dispatchers.IO) {
+                assistantRegistry.applyToEngine(engine)
+            }
+            _state.update {
+                it.copy(pendingAssistantPromptId = null, pendingAssistantPromptName = "")
+            }
+        }
+    }
+
+    /**
+     * User tapped "Not now" or dismissed the prompt — clear the fields
+     * without changing the active assistant.
+     */
+    fun dismissPendingAssistantPrompt() {
+        _state.update {
+            it.copy(pendingAssistantPromptId = null, pendingAssistantPromptName = "")
         }
     }
 
@@ -465,6 +546,25 @@ data class SkillsScreenState(
     /// the load is in flight.
     val detailSettings: List<FfiConfigField> = emptyList(),
     val detailSettingsLoading: Boolean = false,
+    /**
+     * The user's active Ari language, ISO 639-1 lowercase. Used by the
+     * browse list to distinguish language-matched skills and by the
+     * detail screen to gate installs of skills that don't support the
+     * user's language behind a confirmation dialog.
+     */
+    val activeLocale: String = "en",
+    /**
+     * Set after a successful install of a `type: assistant` skill
+     * when the user has no active assistant configured — drives the
+     * "Set <name> as your default assistant?" AlertDialog. Cleared
+     * by `confirmPendingAssistantPrompt` (which actually selects it)
+     * or `dismissPendingAssistantPrompt` (which doesn't). Without
+     * this nudge, users land back on the conversation screen with
+     * `activeAssistantId == null` and get the no-skill-matched
+     * fallback for any non-direct query.
+     */
+    val pendingAssistantPromptId: String? = null,
+    val pendingAssistantPromptName: String = "",
 )
 
 private fun List<FfiInstalledSkill>.replaceOrAppend(skill: FfiInstalledSkill): List<FfiInstalledSkill> {

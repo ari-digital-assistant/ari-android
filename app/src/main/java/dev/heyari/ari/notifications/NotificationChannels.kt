@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
 import androidx.core.content.getSystemService
+import dev.heyari.ari.R
 
 /**
  * Centralised notification channel definitions. Call [ensureAll] once at
@@ -29,10 +30,10 @@ object NotificationChannels {
         nm.createNotificationChannel(
             NotificationChannel(
                 ONGOING_DEFAULT,
-                "Background updates",
+                context.getString(R.string.notif_channel_background_name),
                 NotificationManager.IMPORTANCE_LOW,
             ).apply {
-                description = "Persistent skill-driven status (timers, downloads, …)"
+                description = context.getString(R.string.notif_channel_background_description)
                 setSound(null, null)
                 enableVibration(false)
                 setShowBadge(false)
@@ -41,10 +42,10 @@ object NotificationChannels {
         nm.createNotificationChannel(
             NotificationChannel(
                 ONGOING_HIGH,
-                "Important updates",
+                context.getString(R.string.notif_channel_important_name),
                 NotificationManager.IMPORTANCE_DEFAULT,
             ).apply {
-                description = "Higher-priority skill-driven status the user should see"
+                description = context.getString(R.string.notif_channel_important_description)
                 setSound(null, null)
                 setShowBadge(true)
             },
@@ -52,10 +53,10 @@ object NotificationChannels {
         nm.createNotificationChannel(
             NotificationChannel(
                 ALERT,
-                "Alerts",
+                context.getString(R.string.notif_channel_alerts_name),
                 NotificationManager.IMPORTANCE_HIGH,
             ).apply {
-                description = "Skill-fired alerts (timer done, alarm clock, etc.)"
+                description = context.getString(R.string.notif_channel_alerts_description)
                 enableVibration(true)
                 setShowBadge(true)
                 // No setSound here — AlertService plays the alert audio

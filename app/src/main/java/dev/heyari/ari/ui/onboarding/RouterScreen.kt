@@ -37,7 +37,7 @@ fun RouterScreen(
 
     OnboardingScaffold(
         title = stringResource(R.string.onboarding_router_title),
-        currentStep = 6,
+        currentStep = 7,
         onBack = onBack,
         onPrimary = {
             // Re-applying the toggle while it's already on is harmless:

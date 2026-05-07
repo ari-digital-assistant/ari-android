@@ -113,6 +113,21 @@ class ConversationViewModel @Inject constructor(
             }
         }
 
+        // Mirror the cloud-assistant-needed flag into UI state. The
+        // hint card on the conversation screen reads this directly;
+        // the flag is cleared from `selectAssistant` once the user
+        // picks anything (cloud or otherwise) or by re-running
+        // onboarding with a non-Cloud choice.
+        viewModelScope.launch {
+            kotlinx.coroutines.flow.combine(
+                settingsRepository.pendingCloudAssistantSetup,
+                settingsRepository.activeAssistantId,
+            ) { pending, activeId -> pending && activeId == null }
+                .collect { needs ->
+                    _state.update { it.copy(needsCloudAssistantSetup = needs) }
+                }
+        }
+
         // Wake word events and STT are handled by the system overlay
         // (VoiceSession + VoiceOverlayManager) — the activity no longer
         // collects them. Keeps the activity focused on typed input + chat

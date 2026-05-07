@@ -4,12 +4,18 @@ import android.util.Log
 import com.k2fsa.sherpa.onnx.EndpointConfig
 import com.k2fsa.sherpa.onnx.EndpointRule
 import com.k2fsa.sherpa.onnx.FeatureConfig
+import com.k2fsa.sherpa.onnx.OfflineModelConfig
+import com.k2fsa.sherpa.onnx.OfflineRecognizer
+import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
+import com.k2fsa.sherpa.onnx.OfflineStream
+import com.k2fsa.sherpa.onnx.OfflineWhisperModelConfig
 import com.k2fsa.sherpa.onnx.OnlineModelConfig
 import com.k2fsa.sherpa.onnx.OnlineRecognizer
 import com.k2fsa.sherpa.onnx.OnlineRecognizerConfig
 import com.k2fsa.sherpa.onnx.OnlineStream
 import com.k2fsa.sherpa.onnx.OnlineTransducerModelConfig
 import dev.heyari.ari.audio.CaptureBus
+import dev.heyari.ari.locale.AriFfiLocaleProvider
 import dev.heyari.ari.voice.stripWakePhrase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,12 +28,39 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlin.math.sqrt
 
-class SpeechRecognizer(private val captureBus: CaptureBus) {
+/**
+ * Two-mode STT recogniser:
+ *
+ * - **Online streaming** (Kroko, Nemotron — Zipformer transducers): partials emitted
+ *   as the user speaks, custom partial-text-stability endpointing, parallel-stream
+ *   second opinion. The English path.
+ *
+ * - **Offline buffered** (Whisper-turbo — encoder-decoder): no partials, RMS-based
+ *   silence-detection endpointing, full-utterance decode in one shot at end of speech.
+ *   The path for every non-English language.
+ *
+ * Dispatch on [SttModel.modelType] at [loadModel] time. Callers (VoiceSession,
+ * onboarding flow) don't need to know which path is active — both produce the
+ * same [SttState.Done] terminal event. The retry layers in `VoiceSession` skip
+ * automatically for the offline path because [SttState.Done.parallel] and
+ * [SttState.Done.audio] are both null when whisper produces the result (no
+ * second decoder to compare against, no point retrying with a model that
+ * already saw the full utterance).
+ */
+@Singleton
+class SpeechRecognizer @Inject constructor(
+    private val captureBus: CaptureBus,
+    private val localeProvider: AriFfiLocaleProvider,
+) {
 
-    private var recognizer: OnlineRecognizer? = null
-    private var loadedModelId: String? = null
+    // --- Online streaming path state ---
+    private var onlineRecognizer: OnlineRecognizer? = null
     private var stream: OnlineStream? = null
     /**
      * Second sherpa stream that runs concurrently with [stream] but is fed
@@ -38,14 +71,40 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
      * NotUnderstood retry path in [VoiceSession].
      */
     private var parallelStream: OnlineStream? = null
+
+    // --- Offline whisper path state ---
+    private var offlineRecognizer: OfflineRecognizer? = null
+    /**
+     * Locale that [offlineRecognizer] was constructed with. Whisper bakes the
+     * target language into the recogniser config; if the user changes locale
+     * we need to dispose and reload. Tracked here so [loadModel] can compare
+     * against the current locale and force a reload when they diverge.
+     */
+    private var offlineLocale: String? = null
+
+    // --- Shared state ---
+    private var loadedModelId: String? = null
     private var listenJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    /**
+     * Serialises [loadModel] so a flurry of concurrent callers (multiple
+     * Hilt-injected ViewModels each reacting to an `activeSttModelId`
+     * change at the same moment) doesn't load the same ~1 GB model
+     * multiple times in parallel — each parallel load instantiates a
+     * fresh native ONNX runtime, and on a Whisper-turbo install that
+     * was tipping the emulator into memory-pressure-event territory
+     * and getting the WakeWordService killed.
+     *
+     * Callers waiting on the lock see the model already loaded once
+     * the first one completes and short-circuit out of the load.
+     */
+    private val loadLock = Any()
 
     private val _state = MutableStateFlow<SttState>(SttState.Idle)
     val state: StateFlow<SttState> = _state.asStateFlow()
 
     val isModelLoaded: Boolean
-        get() = recognizer != null
+        get() = onlineRecognizer != null || offlineRecognizer != null
 
     val currentModelId: String?
         get() = loadedModelId
@@ -54,18 +113,60 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
      * Loads a model from the given directory. Files inside [modelDir] must match
      * the [SttModel.encoderFile] / [decoderFile] / [joinerFile] / [tokensFile] names.
      * Releases any previously loaded model.
+     *
+     * Dispatch on [SttModel.modelType]: zipformer / zipformer2 → online streaming
+     * recogniser; whisper → offline encoder-decoder recogniser. For whisper the
+     * recogniser is constructed against the user's currently-active locale, and
+     * a locale change between calls forces a reload (whisper bakes the language
+     * into its config — there's no per-decode override).
      */
     fun loadModel(model: SttModel, modelDir: File) {
-        if (loadedModelId == model.id && recognizer != null) {
-            Log.d(TAG, "Model ${model.id} already loaded")
+        // Fast path — no lock contention if the model is already loaded
+        // with the right config. Multiple concurrent callers will all
+        // hit this once the first one has finished its load.
+        if (isLoadedWithMatchingConfig(model)) {
+            Log.d(TAG, "Model ${model.id} already loaded (fast path)")
             return
         }
 
-        unload()
+        synchronized(loadLock) {
+            // Re-check inside the lock: another caller may have completed
+            // the load while this one was waiting. Without this re-check
+            // we'd unload-and-reload immediately after a sibling finished,
+            // wasting the same ~3-10 s of warmup we just paid.
+            if (isLoadedWithMatchingConfig(model)) {
+                Log.d(TAG, "Model ${model.id} already loaded (after lock)")
+                return
+            }
 
+            unload()
+
+            when (model.modelType) {
+                "whisper" -> loadOfflineWhisperModel(model, modelDir)
+                "zipformer", "zipformer2" -> loadOnlineModel(model, modelDir)
+                else -> throw IllegalArgumentException(
+                    "Unknown STT modelType: ${model.modelType} (id=${model.id})",
+                )
+            }
+        }
+    }
+
+    private fun isLoadedWithMatchingConfig(model: SttModel): Boolean {
+        if (loadedModelId != model.id || !isModelLoaded) return false
+        // Online transducer models have no per-locale config — id match
+        // is sufficient.
+        if (model.modelType != "whisper") return true
+        // Whisper bakes the language into its recogniser config. A locale
+        // change requires a fresh load even when the model id matches.
+        return offlineLocale == localeProvider.currentLocale()
+    }
+
+    private fun loadOnlineModel(model: SttModel, modelDir: File) {
         val encoder = File(modelDir, model.encoderFile)
         val decoder = File(modelDir, model.decoderFile)
-        val joiner = File(modelDir, model.joinerFile)
+        val joinerName = model.joinerFile
+            ?: error("Online transducer model ${model.id} has null joinerFile")
+        val joiner = File(modelDir, joinerName)
         val tokens = File(modelDir, model.tokensFile)
 
         require(encoder.isFile && decoder.isFile && joiner.isFile && tokens.isFile) {
@@ -95,16 +196,16 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
             // call reset(). And reset() destroys the encoder context, which
             // clips the next ~500ms of speech. We do our own endpointing
             // based on cleaned-partial-text stability — see the decode loop
-            // in startListening().
+            // in startOnlineListening().
             enableEndpoint = false,
             decodingMethod = "greedy_search",
         )
 
-        Log.i(TAG, "Loading sherpa-onnx model: ${model.id}")
+        Log.i(TAG, "Loading sherpa-onnx online model: ${model.id}")
         val loaded = OnlineRecognizer(assetManager = null, config = config)
-        recognizer = loaded
+        onlineRecognizer = loaded
         loadedModelId = model.id
-        Log.i(TAG, "Model loaded: ${model.id}")
+        Log.i(TAG, "Online model loaded: ${model.id}")
 
         // Warm up the recognizer: the first decode on a freshly-loaded
         // zipformer triggers graph setup, XNNPACK delegate init, and tensor
@@ -124,7 +225,60 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
         } finally {
             warmupStream.release()
         }
-        Log.i(TAG, "Recognizer warmed in ${System.currentTimeMillis() - warmupStart}ms")
+        Log.i(TAG, "Online recogniser warmed in ${System.currentTimeMillis() - warmupStart}ms")
+    }
+
+    private fun loadOfflineWhisperModel(model: SttModel, modelDir: File) {
+        val encoder = File(modelDir, model.encoderFile)
+        val decoder = File(modelDir, model.decoderFile)
+        val tokens = File(modelDir, model.tokensFile)
+
+        require(encoder.isFile && decoder.isFile && tokens.isFile) {
+            "Whisper model files missing in ${modelDir.absolutePath}"
+        }
+
+        val locale = localeProvider.currentLocale()
+        val config = OfflineRecognizerConfig(
+            featConfig = FeatureConfig(sampleRate = SAMPLE_RATE, featureDim = 80, dither = 0.0f),
+            modelConfig = OfflineModelConfig(
+                whisper = OfflineWhisperModelConfig(
+                    encoder = encoder.absolutePath,
+                    decoder = decoder.absolutePath,
+                    language = locale,
+                    task = "transcribe",
+                ),
+                tokens = tokens.absolutePath,
+                modelType = "whisper",
+                numThreads = 2,
+                provider = "cpu",
+            ),
+            decodingMethod = "greedy_search",
+        )
+
+        Log.i(TAG, "Loading sherpa-onnx whisper model: ${model.id} (lang=$locale)")
+        val loaded = OfflineRecognizer(assetManager = null, config = config)
+        offlineRecognizer = loaded
+        offlineLocale = locale
+        loadedModelId = model.id
+        Log.i(TAG, "Whisper model loaded: ${model.id} (lang=$locale)")
+
+        // Warm up the recogniser: first whisper decode pays graph init +
+        // tensor arena allocation, ~2-4s on a phone CPU. Burn it here on
+        // the loading thread rather than on the first user utterance.
+        val warmupStart = System.currentTimeMillis()
+        val warmupStream = loaded.createStream()
+        try {
+            val silence = FloatArray(SAMPLE_RATE) // 1 s of silence
+            warmupStream.acceptWaveform(silence, SAMPLE_RATE)
+            loaded.decode(warmupStream)
+            // Drop the result — warm-up only. Whisper will hallucinate on
+            // pure silence ("[BLANK_AUDIO]" / "(silence)" / etc.) and we
+            // don't care.
+            loaded.getResult(warmupStream)
+        } finally {
+            warmupStream.release()
+        }
+        Log.i(TAG, "Whisper recogniser warmed in ${System.currentTimeMillis() - warmupStart}ms")
     }
 
     fun unload() {
@@ -133,7 +287,9 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
         // frees native memory, and release() doesn't guard against that.
         // On hardened allocators (GrapheneOS) the double free is fatal.
         // Nulling the reference lets the GC handle cleanup via finalize().
-        recognizer = null
+        onlineRecognizer = null
+        offlineRecognizer = null
+        offlineLocale = null
         loadedModelId = null
     }
 
@@ -143,15 +299,27 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
      * pre-roll snapshot of the last [rewindSeconds] seconds plus the live
      * stream that follows. No `AudioRecord` is opened here — the mic stays
      * with the wake word service for the entire app lifecycle.
+     *
+     * Dispatches to the streaming or buffered code path based on which
+     * recogniser is loaded.
      */
     fun startListening(rewindSeconds: Float = DEFAULT_REWIND_SECONDS) {
-        val rec = recognizer ?: run {
-            Log.e(TAG, "startListening called but no model loaded")
-            _state.value = SttState.Error("No STT model loaded. Configure one in Settings.")
-            return
-        }
         if (_state.value is SttState.Listening) return
 
+        val online = onlineRecognizer
+        val offline = offlineRecognizer
+
+        when {
+            online != null -> startOnlineListening(online, rewindSeconds)
+            offline != null -> startOfflineListening(offline, rewindSeconds)
+            else -> {
+                Log.e(TAG, "startListening called but no model loaded")
+                _state.value = SttState.Error("No STT model loaded. Configure one in Settings.")
+            }
+        }
+    }
+
+    private fun startOnlineListening(rec: OnlineRecognizer, rewindSeconds: Float) {
         val channel = captureBus.arm(rewindSeconds) ?: run {
             Log.e(TAG, "CaptureBus already armed — refusing to start listening")
             _state.value = SttState.Error("Audio bus busy")
@@ -164,7 +332,7 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
 
         _state.value = SttState.Listening("")
         val startTime = System.currentTimeMillis()
-        Log.i(TAG, "STT listening started (rewindSeconds=$rewindSeconds)")
+        Log.i(TAG, "STT (online) listening started (rewindSeconds=$rewindSeconds)")
 
         listenJob = scope.launch {
             val currentStream = stream ?: return@launch
@@ -273,7 +441,7 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
                     }
 
                     val rawPartial = rec.getResult(currentStream).text.trim()
-                    val cleanedPartial = stripWakePhrase(rawPartial)
+                    val cleanedPartial = stripWakePhrase(rawPartial, localeProvider.currentLocale())
                     Log.d(TAG, "decode: fed=${merged.size} raw='$rawPartial' cleaned='$cleanedPartial'")
                     if (cleanedPartial.isNotEmpty()) {
                         _state.value = SttState.Listening(cleanedPartial)
@@ -309,7 +477,7 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
                                     rec.decode(ps)
                                 }
                                 val parRaw = rec.getResult(ps).text.trim()
-                                val parCleaned = stripWakePhrase(parRaw)
+                                val parCleaned = stripWakePhrase(parRaw, localeProvider.currentLocale())
                                 Log.i(TAG, "Parallel stream final: raw='$parRaw' cleaned='$parCleaned'")
                                 parCleaned.takeIf { it.isNotEmpty() && it != cleanedPartial }
                             } catch (t: Throwable) {
@@ -337,6 +505,138 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
         }
     }
 
+    private fun startOfflineListening(rec: OfflineRecognizer, rewindSeconds: Float) {
+        val channel = captureBus.arm(rewindSeconds) ?: run {
+            Log.e(TAG, "CaptureBus already armed — refusing to start listening")
+            _state.value = SttState.Error("Audio bus busy")
+            return
+        }
+
+        _state.value = SttState.Listening("")
+        Log.i(TAG, "STT (offline whisper) listening started (rewindSeconds=$rewindSeconds)")
+
+        listenJob = scope.launch {
+            // Buffer everything. Whisper has no streaming partials and no
+            // per-chunk decode — we just accumulate audio until the silence
+            // detector says the user is done, then run one decode.
+            val accumulator = ArrayList<ShortArray>(200)
+            var totalSamples = 0
+            // RMS-based silence detector. Cheap and self-contained — no
+            // separate VAD model file to download. Refinements (silero VAD
+            // for noisy environments) would be a Phase-2.5 polish item.
+            //
+            // We require at least one chunk above SPEECH_RMS_THRESHOLD
+            // before considering an endpoint, otherwise we'd fire the moment
+            // the user pauses at the start to think. Once speech has
+            // started, MIN_SILENCE_AFTER_SPEECH_MS of below-threshold audio
+            // ends the utterance.
+            var firstSpeechAt: Long? = null
+            var lastSpeechAt = System.currentTimeMillis()
+
+            try {
+                while (isActive) {
+                    val incoming = try {
+                        channel.receive()
+                    } catch (e: ClosedReceiveChannelException) {
+                        return@launch
+                    }
+                    if (incoming.isEmpty()) continue
+
+                    accumulator.add(incoming)
+                    totalSamples += incoming.size
+
+                    val now = System.currentTimeMillis()
+                    val rms = computeRms(incoming)
+                    if (rms >= SPEECH_RMS_THRESHOLD) {
+                        if (firstSpeechAt == null) {
+                            firstSpeechAt = now
+                            Log.d(TAG, "Offline: speech started (rms=$rms)")
+                        }
+                        lastSpeechAt = now
+                    }
+
+                    val firstAt = firstSpeechAt
+                    if (firstAt != null) {
+                        val sinceLastSpeech = now - lastSpeechAt
+                        val totalDuration = now - firstAt
+                        if (sinceLastSpeech >= MIN_SILENCE_AFTER_SPEECH_MS &&
+                            totalDuration >= MIN_UTTERANCE_MS
+                        ) {
+                            Log.i(
+                                TAG,
+                                "Offline endpoint: silence for ${sinceLastSpeech}ms after ${totalDuration}ms of utterance",
+                            )
+                            decodeWhisperAndEmit(rec, accumulator, totalSamples)
+                            return@launch
+                        }
+                    }
+
+                    if (totalSamples >= MAX_OFFLINE_UTTERANCE_SAMPLES) {
+                        Log.i(TAG, "Offline endpoint: hard cap (${totalSamples} samples)")
+                        decodeWhisperAndEmit(rec, accumulator, totalSamples)
+                        return@launch
+                    }
+                }
+            } finally {
+                // stopRecording() handles disarm when the job is cancelled
+                // externally. Defensive only.
+            }
+        }
+    }
+
+    private suspend fun decodeWhisperAndEmit(
+        rec: OfflineRecognizer,
+        accumulator: List<ShortArray>,
+        totalSamples: Int,
+    ) {
+        val merged = ShortArray(totalSamples)
+        var pos = 0
+        for (b in accumulator) {
+            System.arraycopy(b, 0, merged, pos, b.size)
+            pos += b.size
+        }
+
+        // Hand-off signal between "we heard you stop talking" and "we
+        // have a transcript". Posted before the (CPU-heavy) decode so
+        // VoiceSession can flip its overlay to Thinking — otherwise
+        // users see a still-listening UI for the whole decode window.
+        _state.value = SttState.Transcribing
+
+        // Decode is CPU-bound (whisper-turbo int8 takes ~300-700ms on a
+        // mid-tier phone for a 3-5s utterance). Push to the Default
+        // dispatcher so we don't hold the listening coroutine on whatever
+        // thread it currently runs on.
+        val transcript = withContext(Dispatchers.Default) {
+            val s = rec.createStream()
+            try {
+                val floats = FloatArray(merged.size) { i -> merged[i] / 32768.0f }
+                s.acceptWaveform(floats, SAMPLE_RATE)
+                rec.decode(s)
+                rec.getResult(s).text.trim()
+            } finally {
+                s.release()
+            }
+        }
+
+        val cleaned = stripWakePhrase(transcript, localeProvider.currentLocale())
+        Log.i(TAG, "Whisper transcript: raw='$transcript' cleaned='$cleaned'")
+
+        // No parallel stream, no audio-for-retry: whisper is the final
+        // word. The retry layers in VoiceSession skip on null.
+        _state.value = SttState.Done(text = cleaned, parallel = null, audio = null)
+        stopRecording()
+    }
+
+    private fun computeRms(samples: ShortArray): Float {
+        if (samples.isEmpty()) return 0f
+        var sumSquares = 0.0
+        for (s in samples) {
+            val v = s.toDouble()
+            sumSquares += v * v
+        }
+        return sqrt(sumSquares / samples.size).toFloat()
+    }
+
     fun stopListening() {
         val current = _state.value
         stopRecording()
@@ -354,26 +654,31 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
     fun release() {
         stopRecording()
         scope.cancel()
-        recognizer = null
+        onlineRecognizer = null
+        offlineRecognizer = null
+        offlineLocale = null
         loadedModelId = null
-        Log.i(TAG, "STT recognizer released")
+        Log.i(TAG, "STT recogniser released")
     }
 
     /**
      * Feed [audio] into a brand-new sherpa stream in one shot, call
      * `inputFinished()` to force the decoder to commit, and return the
-     * cleaned transcript. Returns null if the recognizer isn't loaded or
-     * the result is empty after wake-phrase stripping.
+     * cleaned transcript. Returns null if no online recognizer is loaded
+     * (e.g. whisper is loaded instead — the offline path produces its own
+     * full-buffer decode in the listening loop, no extra retry layer
+     * needed) or the result is empty after wake-phrase stripping.
      *
-     * This is the "third layer" retry: slower (blocks for the full
-     * decode) but structurally different from both the streaming pass
-     * and the parallel pass — the decoder sees the entire utterance
-     * before committing any token, giving it maximum context.
+     * This is the "third layer" retry for the streaming path: slower
+     * (blocks for the full decode) but structurally different from both
+     * the streaming pass and the parallel pass — the decoder sees the
+     * entire utterance before committing any token, giving it maximum
+     * context.
      *
      * MUST be called from a background thread.
      */
     fun transcribeOffline(audio: ShortArray): String? {
-        val rec = recognizer ?: return null
+        val rec = onlineRecognizer ?: return null
         val offStream = rec.createStream()
         return try {
             val floats = FloatArray(audio.size) { i -> audio[i] / 32768.0f }
@@ -383,7 +688,7 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
                 rec.decode(offStream)
             }
             val raw = rec.getResult(offStream).text.trim()
-            val cleaned = stripWakePhrase(raw)
+            val cleaned = stripWakePhrase(raw, localeProvider.currentLocale())
             Log.i(TAG, "Offline retry: raw='$raw' cleaned='$cleaned'")
             cleaned.takeIf { it.isNotEmpty() }
         } catch (t: Throwable) {
@@ -431,6 +736,29 @@ class SpeechRecognizer(private val captureBus: CaptureBus) {
         // late tokens within ~1s or never does) and slows responses.
         // Remaining flakiness is sherpa-onnx model lag, not this value.
         private const val STABILITY_WINDOW_MS = 1500L
+
+        // --- Offline whisper endpointing constants ---
+        // RMS threshold for "this chunk contains speech". int16 PCM samples
+        // span [-32768, 32767]; quiet speech sits around 1000-3000 RMS,
+        // ambient room noise typically <300. 600 lands comfortably between.
+        // Tune downward if quiet talkers are dropping out, upward if room
+        // noise is triggering false speech detection.
+        private const val SPEECH_RMS_THRESHOLD = 600.0f
+        // After at least one chunk above SPEECH_RMS_THRESHOLD has been
+        // seen, this much continuous below-threshold audio ends the
+        // utterance. 800 ms is roughly the same window the streaming
+        // path uses for partial-text stability — keeps the perceived
+        // response time consistent across both paths.
+        private const val MIN_SILENCE_AFTER_SPEECH_MS = 800L
+        // Don't fire the endpoint until the utterance is at least this
+        // long. Stops a single noise burst followed by silence from
+        // ending the session before the user has actually said anything.
+        private const val MIN_UTTERANCE_MS = 500L
+        // Hard cap on offline-path utterance length. Whisper's training
+        // window is 30 s; longer audio gets chunked internally and the
+        // first segment dominates accuracy, so we cap at the same point
+        // as a safety net rather than an expected case.
+        private const val MAX_OFFLINE_UTTERANCE_SAMPLES = SAMPLE_RATE * 30
     }
 }
 
@@ -438,21 +766,29 @@ sealed interface SttState {
     data object Idle : SttState
     data class Listening(val partial: String) : SttState
     /**
-     * @param text Best transcript from the streaming decoder.
-     * @param parallel Transcript from a second sherpa stream that ran in
-     *   parallel with bigger acceptWaveform batches — sometimes commits
-     *   different (better) tokens because the decoder gets more context
-     *   per call. May be null if the parallel decode failed or was empty.
-     *   When the engine doesn't understand [text], the host should try
-     *   feeding [parallel] before giving up.
+     * Offline path only. Emitted between endpoint detection and the
+     * whisper decode result. Lets the host flip its UI to a "thinking"
+     * affordance while the model crunches — without it, the overlay
+     * sits on "Listening…" for the entire decode window (~300-700 ms on
+     * a phone, several seconds on an emulator), which reads as
+     * unresponsive.
+     *
+     * The streaming Kroko/Nemotron path never emits this — its decode
+     * is incremental and the final transcript is ready by the time
+     * endpoint fires, so [Listening] → [Done] happens within a frame.
      */
+    data object Transcribing : SttState
     /**
-     * @param text Best transcript from the streaming decoder.
+     * @param text Best transcript from the streaming decoder (or whisper's
+     *   one-shot decode in the offline path).
      * @param parallel Transcript from the parallel clean-start stream,
-     *   or null if it was identical to [text] or empty.
-     * @param audio Raw 16-bit PCM of the entire captured utterance. The
-     *   host can feed this into [SpeechRecognizer.transcribeOffline] for
-     *   a third-layer retry if both [text] and [parallel] fail.
+     *   or null if it was identical to [text], empty, or the offline
+     *   path was used (whisper has no parallel decoder).
+     * @param audio Raw 16-bit PCM of the entire captured utterance, or
+     *   null when the offline whisper path produced [text] (no point
+     *   retrying with a model that already saw the full utterance). The
+     *   host can feed non-null audio into [SpeechRecognizer.transcribeOffline]
+     *   for a third-layer retry if both [text] and [parallel] fail.
      */
     data class Done(
         val text: String,

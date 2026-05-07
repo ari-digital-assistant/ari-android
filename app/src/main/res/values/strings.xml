@@ -78,6 +78,13 @@
     <string name="skills_detail_about">About this skill</string>
     <string name="skills_detail_settings">Settings</string>
     <string name="skills_detail_skill_detail">Skill detail</string>
+    <string name="skills_install_locale_mismatch_title">Language not supported</string>
+    <string name="skills_install_locale_mismatch_message">This skill is not available in %1$s. It supports: %2$s. It will respond in its supported language(s). Continue?</string>
+    <string name="skills_install_locale_mismatch_continue">Install anyway</string>
+    <string name="skills_set_as_default_assistant_title">Set as default assistant?</string>
+    <string name="skills_set_as_default_assistant_message">%1$s is installed. Would you like to set it as your default assistant? Ari will route everything that doesn\'t match a direct skill through it.</string>
+    <string name="skills_set_as_default_assistant_confirm">Set as default</string>
+    <string name="skills_set_as_default_assistant_dismiss">Not now</string>
 
     <!-- Menu -->
     <string name="drawer_setup_wizard">Setup Wizard</string>
@@ -88,6 +95,9 @@
     <string name="settings_section_ai">AI</string>
 
     <!-- Onboarding -->
+    <string name="onboarding_language_title">Choose your language</string>
+    <string name="onboarding_language_body">Pick the language Ari should listen and speak in. You can change this anytime in settings.</string>
+    <string name="onboarding_language_continue">Continue</string>
     <string name="onboarding_welcome_title">Welcome to Ari!</string>
     <string name="onboarding_welcome_title_revisit">Welcome back!</string>
     <string name="onboarding_welcome_body">Ari is an open-source digital assistant that puts your privacy first. This wizard will help you set up your preferences. You can always change these later in settings, or re-run this wizard from the menu.</string>
@@ -175,4 +185,130 @@
     <string name="update_banner_terminal_all_success">%1$d update(s) installed</string>
     <string name="update_banner_terminal_all_failed">All %1$d updates failed</string>
     <string name="update_banner_terminal_partial">%1$d of %2$d updates installed — tap details for the rest</string>
+
+    <!-- Common buttons / labels -->
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_open_settings">Open settings</string>
+    <string name="action_later">Later</string>
+    <string name="action_continue">Continue</string>
+    <string name="action_yes">Yes</string>
+    <string name="action_no">No</string>
+    <string name="download_button_with_size">Download %1$s</string>
+
+    <!-- Conversation screen -->
+    <string name="conversation_input_placeholder">Ask Ari something…</string>
+    <string name="conversation_open_menu">Open menu</string>
+    <string name="conversation_listening_status_on">Listening</string>
+    <string name="conversation_listening_status_off">Not listening</string>
+    <string name="conversation_voice_disabled_body">Voice features need a microphone permission and a downloaded speech model. You can still type queries below.</string>
+    <string name="conversation_setup_needed_title">Setup needed</string>
+    <string name="conversation_cloud_setup_title">Choose a cloud assistant</string>
+    <string name="conversation_cloud_setup_body">You picked a cloud assistant during setup but haven\'t installed one yet. Install ChatGPT, Claude, or Gemini to start using it — until then, Ari only answers via direct skill matches.</string>
+    <string name="conversation_cloud_setup_button">Browse cloud assistants</string>
+    <string name="conversation_downloading_header">Downloading in the background</string>
+    <string name="conversation_downloading_stt_model">Voice recognition model</string>
+    <string name="conversation_downloading_llm_model">Assistant model</string>
+    <string name="conversation_fsn_dialog_title">Full-screen notifications</string>
+    <string name="conversation_fsn_dialog_body">For hands-free wake word activation, Ari needs permission to show full-screen notifications. Without this, you\'ll get a banner notification instead.</string>
+
+    <!-- Voice overlay -->
+    <string name="voice_overlay_title">Ari</string>
+    <string name="voice_overlay_listening">Listening…</string>
+    <string name="voice_overlay_thinking">Thinking…</string>
+    <string name="voice_overlay_dismiss">Dismiss</string>
+
+    <!-- Permissions section (used by onboarding + settings) -->
+    <string name="permission_microphone_label">Microphone</string>
+    <string name="permission_microphone_description">Required for wake word and speech input</string>
+    <string name="permission_notifications_label">Notifications</string>
+    <string name="permission_notifications_description">Required to show wake word listening status</string>
+    <string name="permission_lockscreen_label">Lock screen wake word</string>
+    <string name="permission_lockscreen_description">Required for the wake word to keep working when your phone is locked — like how phone calls appear on the lock screen. Android calls this \"Display over other apps\", but Ari does not draw on top of your other apps. It only uses this permission to open its own voice screen when you say the wake word. Without it, the wake word will only work once per session.</string>
+    <string name="permission_fsn_label">Full-screen notifications</string>
+    <string name="permission_fsn_description">Optional. Legacy fallback path — not used by Ari\'s current wake word flow, but kept available in case Android tightens overlay rules in future.</string>
+    <string name="permission_status_granted">Granted</string>
+    <string name="permission_status_grant">Grant</string>
+    <string name="permission_status_open_android_settings">Open Android settings</string>
+    <string name="permission_chip_recommended">RECOMMENDED</string>
+    <string name="permission_chip_optional">OPTIONAL</string>
+
+    <!-- Settings section blurbs -->
+    <string name="settings_wakeword_blurb">The phrase Ari listens for. \"Hey Jarvis\" is the original microWakeWord model and is included as a fallback.</string>
+    <string name="settings_wakeword_sensitivity_blurb">Sensitivity — how eagerly Ari responds to your voice. If Ari activates when it shouldn\'t, lower this. If it doesn\'t activate when you want it to, raise this.</string>
+    <string name="wakeword_sensitivity_high_label">High</string>
+    <string name="wakeword_sensitivity_high_description">Fires easily. Use only in very quiet rooms.</string>
+    <string name="wakeword_sensitivity_medium_label">Medium</string>
+    <string name="wakeword_sensitivity_medium_description">Recommended for most environments.</string>
+    <string name="wakeword_sensitivity_low_label">Low</string>
+    <string name="wakeword_sensitivity_low_description">Stricter. Use if Ari wakes when it shouldn\'t.</string>
+    <string name="settings_stt_models_blurb">Choose a voice recognition model. Larger models are more accurate but use more storage and RAM.</string>
+    <string name="settings_language_blurb">The language Ari listens and speaks in. Changing this updates the assistant\'s replies and the app\'s chrome — you may need to swap your speech-to-text model below if it doesn\'t support the new language.</string>
+    <string name="settings_cloud_stt_for_non_english_title">Use cloud STT for non-English</string>
+    <string name="settings_cloud_stt_for_non_english_blurb">When on, non-English voice is transcribed by your configured cloud assistant instead of the on-device Whisper model. Faster on slow phones, but your audio leaves your device. Has no effect unless you\'ve set up a cloud assistant.</string>
+    <string name="settings_start_on_boot_title">Start Ari on boot</string>
+    <string name="settings_start_on_boot_blurb">When your device boots, Ari will start listening for the wake word automatically. Uses a bit more battery since the microphone is always on — leave it off if you\'d rather start Ari manually.</string>
+    <string name="settings_router_title">Smart skill routing</string>
+    <string name="settings_router_blurb">Uses a small on-device model (~253 MB) to understand paraphrases that keyword matching misses. For example, \"launch my music player\" routes to the open-app skill even though no keyword matched.</string>
+    <string name="settings_router_downloading">Downloading router model… %1$s / %2$s</string>
+    <string name="settings_router_download_failed">Download failed: %1$s</string>
+    <string name="settings_default_assistant_title">Default digital assistant</string>
+    <string name="settings_default_assistant_blurb">Set Ari as your default digital assistant so it can be invoked with the assist gesture (long-press home button or power button).</string>
+    <string name="settings_llm_blurb">Choose an on-device language model. When enabled, Ari can answer general questions and reroute misheard commands to the right skill. Larger models give better answers but use more storage and RAM.</string>
+    <string name="settings_llm_none_title">None</string>
+    <string name="settings_llm_none_blurb">No on-device LLM. Ari only answers via matched skills.</string>
+    <string name="settings_last_download_failed">Last download failed: %1$s</string>
+
+    <!-- Skill settings panel — calendar / tasks permission buttons -->
+    <string name="skill_panel_allow_calendar">Allow calendar access</string>
+    <string name="skill_panel_no_calendars">No writable calendars found on this device.</string>
+    <string name="skill_panel_allow_tasks">Allow tasks access</string>
+    <string name="skill_panel_browse_more">Search the store for more</string>
+    <string name="skill_panel_refresh_after_install">I\'ve installed one — refresh</string>
+
+    <!-- TTS settings page -->
+    <string name="tts_language_label">Language</string>
+    <string name="tts_chip_on_device">On device</string>
+    <string name="tts_chip_cloud">Cloud</string>
+    <string name="tts_chip_cloud_only">Cloud only</string>
+    <string name="tts_preview_voice_description">Preview voice</string>
+
+    <!-- Assistant settings page -->
+    <string name="assistant_browse_skills">Browse skills</string>
+
+    <!-- Skills screen -->
+    <string name="skills_clear_filter_description">Clear filter</string>
+
+    <!-- Notification channels (visible in Android Settings → Apps → Ari → Notifications) -->
+    <string name="notif_channel_background_name">Background updates</string>
+    <string name="notif_channel_background_description">Persistent skill-driven status (timers, downloads, …)</string>
+    <string name="notif_channel_important_name">Important updates</string>
+    <string name="notif_channel_important_description">Higher-priority skill-driven status the user should see</string>
+    <string name="notif_channel_alerts_name">Alerts</string>
+    <string name="notif_channel_alerts_description">Skill-fired alerts (timer done, alarm clock, etc.)</string>
+    <string name="notif_channel_wake_listening_name">Wake Word Listening</string>
+    <string name="notif_channel_wake_listening_description">Persistent notification while Ari listens for the wake word</string>
+    <string name="notif_channel_wake_detected_name">Wake Word Detected</string>
+    <string name="notif_channel_wake_detected_description">Alert when Ari hears the wake word</string>
+    <string name="notif_channel_boot_name">Start on boot</string>
+    <string name="notif_channel_boot_description">Shown when Ari needs your tap to start listening after boot</string>
+    <string name="notif_channel_model_updates_name">Model updates</string>
+    <string name="notif_channel_model_updates_description">Notifies you when on-device model updates are available.</string>
+    <string name="notif_channel_skill_updates_name">Skill updates</string>
+    <string name="notif_channel_skill_updates_description">Notifies you when updates are available for installed skills.</string>
+
+    <!-- Notification content -->
+    <string name="notif_skill_updates_open_to_review">Open Ari to review and install.</string>
+    <string name="notif_model_updates_open_to_review_with_body">Open Ari to review and install. (%1$s)</string>
+    <string name="notif_model_updates_open_to_review_big">Open Ari to review and install.\n%1$s</string>
+    <string name="notif_alert_expired">Expired while your device was off</string>
+    <string name="notif_wake_couldnt_open_title">Ari couldn\'t open</string>
+    <string name="notif_wake_couldnt_open_text">Tap to allow Ari to open from the lock screen</string>
+    <string name="notif_wake_listening_title">Ari</string>
+    <string name="notif_wake_listening_text">Listening for wake word…</string>
+    <string name="notif_boot_couldnt_start_title">Ari couldn\'t start listening</string>
+    <string name="notif_boot_tap_to_fix">Tap to fix: %1$s</string>
+    <string name="notif_boot_tap_to_fix_big">Ari is set to start listening when your device boots, but these need attention: %1$s. Tap to open Ari.</string>
+    <string name="notif_boot_idle_title">Ari</string>
+    <string name="notif_boot_idle_text">Tap to start listening</string>
 </resources>

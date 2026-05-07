@@ -1,5 +1,6 @@
 package dev.heyari.ari.ui.settings.skills
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -424,7 +425,7 @@ private fun BrowseTab(
                             onClick = onClearTypeFilter,
                             modifier = Modifier.size(20.dp),
                         ) {
-                            Icon(Icons.Default.Delete, contentDescription = "Clear filter", modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.skills_clear_filter_description), modifier = Modifier.size(16.dp))
                         }
                     }
                 }
@@ -488,6 +489,7 @@ private fun BrowseTab(
                     for (entry in filtered) {
                         BrowseRow(
                             entry = entry,
+                            activeLocale = state.activeLocale,
                             onClick = { onOpenDetail(entry.id, "browse") },
                         )
                     }
@@ -500,11 +502,28 @@ private fun BrowseTab(
 @Composable
 private fun BrowseRow(
     entry: uniffi.ari_ffi.FfiBrowseEntry,
+    activeLocale: String,
     onClick: () -> Unit,
 ) {
+    val supportsActive = entry.languages.any { it.equals(activeLocale, ignoreCase = true) }
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .let { mod ->
+                // Accent border for skills that support the user's current
+                // language. Cheap visual cue that doesn't filter the list —
+                // language-mismatched skills are still installable, just
+                // gated by a confirmation dialog on the detail screen.
+                if (supportsActive) {
+                    mod.then(
+                        Modifier.border(
+                            width = 2.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = MaterialTheme.shapes.medium,
+                        )
+                    )
+                } else mod
+            }
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -536,6 +555,14 @@ private fun BrowseRow(
                     maxLines = 2,
                 )
             }
+            if (entry.languages.isNotEmpty()) {
+                Spacer(Modifier.size(4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    for (code in entry.languages) {
+                        LanguageChip(code = code, highlight = code.equals(activeLocale, ignoreCase = true))
+                    }
+                }
+            }
             if (entry.installed) {
                 Spacer(Modifier.size(4.dp))
                 Text(
@@ -545,6 +572,23 @@ private fun BrowseRow(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun LanguageChip(code: String, highlight: Boolean) {
+    Surface(
+        shape = MaterialTheme.shapes.small,
+        color = if (highlight) MaterialTheme.colorScheme.primaryContainer
+        else MaterialTheme.colorScheme.tertiaryContainer,
+    ) {
+        Text(
+            text = code.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = if (highlight) MaterialTheme.colorScheme.onPrimaryContainer
+            else MaterialTheme.colorScheme.onTertiaryContainer,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+        )
     }
 }
 

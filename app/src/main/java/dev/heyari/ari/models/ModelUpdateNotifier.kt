@@ -57,14 +57,21 @@ class ModelUpdateNotifier @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val title = if (displayNames.size == 1) "1 model update available" else "${displayNames.size} model updates available"
+        val title = if (displayNames.size == 1) {
+            context.getString(R.string.update_banner_model_one)
+        } else {
+            context.getString(R.string.update_banner_model_many, displayNames.size)
+        }
         val body = displayNames.joinToString(", ")
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_ari_symbolic)
             .setContentTitle(title)
-            .setContentText("Open Ari to review and install. ($body)")
-            .setStyle(NotificationCompat.BigTextStyle().bigText("Open Ari to review and install.\n$body"))
+            .setContentText(context.getString(R.string.notif_model_updates_open_to_review_with_body, body))
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText(context.getString(R.string.notif_model_updates_open_to_review_big, body))
+            )
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(pending)
             .setAutoCancel(true)
@@ -80,10 +87,10 @@ class ModelUpdateNotifier @Inject constructor(
         if (manager.getNotificationChannel(CHANNEL_ID) != null) return
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Model updates",
+            context.getString(R.string.notif_channel_model_updates_name),
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = "Notifies you when on-device model updates are available."
+            description = context.getString(R.string.notif_channel_model_updates_description)
             setShowBadge(true)
         }
         manager.createNotificationChannel(channel)

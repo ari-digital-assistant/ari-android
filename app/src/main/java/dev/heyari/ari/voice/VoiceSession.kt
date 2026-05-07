@@ -131,6 +131,13 @@ class VoiceSession @Inject constructor(
                                 }
                                 _state.update { VoiceState.Listening(sttState.partial) }
                             }
+                            SttState.Transcribing -> {
+                                // Offline whisper just hit endpoint; the decode
+                                // could take seconds. Flip the overlay early so the
+                                // user sees we're working, not still listening.
+                                silenceWatcher.cancel()
+                                _state.update { VoiceState.Thinking }
+                            }
                             is SttState.Done -> {
                                 speechRecognizer.reset()
                                 silenceWatcher.cancel()
@@ -205,6 +212,14 @@ class VoiceSession @Inject constructor(
 
         var response = engine.processInput(text)
         var usedText = text
+
+        // --- Layer 2 + 3 retries apply to the online streaming path only ---
+        // The offline whisper path (non-English locales) sees the full
+        // utterance before committing any token, so there's nothing for a
+        // parallel decoder or a re-decode to improve. SpeechRecognizer
+        // signals the offline path by emitting parallel = null, audio =
+        // null in SttState.Done — the null guards below skip the retries
+        // automatically. No explicit modelType / locale check needed.
 
         // --- Layer 2: parallel-stream transcript ---
         if (response is FfiResponse.NotUnderstood &&
@@ -314,7 +329,16 @@ class VoiceSession @Inject constructor(
 
     companion object {
         private const val TAG = "VoiceSession"
-        private const val SILENCE_TIMEOUT_MS = 8000L
+        // 30 s — accommodates the offline Whisper path which produces
+        // no streaming partials, so `lastActivityAt` can't be refreshed
+        // during the utterance + decode window. Online streaming
+        // refreshes lastActivityAt on every non-blank partial, so the
+        // timeout effectively trips after 30 s of mic-silence; offline
+        // gets ~30 s for capture + endpoint-detection + whisper decode
+        // combined. Tighter than this and slow x86 emulator decodes
+        // (whisper-turbo int8 takes 5-10 s on emulator x86_64) trip
+        // the watcher before Done lands.
+        private const val SILENCE_TIMEOUT_MS = 30_000L
         // How long to flash the corrected transcript in the overlay before
         // transitioning to the response. Long enough for the user to notice
         // the text changed, short enough not to feel like a stall.

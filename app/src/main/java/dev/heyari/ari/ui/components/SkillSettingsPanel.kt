@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -39,6 +40,7 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import dev.heyari.ari.R
 import dev.heyari.ari.calendar.CalendarProvider
 import dev.heyari.ari.tasks.TasksProvider
 import uniffi.ari_ffi.FfiConfigField
@@ -329,13 +331,13 @@ private fun DeviceCalendarField(
                     )
                 },
                 modifier = Modifier.padding(start = 8.dp, top = 4.dp),
-            ) { Text("Allow calendar access") }
+            ) { Text(stringResource(R.string.skill_panel_allow_calendar)) }
             return@Column
         }
 
         if (calendars.isEmpty()) {
             Text(
-                text = "No writable calendars found on this device.",
+                text = stringResource(R.string.skill_panel_no_calendars),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 8.dp),
@@ -462,7 +464,7 @@ private fun DeviceTaskListField(
                 },
                 modifier = Modifier.padding(start = 8.dp, top = 4.dp),
                 enabled = read != null && write != null,
-            ) { Text("Allow tasks access") }
+            ) { Text(stringResource(R.string.skill_panel_allow_tasks)) }
             return@Column
         }
 
@@ -605,10 +607,10 @@ private fun NoTasksAppCard(
                     }
                 },
             ) {
-                Text("Search the store for more")
+                Text(stringResource(R.string.skill_panel_browse_more))
             }
             Spacer(Modifier.height(4.dp))
-            FilledTonalButton(onClick = onRefresh) { Text("I've installed one — refresh") }
+            FilledTonalButton(onClick = onRefresh) { Text(stringResource(R.string.skill_panel_refresh_after_install)) }
         }
     }
 }

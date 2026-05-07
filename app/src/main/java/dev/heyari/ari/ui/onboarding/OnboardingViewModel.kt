@@ -21,14 +21,22 @@ import javax.inject.Inject
 data class OnboardingState(
     /** True when the user denied RECORD_AUDIO and chose "Continue anyway". */
     val micDenied: Boolean = false,
-    /** Which assistant category the user chose on screen 5. */
+    /** Which assistant category the user chose on screen 6. */
     val assistantChoice: AssistantChoice = AssistantChoice.NONE,
     /** True when this is a revisit (onboardingCompleted was already true). */
     val isRevisit: Boolean = false,
-    /** Whether "start listening now" toggle is on (screen 3). */
+    /** Whether "start listening now" toggle is on (screen 4). */
     val startListeningNow: Boolean = true,
     /** The LLM model ID the user picked on the assistant screen (on-device branch). */
     val selectedLlmModelId: String? = null,
+    /**
+     * Locale picked on the language screen (screen 1). `null` until
+     * the user makes (or accepts) a choice, after which it tracks the
+     * persisted [SettingsRepository.activeLocale]. Re-rendered for
+     * subsequent screens that want to dispatch on language (e.g.
+     * skipping the STT model picker for non-English users).
+     */
+    val selectedLocale: String? = null,
 )
 
 enum class AssistantChoice { NONE, ON_DEVICE, CLOUD }
@@ -43,7 +51,17 @@ class OnboardingViewModel @Inject constructor(
 
     init {
         val alreadyCompleted = runBlocking { settingsRepository.onboardingCompleted.first() }
-        _state.update { it.copy(isRevisit = alreadyCompleted) }
+        // Seed selectedLocale from the persisted DataStore value so the
+        // wizard's default reflects the user's prior choice on revisits.
+        // First-run users get null here, which the LanguageScreen
+        // resolves to SupportedLocales.defaultFromSystem() at render time.
+        val persistedLocale = runBlocking { settingsRepository.activeLocale.first() }
+        _state.update {
+            it.copy(
+                isRevisit = alreadyCompleted,
+                selectedLocale = persistedLocale,
+            )
+        }
     }
 
     fun setMicDenied(denied: Boolean) {
@@ -62,9 +80,31 @@ class OnboardingViewModel @Inject constructor(
         _state.update { it.copy(selectedLlmModelId = id) }
     }
 
+    /**
+     * Persist the language picked on the LanguageScreen and update the
+     * wizard state. The write goes through immediately so the next
+     * screen (and the engine, via AriFfiLocaleProvider's flow
+     * subscription — Phase 1) sees the new locale before the user
+     * advances.
+     */
+    fun setSelectedLocale(code: String) {
+        _state.update { it.copy(selectedLocale = code) }
+        viewModelScope.launch {
+            settingsRepository.setActiveLocale(code)
+        }
+    }
+
     fun completeOnboarding() {
         // Synchronous write — this must complete before the caller navigates
         // away and destroys this ViewModel's scope.
-        runBlocking { settingsRepository.setOnboardingCompleted(true) }
+        runBlocking {
+            settingsRepository.setOnboardingCompleted(true)
+            // Persist the cloud-choice signal so the conversation screen
+            // can keep nagging the user to actually install one until
+            // they do. Cleared elsewhere (skill-install flow + manual
+            // assistant-pick from settings).
+            val pendingCloud = _state.value.assistantChoice == AssistantChoice.CLOUD
+            settingsRepository.setPendingCloudAssistantSetup(pendingCloud)
+        }
     }
 }
