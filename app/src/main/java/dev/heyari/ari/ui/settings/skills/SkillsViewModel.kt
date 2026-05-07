@@ -7,6 +7,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.data.SkillsPreferences
 import dev.heyari.ari.skills.SkillUpdateNotifier
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -368,6 +369,11 @@ class SkillsViewModel @Inject constructor(
             val result = runCatching {
                 withContext(Dispatchers.IO) { skillRegistry.readInstalledManifest(id, locale) }
             }
+            // Cancellation is a normal control-flow signal here (a newer
+            // load superseded us) — let it bubble untouched. Touching
+            // state from a cancelled job would just race with the
+            // replacement load that's already running.
+            result.exceptionOrNull()?.let { if (it is CancellationException) throw it }
             _state.update { prev ->
                 result.fold(
                     onSuccess = { manifest ->
@@ -402,6 +408,9 @@ class SkillsViewModel @Inject constructor(
             val result = runCatching {
                 withContext(Dispatchers.IO) { skillRegistry.fetchManifestPreview(id) }
             }
+            // Same cancellation handling as loadInstalledManifest — see
+            // there for the reasoning.
+            result.exceptionOrNull()?.let { if (it is CancellationException) throw it }
             _state.update { prev ->
                 result.fold(
                     onSuccess = { manifest ->
