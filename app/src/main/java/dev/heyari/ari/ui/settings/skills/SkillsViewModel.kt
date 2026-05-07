@@ -8,6 +8,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.data.SkillsPreferences
 import dev.heyari.ari.skills.SkillUpdateNotifier
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -81,6 +82,19 @@ class SkillsViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(SkillsScreenState())
     val state: StateFlow<SkillsScreenState> = _state.asStateFlow()
+
+    /**
+     * Tracks the in-flight detail-manifest load (either installed or
+     * browse-preview). The detail screen's `LaunchedEffect(skillId,
+     * isInstalledLocally)` can fire BOTH paths in quick succession when
+     * `isInstalledLocally` flips from false→true after `state.installed`
+     * loads — and the slow browse-preview HTTP fetch can land *after*
+     * the fast on-disk installed-manifest read, overwriting the Italian
+     * description with the English-only registry sidecar. We serialise
+     * by cancelling whichever job was previously launched before
+     * starting a new one.
+     */
+    private var detailManifestJob: Job? = null
 
     init {
         refresh()
@@ -343,8 +357,9 @@ class SkillsViewModel @Inject constructor(
      * by reading the on-disk `SKILL.md`.
      */
     fun loadInstalledManifest(id: String) {
+        detailManifestJob?.cancel()
         _state.update { it.copy(detailManifest = null, detailManifestLoading = true) }
-        viewModelScope.launch {
+        detailManifestJob = viewModelScope.launch {
             // Pass the user's active locale through so the FFI returns
             // the localized variant (Italian description for Italian
             // users) — the canonical English manifest is the fallback
@@ -381,8 +396,9 @@ class SkillsViewModel @Inject constructor(
      * falls back to the browse-entry fields, which is still useful.
      */
     fun loadBrowseManifestPreview(id: String) {
+        detailManifestJob?.cancel()
         _state.update { it.copy(detailManifest = null, detailManifestLoading = true) }
-        viewModelScope.launch {
+        detailManifestJob = viewModelScope.launch {
             val result = runCatching {
                 withContext(Dispatchers.IO) { skillRegistry.fetchManifestPreview(id) }
             }
@@ -410,6 +426,8 @@ class SkillsViewModel @Inject constructor(
     }
 
     fun clearDetailManifest() {
+        detailManifestJob?.cancel()
+        detailManifestJob = null
         _state.update { it.copy(detailManifest = null, detailManifestLoading = false) }
     }
 
