@@ -85,6 +85,7 @@
     <string name="skills_set_as_default_assistant_message">%1$s is installed. Would you like to set it as your default assistant? Ari will route everything that doesn\'t match a direct skill through it.</string>
     <string name="skills_set_as_default_assistant_confirm">Set as default</string>
     <string name="skills_set_as_default_assistant_dismiss">Not now</string>
+    <string name="skills_browse_in_english_fallback">Description in English (no translation yet)</string>
 
     <!-- Menu -->
     <string name="drawer_setup_wizard">Setup Wizard</string>

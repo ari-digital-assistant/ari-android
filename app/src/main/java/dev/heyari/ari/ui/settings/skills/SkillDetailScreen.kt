@@ -167,8 +167,8 @@ fun SkillDetailScreen(
     // path below doesn't care which source supplied each field. Manifest
     // wins when present; browse-entry fills the gaps (and, for browse-only
     // skills, provides everything the registry index carries).
-    val view = remember(manifest, browseEntry, skillId, isInstalledLocally) {
-        SkillDetailView.from(manifest, browseEntry, skillId, isInstalledLocally)
+    val view = remember(manifest, browseEntry, skillId, isInstalledLocally, state.activeLocale) {
+        SkillDetailView.from(manifest, browseEntry, skillId, isInstalledLocally, state.activeLocale)
     }
     val pendingUpdate = remember(state.updates, skillId) {
         state.updates.firstOrNull { it.id == skillId }
@@ -317,6 +317,13 @@ fun SkillDetailScreen(
                     text = view.description,
                     style = MaterialTheme.typography.bodyLarge,
                 )
+                if (view.englishFallback) {
+                    Text(
+                        text = stringResource(R.string.skills_browse_in_english_fallback),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                }
             }
 
             // Two layout flavours:
@@ -623,6 +630,15 @@ private data class SkillDetailView(
     val languages: List<String>,
     val body: String,
     val installed: Boolean,
+    /**
+     * `true` when the rendered `title` + `description` came from the
+     * canonical English copy because the user's active locale isn't in
+     * the registry's `localizations` map for this entry. Drives the
+     * "Description in English" tag on the browse-source detail screen.
+     * Always `false` for installed skills (the on-disk localized
+     * manifest loader picks the right variant) and for English users.
+     */
+    val englishFallback: Boolean,
 ) {
     val hasAnyFacts: Boolean
         get() = !author.isNullOrBlank() ||
@@ -637,13 +653,34 @@ private data class SkillDetailView(
             browse: uniffi.ari_ffi.FfiBrowseEntry?,
             fallbackId: String,
             installed: Boolean,
+            activeLocale: String,
         ): SkillDetailView {
+            // Browse-source: prefer entry.localizations[activeLocale] over
+            // the canonical English fields. Installed-source: the
+            // `manifest` argument has already been read by the on-device
+            // localized loader (TODO Phase 11+: switch the FFI to return
+            // for_locale results) so it's already correct.
+            val browseLocalized = if (browse != null && activeLocale != "en") {
+                browse.localizations[activeLocale]
+                    ?: browse.localizations.entries
+                        .firstOrNull { it.key.equals(activeLocale, ignoreCase = true) }?.value
+            } else null
             val title = manifest?.name?.takeIf { it.isNotBlank() }
+                ?: browseLocalized?.name?.takeIf { it.isNotBlank() }
                 ?: browse?.name?.takeIf { it.isNotBlank() }
                 ?: fallbackId
             val version = manifest?.version ?: browse?.version ?: ""
             val description = manifest?.description?.takeIf { it.isNotBlank() }
+                ?: browseLocalized?.description?.takeIf { it.isNotBlank() }
                 ?: browse?.description.orEmpty()
+            // Browse-source view falls back to English iff:
+            //   - we're rendering from the browse entry (no installed manifest), AND
+            //   - the active locale isn't English, AND
+            //   - no per-locale entry exists for this skill.
+            val englishFallback = manifest == null
+                && activeLocale != "en"
+                && browseLocalized == null
+                && browse?.description?.isNotBlank() == true
             return SkillDetailView(
                 title = title,
                 version = version,
@@ -657,6 +694,7 @@ private data class SkillDetailView(
                     ?: browse?.languages.orEmpty(),
                 body = manifest?.body.orEmpty(),
                 installed = installed,
+                englishFallback = englishFallback,
             )
         }
     }

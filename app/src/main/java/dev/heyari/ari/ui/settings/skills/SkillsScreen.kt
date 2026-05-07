@@ -506,6 +506,18 @@ private fun BrowseRow(
     onClick: () -> Unit,
 ) {
     val supportsActive = entry.languages.any { it.equals(activeLocale, ignoreCase = true) }
+    // Pull the per-locale display strings if the registry index has
+    // them for the user's active locale; fall back to the canonical
+    // English `name` + `description` otherwise. Phase 11 added the
+    // `localizations` map to FfiBrowseEntry so older registry entries
+    // (and English itself) just resolve to the canonical fields.
+    val localized = if (activeLocale != "en") {
+        entry.localizations[activeLocale]
+            ?: entry.localizations.entries.firstOrNull { it.key.equals(activeLocale, ignoreCase = true) }?.value
+    } else null
+    val displayName = (localized?.name ?: entry.name).ifBlank { entry.id }
+    val displayDescription = localized?.description ?: entry.description
+    val showsEnglishFallback = activeLocale != "en" && localized == null && entry.description.isNotBlank()
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -537,7 +549,7 @@ private fun BrowseRow(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = entry.name.ifBlank { entry.id },
+                    text = displayName,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
@@ -548,11 +560,23 @@ private fun BrowseRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (entry.description.isNotBlank()) {
+            if (displayDescription.isNotBlank()) {
                 Text(
-                    text = entry.description,
+                    text = displayDescription,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 2,
+                )
+            }
+            if (showsEnglishFallback) {
+                // Subtle tag flagging that the row is rendering the
+                // canonical English copy because the skill author hasn't
+                // shipped a translation for the user's locale yet. Helps
+                // users understand why their Italian-set Ari is showing
+                // English text on a Browse row.
+                Text(
+                    text = stringResource(R.string.skills_browse_in_english_fallback),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline,
                 )
             }
             if (entry.languages.isNotEmpty()) {

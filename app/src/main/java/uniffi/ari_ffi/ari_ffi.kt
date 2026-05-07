@@ -5870,6 +5870,23 @@ data class FfiBrowseEntry (
     var `capabilities`: List<kotlin.String>
     , 
     var `languages`: List<kotlin.String>
+    , 
+    /**
+     * Per-locale display strings keyed by ISO 639-1 lowercase code
+     * (`"it"`, `"es"`, …). Comes straight from `index.json`'s
+     * `localizations` block, populated by the publish pipeline from
+     * every `SKILL.{locale}.md` variant. English is intentionally
+     * absent — the canonical `name` + `description` above already
+     * carry it. Empty for skills that haven't been migrated to the
+     * per-locale layout, which is also the case for older registry
+     * indexes (pre-Phase 11) where the field doesn't exist on disk.
+     *
+     * Frontends should pick the user's active-locale entry here and
+     * fall back to `name` / `description` when missing — see
+     * [`IndexEntry::display_for_locale`] in ari-skill-loader for the
+     * reference resolution logic.
+     */
+    var `localizations`: Map<kotlin.String, FfiLocalizedDisplay>
     
 ){
     
@@ -5896,6 +5913,7 @@ public object FfiConverterTypeFfiBrowseEntry: FfiConverterRustBuffer<FfiBrowseEn
             FfiConverterOptionalString.read(buf),
             FfiConverterSequenceString.read(buf),
             FfiConverterSequenceString.read(buf),
+            FfiConverterMapStringTypeFfiLocalizedDisplay.read(buf),
         )
     }
 
@@ -5909,7 +5927,8 @@ public object FfiConverterTypeFfiBrowseEntry: FfiConverterRustBuffer<FfiBrowseEn
             FfiConverterOptionalString.allocationSize(value.`author`) +
             FfiConverterOptionalString.allocationSize(value.`homepage`) +
             FfiConverterSequenceString.allocationSize(value.`capabilities`) +
-            FfiConverterSequenceString.allocationSize(value.`languages`)
+            FfiConverterSequenceString.allocationSize(value.`languages`) +
+            FfiConverterMapStringTypeFfiLocalizedDisplay.allocationSize(value.`localizations`)
     )
 
     override fun write(value: FfiBrowseEntry, buf: ByteBuffer) {
@@ -5923,6 +5942,7 @@ public object FfiConverterTypeFfiBrowseEntry: FfiConverterRustBuffer<FfiBrowseEn
             FfiConverterOptionalString.write(value.`homepage`, buf)
             FfiConverterSequenceString.write(value.`capabilities`, buf)
             FfiConverterSequenceString.write(value.`languages`, buf)
+            FfiConverterMapStringTypeFfiLocalizedDisplay.write(value.`localizations`, buf)
     }
 }
 
@@ -6359,6 +6379,50 @@ public object FfiConverterTypeFfiLocalTimeComponents: FfiConverterRustBuffer<Ffi
             FfiConverterUByte.write(value.`second`, buf)
             FfiConverterUByte.write(value.`weekday`, buf)
             FfiConverterString.write(value.`tzId`, buf)
+    }
+}
+
+
+
+/**
+ * Per-locale display strings for a registry entry. Mirrors
+ * [`ari_skill_loader::registry::LocalizedDisplay`] across the FFI
+ * boundary so frontends can render localised name + description on
+ * browse rows without extra lookups.
+ */
+data class FfiLocalizedDisplay (
+    var `name`: kotlin.String
+    , 
+    var `description`: kotlin.String
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiLocalizedDisplay: FfiConverterRustBuffer<FfiLocalizedDisplay> {
+    override fun read(buf: ByteBuffer): FfiLocalizedDisplay {
+        return FfiLocalizedDisplay(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiLocalizedDisplay) = (
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterString.allocationSize(value.`description`)
+    )
+
+    override fun write(value: FfiLocalizedDisplay, buf: ByteBuffer) {
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterString.write(value.`description`, buf)
     }
 }
 
@@ -7603,6 +7667,45 @@ public object FfiConverterSequenceTypeFfiTaskRow: FfiConverterRustBuffer<List<Ff
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeFfiTaskRow.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterMapStringTypeFfiLocalizedDisplay: FfiConverterRustBuffer<Map<kotlin.String, FfiLocalizedDisplay>> {
+    override fun read(buf: ByteBuffer): Map<kotlin.String, FfiLocalizedDisplay> {
+        val len = buf.getInt()
+        return buildMap<kotlin.String, FfiLocalizedDisplay>(len) {
+            repeat(len) {
+                val k = FfiConverterString.read(buf)
+                val v = FfiConverterTypeFfiLocalizedDisplay.read(buf)
+                this[k] = v
+            }
+        }
+    }
+
+    override fun allocationSize(value: Map<kotlin.String, FfiLocalizedDisplay>): ULong {
+        val spaceForMapSize = 4UL
+        val spaceForChildren = value.map { (k, v) ->
+            FfiConverterString.allocationSize(k) +
+            FfiConverterTypeFfiLocalizedDisplay.allocationSize(v)
+        }.sum()
+        return spaceForMapSize + spaceForChildren
+    }
+
+    override fun write(value: Map<kotlin.String, FfiLocalizedDisplay>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        // The parens on `(k, v)` here ensure we're calling the right method,
+        // which is important for compatibility with older android devices.
+        // Ref https://blog.danlew.net/2017/03/16/kotlin-puzzler-whose-line-is-it-anyways/
+        value.forEach { (k, v) ->
+            FfiConverterString.write(k, buf)
+            FfiConverterTypeFfiLocalizedDisplay.write(v, buf)
         }
     }
 }

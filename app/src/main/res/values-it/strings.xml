@@ -92,6 +92,7 @@
     <string name="skills_set_as_default_assistant_message">%1$s è installato. Vuoi impostarlo come assistente predefinito? Ari instraderà tutto ciò che non corrisponde a uno skill diretto attraverso di esso.</string>
     <string name="skills_set_as_default_assistant_confirm">Imposta come predefinito</string>
     <string name="skills_set_as_default_assistant_dismiss">Non ora</string>
+    <string name="skills_browse_in_english_fallback">Descrizione in inglese (nessuna traduzione disponibile)</string>
 
     <!-- Menu -->
     <string name="drawer_setup_wizard">Configurazione iniziale</string>

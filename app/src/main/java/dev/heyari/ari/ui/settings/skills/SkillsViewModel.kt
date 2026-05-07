@@ -513,7 +513,18 @@ class SkillsViewModel @Inject constructor(
         _state.update { it.copy(detailSettings = emptyList(), detailSettingsLoading = false) }
     }
 
-    private fun friendlyError(t: Throwable): String = when (t) {
+    private fun friendlyError(t: Throwable): String {
+        // Log the full exception (class + message + cause chain) before
+        // mapping to the friendly string. The friendly version necessarily
+        // discards information; without this Log.w we'd lose the actual
+        // failure mode (sha mismatch, signature error, network timeout,
+        // etc.) and have nothing to debug from. Tagged AriSkill so it
+        // shows up in `adb logcat -s AriSkill:V`.
+        android.util.Log.w("AriSkill", "registry error in skill flow", t)
+        return friendlyErrorMessage(t)
+    }
+
+    private fun friendlyErrorMessage(t: Throwable): String = when (t) {
         is FfiRegistryException.Registry -> "Couldn't reach the registry — check your connection."
         is FfiRegistryException.Store -> "Local skill store error: ${t.message ?: "unknown"}"
         is FfiRegistryException.NotFound -> "The registry no longer has that skill."
