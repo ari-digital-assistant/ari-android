@@ -1080,7 +1080,7 @@ external fun uniffi_ari_ffi_fn_method_skillregistry_install_skill_update(`ptr`: 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_skillregistry_list_installed(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
-external fun uniffi_ari_ffi_fn_method_skillregistry_read_installed_manifest(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+external fun uniffi_ari_ffi_fn_method_skillregistry_read_installed_manifest(`ptr`: Long,`id`: RustBuffer.ByValue,`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_skillregistry_set_skill_setting(`ptr`: Long,`skillId`: RustBuffer.ByValue,`key`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
@@ -1319,7 +1319,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_skillregistry_list_installed() != 46377.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_skillregistry_read_installed_manifest() != 7185.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_skillregistry_read_installed_manifest() != 29420.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_skillregistry_set_skill_setting() != 54661.toShort()) {
@@ -5081,16 +5081,23 @@ public interface SkillRegistryInterface {
     fun `listInstalled`(): List<FfiInstalledSkill>
     
     /**
-     * Read the on-disk `SKILL.md` for an already-installed skill and
-     * return the rich manifest the list/row view doesn't have room for —
+     * Read the on-disk manifest for an already-installed skill and
+     * return the rich record the list/row view doesn't have room for —
      * author, homepage, capabilities, supported languages, full body.
      *
+     * `locale` is the user's active ISO 639-1 code (`"en"`, `"it"`,
+     * …). When the skill ships a `SKILL.{locale}.md`, fields that
+     * legitimately differ across locales (`name`, `description`,
+     * `body`) come from that variant — Italian users see Italian
+     * description on the installed-skill detail screen instead of
+     * the canonical English. Locales the skill hasn't translated
+     * fall back to canonical English via `LocalizedManifestSet::for_locale`.
+     *
      * Returns [`FfiRegistryError::NotInstalled`] if `id` isn't in the
-     * store, or [`FfiRegistryError::Manifest`] if the file is missing
-     * or fails to parse (shouldn't happen for skills we installed
-     * ourselves but possible if the user's tampered with the dir).
+     * store, or [`FfiRegistryError::Manifest`] if the manifest is
+     * missing or fails to parse.
      */
-    fun `readInstalledManifest`(`id`: kotlin.String): FfiSkillManifest
+    fun `readInstalledManifest`(`id`: kotlin.String, `locale`: kotlin.String): FfiSkillManifest
     
     /**
      * Write a single setting value to the shared store. Equivalent to
@@ -5408,22 +5415,29 @@ open class SkillRegistry: Disposable, AutoCloseable, SkillRegistryInterface
 
     
     /**
-     * Read the on-disk `SKILL.md` for an already-installed skill and
-     * return the rich manifest the list/row view doesn't have room for —
+     * Read the on-disk manifest for an already-installed skill and
+     * return the rich record the list/row view doesn't have room for —
      * author, homepage, capabilities, supported languages, full body.
      *
+     * `locale` is the user's active ISO 639-1 code (`"en"`, `"it"`,
+     * …). When the skill ships a `SKILL.{locale}.md`, fields that
+     * legitimately differ across locales (`name`, `description`,
+     * `body`) come from that variant — Italian users see Italian
+     * description on the installed-skill detail screen instead of
+     * the canonical English. Locales the skill hasn't translated
+     * fall back to canonical English via `LocalizedManifestSet::for_locale`.
+     *
      * Returns [`FfiRegistryError::NotInstalled`] if `id` isn't in the
-     * store, or [`FfiRegistryError::Manifest`] if the file is missing
-     * or fails to parse (shouldn't happen for skills we installed
-     * ourselves but possible if the user's tampered with the dir).
+     * store, or [`FfiRegistryError::Manifest`] if the manifest is
+     * missing or fails to parse.
      */
-    @Throws(FfiRegistryException::class)override fun `readInstalledManifest`(`id`: kotlin.String): FfiSkillManifest {
+    @Throws(FfiRegistryException::class)override fun `readInstalledManifest`(`id`: kotlin.String, `locale`: kotlin.String): FfiSkillManifest {
             return FfiConverterTypeFfiSkillManifest.lift(
     callWithHandle {
     uniffiRustCallWithError(FfiRegistryException) { _status ->
     UniffiLib.uniffi_ari_ffi_fn_method_skillregistry_read_installed_manifest(
         it,
-        FfiConverterString.lower(`id`),_status)
+        FfiConverterString.lower(`id`),FfiConverterString.lower(`locale`),_status)
 }
     }
     )

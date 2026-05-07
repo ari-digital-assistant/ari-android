@@ -345,8 +345,13 @@ class SkillsViewModel @Inject constructor(
     fun loadInstalledManifest(id: String) {
         _state.update { it.copy(detailManifest = null, detailManifestLoading = true) }
         viewModelScope.launch {
+            // Pass the user's active locale through so the FFI returns
+            // the localized variant (Italian description for Italian
+            // users) — the canonical English manifest is the fallback
+            // path inside the loader, not what we want to render here.
+            val locale = settingsRepository.activeLocale.first()
             val result = runCatching {
-                withContext(Dispatchers.IO) { skillRegistry.readInstalledManifest(id) }
+                withContext(Dispatchers.IO) { skillRegistry.readInstalledManifest(id, locale) }
             }
             _state.update { prev ->
                 result.fold(
