@@ -50,11 +50,15 @@ class SkillUpdateNotifier @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val title = if (count == 1) "1 skill update available" else "$count skill updates available"
+        val title = if (count == 1) {
+            context.getString(R.string.update_banner_skill_one)
+        } else {
+            context.getString(R.string.update_banner_skill_many, count)
+        }
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_ari_symbolic)
             .setContentTitle(title)
-            .setContentText("Open Ari to review and install.")
+            .setContentText(context.getString(R.string.notif_skill_updates_open_to_review))
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(pending)
             .setAutoCancel(true)
@@ -66,10 +70,10 @@ class SkillUpdateNotifier @Inject constructor(
         if (manager.getNotificationChannel(CHANNEL_ID) != null) return
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Skill updates",
+            context.getString(R.string.notif_channel_skill_updates_name),
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = "Notifies you when updates are available for installed skills."
+            description = context.getString(R.string.notif_channel_skill_updates_description)
             setShowBadge(true)
         }
         manager.createNotificationChannel(channel)

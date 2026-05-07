@@ -131,6 +131,13 @@ class VoiceSession @Inject constructor(
                                 }
                                 _state.update { VoiceState.Listening(sttState.partial) }
                             }
+                            SttState.Transcribing -> {
+                                // Offline whisper just hit endpoint; the decode
+                                // could take seconds. Flip the overlay early so the
+                                // user sees we're working, not still listening.
+                                silenceWatcher.cancel()
+                                _state.update { VoiceState.Thinking }
+                            }
                             is SttState.Done -> {
                                 speechRecognizer.reset()
                                 silenceWatcher.cancel()

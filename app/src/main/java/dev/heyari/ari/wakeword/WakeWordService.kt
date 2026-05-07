@@ -276,8 +276,8 @@ class WakeWordService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val notification = Notification.Builder(this, CHANNEL_DETECTION)
-            .setContentTitle("Ari couldn't open")
-            .setContentText("Tap to allow Ari to open from the lock screen")
+            .setContentTitle(getString(R.string.notif_wake_couldnt_open_title))
+            .setContentText(getString(R.string.notif_wake_couldnt_open_text))
             .setSmallIcon(R.drawable.ic_ari_symbolic)
             .setContentIntent(pi)
             .setCategory(Notification.CATEGORY_ERROR)
@@ -306,10 +306,10 @@ class WakeWordService : Service() {
 
         val listeningChannel = NotificationChannel(
             CHANNEL_LISTENING,
-            "Wake Word Listening",
+            getString(R.string.notif_channel_wake_listening_name),
             NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
-            description = "Persistent notification while Ari listens for the wake word"
+            description = getString(R.string.notif_channel_wake_listening_description)
             setShowBadge(false)
             setSound(null, null)
         }
@@ -317,10 +317,10 @@ class WakeWordService : Service() {
 
         val detectionChannel = NotificationChannel(
             CHANNEL_DETECTION,
-            "Wake Word Detected",
+            getString(R.string.notif_channel_wake_detected_name),
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = "Alert when Ari hears the wake word"
+            description = getString(R.string.notif_channel_wake_detected_description)
             setShowBadge(true)
         }
         manager.createNotificationChannel(detectionChannel)
@@ -343,8 +343,8 @@ class WakeWordService : Service() {
         )
 
         return Notification.Builder(this, CHANNEL_LISTENING)
-            .setContentTitle("Ari")
-            .setContentText("Listening for wake word\u2026")
+            .setContentTitle(getString(R.string.notif_wake_listening_title))
+            .setContentText(getString(R.string.notif_wake_listening_text))
             .setSmallIcon(R.drawable.ic_ari_symbolic)
             .setContentIntent(openAppIntent)
             .setOngoing(true)

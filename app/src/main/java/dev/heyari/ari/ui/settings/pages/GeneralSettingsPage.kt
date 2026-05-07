@@ -32,6 +32,10 @@ fun GeneralSettingsPage(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            LanguageSection(
+                activeLocale = state.activeLocale,
+                onSelect = viewModel::setActiveLocale,
+            )
             IntegrationSection(onSetAsAssistant = viewModel::openDefaultAssistantSettings)
             StartOnBootSection(
                 enabled = state.startOnBoot,

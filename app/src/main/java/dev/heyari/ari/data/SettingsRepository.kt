@@ -201,6 +201,47 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    /**
+     * Set to `true` when the onboarding wizard finishes with the user
+     * having picked the Cloud assistant option. Cleared once they
+     * actually install (and activate) a cloud assistant skill — at
+     * that point they have what they wanted, so the conversation-
+     * screen "you still need to install one" hint should disappear.
+     *
+     * Lives here rather than in OnboardingViewModel because it has
+     * to outlive the wizard's lifecycle — we still want to nag the
+     * user days later if they exited the wizard without finishing
+     * the install step.
+     */
+    val pendingCloudAssistantSetup: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_PENDING_CLOUD_ASSISTANT_SETUP] ?: false
+    }
+
+    suspend fun setPendingCloudAssistantSetup(pending: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_PENDING_CLOUD_ASSISTANT_SETUP] = pending
+        }
+    }
+
+    /**
+     * Whether to route non-English transcription through the user's cloud
+     * assistant instead of the on-device Whisper-turbo model. Off by
+     * default; only meaningful when a cloud assistant is configured.
+     *
+     * Recorded here as a stable user preference; the actual cloud-STT
+     * call path (when a cloud assistant supports STT) reads this flag
+     * before deciding which transcriber to invoke.
+     */
+    val cloudSttForNonEnglish: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_CLOUD_STT_FOR_NON_ENGLISH] ?: false
+    }
+
+    suspend fun setCloudSttForNonEnglish(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_CLOUD_STT_FOR_NON_ENGLISH] = enabled
+        }
+    }
+
     companion object {
         private val KEY_ACTIVE_STT_MODEL = stringPreferencesKey("active_stt_model")
         private val KEY_ACTIVE_WAKE_WORD = stringPreferencesKey("active_wake_word")
@@ -212,5 +253,7 @@ class SettingsRepository @Inject constructor(
         private val KEY_START_ON_BOOT = booleanPreferencesKey("start_on_boot")
         private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         private val KEY_ROUTER_ENABLED = booleanPreferencesKey("router_enabled")
+        private val KEY_CLOUD_STT_FOR_NON_ENGLISH = booleanPreferencesKey("cloud_stt_for_non_english")
+        private val KEY_PENDING_CLOUD_ASSISTANT_SETUP = booleanPreferencesKey("pending_cloud_assistant_setup")
     }
 }

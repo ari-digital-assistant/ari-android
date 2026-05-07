@@ -126,6 +126,11 @@ fun AriNavHost(
                 onOpenSkills = {
                     navController.navigate(Routes.skills()) { launchSingleTop = true }
                 },
+                onOpenAssistantSkills = {
+                    navController.navigate(Routes.skills(type = "assistant")) {
+                        launchSingleTop = true
+                    }
+                },
             )
         }
         composable(
@@ -365,10 +370,25 @@ fun AriNavHost(
                 val graphEntry = remember(it) { navController.getBackStackEntry("onboarding") }
                 val settingsViewModel: SettingsViewModel = hiltViewModel()
                 val onboardingViewModel: OnboardingViewModel = hiltViewModel(graphEntry)
+                val wizardState by onboardingViewModel.state.collectAsStateWithLifecycle()
                 AssistantScreen(
                     settingsViewModel = settingsViewModel,
                     onboardingViewModel = onboardingViewModel,
-                    onNext = { navController.navigate(Routes.ONBOARDING_ROUTER) },
+                    onNext = {
+                        // FunctionGemma is English-only (per the multi-language
+                        // plan: "FunctionGemma as English-only tie-breaker").
+                        // Skip the router screen entirely for non-English users
+                        // and explicitly disable the toggle so the default-on
+                        // flag doesn't kick off a 253 MB download they'll never
+                        // benefit from.
+                        if (wizardState.selectedLocale == "en"
+                            || wizardState.selectedLocale == null) {
+                            navController.navigate(Routes.ONBOARDING_ROUTER)
+                        } else {
+                            settingsViewModel.setRouterEnabled(false)
+                            navController.navigate(Routes.ONBOARDING_GENERAL)
+                        }
+                    },
                     onBack = { navController.popBackStack() },
                 )
             }

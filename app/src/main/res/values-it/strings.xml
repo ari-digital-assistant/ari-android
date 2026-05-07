@@ -1,0 +1,321 @@
+<resources>
+    <!-- Italian translations for Ari.
+         Drafted by AI under one-time exception with the project lead
+         (a native Italian speaker) verifying. Spot-check before merge if
+         any phrase reads off. Tone: informal "tu" throughout, matching
+         Italian conversational-AI conventions. Time format: 24-hour
+         (handled in code, not strings). -->
+
+    <string name="app_name">Ari</string>
+
+    <!-- Top bar / drawer -->
+    <string name="top_bar_app_icon_description">Ari</string>
+    <string name="top_bar_open_menu">Apri menu</string>
+    <string name="top_bar_back">Indietro</string>
+    <string name="drawer_settings">Impostazioni</string>
+    <string name="drawer_skills">Skill</string>
+    <string name="drawer_about">Informazioni</string>
+
+    <!-- Settings categories -->
+    <string name="settings_title">Impostazioni</string>
+    <string name="settings_category_general">Generali</string>
+    <string name="settings_category_permissions">Autorizzazioni</string>
+    <string name="settings_category_wakeword">Parola di attivazione</string>
+    <string name="settings_category_stt">Riconoscimento vocale</string>
+    <string name="settings_category_llm">LLM su dispositivo</string>
+    <string name="settings_category_assistant">Assistente</string>
+    <string name="settings_category_tts">Voce</string>
+    <string name="settings_category_auto_update">Aggiornamenti automatici</string>
+
+    <!-- Auto-update settings -->
+    <string name="auto_update_master_title">Aggiorna automaticamente i modelli sul dispositivo</string>
+    <string name="auto_update_master_summary">Controlla periodicamente le nuove versioni del router FunctionGemma, dell\'LLM su dispositivo e dei modelli per il riconoscimento vocale. Gli aggiornamenti non vengono mai installati automaticamente — riceverai una notifica.</string>
+    <string name="auto_update_metered_title">Usa la rete dati</string>
+    <string name="auto_update_metered_summary">Disattivato di default. I modelli possono pesare da centinaia di MB a diversi GB; lascia disattivato per controllare solo via Wi-Fi.</string>
+    <string name="auto_update_check_now">Controlla ora</string>
+    <string name="auto_update_checking">Controllo in corso…</string>
+    <string name="auto_update_last_checked_never">Mai controllato</string>
+    <string name="auto_update_last_checked_just_now">Controllato adesso</string>
+    <string name="auto_update_last_checked_minutes">Controllato %1$d min fa</string>
+    <string name="auto_update_last_checked_hours">Controllato %1$d h fa</string>
+    <string name="auto_update_last_checked_days">Controllato %1$d g fa</string>
+    <string name="auto_update_section_pending">Aggiornamenti disponibili</string>
+    <string name="auto_update_section_installed">Modelli installati</string>
+    <string name="auto_update_no_updates">Tutti i modelli sul dispositivo sono aggiornati.</string>
+    <string name="auto_update_pending_size">%1$s — %2$s</string>
+    <string name="auto_update_pending_versions">v%1$s → v%2$s</string>
+    <string name="auto_update_apply">Aggiorna ora</string>
+    <string name="auto_update_skip">Salta questa versione</string>
+    <string name="auto_update_applying">Aggiornamento in corso…</string>
+    <string name="auto_update_apply_failed">Aggiornamento fallito: %1$s</string>
+    <string name="auto_update_apply_succeeded">%1$s aggiornato a v%2$s</string>
+    <string name="auto_update_reset_skipped">Ripristina versioni saltate</string>
+    <string name="auto_update_installed_version">Installato: v%1$s</string>
+    <string name="auto_update_no_models_installed">Nessun modello installato sul dispositivo. L\'aggiornamento automatico si attiverà appena ne installerai almeno uno.</string>
+
+    <!-- Skills -->
+    <string name="skills_title">Skill</string>
+    <string name="skills_tab_installed">Installati</string>
+    <string name="skills_tab_browse">Esplora</string>
+    <string name="skills_search_hint">Cerca skill</string>
+    <string name="skills_refresh">Aggiorna</string>
+    <string name="skills_install">Installa</string>
+    <string name="skills_uninstall">Disinstalla</string>
+    <string name="skills_update_to_version">Aggiorna a v%1$s</string>
+    <string name="skills_update_available_pill">Aggiornamento disponibile</string>
+    <string name="skills_uninstall_confirm_title">Disinstallare lo skill?</string>
+    <string name="skills_uninstall_confirm_message">%1$s sarà rimosso e i suoi dati verranno cancellati. Non si può annullare.</string>
+    <string name="skills_uninstall_confirm_ok">Disinstalla</string>
+    <string name="skills_uninstall_confirm_cancel">Annulla</string>
+    <string name="skills_last_checked_never">Non ancora controllato</string>
+    <string name="skills_last_checked_just_now">Controllato adesso</string>
+    <string name="skills_last_checked_minutes">Controllato %1$d min fa</string>
+    <string name="skills_last_checked_hours">Controllato %1$d h fa</string>
+    <string name="skills_last_checked_days">Controllato %1$d g fa</string>
+    <string name="skills_empty_installed">Nessuno skill della community ancora installato.</string>
+    <string name="skills_empty_browse">Nessuno skill corrisponde alla tua ricerca.</string>
+    <string name="skills_detail_version">Versione %1$s</string>
+    <string name="skills_detail_installed_badge">Installato</string>
+    <string name="skills_detail_author">Autore</string>
+    <string name="skills_detail_homepage">Sito web</string>
+    <string name="skills_detail_license">Licenza</string>
+    <string name="skills_detail_capabilities">Funzionalità</string>
+    <string name="skills_detail_languages">Lingue</string>
+    <string name="skills_detail_no_capabilities">Nessuna</string>
+    <string name="skills_detail_about">Informazioni su questo skill</string>
+    <string name="skills_detail_settings">Impostazioni</string>
+    <string name="skills_detail_skill_detail">Dettaglio skill</string>
+    <string name="skills_install_locale_mismatch_title">Lingua non supportata</string>
+    <string name="skills_install_locale_mismatch_message">Questo skill non è disponibile in %1$s. Lingue supportate: %2$s. Risponderà nelle lingue supportate. Continuare?</string>
+    <string name="skills_install_locale_mismatch_continue">Installa comunque</string>
+    <string name="skills_set_as_default_assistant_title">Imposta come assistente predefinito?</string>
+    <string name="skills_set_as_default_assistant_message">%1$s è installato. Vuoi impostarlo come assistente predefinito? Ari instraderà tutto ciò che non corrisponde a uno skill diretto attraverso di esso.</string>
+    <string name="skills_set_as_default_assistant_confirm">Imposta come predefinito</string>
+    <string name="skills_set_as_default_assistant_dismiss">Non ora</string>
+
+    <!-- Menu -->
+    <string name="drawer_setup_wizard">Configurazione iniziale</string>
+
+    <!-- Settings sections -->
+    <string name="settings_section_app">Impostazioni app</string>
+    <string name="settings_section_listening">Ascolto e voce</string>
+    <string name="settings_section_ai">IA</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_language_title">Scegli la tua lingua</string>
+    <string name="onboarding_language_body">Scegli la lingua in cui Ari ti ascolterà e risponderà. Puoi cambiarla in qualsiasi momento dalle impostazioni.</string>
+    <string name="onboarding_language_continue">Continua</string>
+    <string name="onboarding_welcome_title">Benvenuto su Ari!</string>
+    <string name="onboarding_welcome_title_revisit">Bentornato!</string>
+    <string name="onboarding_welcome_body">Ari è un assistente digitale open-source che mette al primo posto la tua privacy. Questa procedura guidata ti aiuterà a configurarlo. Puoi sempre modificare queste impostazioni in seguito, o rilanciare la procedura dal menù.</string>
+    <string name="onboarding_get_started">Inizia</string>
+    <string name="onboarding_skip">Salta</string>
+    <string name="onboarding_next">Avanti</string>
+    <string name="onboarding_back">Indietro</string>
+    <string name="onboarding_done">Fatto</string>
+
+    <string name="onboarding_permissions_title">Autorizzazioni</string>
+    <string name="onboarding_permissions_body">Ari funziona meglio con queste autorizzazioni. Tocca per concedere o gestirle.</string>
+    <string name="onboarding_permissions_missing_title">Continuare senza autorizzazioni?</string>
+    <string name="onboarding_permissions_missing_mic">Non potrai usare la parola di attivazione né l\'input vocale. Potrai comunque scrivere.</string>
+    <string name="onboarding_permissions_missing_notifications">Ari non potrà mostrarti cosa sta facendo quando ascolta in background.</string>
+    <string name="onboarding_permissions_missing_overlay">La parola di attivazione funzionerà solo una volta per sessione quando il telefono è bloccato.</string>
+    <string name="onboarding_permissions_stay">Rimani e concedi</string>
+    <string name="onboarding_permissions_continue">Continua comunque</string>
+
+    <string name="onboarding_wakeword_title">Parola di attivazione</string>
+    <string name="onboarding_wakeword_body">Pronunciala per attivare Ari. Scegli una frase e la sensibilità con cui Ari dovrà ascoltarla.</string>
+    <string name="onboarding_wakeword_start_listening">Inizia ad ascoltare ora</string>
+    <string name="onboarding_wakeword_start_listening_help">Ari inizierà ad ascoltare subito. Puoi anche scegliere di avviare Ari all\'accensione dalla schermata Generali — sono due interruttori distinti.</string>
+
+    <string name="onboarding_stt_title">Riconoscimento vocale</string>
+    <string name="onboarding_stt_body">Ari trascrive la tua voce sul dispositivo. <b>L\'audio non lascia mai il telefono.</b></string>
+    <string name="onboarding_stt_continue_hint">Puoi continuare — il download finirà in background.</string>
+
+    <string name="onboarding_assistant_title">Assistente</string>
+    <string name="onboarding_assistant_body">Ari usa gli skill per rispondere alla maggior parte delle richieste. Per il resto, puoi scegliere un assistente — oppure no.</string>
+    <string name="onboarding_assistant_none">Nessuno</string>
+    <string name="onboarding_assistant_none_blurb">Nessun assistente IA. Ari risponderà solo a comandi diretti e non cercherà di interpretare il linguaggio naturale.</string>
+    <string name="onboarding_assistant_none_pro_1">Tempo di risposta più rapido</string>
+    <string name="onboarding_assistant_none_pro_2">Funziona completamente offline</string>
+    <string name="onboarding_assistant_none_pro_3">Niente da configurare</string>
+    <string name="onboarding_assistant_none_con_1">Ari ti dirà quando non può aiutarti</string>
+    <string name="onboarding_assistant_ondevice">Su dispositivo</string>
+    <string name="onboarding_assistant_ondevice_blurb">Ari userà modelli IA locali per interpretare i tuoi comandi. Non richiede connessione internet, ma può avere capacità limitate rispetto agli assistenti cloud, a seconda del modello scelto.</string>
+    <string name="onboarding_assistant_ondevice_pro_1">100% privato — niente lascia il tuo telefono</string>
+    <string name="onboarding_assistant_ondevice_pro_2">Niente account, niente API key, niente internet</string>
+    <string name="onboarding_assistant_ondevice_con_1">Più piccolo e meno capace degli assistenti cloud</string>
+    <string name="onboarding_assistant_ondevice_con_2">Usa più batteria e spazio</string>
+    <string name="onboarding_assistant_cloud">Cloud</string>
+    <string name="onboarding_assistant_cloud_blurb">Usa un servizio cloud per rispondere alle domande.</string>
+    <string name="onboarding_assistant_cloud_pro_1">Potente e versatile</string>
+    <string name="onboarding_assistant_cloud_pro_2">Gestisce un\'ampia gamma di richieste</string>
+    <string name="onboarding_assistant_cloud_con_1">Richiede internet</string>
+    <string name="onboarding_assistant_cloud_con_2">I messaggi di testo vengono inviati a un servizio cloud</string>
+    <string name="onboarding_assistant_cloud_con_3">Può richiedere una API key o un account</string>
+    <string name="onboarding_assistant_cloud_privacy">La tua voce viene trascritta sul dispositivo. Solo il testo viene inviato al servizio cloud. Ari non invia mai audio a terzi.</string>
+    <string name="onboarding_assistant_cloud_later">Gli assistenti cloud si installano come skill. Ari supporta vari provider come ChatGPT, Claude e Gemini. Puoi sfogliarli e installare quello che preferisci dalla schermata Skill dopo la configurazione.</string>
+
+    <string name="onboarding_router_title">Routing intelligente degli skill</string>
+    <string name="onboarding_router_body">Ari può usare un piccolo modello sul dispositivo per interpretare le parafrasi che il riconoscimento per parole chiave non coglie. \"Apri il mio lettore musicale\" instrada allo skill apri-app anche se nessuna parola chiave corrisponde. Disabilita se preferisci evitare il download di ~253 MB.</string>
+    <string name="onboarding_router_continue_hint">Puoi continuare — il modello viene scaricato in background e inizia a funzionare appena è pronto.</string>
+
+    <string name="onboarding_general_title">Ultimi ritocchi</string>
+    <string name="onboarding_general_body">Un paio di opzioni per personalizzare il funzionamento di Ari.</string>
+
+    <string name="onboarding_complete_title">Tutto pronto</string>
+    <string name="onboarding_complete_title_revisit">Aggiornato</string>
+    <string name="onboarding_complete_try">Prova a dire:</string>
+    <string name="onboarding_complete_example">Ehi Ari, che ora è?</string>
+    <string name="onboarding_complete_or_type">Oppure scrivi qualsiasi cosa nella schermata di conversazione.</string>
+    <string name="onboarding_complete_cloud_nudge">Hai scelto un assistente cloud. Sfogliane uno e installalo per iniziare a usarlo.</string>
+    <string name="onboarding_complete_browse_cloud">Sfoglia gli skill assistente cloud</string>
+    <string name="onboarding_complete_mic_denied">La voce è disattivata. Puoi comunque scrivere ad Ari. Concedi l\'accesso al microfono nelle Impostazioni per attivare la voce.</string>
+
+    <!-- About -->
+    <string name="about_title">Informazioni</string>
+    <string name="about_tagline">Assistente digitale open-source</string>
+    <string name="about_version">Versione %1$s</string>
+    <string name="about_github">Vedi su GitHub</string>
+    <string name="about_github_url">https://github.com/ari-digital-assistant/ari-android</string>
+
+    <!-- In-app update banner -->
+    <string name="update_banner_model_one">1 aggiornamento di modello disponibile</string>
+    <string name="update_banner_model_many">%1$d aggiornamenti di modello disponibili</string>
+    <string name="update_banner_skill_one">1 aggiornamento di skill disponibile</string>
+    <string name="update_banner_skill_many">%1$d aggiornamenti di skill disponibili</string>
+    <string name="update_banner_update_all">Aggiorna tutto</string>
+    <string name="update_banner_details">Dettagli</string>
+    <string name="update_banner_dismiss">Chiudi</string>
+    <string name="update_banner_progress_model">Aggiornamento %1$s — %2$d di %3$d</string>
+    <string name="update_banner_progress_skill">Installazione %1$s — %2$d di %3$d</string>
+    <string name="update_banner_terminal_all_success">%1$d aggiornament(i) installat(i)</string>
+    <string name="update_banner_terminal_all_failed">Tutti i %1$d aggiornamenti sono falliti</string>
+    <string name="update_banner_terminal_partial">%1$d di %2$d aggiornamenti installati — tocca dettagli per il resto</string>
+
+    <!-- Common buttons / labels -->
+    <string name="action_cancel">Annulla</string>
+    <string name="action_delete">Elimina</string>
+    <string name="action_open_settings">Apri impostazioni</string>
+    <string name="action_later">Più tardi</string>
+    <string name="action_continue">Continua</string>
+    <string name="action_yes">Sì</string>
+    <string name="action_no">No</string>
+    <string name="download_button_with_size">Scarica %1$s</string>
+
+    <!-- Conversation screen -->
+    <string name="conversation_input_placeholder">Chiedi qualcosa ad Ari…</string>
+    <string name="conversation_open_menu">Apri menu</string>
+    <string name="conversation_listening_status_on">In ascolto</string>
+    <string name="conversation_listening_status_off">Non in ascolto</string>
+    <string name="conversation_voice_disabled_body">Le funzioni vocali richiedono il permesso per il microfono e un modello vocale scaricato. Puoi comunque scrivere le richieste qui sotto.</string>
+    <string name="conversation_setup_needed_title">Configurazione necessaria</string>
+    <string name="conversation_cloud_setup_title">Scegli un assistente cloud</string>
+    <string name="conversation_cloud_setup_body">Durante la configurazione hai scelto un assistente cloud, ma non ne hai ancora installato uno. Installa ChatGPT, Claude o Gemini per iniziare a usarlo — fino ad allora, Ari risponde solo tramite gli skill abbinati direttamente.</string>
+    <string name="conversation_cloud_setup_button">Sfoglia assistenti cloud</string>
+    <string name="conversation_downloading_header">Scaricamento in background</string>
+    <string name="conversation_downloading_stt_model">Modello di riconoscimento vocale</string>
+    <string name="conversation_downloading_llm_model">Modello assistente</string>
+    <string name="conversation_fsn_dialog_title">Notifiche a schermo intero</string>
+    <string name="conversation_fsn_dialog_body">Per attivare la parola di attivazione a mani libere, Ari ha bisogno del permesso di mostrare notifiche a schermo intero. Senza questo permesso, riceverai una notifica a banner.</string>
+
+    <!-- Voice overlay -->
+    <string name="voice_overlay_title">Ari</string>
+    <string name="voice_overlay_listening">In ascolto…</string>
+    <string name="voice_overlay_thinking">Ci sto pensando…</string>
+    <string name="voice_overlay_dismiss">Chiudi</string>
+
+    <!-- Permissions section (used by onboarding + settings) -->
+    <string name="permission_microphone_label">Microfono</string>
+    <string name="permission_microphone_description">Necessario per la parola di attivazione e l\'input vocale</string>
+    <string name="permission_notifications_label">Notifiche</string>
+    <string name="permission_notifications_description">Necessario per mostrare lo stato di ascolto della parola di attivazione</string>
+    <string name="permission_lockscreen_label">Parola di attivazione a schermo bloccato</string>
+    <string name="permission_lockscreen_description">Necessario perché la parola di attivazione continui a funzionare quando il telefono è bloccato — come le chiamate appaiono sulla schermata di blocco. Android la chiama \"Visualizza sopra altre app\", ma Ari non disegna sopra le tue altre app. Usa questo permesso solo per aprire la propria schermata vocale quando pronunci la parola di attivazione. Senza questo permesso, la parola di attivazione funzionerà solo una volta per sessione.</string>
+    <string name="permission_fsn_label">Notifiche a schermo intero</string>
+    <string name="permission_fsn_description">Opzionale. Percorso legacy — non usato dal flusso attuale di parola di attivazione, ma mantenuto disponibile nel caso in cui Android inasprisca le regole sull\'overlay in futuro.</string>
+    <string name="permission_status_granted">Concesso</string>
+    <string name="permission_status_grant">Concedi</string>
+    <string name="permission_status_open_android_settings">Apri impostazioni Android</string>
+    <string name="permission_chip_recommended">CONSIGLIATO</string>
+    <string name="permission_chip_optional">OPZIONALE</string>
+
+    <!-- Settings section blurbs -->
+    <string name="settings_wakeword_blurb">La frase a cui Ari risponde. \"Hey Jarvis\" è il modello microWakeWord originale, incluso come fallback.</string>
+    <string name="settings_wakeword_sensitivity_blurb">Sensibilità — quanto facilmente Ari risponde alla tua voce. Se Ari si attiva quando non dovrebbe, abbassa il valore. Se non si attiva quando vuoi, alzalo.</string>
+    <string name="wakeword_sensitivity_high_label">Alta</string>
+    <string name="wakeword_sensitivity_high_description">Si attiva facilmente. Usa solo in ambienti molto silenziosi.</string>
+    <string name="wakeword_sensitivity_medium_label">Media</string>
+    <string name="wakeword_sensitivity_medium_description">Consigliata per la maggior parte degli ambienti.</string>
+    <string name="wakeword_sensitivity_low_label">Bassa</string>
+    <string name="wakeword_sensitivity_low_description">Più rigorosa. Usa se Ari si attiva quando non dovrebbe.</string>
+    <string name="settings_stt_models_blurb">Scegli un modello di riconoscimento vocale. I modelli più grandi sono più accurati ma occupano più spazio e RAM.</string>
+    <string name="settings_language_blurb">La lingua in cui Ari ascolta e parla. Cambiarla aggiorna le risposte dell\'assistente e i testi dell\'app — potresti dover sostituire il modello di riconoscimento vocale qui sotto se non supporta la nuova lingua.</string>
+    <string name="settings_cloud_stt_for_non_english_title">Usa STT cloud per le lingue non inglesi</string>
+    <string name="settings_cloud_stt_for_non_english_blurb">Se attivo, la voce non in inglese viene trascritta dall\'assistente cloud configurato invece che dal modello Whisper sul dispositivo. Più veloce sui telefoni lenti, ma il tuo audio lascia il dispositivo. Non ha effetto se non hai configurato un assistente cloud.</string>
+    <string name="settings_start_on_boot_title">Avvia Ari all\'accensione</string>
+    <string name="settings_start_on_boot_blurb">Quando il dispositivo si avvia, Ari inizierà ad ascoltare la parola di attivazione automaticamente. Consuma un po\' più di batteria poiché il microfono resta sempre attivo — lascia disattivato se preferisci avviare Ari manualmente.</string>
+    <string name="settings_router_title">Routing intelligente degli skill</string>
+    <string name="settings_router_blurb">Usa un piccolo modello sul dispositivo (~253 MB) per interpretare le parafrasi che il riconoscimento per parole chiave non coglie. Per esempio, \"apri il mio lettore musicale\" instrada allo skill apri-app anche se nessuna parola chiave corrisponde.</string>
+    <string name="settings_router_downloading">Download del modello router… %1$s / %2$s</string>
+    <string name="settings_router_download_failed">Download fallito: %1$s</string>
+    <string name="settings_default_assistant_title">Assistente digitale predefinito</string>
+    <string name="settings_default_assistant_blurb">Imposta Ari come assistente digitale predefinito per poterlo richiamare con il gesto di assist (pressione lunga su tasto Home o accensione).</string>
+    <string name="settings_llm_blurb">Scegli un modello linguistico sul dispositivo. Quando attivo, Ari può rispondere a domande generiche e instradare i comandi mal compresi allo skill giusto. I modelli più grandi danno risposte migliori ma occupano più spazio e RAM.</string>
+    <string name="settings_llm_none_title">Nessuno</string>
+    <string name="settings_llm_none_blurb">Nessun LLM sul dispositivo. Ari risponde solo tramite skill abbinati.</string>
+    <string name="settings_last_download_failed">Ultimo download fallito: %1$s</string>
+
+    <!-- Skill settings panel — calendar / tasks permission buttons -->
+    <string name="skill_panel_allow_calendar">Consenti accesso al calendario</string>
+    <string name="skill_panel_no_calendars">Nessun calendario scrivibile trovato su questo dispositivo.</string>
+    <string name="skill_panel_allow_tasks">Consenti accesso alle attività</string>
+    <string name="skill_panel_browse_more">Cerca altro nello store</string>
+    <string name="skill_panel_refresh_after_install">Ne ho installato uno — aggiorna</string>
+
+    <!-- TTS settings page -->
+    <string name="tts_language_label">Lingua</string>
+    <string name="tts_chip_on_device">Sul dispositivo</string>
+    <string name="tts_chip_cloud">Cloud</string>
+    <string name="tts_chip_cloud_only">Solo cloud</string>
+    <string name="tts_preview_voice_description">Anteprima voce</string>
+
+    <!-- Assistant settings page -->
+    <string name="assistant_browse_skills">Sfoglia gli skill</string>
+
+    <!-- Skills screen -->
+    <string name="skills_clear_filter_description">Rimuovi filtro</string>
+
+    <!-- Notification channels (visible in Android Settings → Apps → Ari → Notifications) -->
+    <string name="notif_channel_background_name">Aggiornamenti in background</string>
+    <string name="notif_channel_background_description">Stato persistente guidato dagli skill (timer, download, …)</string>
+    <string name="notif_channel_important_name">Aggiornamenti importanti</string>
+    <string name="notif_channel_important_description">Stato a priorità più alta che l\'utente dovrebbe vedere</string>
+    <string name="notif_channel_alerts_name">Avvisi</string>
+    <string name="notif_channel_alerts_description">Avvisi attivati dagli skill (timer scaduti, sveglie, ecc.)</string>
+    <string name="notif_channel_wake_listening_name">Parola di attivazione in ascolto</string>
+    <string name="notif_channel_wake_listening_description">Notifica persistente mentre Ari ascolta la parola di attivazione</string>
+    <string name="notif_channel_wake_detected_name">Parola di attivazione rilevata</string>
+    <string name="notif_channel_wake_detected_description">Avviso quando Ari riconosce la parola di attivazione</string>
+    <string name="notif_channel_boot_name">Avvio all\'accensione</string>
+    <string name="notif_channel_boot_description">Mostrato quando Ari ha bisogno di un tocco per iniziare ad ascoltare dopo l\'accensione</string>
+    <string name="notif_channel_model_updates_name">Aggiornamenti modelli</string>
+    <string name="notif_channel_model_updates_description">Avvisa quando sono disponibili aggiornamenti per i modelli sul dispositivo.</string>
+    <string name="notif_channel_skill_updates_name">Aggiornamenti skill</string>
+    <string name="notif_channel_skill_updates_description">Avvisa quando sono disponibili aggiornamenti per gli skill installati.</string>
+
+    <!-- Notification content -->
+    <string name="notif_skill_updates_open_to_review">Apri Ari per vedere e installare.</string>
+    <string name="notif_model_updates_open_to_review_with_body">Apri Ari per vedere e installare. (%1$s)</string>
+    <string name="notif_model_updates_open_to_review_big">Apri Ari per vedere e installare.\n%1$s</string>
+    <string name="notif_alert_expired">Scaduto mentre il dispositivo era spento</string>
+    <string name="notif_wake_couldnt_open_title">Ari non è riuscito ad aprirsi</string>
+    <string name="notif_wake_couldnt_open_text">Tocca per consentire ad Ari di aprirsi dalla schermata di blocco</string>
+    <string name="notif_wake_listening_title">Ari</string>
+    <string name="notif_wake_listening_text">In ascolto della parola di attivazione…</string>
+    <string name="notif_boot_couldnt_start_title">Ari non è riuscito ad avviare l\'ascolto</string>
+    <string name="notif_boot_tap_to_fix">Tocca per risolvere: %1$s</string>
+    <string name="notif_boot_tap_to_fix_big">Ari è impostato per iniziare ad ascoltare all\'accensione, ma serve la tua attenzione su: %1$s. Tocca per aprire Ari.</string>
+    <string name="notif_boot_idle_title">Ari</string>
+    <string name="notif_boot_idle_text">Tocca per iniziare ad ascoltare</string>
+</resources>

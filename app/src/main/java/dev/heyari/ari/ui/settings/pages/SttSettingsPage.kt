@@ -1,5 +1,6 @@
 package dev.heyari.ari.ui.settings.pages
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -33,6 +34,7 @@ fun SttSettingsPage(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             ModelsSection(
                 models = state.models,
@@ -41,6 +43,10 @@ fun SttSettingsPage(
                 onCancel = viewModel::cancelDownload,
                 onDelete = viewModel::deleteModel,
                 onSelect = viewModel::selectModel,
+            )
+            CloudSttForNonEnglishSection(
+                enabled = state.cloudSttForNonEnglish,
+                onToggle = viewModel::setCloudSttForNonEnglish,
             )
         }
     }

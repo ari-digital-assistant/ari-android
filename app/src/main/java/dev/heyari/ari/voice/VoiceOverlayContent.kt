@@ -28,6 +28,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.res.stringResource
+import dev.heyari.ari.R
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -68,7 +70,7 @@ fun VoiceOverlayContent(
                 ) {
                     StatusIndicator(state)
                     Text(
-                        text = "Ari",
+                        text = stringResource(R.string.voice_overlay_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -77,7 +79,7 @@ fun VoiceOverlayContent(
                 IconButton(onClick = onDismiss) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Dismiss",
+                        contentDescription = stringResource(R.string.voice_overlay_dismiss),
                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
@@ -86,7 +88,7 @@ fun VoiceOverlayContent(
             when (state) {
                 is VoiceState.Listening -> {
                     Text(
-                        text = if (state.partial.isNotBlank()) state.partial else "Listening\u2026",
+                        text = if (state.partial.isNotBlank()) state.partial else stringResource(R.string.voice_overlay_listening),
                         style = MaterialTheme.typography.bodyLarge,
                         fontStyle = if (state.partial.isBlank()) FontStyle.Italic else FontStyle.Normal,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -103,7 +105,7 @@ fun VoiceOverlayContent(
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
                         Text(
-                            text = "Thinking\u2026",
+                            text = stringResource(R.string.voice_overlay_thinking),
                             style = MaterialTheme.typography.bodyLarge,
                             fontStyle = FontStyle.Italic,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,

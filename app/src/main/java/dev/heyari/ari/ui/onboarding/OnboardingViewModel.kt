@@ -97,6 +97,14 @@ class OnboardingViewModel @Inject constructor(
     fun completeOnboarding() {
         // Synchronous write — this must complete before the caller navigates
         // away and destroys this ViewModel's scope.
-        runBlocking { settingsRepository.setOnboardingCompleted(true) }
+        runBlocking {
+            settingsRepository.setOnboardingCompleted(true)
+            // Persist the cloud-choice signal so the conversation screen
+            // can keep nagging the user to actually install one until
+            // they do. Cleared elsewhere (skill-install flow + manual
+            // assistant-pick from settings).
+            val pendingCloud = _state.value.assistantChoice == AssistantChoice.CLOUD
+            settingsRepository.setPendingCloudAssistantSetup(pendingCloud)
+        }
     }
 }

@@ -1,0 +1,39 @@
+name: translation-parity
+
+# Validate that every per-locale strings.xml declares the same set of
+# string keys as the canonical English file. A missing key in a locale
+# file silently falls back to English at runtime, which produces mixed-
+# language chrome that's worse than fully English. See
+# CONTRIBUTING.md → "CI lint: no half-translated locales".
+#
+# Self-contained — no JDK, no Gradle, no Android SDK. Just Python with
+# the stdlib XML parser. Fast (under 5s) and sidesteps the heavy
+# dependency chain a full Android CI workflow would need.
+
+on:
+  pull_request:
+    paths:
+      - 'app/src/main/res/values/strings.xml'
+      - 'app/src/main/res/values-*/strings.xml'
+      - 'tools/check_translation_parity.py'
+      - '.github/workflows/translation-parity.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'app/src/main/res/values/strings.xml'
+      - 'app/src/main/res/values-*/strings.xml'
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run parity check
+        run: python3 tools/check_translation_parity.py

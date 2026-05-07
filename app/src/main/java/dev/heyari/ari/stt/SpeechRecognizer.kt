@@ -441,7 +441,7 @@ class SpeechRecognizer @Inject constructor(
                     }
 
                     val rawPartial = rec.getResult(currentStream).text.trim()
-                    val cleanedPartial = stripWakePhrase(rawPartial)
+                    val cleanedPartial = stripWakePhrase(rawPartial, localeProvider.currentLocale())
                     Log.d(TAG, "decode: fed=${merged.size} raw='$rawPartial' cleaned='$cleanedPartial'")
                     if (cleanedPartial.isNotEmpty()) {
                         _state.value = SttState.Listening(cleanedPartial)
@@ -477,7 +477,7 @@ class SpeechRecognizer @Inject constructor(
                                     rec.decode(ps)
                                 }
                                 val parRaw = rec.getResult(ps).text.trim()
-                                val parCleaned = stripWakePhrase(parRaw)
+                                val parCleaned = stripWakePhrase(parRaw, localeProvider.currentLocale())
                                 Log.i(TAG, "Parallel stream final: raw='$parRaw' cleaned='$parCleaned'")
                                 parCleaned.takeIf { it.isNotEmpty() && it != cleanedPartial }
                             } catch (t: Throwable) {
@@ -596,6 +596,12 @@ class SpeechRecognizer @Inject constructor(
             pos += b.size
         }
 
+        // Hand-off signal between "we heard you stop talking" and "we
+        // have a transcript". Posted before the (CPU-heavy) decode so
+        // VoiceSession can flip its overlay to Thinking — otherwise
+        // users see a still-listening UI for the whole decode window.
+        _state.value = SttState.Transcribing
+
         // Decode is CPU-bound (whisper-turbo int8 takes ~300-700ms on a
         // mid-tier phone for a 3-5s utterance). Push to the Default
         // dispatcher so we don't hold the listening coroutine on whatever
@@ -612,7 +618,7 @@ class SpeechRecognizer @Inject constructor(
             }
         }
 
-        val cleaned = stripWakePhrase(transcript)
+        val cleaned = stripWakePhrase(transcript, localeProvider.currentLocale())
         Log.i(TAG, "Whisper transcript: raw='$transcript' cleaned='$cleaned'")
 
         // No parallel stream, no audio-for-retry: whisper is the final
@@ -682,7 +688,7 @@ class SpeechRecognizer @Inject constructor(
                 rec.decode(offStream)
             }
             val raw = rec.getResult(offStream).text.trim()
-            val cleaned = stripWakePhrase(raw)
+            val cleaned = stripWakePhrase(raw, localeProvider.currentLocale())
             Log.i(TAG, "Offline retry: raw='$raw' cleaned='$cleaned'")
             cleaned.takeIf { it.isNotEmpty() }
         } catch (t: Throwable) {
@@ -759,6 +765,19 @@ class SpeechRecognizer @Inject constructor(
 sealed interface SttState {
     data object Idle : SttState
     data class Listening(val partial: String) : SttState
+    /**
+     * Offline path only. Emitted between endpoint detection and the
+     * whisper decode result. Lets the host flip its UI to a "thinking"
+     * affordance while the model crunches — without it, the overlay
+     * sits on "Listening…" for the entire decode window (~300-700 ms on
+     * a phone, several seconds on an emulator), which reads as
+     * unresponsive.
+     *
+     * The streaming Kroko/Nemotron path never emits this — its decode
+     * is incremental and the final transcript is ready by the time
+     * endpoint fires, so [Listening] → [Done] happens within a frame.
+     */
+    data object Transcribing : SttState
     /**
      * @param text Best transcript from the streaming decoder (or whisper's
      *   one-shot decode in the offline path).
