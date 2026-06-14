@@ -121,6 +121,14 @@ fun SkillSettingsPanel(
                 // grow new field types without older client builds
                 // crashing on encounter.
             }
+            // `validate` is orthogonal to fieldType: a validate field is
+            // still a text/secret/etc. field that rendered its normal
+            // widget above. Append the inline ✓/✗ verdict beneath it.
+            // `dynamic_select` is excluded — it already surfaces its own
+            // query status, so a second one would double up.
+            if (field.validate && field.fieldType != "dynamic_select") {
+                ValidateStatus(field, byKey, querySkillSetting)
+            }
         }
     }
 }
@@ -278,17 +286,122 @@ private fun SelectField(
 }
 
 /**
- * Render state for a `dynamic_select` field: options aren't baked into
- * the manifest — they're fetched at settings-time from the skill once
- * the field's `depends_on` siblings have committed values. The four
- * states map directly to what the user sees: nothing-to-do, in-flight,
- * resolved options, or a failure they can retry.
+ * Render state for a skill-backed settings query — shared by both
+ * `dynamic_select` (options aren't baked into the manifest; they're
+ * fetched at settings-time once the field's `depends_on` siblings have
+ * committed values) and `validate` fields (which run the same query but
+ * only care about pass/fail). The states map directly to what the user
+ * sees: nothing-to-do, in-flight, resolved options, a successful
+ * validation (`{ok:true, message}` with no options), or a failure.
  */
 private sealed interface DynState {
     object Idle : DynState
     object Loading : DynState
     data class Options(val opts: List<FfiSelectOption>) : DynState
+
+    /**
+     * A successful query that returned a `message` and no options — the
+     * shape a `validate` field's `settings_query` produces (`{ok:true,
+     * message}`). Kept distinct from [Options] so a validate success
+     * doesn't get swallowed as "empty options" and lose its message.
+     */
+    data class Validated(val message: String?) : DynState
     data class Failed(val message: String) : DynState
+}
+
+/**
+ * Shared, debounced fetch driving any skill-backed settings query.
+ * Both [DynamicSelectField] and [ValidateStatus] read their dependency
+ * values the same way visibility gating does (effective value =
+ * currentValue, falling back to defaultValue), key a [LaunchedEffect]
+ * on a stable serialisation of those values so a no-op recompose won't
+ * re-fire, debounce 400ms, then fold the result into a [DynState].
+ *
+ * `attempt` lets a caller force a re-run (the dropdown's Retry button);
+ * pass a value that changes to trigger a fresh fetch. Returns the
+ * current state for the caller to render however it likes.
+ */
+@Composable
+private fun rememberSettingsQuery(
+    field: FfiConfigField,
+    byKey: Map<String, FfiConfigField>,
+    querySkillSetting: suspend (String, Map<String, String>) -> FfiSettingsQueryResult,
+    attempt: Int,
+): DynState {
+    val depValues: Map<String, String> = field.dependsOn.associateWith { k ->
+        byKey[k]?.let { it.currentValue ?: it.defaultValue ?: "" } ?: ""
+    }
+    val allPresent = field.dependsOn.isNotEmpty() && depValues.values.all { it.isNotBlank() }
+    val depKey = depValues.entries.sortedBy { it.key }.joinToString("|") { "${it.key}=${it.value}" }
+    var state by remember { mutableStateOf<DynState>(DynState.Idle) }
+
+    LaunchedEffect(depKey, allPresent, attempt) {
+        if (!allPresent) {
+            state = DynState.Idle
+            return@LaunchedEffect
+        }
+        state = DynState.Loading
+        delay(400) // Debounce — collapse a flurry of dependency edits into one fetch.
+        val res = runCatching { querySkillSetting(field.key, depValues) }.getOrNull()
+        state = when {
+            res == null -> DynState.Failed("error")
+            // A validate-style success: ok, no options, just a message.
+            res.ok && res.options.isEmpty() && res.message != null -> DynState.Validated(res.message)
+            res.ok -> DynState.Options(res.options)
+            else -> DynState.Failed(res.error ?: "error")
+        }
+    }
+
+    return state
+}
+
+/**
+ * Inline ✓/✗ status for a field declared with `validate == true` (e.g.
+ * a credential the skill can verify, like the Home Assistant token). The
+ * field renders its normal widget (text/secret) above this — we only
+ * append the verdict. Driven by the SAME debounced [rememberSettingsQuery]
+ * as `dynamic_select`, keyed on the field's `depends_on`: ✓ shows the
+ * skill's success `message`, ✗ shows its `error`. Stays invisible until
+ * the dependencies are present (nothing to validate yet).
+ */
+@Composable
+private fun ValidateStatus(
+    field: FfiConfigField,
+    byKey: Map<String, FfiConfigField>,
+    querySkillSetting: suspend (String, Map<String, String>) -> FfiSettingsQueryResult,
+) {
+    when (val s = rememberSettingsQuery(field, byKey, querySkillSetting, attempt = 0)) {
+        DynState.Idle -> {} // Deps not present yet — nothing to validate.
+        DynState.Loading -> Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 8.dp, top = 2.dp),
+        ) {
+            CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = stringResource(R.string.skill_panel_checking),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+
+        is DynState.Validated -> Text(
+            text = "✓ " + (s.message ?: ""),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 8.dp, top = 2.dp),
+        )
+
+        is DynState.Failed -> Text(
+            text = "✗ " + s.message,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(start = 8.dp, top = 2.dp),
+        )
+
+        // A validate query that happened to return options is malformed
+        // for a validate field — ignore rather than render a stray picker.
+        is DynState.Options -> {}
+    }
 }
 
 /**
@@ -314,28 +427,10 @@ private fun DynamicSelectField(
     onValueChange: (String, String, Boolean) -> Unit,
     querySkillSetting: suspend (String, Map<String, String>) -> FfiSettingsQueryResult,
 ) {
-    val depValues: Map<String, String> = field.dependsOn.associateWith { k ->
-        byKey[k]?.let { it.currentValue ?: it.defaultValue ?: "" } ?: ""
-    }
-    val allPresent = field.dependsOn.isNotEmpty() && depValues.values.all { it.isNotBlank() }
-    val depKey = depValues.entries.sortedBy { it.key }.joinToString("|") { "${it.key}=${it.value}" }
-    var state by remember { mutableStateOf<DynState>(DynState.Idle) }
+    // Retry lives here (the dropdown's button); bumping it re-keys the
+    // shared query's LaunchedEffect to force a fresh fetch.
     var attempt by remember { mutableStateOf(0) }
-
-    LaunchedEffect(depKey, allPresent, attempt) {
-        if (!allPresent) {
-            state = DynState.Idle
-            return@LaunchedEffect
-        }
-        state = DynState.Loading
-        delay(400) // Debounce — collapse a flurry of dependency edits into one fetch.
-        val res = runCatching { querySkillSetting(field.key, depValues) }.getOrNull()
-        state = when {
-            res == null -> DynState.Failed("error")
-            res.ok -> DynState.Options(res.options)
-            else -> DynState.Failed(res.error ?: "error")
-        }
-    }
+    val state = rememberSettingsQuery(field, byKey, querySkillSetting, attempt)
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
@@ -373,6 +468,17 @@ private fun DynamicSelectField(
                     Text(stringResource(R.string.skill_panel_retry))
                 }
             }
+
+            // A dropdown's query is expected to return options. A bare
+            // validated message (no options) means the skill treated this
+            // like a validate field — treat it as "no options" rather than
+            // dropping a stray ✓ into a picker.
+            is DynState.Validated -> Text(
+                text = stringResource(R.string.skill_panel_no_options),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 8.dp),
+            )
 
             is DynState.Options -> {
                 if (s.opts.isEmpty()) {
