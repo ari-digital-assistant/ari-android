@@ -23,6 +23,7 @@ import uniffi.ari_ffi.FfiBrowseEntry
 import uniffi.ari_ffi.FfiConfigField
 import uniffi.ari_ffi.FfiInstalledSkill
 import uniffi.ari_ffi.FfiRegistryException
+import uniffi.ari_ffi.FfiSettingsQueryResult
 import uniffi.ari_ffi.FfiSkillManifest
 import uniffi.ari_ffi.FfiSkillUpdate
 import uniffi.ari_ffi.AssistantRegistry
@@ -545,6 +546,25 @@ class SkillsViewModel @Inject constructor(
                     .getOrDefault(emptyList())
             _state.update { it.copy(detailSettings = refreshed) }
         }
+    }
+
+    /**
+     * Resolve a server-backed / interactive setting field by asking the
+     * skill (via the engine) to compute the available options or validate
+     * the current draft values. Used by the settings panel for fields
+     * declaring `dependsOn` / `validate` — e.g. fetching the list of
+     * remote models for a provider once an API key is entered.
+     *
+     * Bridges to [Dispatchers.IO] and returns the raw FFI result; the
+     * caller (the composable) wraps this in `runCatching` and renders the
+     * `error`/`message`/`options` it carries.
+     */
+    suspend fun querySkillSetting(
+        skillId: String,
+        field: String,
+        values: Map<String, String>,
+    ): FfiSettingsQueryResult = withContext(Dispatchers.IO) {
+        engine.querySkillSetting(skillId, field, values)
     }
 
     fun clearSkillSettings() {
