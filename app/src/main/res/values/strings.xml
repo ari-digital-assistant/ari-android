@@ -266,6 +266,10 @@
     <string name="skill_panel_allow_tasks">Allow tasks access</string>
     <string name="skill_panel_browse_more">Search the store for more</string>
     <string name="skill_panel_refresh_after_install">I\'ve installed one — refresh</string>
+    <string name="skill_panel_enter_deps_first">Enter the fields above first.</string>
+    <string name="skill_panel_checking">Checking…</string>
+    <string name="skill_panel_retry">Retry</string>
+    <string name="skill_panel_no_options">No options found.</string>
 
     <!-- TTS settings page -->
     <string name="tts_language_label">Language</string>

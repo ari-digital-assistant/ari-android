@@ -55,6 +55,7 @@ import dev.heyari.ari.R
 import dev.heyari.ari.ui.components.AriTopBar
 import dev.heyari.ari.ui.components.SkillSettingsPanel
 import uniffi.ari_ffi.FfiConfigField
+import uniffi.ari_ffi.FfiSettingsQueryResult
 import uniffi.ari_ffi.FfiSkillManifest
 
 /**
@@ -345,6 +346,9 @@ fun SkillDetailScreen(
                         onValueChange = { key, value, isSecret ->
                             viewModel.setSkillSetting(skillId, key, value, isSecret)
                         },
+                        querySkillSetting = { field, values ->
+                            viewModel.querySkillSetting(skillId, field, values)
+                        },
                     )
                 }
                 // No settings to compete with → no reason to hide the
@@ -407,6 +411,7 @@ private fun SettingsSection(
     loading: Boolean,
     fields: List<FfiConfigField>,
     onValueChange: (key: String, value: String, isSecret: Boolean) -> Unit,
+    querySkillSetting: suspend (field: String, values: Map<String, String>) -> FfiSettingsQueryResult,
 ) {
     Surface(
         tonalElevation = 1.dp,
@@ -446,6 +451,7 @@ private fun SettingsSection(
                 SkillSettingsPanel(
                     fields = fields,
                     onValueChange = onValueChange,
+                    querySkillSetting = querySkillSetting,
                 )
             }
         }

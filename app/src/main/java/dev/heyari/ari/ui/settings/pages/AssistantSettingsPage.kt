@@ -42,6 +42,21 @@ import dev.heyari.ari.ui.settings.SettingsViewModel
 import dev.heyari.ari.ui.settings.components.SettingsScaffold
 import uniffi.ari_ffi.FfiConfigField
 import uniffi.ari_ffi.FfiSelectOption
+import uniffi.ari_ffi.FfiSettingsQueryResult
+
+/**
+ * Inert query result for cards that can't host a `dynamic_select` field
+ * (the "None" assistant has no config schema). The panel never actually
+ * calls the lambda for an empty field list, but the parameter is
+ * non-nullable, so we hand it a benign empty success rather than a
+ * throwing stub.
+ */
+private val EMPTY_QUERY_RESULT = FfiSettingsQueryResult(
+    ok = true,
+    error = null,
+    options = emptyList(),
+    message = null,
+)
 
 @Composable
 fun AssistantSettingsPage(
@@ -98,6 +113,7 @@ fun AssistantSettingsPage(
                 onSelect = { viewModel.selectAssistant(null) },
                 configFields = emptyList(),
                 onConfigChange = { _, _, _ -> },
+                querySkillSetting = { _, _ -> EMPTY_QUERY_RESULT },
                 isBuiltin = false,
                 llmModels = emptyList(),
                 llmDownloadState = LlmDownloadState.Idle,
@@ -119,6 +135,9 @@ fun AssistantSettingsPage(
                     configFields = entry.configFields,
                     onConfigChange = { key, value, secret ->
                         viewModel.setAssistantConfig(entry.id, key, value, secret)
+                    },
+                    querySkillSetting = { field, values ->
+                        viewModel.querySkillSetting(entry.id, field, values)
                     },
                     isBuiltin = isBuiltin,
                     llmModels = if (isBuiltin) state.llmModels else emptyList(),
@@ -173,6 +192,7 @@ private fun AssistantCard(
     onSelect: () -> Unit,
     configFields: List<FfiConfigField>,
     onConfigChange: (String, String, Boolean) -> Unit,
+    querySkillSetting: suspend (field: String, values: Map<String, String>) -> FfiSettingsQueryResult,
     isBuiltin: Boolean,
     llmModels: List<dev.heyari.ari.ui.settings.LlmModelStatus>,
     llmDownloadState: LlmDownloadState,
@@ -243,6 +263,7 @@ private fun AssistantCard(
                 SkillSettingsPanel(
                     fields = configFields,
                     onValueChange = onConfigChange,
+                    querySkillSetting = querySkillSetting,
                 )
             }
 

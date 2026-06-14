@@ -35,7 +35,9 @@ import dev.heyari.ari.wakeword.WakeWordService
 import uniffi.ari_ffi.AriEngine
 import uniffi.ari_ffi.AssistantRegistry
 import uniffi.ari_ffi.FfiConfigField
+import uniffi.ari_ffi.FfiSettingsQueryResult
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -737,6 +739,25 @@ class SettingsViewModel @Inject constructor(
                 assistantRegistry.applyToEngine(engine)
             }
         }
+    }
+
+    /**
+     * Settings-time skill invocation for `dynamic_select` config fields —
+     * fetches the option list from the skill once its `depends_on`
+     * siblings are filled. Mirrors [SkillsViewModel.querySkillSetting]; the
+     * Assistants page renders the same [SkillSettingsPanel] but goes through
+     * this VM, so the panel needs the query plumbed here too.
+     *
+     * Bridges to [Dispatchers.IO] and returns the raw FFI result; the
+     * composable wraps the call in `runCatching` and renders the
+     * `error`/`options` it carries.
+     */
+    suspend fun querySkillSetting(
+        skillId: String,
+        field: String,
+        values: Map<String, String>,
+    ): FfiSettingsQueryResult = withContext(Dispatchers.IO) {
+        engine.querySkillSetting(skillId, field, values)
     }
 
     // ── TTS voice management ────────────────────────────────────────────

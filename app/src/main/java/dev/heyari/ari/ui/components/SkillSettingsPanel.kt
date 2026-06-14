@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -43,7 +46,10 @@ import dagger.hilt.components.SingletonComponent
 import dev.heyari.ari.R
 import dev.heyari.ari.calendar.CalendarProvider
 import dev.heyari.ari.tasks.TasksProvider
+import kotlinx.coroutines.delay
 import uniffi.ari_ffi.FfiConfigField
+import uniffi.ari_ffi.FfiSelectOption
+import uniffi.ari_ffi.FfiSettingsQueryResult
 
 /**
  * Hilt entry point so device-picker composables can grab the
@@ -86,6 +92,7 @@ private interface PlatformProviderEntryPoint {
 fun SkillSettingsPanel(
     fields: List<FfiConfigField>,
     onValueChange: (key: String, value: String, isSecret: Boolean) -> Unit,
+    querySkillSetting: suspend (field: String, values: Map<String, String>) -> FfiSettingsQueryResult,
     modifier: Modifier = Modifier,
 ) {
     if (fields.isEmpty()) return
@@ -109,6 +116,7 @@ fun SkillSettingsPanel(
                 "select" -> SelectField(field, onValueChange)
                 "device_calendar" -> DeviceCalendarField(field, onValueChange)
                 "device_task_list" -> DeviceTaskListField(field, onValueChange)
+                "dynamic_select" -> DynamicSelectField(field, byKey, onValueChange, querySkillSetting)
                 // Unknown type → skip silently. Lets the manifest schema
                 // grow new field types without older client builds
                 // crashing on encounter.
@@ -264,6 +272,132 @@ private fun SelectField(
                     text = option.label,
                     style = MaterialTheme.typography.bodySmall,
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Render state for a `dynamic_select` field: options aren't baked into
+ * the manifest — they're fetched at settings-time from the skill once
+ * the field's `depends_on` siblings have committed values. The four
+ * states map directly to what the user sees: nothing-to-do, in-flight,
+ * resolved options, or a failure they can retry.
+ */
+private sealed interface DynState {
+    object Idle : DynState
+    object Loading : DynState
+    data class Options(val opts: List<FfiSelectOption>) : DynState
+    data class Failed(val message: String) : DynState
+}
+
+/**
+ * `dynamic_select` field — a radio picker whose options are fetched
+ * from the skill at settings-time rather than declared statically.
+ *
+ * The fetch auto-fires (debounced) the moment every `depends_on`
+ * sibling has a non-blank committed value, and re-fires whenever those
+ * values change. Until then we sit in [DynState.Idle] with a hint to
+ * fill the upstream fields first. A failed fetch surfaces the skill's
+ * error message plus a Retry button.
+ *
+ * Sibling values are read the same way visibility gating reads them:
+ * effective value = currentValue, falling back to defaultValue. We key
+ * the [LaunchedEffect] on a stable serialisation of those values so a
+ * recompose that doesn't actually change a dependency won't re-fire the
+ * query, but an edit to any dependency will.
+ */
+@Composable
+private fun DynamicSelectField(
+    field: FfiConfigField,
+    byKey: Map<String, FfiConfigField>,
+    onValueChange: (String, String, Boolean) -> Unit,
+    querySkillSetting: suspend (String, Map<String, String>) -> FfiSettingsQueryResult,
+) {
+    val depValues: Map<String, String> = field.dependsOn.associateWith { k ->
+        byKey[k]?.let { it.currentValue ?: it.defaultValue ?: "" } ?: ""
+    }
+    val allPresent = field.dependsOn.isNotEmpty() && depValues.values.all { it.isNotBlank() }
+    val depKey = depValues.entries.sortedBy { it.key }.joinToString("|") { "${it.key}=${it.value}" }
+    var state by remember { mutableStateOf<DynState>(DynState.Idle) }
+    var attempt by remember { mutableStateOf(0) }
+
+    LaunchedEffect(depKey, allPresent, attempt) {
+        if (!allPresent) {
+            state = DynState.Idle
+            return@LaunchedEffect
+        }
+        state = DynState.Loading
+        delay(400) // Debounce — collapse a flurry of dependency edits into one fetch.
+        val res = runCatching { querySkillSetting(field.key, depValues) }.getOrNull()
+        state = when {
+            res == null -> DynState.Failed("error")
+            res.ok -> DynState.Options(res.options)
+            else -> DynState.Failed(res.error ?: "error")
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = field.label,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        when (val s = state) {
+            DynState.Idle -> Text(
+                text = stringResource(R.string.skill_panel_enter_deps_first),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 8.dp),
+            )
+
+            DynState.Loading -> Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = 8.dp),
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.skill_panel_checking),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+
+            is DynState.Failed -> Column(modifier = Modifier.padding(start = 8.dp)) {
+                Text(
+                    text = s.message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                FilledTonalButton(onClick = { attempt++ }) {
+                    Text(stringResource(R.string.skill_panel_retry))
+                }
+            }
+
+            is DynState.Options -> {
+                if (s.opts.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.skill_panel_no_options),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+                for (o in s.opts) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(start = 8.dp),
+                    ) {
+                        RadioButton(
+                            selected = field.currentValue == o.value,
+                            onClick = { onValueChange(field.key, o.value, false) },
+                        )
+                        Text(
+                            text = o.label,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
             }
         }
     }
