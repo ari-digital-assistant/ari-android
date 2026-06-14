@@ -333,7 +333,12 @@ private fun rememberSettingsQuery(
     }
     val allPresent = field.dependsOn.isNotEmpty() && depValues.values.all { it.isNotBlank() }
     val depKey = depValues.entries.sortedBy { it.key }.joinToString("|") { "${it.key}=${it.value}" }
-    var state by remember { mutableStateOf<DynState>(DynState.Idle) }
+    var state by remember(field.key) { mutableStateOf<DynState>(DynState.Idle) }
+    // Resolve the i18n fallback up here: the fold below runs inside a
+    // LaunchedEffect (not a @Composable scope), so stringResource can't
+    // be called there. Capturing it as a local val keeps the failure
+    // message translatable.
+    val queryFailed = stringResource(R.string.skill_panel_query_failed)
 
     LaunchedEffect(depKey, allPresent, attempt) {
         if (!allPresent) {
@@ -344,11 +349,11 @@ private fun rememberSettingsQuery(
         delay(400) // Debounce — collapse a flurry of dependency edits into one fetch.
         val res = runCatching { querySkillSetting(field.key, depValues) }.getOrNull()
         state = when {
-            res == null -> DynState.Failed("error")
+            res == null -> DynState.Failed(queryFailed)
             // A validate-style success: ok, no options, just a message.
             res.ok && res.options.isEmpty() && res.message != null -> DynState.Validated(res.message)
             res.ok -> DynState.Options(res.options)
-            else -> DynState.Failed(res.error ?: "error")
+            else -> DynState.Failed(res.error ?: queryFailed)
         }
     }
 
@@ -429,7 +434,7 @@ private fun DynamicSelectField(
 ) {
     // Retry lives here (the dropdown's button); bumping it re-keys the
     // shared query's LaunchedEffect to force a fresh fetch.
-    var attempt by remember { mutableStateOf(0) }
+    var attempt by remember(field.key) { mutableStateOf(0) }
     val state = rememberSettingsQuery(field, byKey, querySkillSetting, attempt)
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {

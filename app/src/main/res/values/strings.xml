@@ -270,6 +270,7 @@
     <string name="skill_panel_checking">Checking…</string>
     <string name="skill_panel_retry">Retry</string>
     <string name="skill_panel_no_options">No options found.</string>
+    <string name="skill_panel_query_failed">Couldn\'t complete the request.</string>
 
     <!-- TTS settings page -->
     <string name="tts_language_label">Language</string>
