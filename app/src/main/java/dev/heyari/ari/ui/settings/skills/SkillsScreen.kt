@@ -328,7 +328,11 @@ private fun UpdatesBanner(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = "${updates.size} update${if (updates.size == 1) "" else "s"} available",
+                text = if (updates.size == 1) {
+                    stringResource(R.string.update_banner_skill_one)
+                } else {
+                    stringResource(R.string.update_banner_skill_many, updates.size)
+                },
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onTertiaryContainer,
             )

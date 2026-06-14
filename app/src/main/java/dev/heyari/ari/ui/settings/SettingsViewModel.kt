@@ -2,12 +2,14 @@ package dev.heyari.ari.ui.settings
 
 import android.Manifest
 import android.app.Application
+import android.app.LocaleManager
 import android.util.Log
 import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.LocaleList
 import android.provider.Settings
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
@@ -388,19 +390,37 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
-     * Persist the user's chosen language. The DataStore flow then
-     * fans out to: the engine (via `AriFfiLocaleProvider`'s subscription
-     * for assistant replies + skill matching), Android's per-app locale
-     * (mirrored on next process start via `applyPersistedAppLocale`),
-     * and any composables observing `state.activeLocale`. Wrapped in
-     * runCatching so an unsupported code surfaces as a no-op rather than
-     * crashing the settings screen.
+     * Persist the user's chosen language and apply it to the running
+     * app. The DataStore flow fans out to the engine (via
+     * `AriFfiLocaleProvider`'s subscription for assistant replies + skill
+     * matching) and any composables observing `state.activeLocale`, while
+     * [applyAppLocale] flips Android's per-app locale so the UI chrome
+     * (string resources) re-resolves straight away. Wrapped in runCatching
+     * so an unsupported code surfaces as a no-op rather than crashing the
+     * settings screen.
      */
     fun setActiveLocale(code: String) {
         viewModelScope.launch {
-            runCatching { settingsRepository.setActiveLocale(code) }
-                .onFailure { Log.w(TAG, "setActiveLocale($code) failed", it) }
+            runCatching {
+                settingsRepository.setActiveLocale(code)
+                applyAppLocale(code)
+            }.onFailure { Log.w(TAG, "setActiveLocale($code) failed", it) }
         }
+    }
+
+    /**
+     * Set [code] as Android's per-app locale. This re-resolves string
+     * resources and triggers an Activity recreate, which is exactly what
+     * we want on a deliberate language change — without it the chrome
+     * stays in the old language until the next process start. Per-app
+     * locale is API 33+; on older releases the chrome follows the system
+     * locale and only the engine's locale switches live, matching
+     * `AriApplication.applyPersistedAppLocale`.
+     */
+    private fun applyAppLocale(code: String) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        application.getSystemService(LocaleManager::class.java)
+            .applicationLocales = LocaleList.forLanguageTags(code)
     }
 
     fun setCloudSttForNonEnglish(enabled: Boolean) {
