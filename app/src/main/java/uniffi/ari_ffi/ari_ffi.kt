@@ -830,6 +830,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_process_input(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_query_skill_setting(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_reload_community_skills(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_unload_llm_model(
@@ -957,6 +959,8 @@ external fun uniffi_ari_ffi_fn_method_ariengine_load_llm_model(`ptr`: Long,`mode
 external fun uniffi_ari_ffi_fn_method_ariengine_load_router_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
 external fun uniffi_ari_ffi_fn_method_ariengine_process_input(`ptr`: Long,`input`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_ariengine_query_skill_setting(`ptr`: Long,`skillId`: RustBuffer.ByValue,`field`: RustBuffer.ByValue,`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ariengine_reload_community_skills(`ptr`: Long,`skillStoreDir`: RustBuffer.ByValue,`storageDir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Int
@@ -1215,6 +1219,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_process_input() != 44833.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_query_skill_setting() != 51025.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_reload_community_skills() != 23146.toShort()) {
@@ -1876,6 +1883,15 @@ public interface AriEngineInterface {
     fun `processInput`(`input`: kotlin.String): FfiResponse
     
     /**
+     * Settings-time skill invocation: run `skill_id`'s `settings_query` for
+     * `field`, passing the current `values` (the field's `depends_on`
+     * siblings). The host calls this from the settings UI to populate a
+     * `dynamic_select` field's options or to validate a field whose value
+     * depends on a server round-trip.
+     */
+    fun `querySkillSetting`(`skillId`: kotlin.String, `field`: kotlin.String, `values`: Map<kotlin.String, kotlin.String>): FfiSettingsQueryResult
+    
+    /**
      * Rebuild the engine's skill set from scratch: the 6 built-in Rust
      * skills plus every community skill on disk under `skill_store_dir`.
      *
@@ -2083,6 +2099,26 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     UniffiLib.uniffi_ari_ffi_fn_method_ariengine_process_input(
         it,
         FfiConverterString.lower(`input`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Settings-time skill invocation: run `skill_id`'s `settings_query` for
+     * `field`, passing the current `values` (the field's `depends_on`
+     * siblings). The host calls this from the settings UI to populate a
+     * `dynamic_select` field's options or to validate a field whose value
+     * depends on a server round-trip.
+     */override fun `querySkillSetting`(`skillId`: kotlin.String, `field`: kotlin.String, `values`: Map<kotlin.String, kotlin.String>): FfiSettingsQueryResult {
+            return FfiConverterTypeFfiSettingsQueryResult.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_query_skill_setting(
+        it,
+        FfiConverterString.lower(`skillId`),FfiConverterString.lower(`field`),FfiConverterMapStringString.lower(`values`),_status)
 }
     }
     )
@@ -6112,6 +6148,19 @@ data class FfiConfigField (
     var `showWhenKey`: kotlin.String?
     , 
     var `showWhenEquals`: List<kotlin.String>
+    , 
+    /**
+     * Other field keys whose committed values this field's
+     * `dynamic_select`/`validate` query depends on. A change to any of
+     * them (when all are non-empty) re-runs the query.
+     */
+    var `dependsOn`: List<kotlin.String>
+    , 
+    /**
+     * When true, the frontend runs the skill's `settings_query` for this
+     * field on `depends_on` change and shows a validity result.
+     */
+    var `validate`: kotlin.Boolean
     
 ){
     
@@ -6137,6 +6186,8 @@ public object FfiConverterTypeFfiConfigField: FfiConverterRustBuffer<FfiConfigFi
             FfiConverterSequenceTypeFfiSelectOption.read(buf),
             FfiConverterOptionalString.read(buf),
             FfiConverterSequenceString.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterBoolean.read(buf),
         )
     }
 
@@ -6149,7 +6200,9 @@ public object FfiConverterTypeFfiConfigField: FfiConverterRustBuffer<FfiConfigFi
             FfiConverterOptionalString.allocationSize(value.`currentValue`) +
             FfiConverterSequenceTypeFfiSelectOption.allocationSize(value.`options`) +
             FfiConverterOptionalString.allocationSize(value.`showWhenKey`) +
-            FfiConverterSequenceString.allocationSize(value.`showWhenEquals`)
+            FfiConverterSequenceString.allocationSize(value.`showWhenEquals`) +
+            FfiConverterSequenceString.allocationSize(value.`dependsOn`) +
+            FfiConverterBoolean.allocationSize(value.`validate`)
     )
 
     override fun write(value: FfiConfigField, buf: ByteBuffer) {
@@ -6162,6 +6215,8 @@ public object FfiConverterTypeFfiConfigField: FfiConverterRustBuffer<FfiConfigFi
             FfiConverterSequenceTypeFfiSelectOption.write(value.`options`, buf)
             FfiConverterOptionalString.write(value.`showWhenKey`, buf)
             FfiConverterSequenceString.write(value.`showWhenEquals`, buf)
+            FfiConverterSequenceString.write(value.`dependsOn`, buf)
+            FfiConverterBoolean.write(value.`validate`, buf)
     }
 }
 
@@ -6499,6 +6554,61 @@ public object FfiConverterTypeFfiSelectOption: FfiConverterRustBuffer<FfiSelectO
             FfiConverterString.write(value.`label`, buf)
             FfiConverterOptionalString.write(value.`downloadUrl`, buf)
             FfiConverterOptionalULong.write(value.`downloadBytes`, buf)
+    }
+}
+
+
+
+/**
+ * Result of a settings-time skill invocation, mirrored from
+ * [`ari_core::SettingsQueryResult`] across the UniFFI boundary. `options`
+ * reuses [`FfiSelectOption`] (the same record `dynamic_select` config
+ * fields expose), so the frontend can render query results with the same
+ * option-list UI it already uses for static selects.
+ */
+data class FfiSettingsQueryResult (
+    var `ok`: kotlin.Boolean
+    , 
+    var `error`: kotlin.String?
+    , 
+    var `options`: List<FfiSelectOption>
+    , 
+    var `message`: kotlin.String?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiSettingsQueryResult: FfiConverterRustBuffer<FfiSettingsQueryResult> {
+    override fun read(buf: ByteBuffer): FfiSettingsQueryResult {
+        return FfiSettingsQueryResult(
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterSequenceTypeFfiSelectOption.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiSettingsQueryResult) = (
+            FfiConverterBoolean.allocationSize(value.`ok`) +
+            FfiConverterOptionalString.allocationSize(value.`error`) +
+            FfiConverterSequenceTypeFfiSelectOption.allocationSize(value.`options`) +
+            FfiConverterOptionalString.allocationSize(value.`message`)
+    )
+
+    override fun write(value: FfiSettingsQueryResult, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`ok`, buf)
+            FfiConverterOptionalString.write(value.`error`, buf)
+            FfiConverterSequenceTypeFfiSelectOption.write(value.`options`, buf)
+            FfiConverterOptionalString.write(value.`message`, buf)
     }
 }
 
@@ -7695,6 +7805,45 @@ public object FfiConverterSequenceTypeFfiTaskRow: FfiConverterRustBuffer<List<Ff
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeFfiTaskRow.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.String, kotlin.String>> {
+    override fun read(buf: ByteBuffer): Map<kotlin.String, kotlin.String> {
+        val len = buf.getInt()
+        return buildMap<kotlin.String, kotlin.String>(len) {
+            repeat(len) {
+                val k = FfiConverterString.read(buf)
+                val v = FfiConverterString.read(buf)
+                this[k] = v
+            }
+        }
+    }
+
+    override fun allocationSize(value: Map<kotlin.String, kotlin.String>): ULong {
+        val spaceForMapSize = 4UL
+        val spaceForChildren = value.map { (k, v) ->
+            FfiConverterString.allocationSize(k) +
+            FfiConverterString.allocationSize(v)
+        }.sum()
+        return spaceForMapSize + spaceForChildren
+    }
+
+    override fun write(value: Map<kotlin.String, kotlin.String>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        // The parens on `(k, v)` here ensure we're calling the right method,
+        // which is important for compatibility with older android devices.
+        // Ref https://blog.danlew.net/2017/03/16/kotlin-puzzler-whose-line-is-it-anyways/
+        value.forEach { (k, v) ->
+            FfiConverterString.write(k, buf)
+            FfiConverterString.write(v, buf)
         }
     }
 }
