@@ -273,6 +273,12 @@
     <string name="skill_panel_allow_tasks">Consenti accesso alle attività</string>
     <string name="skill_panel_browse_more">Cerca altro nello store</string>
     <string name="skill_panel_refresh_after_install">Ne ho installato uno — aggiorna</string>
+    <string name="skill_panel_enter_deps_first">Compila prima i campi qui sopra.</string>
+    <string name="skill_panel_checking">Verifica in corso…</string>
+    <string name="skill_panel_retry">Riprova</string>
+    <string name="skill_panel_no_options">Nessuna opzione trovata.</string>
+    <string name="skill_panel_query_failed">Impossibile completare la richiesta.</string>
+    <string name="skill_panel_action_failed">Azione non riuscita</string>
 
     <!-- TTS settings page -->
     <string name="tts_language_label">Lingua</string>
