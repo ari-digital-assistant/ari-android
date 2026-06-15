@@ -567,6 +567,14 @@ class SkillsViewModel @Inject constructor(
         engine.querySkillSetting(skillId, field, values)
     }
 
+    suspend fun settingsAction(
+        skillId: String,
+        action: String,
+        values: Map<String, String>,
+    ): FfiSettingsQueryResult = withContext(Dispatchers.IO) {
+        engine.settingsAction(skillId, action, values)
+    }
+
     fun clearSkillSettings() {
         _state.update { it.copy(detailSettings = emptyList(), detailSettingsLoading = false) }
     }

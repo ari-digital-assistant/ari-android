@@ -780,6 +780,14 @@ class SettingsViewModel @Inject constructor(
         engine.querySkillSetting(skillId, field, values)
     }
 
+    suspend fun settingsAction(
+        skillId: String,
+        action: String,
+        values: Map<String, String>,
+    ): FfiSettingsQueryResult = withContext(Dispatchers.IO) {
+        engine.settingsAction(skillId, action, values)
+    }
+
     // ── TTS voice management ────────────────────────────────────────────
 
     fun selectTtsVoice(voiceName: String?) {
