@@ -43,4 +43,11 @@ class AriFfiAuthorizeProvider @Inject constructor(
             FfiAuthorizeResult(false, emptyList(), "no_browser")
         }
     }
+
+    override fun redirectUri(): String = OAUTH_REDIRECT_URI
+
+    companion object {
+        /** The verified App Link this app intercepts; must match AndroidManifest. */
+        const val OAUTH_REDIRECT_URI = "https://heyari.dev/oauth/callback"
+    }
 }

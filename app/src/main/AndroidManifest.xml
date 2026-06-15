@@ -183,11 +183,12 @@
             android:theme="@style/Theme.Ari" />
 
         <!--
-          Receives the verified App Link redirect for the "Sign in with Home
-          Assistant" OAuth flow (https://heyari.dev/oauth/ha/callback). Hands the
-          query params to AuthorizeCoordinator and finishes immediately —
-          Theme.NoDisplay keeps it invisible since we finish() in onCreate.
-          autoVerify pairs with the assetlinks.json published at heyari.dev.
+          Receives the verified App Link redirect for skill OAuth sign-in
+          (https://heyari.dev/oauth/callback). One generic endpoint for every
+          skill: hands the query params to AuthorizeCoordinator and finishes
+          immediately — Theme.NoDisplay keeps it invisible since we finish() in
+          onCreate. autoVerify pairs with the assetlinks.json published at
+          heyari.dev.
         -->
         <activity
             android:name=".oauth.OAuthCallbackActivity"
@@ -201,7 +202,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https"
                       android:host="heyari.dev"
-                      android:pathPrefix="/oauth/ha/callback" />
+                      android:pathPrefix="/oauth/callback" />
             </intent-filter>
         </activity>
 
