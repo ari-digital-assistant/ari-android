@@ -56,6 +56,7 @@ private val EMPTY_QUERY_RESULT = FfiSettingsQueryResult(
     error = null,
     options = emptyList(),
     message = null,
+    refresh = false,
 )
 
 @Composable
