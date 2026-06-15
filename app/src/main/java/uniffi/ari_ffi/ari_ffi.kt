@@ -616,6 +616,9 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 internal interface UniffiCallbackInterfaceFfiAuthorizeProviderMethod0 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`req`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
+internal interface UniffiCallbackInterfaceFfiAuthorizeProviderMethod1 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+}
 internal interface UniffiCallbackInterfaceFfiCalendarProviderMethod0 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: ByteByReference,uniffiCallStatus: UniffiRustCallStatus,)
 }
@@ -664,22 +667,25 @@ internal interface UniffiCallbackInterfaceFfiTasksProviderMethod3 : com.sun.jna.
 internal interface UniffiCallbackInterfaceFfiTasksProviderMethod4 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`startMs`: Long,`endMs`: Long,`limit`: Int,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
-@Structure.FieldOrder("uniffiFree", "uniffiClone", "authorize")
+@Structure.FieldOrder("uniffiFree", "uniffiClone", "authorize", "redirectUri")
 internal open class UniffiVTableCallbackInterfaceFfiAuthorizeProvider(
     @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
     @JvmField internal var `uniffiClone`: UniffiCallbackInterfaceClone? = null,
     @JvmField internal var `authorize`: UniffiCallbackInterfaceFfiAuthorizeProviderMethod0? = null,
+    @JvmField internal var `redirectUri`: UniffiCallbackInterfaceFfiAuthorizeProviderMethod1? = null,
 ) : Structure() {
     class UniffiByValue(
         `uniffiFree`: UniffiCallbackInterfaceFree? = null,
         `uniffiClone`: UniffiCallbackInterfaceClone? = null,
         `authorize`: UniffiCallbackInterfaceFfiAuthorizeProviderMethod0? = null,
-    ): UniffiVTableCallbackInterfaceFfiAuthorizeProvider(`uniffiFree`,`uniffiClone`,`authorize`,), Structure.ByValue
+        `redirectUri`: UniffiCallbackInterfaceFfiAuthorizeProviderMethod1? = null,
+    ): UniffiVTableCallbackInterfaceFfiAuthorizeProvider(`uniffiFree`,`uniffiClone`,`authorize`,`redirectUri`,), Structure.ByValue
 
    internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceFfiAuthorizeProvider) {
         `uniffiFree` = other.`uniffiFree`
         `uniffiClone` = other.`uniffiClone`
         `authorize` = other.`authorize`
+        `redirectUri` = other.`redirectUri`
     }
 
 }
@@ -886,6 +892,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ffiauthorizeprovider_authorize(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_ffiauthorizeprovider_redirect_uri(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_fficalendarprovider_has_write_permission(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_fficalendarprovider_list_calendars(
@@ -1029,6 +1037,8 @@ external fun uniffi_ari_ffi_fn_free_ffiauthorizeprovider(`handle`: Long,uniffi_o
 external fun uniffi_ari_ffi_fn_init_callback_vtable_ffiauthorizeprovider(`vtable`: UniffiVTableCallbackInterfaceFfiAuthorizeProvider,
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ffiauthorizeprovider_authorize(`ptr`: Long,`req`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_ffiauthorizeprovider_redirect_uri(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_clone_fficalendarprovider(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
@@ -1307,6 +1317,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ffiauthorizeprovider_authorize() != 57956.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffiauthorizeprovider_redirect_uri() != 46809.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_fficalendarprovider_has_write_permission() != 60861.toShort()) {
@@ -2923,6 +2936,8 @@ public interface FfiAuthorizeProvider {
     
     fun `authorize`(`req`: FfiAuthorizeRequest): FfiAuthorizeResult
     
+    fun `redirectUri`(): kotlin.String
+    
     companion object
 }
 
@@ -3039,6 +3054,19 @@ open class FfiAuthorizeProviderImpl: Disposable, AutoCloseable, FfiAuthorizeProv
     }
     
 
+    override fun `redirectUri`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffiauthorizeprovider_redirect_uri(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
     
 
     
@@ -3069,6 +3097,17 @@ internal object uniffiCallbackInterfaceFfiAuthorizeProvider {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
+    internal object `redirectUri`: UniffiCallbackInterfaceFfiAuthorizeProviderMethod1 {
+        override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeFfiAuthorizeProvider.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`redirectUri`(
+                )
+            }
+            val writeReturn = { value: kotlin.String -> uniffiOutReturn.setValue(FfiConverterString.lower(value)) }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
 
     internal object uniffiFree: UniffiCallbackInterfaceFree {
         override fun callback(handle: Long) {
@@ -3086,6 +3125,7 @@ internal object uniffiCallbackInterfaceFfiAuthorizeProvider {
         uniffiFree,
         uniffiClone,
         `authorize`,
+        `redirectUri`,
     )
 
     // Registers the foreign callback with the Rust side.
