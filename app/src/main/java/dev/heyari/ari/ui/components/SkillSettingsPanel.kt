@@ -29,7 +29,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +49,7 @@ import dev.heyari.ari.R
 import dev.heyari.ari.calendar.CalendarProvider
 import dev.heyari.ari.tasks.TasksProvider
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import uniffi.ari_ffi.FfiConfigField
 import uniffi.ari_ffi.FfiSelectOption
 import uniffi.ari_ffi.FfiSettingsQueryResult
@@ -93,6 +96,7 @@ fun SkillSettingsPanel(
     fields: List<FfiConfigField>,
     onValueChange: (key: String, value: String, isSecret: Boolean) -> Unit,
     querySkillSetting: suspend (field: String, values: Map<String, String>) -> FfiSettingsQueryResult,
+    settingsAction: suspend (action: String, values: Map<String, String>) -> FfiSettingsQueryResult,
     modifier: Modifier = Modifier,
 ) {
     if (fields.isEmpty()) return
@@ -104,31 +108,174 @@ fun SkillSettingsPanel(
     // fields without any extra wiring here.
     val byKey = remember(fields) { fields.associateBy { it.key } }
 
+    // Bumped by an action whose result asks for a refresh (`refresh ==
+    // true`) — e.g. signing in via the OAuth action button, after which
+    // the `agent_id` dynamic_select should re-fetch now that a token
+    // exists. Threaded into every dependent query's LaunchedEffect key
+    // list so a refresh re-runs them all.
+    var refreshNonce by remember { mutableStateOf(0) }
+
+    // Split top-level fields (rendered inline) from collapsed-group
+    // fields (rendered inside a per-group expander). Grouping preserves
+    // declaration order within each group. Kept generic: the group
+    // label is whatever the skill's manifest declared on `collapsed_group`.
+    val topLevel = remember(fields) { fields.filter { it.collapsedGroup == null } }
+    val groups = remember(fields) {
+        fields.filter { it.collapsedGroup != null }
+            .groupBy { it.collapsedGroup!! }
+    }
+
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        for (field in fields) {
-            if (!isVisible(field, byKey)) continue
-            when (field.fieldType) {
-                "text" -> TextField(field, onValueChange)
-                "secret" -> SecretField(field, onValueChange)
-                "select" -> SelectField(field, onValueChange)
-                "device_calendar" -> DeviceCalendarField(field, onValueChange)
-                "device_task_list" -> DeviceTaskListField(field, onValueChange)
-                "dynamic_select" -> DynamicSelectField(field, byKey, onValueChange, querySkillSetting)
-                // Unknown type → skip silently. Lets the manifest schema
-                // grow new field types without older client builds
-                // crashing on encounter.
+        for (field in topLevel) {
+            renderField(field, byKey, onValueChange, querySkillSetting, settingsAction, refreshNonce) {
+                refreshNonce++
             }
-            // `validate` is orthogonal to fieldType: a validate field is
-            // still a text/secret/etc. field that rendered its normal
-            // widget above. Append the inline ✓/✗ verdict beneath it.
-            // `dynamic_select` is excluded — it already surfaces its own
-            // query status, so a second one would double up.
-            if (field.validate && field.fieldType != "dynamic_select") {
-                ValidateStatus(field, byKey, querySkillSetting)
+        }
+        for ((label, groupFields) in groups) {
+            CollapsedGroup(label = label) {
+                for (field in groupFields) {
+                    renderField(field, byKey, onValueChange, querySkillSetting, settingsAction, refreshNonce) {
+                        refreshNonce++
+                    }
+                }
             }
+        }
+    }
+}
+
+/**
+ * Per-field rendering shared by both the top-level loop and the
+ * collapsed-group bodies. Dispatches on `fieldType`, then appends the
+ * help text (once, generically) and the orthogonal `validate` verdict.
+ * Factored out so grouped and ungrouped fields stay byte-for-byte
+ * identical — the only difference between them is the expander wrapper.
+ */
+@Composable
+private fun renderField(
+    field: FfiConfigField,
+    byKey: Map<String, FfiConfigField>,
+    onValueChange: (key: String, value: String, isSecret: Boolean) -> Unit,
+    querySkillSetting: suspend (field: String, values: Map<String, String>) -> FfiSettingsQueryResult,
+    settingsAction: suspend (action: String, values: Map<String, String>) -> FfiSettingsQueryResult,
+    refreshNonce: Int,
+    onRefresh: () -> Unit,
+) {
+    if (!isVisible(field, byKey)) return
+    when (field.fieldType) {
+        "text" -> TextField(field, onValueChange)
+        "secret" -> SecretField(field, onValueChange)
+        "select" -> SelectField(field, onValueChange)
+        "device_calendar" -> DeviceCalendarField(field, onValueChange)
+        "device_task_list" -> DeviceTaskListField(field, onValueChange)
+        "dynamic_select" -> DynamicSelectField(field, byKey, onValueChange, querySkillSetting, refreshNonce)
+        "action" -> ActionField(field, settingsAction, byKey, onRefresh)
+        // Unknown type → skip silently. Lets the manifest schema
+        // grow new field types without older client builds
+        // crashing on encounter.
+    }
+    // Help text under any field, rendered once here so it's DRY across
+    // all field types. The copy comes from the skill manifest's
+    // `help_text` — nothing frontend- or skill-specific lives here.
+    field.helpText?.let {
+        Text(
+            text = it,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 8.dp),
+        )
+    }
+    // `validate` is orthogonal to fieldType: a validate field is
+    // still a text/secret/etc. field that rendered its normal
+    // widget above. Append the inline ✓/✗ verdict beneath it.
+    // `dynamic_select` is excluded — it already surfaces its own
+    // query status, so a second one would double up.
+    if (field.validate && field.fieldType != "dynamic_select") {
+        ValidateStatus(field, byKey, querySkillSetting, refreshNonce)
+    }
+}
+
+/**
+ * Disclosure wrapper for a `collapsed_group`. Collapsed by default so a
+ * fallback path (e.g. "Use token authentication instead") stays out of
+ * the way until the user deliberately opens it. The label is whatever
+ * the manifest declared — no skill-specific strings here.
+ */
+@Composable
+private fun CollapsedGroup(label: String, content: @Composable () -> Unit) {
+    var expanded by rememberSaveable(label) { mutableStateOf(false) }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        TextButton(onClick = { expanded = !expanded }) {
+            Text(if (expanded) "▾ $label" else "▸ $label")
+        }
+        if (expanded) {
+            Column(
+                modifier = Modifier.padding(start = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) { content() }
+        }
+    }
+}
+
+/**
+ * `action` field — a button that fires an effectful round-trip into the
+ * skill (`settingsAction`) and renders the ✓/✗ verdict using the same
+ * [DynState] visual language as `validate`. The skill supplies the
+ * button label, the success message, and the error text; if the result
+ * asks for a refresh (`refresh == true`) we bump the panel's refresh
+ * nonce so every dependent query re-runs (e.g. re-fetch `agent_id`
+ * after sign-in). Nothing here is skill-specific.
+ */
+@Composable
+private fun ActionField(
+    field: FfiConfigField,
+    settingsAction: suspend (String, Map<String, String>) -> FfiSettingsQueryResult,
+    byKey: Map<String, FfiConfigField>,
+    onRefresh: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    var status by remember(field.key) { mutableStateOf<DynState>(DynState.Idle) }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        FilledTonalButton(
+            enabled = status !is DynState.Loading,
+            onClick = {
+                status = DynState.Loading
+                scope.launch {
+                    val values = field.dependsOn.associateWith { k ->
+                        byKey[k]?.let { it.currentValue ?: it.defaultValue ?: "" } ?: ""
+                    }
+                    val res = runCatching { settingsAction(field.key, values) }.getOrNull()
+                    status = when {
+                        res == null -> DynState.Failed("Action failed")
+                        res.ok -> {
+                            if (res.refresh) onRefresh()
+                            DynState.Validated(res.message)
+                        }
+                        else -> DynState.Failed(res.error ?: "Action failed")
+                    }
+                }
+            },
+        ) { Text(field.label) }
+        when (val s = status) {
+            DynState.Loading -> Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.skill_panel_checking))
+            }
+
+            is DynState.Validated -> Text(
+                text = "✓ " + (s.message ?: ""),
+                color = MaterialTheme.colorScheme.primary,
+            )
+
+            is DynState.Failed -> Text(
+                text = "✗ " + s.message,
+                color = MaterialTheme.colorScheme.error,
+            )
+
+            else -> {}
         }
     }
 }
@@ -327,6 +474,7 @@ private fun rememberSettingsQuery(
     byKey: Map<String, FfiConfigField>,
     querySkillSetting: suspend (String, Map<String, String>) -> FfiSettingsQueryResult,
     attempt: Int,
+    refreshNonce: Int,
 ): DynState {
     val depValues: Map<String, String> = field.dependsOn.associateWith { k ->
         byKey[k]?.let { it.currentValue ?: it.defaultValue ?: "" } ?: ""
@@ -340,7 +488,7 @@ private fun rememberSettingsQuery(
     // message translatable.
     val queryFailed = stringResource(R.string.skill_panel_query_failed)
 
-    LaunchedEffect(depKey, allPresent, attempt) {
+    LaunchedEffect(depKey, allPresent, attempt, refreshNonce) {
         if (!allPresent) {
             state = DynState.Idle
             return@LaunchedEffect
@@ -374,8 +522,9 @@ private fun ValidateStatus(
     field: FfiConfigField,
     byKey: Map<String, FfiConfigField>,
     querySkillSetting: suspend (String, Map<String, String>) -> FfiSettingsQueryResult,
+    refreshNonce: Int,
 ) {
-    when (val s = rememberSettingsQuery(field, byKey, querySkillSetting, attempt = 0)) {
+    when (val s = rememberSettingsQuery(field, byKey, querySkillSetting, attempt = 0, refreshNonce = refreshNonce)) {
         DynState.Idle -> {} // Deps not present yet — nothing to validate.
         DynState.Loading -> Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -431,11 +580,14 @@ private fun DynamicSelectField(
     byKey: Map<String, FfiConfigField>,
     onValueChange: (String, String, Boolean) -> Unit,
     querySkillSetting: suspend (String, Map<String, String>) -> FfiSettingsQueryResult,
+    refreshNonce: Int,
 ) {
     // Retry lives here (the dropdown's button); bumping it re-keys the
-    // shared query's LaunchedEffect to force a fresh fetch.
+    // shared query's LaunchedEffect to force a fresh fetch. A panel
+    // refresh (`refreshNonce`) also re-runs the query — both are wired
+    // into the shared query's LaunchedEffect key list.
     var attempt by remember(field.key) { mutableStateOf(0) }
-    val state = rememberSettingsQuery(field, byKey, querySkillSetting, attempt)
+    val state = rememberSettingsQuery(field, byKey, querySkillSetting, attempt, refreshNonce)
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(

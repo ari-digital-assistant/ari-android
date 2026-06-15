@@ -349,6 +349,9 @@ fun SkillDetailScreen(
                         querySkillSetting = { field, values ->
                             viewModel.querySkillSetting(skillId, field, values)
                         },
+                        settingsAction = { action, values ->
+                            viewModel.settingsAction(skillId, action, values)
+                        },
                     )
                 }
                 // No settings to compete with → no reason to hide the
@@ -412,6 +415,7 @@ private fun SettingsSection(
     fields: List<FfiConfigField>,
     onValueChange: (key: String, value: String, isSecret: Boolean) -> Unit,
     querySkillSetting: suspend (field: String, values: Map<String, String>) -> FfiSettingsQueryResult,
+    settingsAction: suspend (action: String, values: Map<String, String>) -> FfiSettingsQueryResult,
 ) {
     Surface(
         tonalElevation = 1.dp,
@@ -452,6 +456,7 @@ private fun SettingsSection(
                     fields = fields,
                     onValueChange = onValueChange,
                     querySkillSetting = querySkillSetting,
+                    settingsAction = settingsAction,
                 )
             }
         }

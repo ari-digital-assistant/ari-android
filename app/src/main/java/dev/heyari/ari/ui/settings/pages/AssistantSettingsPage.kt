@@ -115,6 +115,7 @@ fun AssistantSettingsPage(
                 configFields = emptyList(),
                 onConfigChange = { _, _, _ -> },
                 querySkillSetting = { _, _ -> EMPTY_QUERY_RESULT },
+                settingsAction = { _, _ -> EMPTY_QUERY_RESULT },
                 isBuiltin = false,
                 llmModels = emptyList(),
                 llmDownloadState = LlmDownloadState.Idle,
@@ -139,6 +140,9 @@ fun AssistantSettingsPage(
                     },
                     querySkillSetting = { field, values ->
                         viewModel.querySkillSetting(entry.id, field, values)
+                    },
+                    settingsAction = { action, values ->
+                        viewModel.settingsAction(entry.id, action, values)
                     },
                     isBuiltin = isBuiltin,
                     llmModels = if (isBuiltin) state.llmModels else emptyList(),
@@ -194,6 +198,7 @@ private fun AssistantCard(
     configFields: List<FfiConfigField>,
     onConfigChange: (String, String, Boolean) -> Unit,
     querySkillSetting: suspend (field: String, values: Map<String, String>) -> FfiSettingsQueryResult,
+    settingsAction: suspend (action: String, values: Map<String, String>) -> FfiSettingsQueryResult,
     isBuiltin: Boolean,
     llmModels: List<dev.heyari.ari.ui.settings.LlmModelStatus>,
     llmDownloadState: LlmDownloadState,
@@ -265,6 +270,7 @@ private fun AssistantCard(
                     fields = configFields,
                     onValueChange = onConfigChange,
                     querySkillSetting = querySkillSetting,
+                    settingsAction = settingsAction,
                 )
             }
 
