@@ -647,7 +647,7 @@ internal interface UniffiCallbackInterfaceFfiLogSinkMethod0 : com.sun.jna.Callba
     fun callback(`uniffiHandle`: Long,`skillId`: RustBuffer.ByValue,`level`: RustBuffer.ByValue,`message`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceFfiSettingWriterMethod0 : com.sun.jna.Callback {
-    fun callback(`uniffiHandle`: Long,`skillId`: RustBuffer.ByValue,`key`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,`uniffiOutReturn`: ByteByReference,uniffiCallStatus: UniffiRustCallStatus,)
+    fun callback(`uniffiHandle`: Long,`skillId`: RustBuffer.ByValue,`key`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,`isSecret`: Byte,`uniffiOutReturn`: ByteByReference,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceFfiTasksProviderMethod0 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: ByteByReference,uniffiCallStatus: UniffiRustCallStatus,)
@@ -1086,7 +1086,7 @@ external fun uniffi_ari_ffi_fn_free_ffisettingwriter(`handle`: Long,uniffi_out_e
 ): Unit
 external fun uniffi_ari_ffi_fn_init_callback_vtable_ffisettingwriter(`vtable`: UniffiVTableCallbackInterfaceFfiSettingWriter,
 ): Unit
-external fun uniffi_ari_ffi_fn_method_ffisettingwriter_set_value(`ptr`: Long,`skillId`: RustBuffer.ByValue,`key`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+external fun uniffi_ari_ffi_fn_method_ffisettingwriter_set_value(`ptr`: Long,`skillId`: RustBuffer.ByValue,`key`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,`isSecret`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
 external fun uniffi_ari_ffi_fn_clone_ffitasksprovider(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
@@ -1339,7 +1339,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_ffilogsink_log() != 39238.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_ffisettingwriter_set_value() != 10333.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_ffisettingwriter_set_value() != 10217.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ffitasksprovider_is_provider_installed() != 45009.toShort()) {
@@ -4996,7 +4996,7 @@ public object FfiConverterTypeFfiLogSink: FfiConverter<FfiLogSink, Long> {
  */
 public interface FfiSettingWriter {
     
-    fun `setValue`(`skillId`: kotlin.String, `key`: kotlin.String, `value`: kotlin.String): kotlin.Boolean
+    fun `setValue`(`skillId`: kotlin.String, `key`: kotlin.String, `value`: kotlin.String, `isSecret`: kotlin.Boolean): kotlin.Boolean
     
     companion object
 }
@@ -5102,13 +5102,13 @@ open class FfiSettingWriterImpl: Disposable, AutoCloseable, FfiSettingWriter
         }
     }
 
-    override fun `setValue`(`skillId`: kotlin.String, `key`: kotlin.String, `value`: kotlin.String): kotlin.Boolean {
+    override fun `setValue`(`skillId`: kotlin.String, `key`: kotlin.String, `value`: kotlin.String, `isSecret`: kotlin.Boolean): kotlin.Boolean {
             return FfiConverterBoolean.lift(
     callWithHandle {
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_ari_ffi_fn_method_ffisettingwriter_set_value(
         it,
-        FfiConverterString.lower(`skillId`),FfiConverterString.lower(`key`),FfiConverterString.lower(`value`),_status)
+        FfiConverterString.lower(`skillId`),FfiConverterString.lower(`key`),FfiConverterString.lower(`value`),FfiConverterBoolean.lower(`isSecret`),_status)
 }
     }
     )
@@ -5134,13 +5134,14 @@ open class FfiSettingWriterImpl: Disposable, AutoCloseable, FfiSettingWriter
 // Put the implementation in an object so we don't pollute the top-level namespace
 internal object uniffiCallbackInterfaceFfiSettingWriter {
     internal object `setValue`: UniffiCallbackInterfaceFfiSettingWriterMethod0 {
-        override fun callback(`uniffiHandle`: Long,`skillId`: RustBuffer.ByValue,`key`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,`uniffiOutReturn`: ByteByReference,uniffiCallStatus: UniffiRustCallStatus,) {
+        override fun callback(`uniffiHandle`: Long,`skillId`: RustBuffer.ByValue,`key`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,`isSecret`: Byte,`uniffiOutReturn`: ByteByReference,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeFfiSettingWriter.handleMap.get(uniffiHandle)
             val makeCall = { ->
                 uniffiObj.`setValue`(
                     FfiConverterString.lift(`skillId`),
                     FfiConverterString.lift(`key`),
                     FfiConverterString.lift(`value`),
+                    FfiConverterBoolean.lift(`isSecret`),
                 )
             }
             val writeReturn = { value: kotlin.Boolean -> uniffiOutReturn.setValue(FfiConverterBoolean.lower(value)) }
@@ -7456,6 +7457,8 @@ data class FfiSettingsQueryResult (
     var `options`: List<FfiSelectOption>
     , 
     var `message`: kotlin.String?
+    , 
+    var `refresh`: kotlin.Boolean
     
 ){
     
@@ -7476,6 +7479,7 @@ public object FfiConverterTypeFfiSettingsQueryResult: FfiConverterRustBuffer<Ffi
             FfiConverterOptionalString.read(buf),
             FfiConverterSequenceTypeFfiSelectOption.read(buf),
             FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
         )
     }
 
@@ -7483,7 +7487,8 @@ public object FfiConverterTypeFfiSettingsQueryResult: FfiConverterRustBuffer<Ffi
             FfiConverterBoolean.allocationSize(value.`ok`) +
             FfiConverterOptionalString.allocationSize(value.`error`) +
             FfiConverterSequenceTypeFfiSelectOption.allocationSize(value.`options`) +
-            FfiConverterOptionalString.allocationSize(value.`message`)
+            FfiConverterOptionalString.allocationSize(value.`message`) +
+            FfiConverterBoolean.allocationSize(value.`refresh`)
     )
 
     override fun write(value: FfiSettingsQueryResult, buf: ByteBuffer) {
@@ -7491,6 +7496,7 @@ public object FfiConverterTypeFfiSettingsQueryResult: FfiConverterRustBuffer<Ffi
             FfiConverterOptionalString.write(value.`error`, buf)
             FfiConverterSequenceTypeFfiSelectOption.write(value.`options`, buf)
             FfiConverterOptionalString.write(value.`message`, buf)
+            FfiConverterBoolean.write(value.`refresh`, buf)
     }
 }
 
