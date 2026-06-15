@@ -67,6 +67,7 @@ object EngineModule {
         ariFfiEnvelopeSink: AriFfiEnvelopeSink,
         ariFfiLocaleProvider: AriFfiLocaleProvider,
         ariFfiSettingWriter: dev.heyari.ari.settings.AriFfiSettingWriter,
+        ariFfiAuthorizeProvider: dev.heyari.ari.oauth.AriFfiAuthorizeProvider,
     ): AriEngine {
         // Hand the engine a full set of platform providers. Any skill
         // declaring `Capability::Tasks` / `Capability::Calendar`, or
@@ -98,7 +99,7 @@ object EngineModule {
             // Single source of truth lives in SettingsRepository.
             locale = ariFfiLocaleProvider,
             settingWriter = ariFfiSettingWriter,
-            authorize = null, // TODO(B5): wire AriFfiAuthorizeProvider
+            authorize = ariFfiAuthorizeProvider,
         )
 
         // Rehydrate non-secret skill settings from DataStore into the
