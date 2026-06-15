@@ -237,6 +237,9 @@ private fun ActionField(
 ) {
     val scope = rememberCoroutineScope()
     var status by remember(field.key) { mutableStateOf<DynState>(DynState.Idle) }
+    // Hoist out of the coroutine: stringResource can only be called from a @Composable context,
+    // not from inside scope.launch { … }. Capture once here and close over the val below.
+    val actionFailed = stringResource(R.string.skill_panel_action_failed)
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         FilledTonalButton(
             enabled = status !is DynState.Loading,
@@ -248,31 +251,41 @@ private fun ActionField(
                     }
                     val res = runCatching { settingsAction(field.key, values) }.getOrNull()
                     status = when {
-                        res == null -> DynState.Failed("Action failed")
+                        res == null -> DynState.Failed(actionFailed)
                         res.ok -> {
                             if (res.refresh) onRefresh()
                             DynState.Validated(res.message)
                         }
-                        else -> DynState.Failed(res.error ?: "Action failed")
+                        else -> DynState.Failed(res.error ?: actionFailed)
                     }
                 }
             },
         ) { Text(field.label) }
         when (val s = status) {
-            DynState.Loading -> Row(verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+            DynState.Loading -> Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = 8.dp, top = 2.dp),
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
                 Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.skill_panel_checking))
+                Text(
+                    text = stringResource(R.string.skill_panel_checking),
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
 
             is DynState.Validated -> Text(
                 text = "✓ " + (s.message ?: ""),
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 8.dp, top = 2.dp),
             )
 
             is DynState.Failed -> Text(
                 text = "✗ " + s.message,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 8.dp, top = 2.dp),
             )
 
             else -> {}
