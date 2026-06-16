@@ -303,6 +303,10 @@ fun AriNavHost(
                     ActivityResultContracts.RequestPermission()
                 ) { settingsViewModel.refreshPermissions() }
 
+                val locationLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.RequestPermission()
+                ) { settingsViewModel.refreshPermissions() }
+
                 PermissionsScreen(
                     settingsViewModel = settingsViewModel,
                     onboardingViewModel = onboardingViewModel,
@@ -316,6 +320,9 @@ fun AriNavHost(
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                             notificationsLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                         }
+                    },
+                    onRequestLocation = {
+                        locationLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
                     },
                     onOpenFsnSettings = settingsViewModel::openFsnSettings,
                     onOpenOverlaySettings = settingsViewModel::openOverlaySettings,

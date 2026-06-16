@@ -49,6 +49,7 @@ internal fun PermissionsSection(
     permissions: PermissionStatus,
     onRequestRecordAudio: () -> Unit,
     onRequestNotifications: () -> Unit,
+    onRequestLocation: () -> Unit,
     onOpenFsnSettings: () -> Unit,
     onOpenOverlaySettings: () -> Unit,
     onOpenAppSettings: () -> Unit,
@@ -76,6 +77,18 @@ internal fun PermissionsSection(
                 else R.string.permission_status_grant
             ),
             onAction = if (permissions.postNotifications) onOpenAppSettings else onRequestNotifications,
+        )
+
+        PermissionRow(
+            label = stringResource(R.string.permission_location_label),
+            description = stringResource(R.string.permission_location_description),
+            granted = permissions.location,
+            required = false,
+            actionLabel = stringResource(
+                if (permissions.location) R.string.permission_status_granted
+                else R.string.permission_status_grant
+            ),
+            onAction = if (permissions.location) onOpenAppSettings else onRequestLocation,
         )
 
         PermissionRow(

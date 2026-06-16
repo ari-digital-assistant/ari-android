@@ -53,6 +53,10 @@ fun PermissionsSettingsPage(
         ActivityResultContracts.RequestPermission()
     ) { viewModel.refreshPermissions() }
 
+    val locationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { viewModel.refreshPermissions() }
+
     SettingsScaffold(
         title = stringResource(R.string.settings_category_permissions),
         onBack = onBack,
@@ -72,6 +76,7 @@ fun PermissionsSettingsPage(
                         notificationsLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
                 },
+                onRequestLocation = { locationLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION) },
                 onOpenFsnSettings = { viewModel.openFsnSettings() },
                 onOpenOverlaySettings = { viewModel.openOverlaySettings() },
                 onOpenAppSettings = { viewModel.openAppSettings() },

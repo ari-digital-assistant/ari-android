@@ -52,6 +52,7 @@ import javax.inject.Inject
 data class PermissionStatus(
     val recordAudio: Boolean,
     val postNotifications: Boolean,
+    val location: Boolean,
     val fullScreenIntent: Boolean,
     val systemAlertWindow: Boolean,
 )
@@ -98,7 +99,7 @@ data class TtsVoiceOption(
 )
 
 data class SettingsState(
-    val permissions: PermissionStatus = PermissionStatus(false, false, false, false),
+    val permissions: PermissionStatus = PermissionStatus(false, false, false, false, false),
     val models: List<ModelStatus> = emptyList(),
     val download: ModelDownloadState = ModelDownloadState.Idle,
     val wakeWords: List<WakeWordOption> = emptyList(),
@@ -446,6 +447,10 @@ class SettingsViewModel @Inject constructor(
             true
         }
 
+        val location = ContextCompat.checkSelfPermission(
+            application, Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
         val fullScreenIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             application.getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
         } else {
@@ -454,7 +459,7 @@ class SettingsViewModel @Inject constructor(
 
         val systemAlertWindow = Settings.canDrawOverlays(application)
 
-        return PermissionStatus(recordAudio, postNotifications, fullScreenIntent, systemAlertWindow)
+        return PermissionStatus(recordAudio, postNotifications, location, fullScreenIntent, systemAlertWindow)
     }
 
     /**

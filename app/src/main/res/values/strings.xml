@@ -224,6 +224,8 @@
     <string name="permission_microphone_description">Required for wake word and speech input</string>
     <string name="permission_notifications_label">Notifications</string>
     <string name="permission_notifications_description">Required to show wake word listening status</string>
+    <string name="permission_location_label">Location</string>
+    <string name="permission_location_description">For weather and nearby skills</string>
     <string name="permission_lockscreen_label">Lock screen wake word</string>
     <string name="permission_lockscreen_description">Required for the wake word to keep working when your phone is locked — like how phone calls appear on the lock screen. Android calls this \"Display over other apps\", but Ari does not draw on top of your other apps. It only uses this permission to open its own voice screen when you say the wake word. Without it, the wake word will only work once per session.</string>
     <string name="permission_fsn_label">Full-screen notifications</string>
