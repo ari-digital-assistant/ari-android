@@ -104,6 +104,7 @@ dependencies {
     implementation(files("libs/sherpa-onnx-1.12.35.aar"))
     implementation(libs.richtext.commonmark)
     implementation(libs.richtext.ui.material3)
+    implementation(libs.play.services.location)
 
     testImplementation(libs.junit)
     // Real org.json for unit tests — the Android stub returns null from
