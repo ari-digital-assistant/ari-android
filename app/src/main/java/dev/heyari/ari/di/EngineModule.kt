@@ -20,6 +20,7 @@ import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.llm.LlmDownloadManager
 import dev.heyari.ari.llm.LlmModelRegistry
 import dev.heyari.ari.locale.AriFfiLocaleProvider
+import dev.heyari.ari.location.AriFfiLocationProvider
 import dev.heyari.ari.router.RouterDownloadManager
 import dev.heyari.ari.skills.AndroidSkillLogSink
 import dev.heyari.ari.stt.ModelDownloadManager
@@ -63,6 +64,7 @@ object EngineModule {
         skillSettingsStore: SkillSettingsStore,
         ariFfiTasksProvider: AriFfiTasksProvider,
         ariFfiCalendarProvider: AriFfiCalendarProvider,
+        ariFfiLocationProvider: AriFfiLocationProvider,
         ariFfiLocalClock: AriFfiLocalClock,
         ariFfiEnvelopeSink: AriFfiEnvelopeSink,
         ariFfiLocaleProvider: AriFfiLocaleProvider,
@@ -85,6 +87,7 @@ object EngineModule {
             sink = AndroidSkillLogSink(),
             tasks = ariFfiTasksProvider,
             calendar = ariFfiCalendarProvider,
+            location = ariFfiLocationProvider,
             clock = ariFfiLocalClock,
             // Threading the shared settings store through so the
             // engine's `ari::setting_get` WASM import reads live
