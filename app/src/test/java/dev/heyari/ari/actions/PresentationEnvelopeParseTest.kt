@@ -224,6 +224,34 @@ class PresentationEnvelopeParseTest {
     }
 
     @Test
+    fun parses_stat_and_list_cards() {
+        val json = JSONObject("""
+          {"v":1,"cards":[
+            {"id":"c1","title":"London","stat":{"headline":"21°","caption":"cloudy",
+              "pill":{"icon":"asset:ui/thermometer.png","text":"Feels like 20°"},
+              "metrics":[{"icon":"asset:ui/wind.png","text":"Wind 18 km/h"}],
+              "background":"asset:heroes/cloudy.png",
+              "footer":{"text":"Weather data by Open-Meteo.com"}}},
+            {"id":"c2","title":"London","subtitle":"7-day forecast","list":{
+              "summary":{"text":"High 31°"},
+              "rows":[{"leading":"Wed","icon":"asset:icons/cloudy.png","text":"cloudy",
+                       "trailing":"24° / 18°","badge":{"text":"43%"}}]}}
+          ]}
+        """.trimIndent())
+        val env = PresentationEnvelope.parse(json, "dev.heyari.weather")!!
+        val stat = env.cards[0].stat!!
+        assertEquals("21°", stat.headline)
+        assertEquals("Feels like 20°", stat.pill!!.text)
+        assertEquals("asset:ui/wind.png", stat.metrics[0].icon)
+        assertEquals("asset:heroes/cloudy.png", stat.background)
+        val list = env.cards[1].list!!
+        assertEquals(1, list.rows.size)
+        assertEquals("Wed", list.rows[0].leading)
+        assertEquals("24° / 18°", list.rows[0].trailing)
+        assertEquals("43%", list.rows[0].badge!!.text)
+    }
+
+    @Test
     fun stampsSkillIdOnEveryNestedPrimitive() {
         // The envelope JSON doesn't carry skill id; the parser threads
         // `skillId` through so all nested primitives can later resolve

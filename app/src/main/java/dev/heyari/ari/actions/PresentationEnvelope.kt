@@ -3,7 +3,11 @@ package dev.heyari.ari.actions
 import android.util.Log
 import dev.heyari.ari.data.card.Card
 import dev.heyari.ari.data.card.CardAction
+import dev.heyari.ari.data.card.IconText
+import dev.heyari.ari.data.card.ListCard
+import dev.heyari.ari.data.card.ListRow
 import dev.heyari.ari.data.card.OnComplete
+import dev.heyari.ari.data.card.Stat
 import dev.heyari.ari.notifications.AlertAction
 import dev.heyari.ari.notifications.AlertSpec
 import dev.heyari.ari.notifications.NotificationAction
@@ -132,9 +136,53 @@ private fun parseCards(arr: JSONArray, skillId: String): List<Card> {
             // user taps the Cancel button — skills can use any
             // envelope primitive they like here.
             onCancel = o.optJSONObject("on_cancel")?.toString(),
+            stat = o.optJSONObject("stat")?.let { parseStat(it) },
+            list = o.optJSONObject("list")?.let { parseListCard(it) },
         )
     }
     return out
+}
+
+private fun parseIconText(o: JSONObject?): IconText? {
+    if (o == null) return null
+    val text = o.optStringOrNull("text") ?: return null
+    return IconText(icon = o.optStringOrNull("icon"), text = text)
+}
+
+private fun parseStat(o: JSONObject): Stat? {
+    val headline = o.optStringOrNull("headline") ?: return null
+    val metrics = o.optJSONArray("metrics")?.let { arr ->
+        (0 until arr.length()).mapNotNull { parseIconText(arr.optJSONObject(it)) }
+    }.orEmpty()
+    return Stat(
+        headline = headline,
+        caption = o.optStringOrNull("caption"),
+        pill = parseIconText(o.optJSONObject("pill")),
+        metrics = metrics,
+        background = o.optStringOrNull("background"),
+        footer = parseIconText(o.optJSONObject("footer")),
+    )
+}
+
+private fun parseListCard(o: JSONObject): ListCard {
+    val rows = o.optJSONArray("rows")?.let { arr ->
+        (0 until arr.length()).mapNotNull { i ->
+            val r = arr.optJSONObject(i) ?: return@mapNotNull null
+            val leading = r.optStringOrNull("leading") ?: return@mapNotNull null
+            ListRow(
+                leading = leading,
+                icon = r.optStringOrNull("icon"),
+                text = r.optStringOrNull("text"),
+                trailing = r.optStringOrNull("trailing"),
+                badge = parseIconText(r.optJSONObject("badge")),
+            )
+        }
+    }.orEmpty()
+    return ListCard(
+        summary = parseIconText(o.optJSONObject("summary")),
+        rows = rows,
+        footer = parseIconText(o.optJSONObject("footer")),
+    )
 }
 
 private fun parseAccent(s: String?): Card.Accent = when (s) {
