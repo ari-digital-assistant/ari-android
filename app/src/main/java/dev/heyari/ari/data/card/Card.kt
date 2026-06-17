@@ -42,9 +42,36 @@ data class Card(
      * knowledge about what "cancel" should do for any given skill.
      */
     val onCancel: String?,
+    val stat: Stat? = null,
+    val list: ListCard? = null,
 ) {
     enum class Accent { DEFAULT, WARNING, SUCCESS, CRITICAL }
 }
+
+data class IconText(val icon: String?, val text: String)
+
+data class Stat(
+    val headline: String,
+    val caption: String?,
+    val pill: IconText?,
+    val metrics: List<IconText>,
+    val background: String?,
+    val footer: IconText?,
+)
+
+data class ListRow(
+    val leading: String,
+    val icon: String?,
+    val text: String?,
+    val trailing: String?,
+    val badge: IconText?,
+)
+
+data class ListCard(
+    val summary: IconText?,
+    val rows: List<ListRow>,
+    val footer: IconText?,
+)
 
 data class CardAction(
     val id: String,
