@@ -8,7 +8,9 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,13 +19,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
@@ -33,12 +38,15 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.heyari.ari.assets.AssetResolver
@@ -86,6 +94,15 @@ fun GenericCard(
     val active by AlertRegistry.active.collectAsState()
     val isRinging = card.onComplete?.alert?.id?.let { it in active } == true
 
+    if (card.stat != null) {
+        StatCard(card, card.stat, onAction, assetResolver, modifier)
+        return
+    }
+    if (card.list != null) {
+        ListVariantCard(card, card.list, onAction, assetResolver, modifier)
+        return
+    }
+
     val container = accentContainer(card.accent)
     val onContainer = accentOnContainer(card.accent)
     val accentBar = accentBar(card.accent)
@@ -125,20 +142,14 @@ private fun Header(card: CardModel, onContainer: Color, assetResolver: AssetReso
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Start,
     ) {
-        if (card.icon != null && assetResolver != null) {
-            val painter = remember(card.icon, card.skillId, assetResolver) {
-                assetResolver.resolve(card.skillId, card.icon)?.let { file ->
-                    runCatching { BitmapFactory.decodeFile(file.absolutePath) }.getOrNull()
-                }
-            }
-            if (painter != null) {
-                Image(
-                    bitmap = painter.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier.size(40.dp),
-                )
-                Spacer(Modifier.size(12.dp))
-            }
+        val icon = rememberAsset(card.skillId, card.icon, assetResolver)
+        if (icon != null) {
+            Image(
+                bitmap = icon,
+                contentDescription = null,
+                modifier = Modifier.size(40.dp),
+            )
+            Spacer(Modifier.size(12.dp))
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -405,4 +416,166 @@ private fun accentBar(accent: CardModel.Accent): Color = when (accent) {
     CardModel.Accent.WARNING, CardModel.Accent.CRITICAL -> MaterialTheme.colorScheme.error
     CardModel.Accent.SUCCESS -> MaterialTheme.colorScheme.primary
     CardModel.Accent.DEFAULT -> MaterialTheme.colorScheme.primary
+}
+
+/** Decode a skill asset to an ImageBitmap once, cached across recompositions. */
+@Composable
+private fun rememberAsset(
+    skillId: String,
+    reference: String?,
+    assetResolver: AssetResolver?,
+): androidx.compose.ui.graphics.ImageBitmap? {
+    if (reference == null || assetResolver == null) return null
+    return remember(skillId, reference, assetResolver) {
+        assetResolver.resolve(skillId, reference)?.let { file ->
+            runCatching { BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap() }.getOrNull()
+        }
+    }
+}
+
+@Composable
+private fun StatCard(
+    card: CardModel,
+    stat: dev.heyari.ari.data.card.Stat,
+    onAction: (CardAction) -> Unit,
+    assetResolver: AssetResolver?,
+    modifier: Modifier,
+) {
+    val container = accentContainer(card.accent)
+    val onContainer = accentOnContainer(card.accent)
+    val bg = rememberAsset(card.skillId, stat.background, assetResolver)
+    Card(
+        modifier = modifier.fillMaxWidth().widthIn(max = 360.dp),
+        colors = CardDefaults.cardColors(containerColor = container),
+    ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            if (bg != null) {
+                Image(
+                    bitmap = bg,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.matchParentSize(),
+                )
+                Box(
+                    modifier = Modifier.matchParentSize().background(
+                        Brush.verticalGradient(
+                            listOf(Color.White.copy(alpha = 0.35f), Color.White.copy(alpha = 0.10f)),
+                        ),
+                    ),
+                )
+            }
+            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                Header(card = card, onContainer = onContainer, assetResolver = assetResolver)
+                Spacer(Modifier.height(8.dp))
+                Text(stat.headline, style = MaterialTheme.typography.displaySmall, color = onContainer)
+                if (stat.caption != null) {
+                    Text(stat.caption, style = MaterialTheme.typography.titleMedium,
+                        color = onContainer.copy(alpha = 0.8f))
+                }
+                if (stat.pill != null) {
+                    Spacer(Modifier.height(12.dp))
+                    FrostedChip(stat.pill, card.skillId, assetResolver, onContainer)
+                }
+                if (stat.metrics.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    Row(modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        stat.metrics.forEach { m -> IconLabel(m, card.skillId, assetResolver, onContainer) }
+                    }
+                }
+                if (stat.footer != null) {
+                    Spacer(Modifier.height(12.dp))
+                    IconLabel(stat.footer, card.skillId, assetResolver, onContainer.copy(alpha = 0.6f), small = true)
+                }
+                if (card.actions.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    ActionsRow(card.actions, onAction, onContainer)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FrostedChip(item: dev.heyari.ari.data.card.IconText, skillId: String,
+    assetResolver: AssetResolver?, onContainer: Color) {
+    Surface(color = Color.White.copy(alpha = 0.55f), shape = RoundedCornerShape(50)) {
+        Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            AssetIcon(item.icon, skillId, assetResolver, 18.dp)
+            Text(item.text, style = MaterialTheme.typography.bodyMedium, color = onContainer)
+        }
+    }
+}
+
+@Composable
+private fun IconLabel(item: dev.heyari.ari.data.card.IconText, skillId: String,
+    assetResolver: AssetResolver?, color: Color, small: Boolean = false) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        AssetIcon(item.icon, skillId, assetResolver, if (small) 14.dp else 20.dp)
+        Text(item.text,
+            style = if (small) MaterialTheme.typography.labelSmall else MaterialTheme.typography.bodyMedium,
+            color = color)
+    }
+}
+
+@Composable
+private fun AssetIcon(reference: String?, skillId: String, assetResolver: AssetResolver?, size: Dp) {
+    val bmp = rememberAsset(skillId, reference, assetResolver)
+    if (bmp != null) {
+        Image(bitmap = bmp, contentDescription = null, modifier = Modifier.size(size))
+        Spacer(Modifier.width(6.dp))
+    }
+}
+
+@Composable
+private fun ListVariantCard(
+    card: CardModel,
+    list: dev.heyari.ari.data.card.ListCard,
+    onAction: (CardAction) -> Unit,
+    assetResolver: AssetResolver?,
+    modifier: Modifier,
+) {
+    val container = accentContainer(card.accent)
+    val onContainer = accentOnContainer(card.accent)
+    Card(
+        modifier = modifier.fillMaxWidth().widthIn(max = 360.dp),
+        colors = CardDefaults.cardColors(containerColor = container),
+    ) {
+      Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Header(card = card, onContainer = onContainer, assetResolver = assetResolver)
+        if (list.summary != null) {
+            Spacer(Modifier.height(12.dp))
+            FrostedChip(list.summary, card.skillId, assetResolver, onContainer)
+        }
+        Spacer(Modifier.height(8.dp))
+        list.rows.forEach { row ->
+            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Text(row.leading, style = MaterialTheme.typography.titleSmall, color = onContainer,
+                    modifier = Modifier.width(44.dp))
+                AssetIcon(row.icon, card.skillId, assetResolver, 28.dp)
+                if (row.text != null) {
+                    Text(row.text, style = MaterialTheme.typography.bodyMedium,
+                        color = onContainer.copy(alpha = 0.8f), modifier = Modifier.weight(1f))
+                } else { Spacer(Modifier.weight(1f)) }
+                if (row.trailing != null) {
+                    Text(row.trailing, style = MaterialTheme.typography.bodyMedium, color = onContainer)
+                }
+                if (row.badge != null) {
+                    Spacer(Modifier.width(8.dp))
+                    IconLabel(row.badge, card.skillId, assetResolver, onContainer.copy(alpha = 0.7f), small = true)
+                }
+            }
+        }
+        if (list.footer != null) {
+            Spacer(Modifier.height(8.dp))
+            IconLabel(list.footer, card.skillId, assetResolver, onContainer.copy(alpha = 0.6f), small = true)
+        }
+        if (card.actions.isNotEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            ActionsRow(card.actions, onAction, onContainer)
+        }
+      }
+    }
 }
