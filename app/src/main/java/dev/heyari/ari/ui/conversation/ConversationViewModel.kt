@@ -444,27 +444,39 @@ class ConversationViewModel @Inject constructor(
      * the capability end-to-end. The provider call blocks (Tasks.await), so
      * it runs off the main thread.
      *
-     * Forces a fresh fix (`maxAgeMs = 0`) rather than the 10-minute cached
-     * default a real skill uses, so each invocation reflects the device's
-     * current location — otherwise repeated calls within the cache window
-     * just echo the first fix, which is useless for a live test.
+     * Prefers a fresh fix (`maxAgeMs = 0`) so the probe reflects the
+     * device's current position rather than echoing a cached one. Emulators
+     * often can't produce a fresh coarse fix (no live network provider), so
+     * on timeout it falls back to last-known and labels it `[cached]` rather
+     * than reporting a useless timeout. Real skills use the 10-minute cached
+     * default directly.
      */
     private fun handleLocationDebug(raw: String) {
         val userMessage = Message(text = raw, isFromUser = true)
         _state.update { it.copy(messages = it.messages + userMessage, inputText = "") }
 
         viewModelScope.launch(Dispatchers.IO) {
-            val r = locationProvider.current(maxAgeMs = 0L, timeoutMs = 5_000L)
+            var r = locationProvider.current(maxAgeMs = 0L, timeoutMs = 5_000L)
+            var cached = false
+            if (r.status == FfiLocationStatus.TIMEOUT) {
+                val lastKnown = locationProvider.current(maxAgeMs = Long.MAX_VALUE, timeoutMs = 5_000L)
+                if (lastKnown.status == FfiLocationStatus.OK) {
+                    r = lastKnown
+                    cached = true
+                }
+            }
             val text = when (r.status) {
                 FfiLocationStatus.OK -> {
                     val ageSeconds = (System.currentTimeMillis() - r.timestampMs) / 1000
+                    val suffix = if (cached) "  [cached — no fresh fix available]" else ""
                     String.format(
                         Locale.US,
-                        "📍 %.5f, %.5f  (±%.0f m, fix age %ds)",
+                        "📍 %.5f, %.5f  (±%.0f m, fix age %ds)%s",
                         r.lat,
                         r.lon,
                         r.accuracyM,
                         ageSeconds,
+                        suffix,
                     )
                 }
                 FfiLocationStatus.PERMISSION_DENIED ->
@@ -472,7 +484,7 @@ class ConversationViewModel @Inject constructor(
                 FfiLocationStatus.UNAVAILABLE ->
                     "Location unavailable — services off or Google Play Services missing."
                 FfiLocationStatus.TIMEOUT ->
-                    "Timed out waiting for a location fix."
+                    "Timed out waiting for a location fix (no cached fix either)."
             }
             val ariMessage = Message(text = text, isFromUser = false)
             _state.update { it.copy(messages = it.messages + ariMessage) }
