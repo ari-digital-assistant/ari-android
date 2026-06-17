@@ -26,6 +26,7 @@ import dev.heyari.ari.llm.LlmDownloadManager
 import dev.heyari.ari.model.Attachment
 import dev.heyari.ari.model.ConversationState
 import dev.heyari.ari.model.Message
+import dev.heyari.ari.location.LocationProvider
 import dev.heyari.ari.notifications.AlertAction
 import dev.heyari.ari.notifications.AlertService
 import dev.heyari.ari.notifications.AlertSpec
@@ -45,7 +46,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import uniffi.ari_ffi.AriEngine
+import uniffi.ari_ffi.FfiLocationStatus
 import uniffi.ari_ffi.FfiResponse
+import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
@@ -63,6 +66,7 @@ class ConversationViewModel @Inject constructor(
     private val asyncEnvelopeChannel: AsyncEnvelopeChannel,
     private val cardActionVoiceIntercept: CardActionVoiceIntercept,
     private val cardActionDispatcher: CardActionDispatcher,
+    private val locationProvider: LocationProvider,
     private val application: Application,
 ) : ViewModel() {
 
@@ -180,6 +184,10 @@ class ConversationViewModel @Inject constructor(
         }
         if (text.startsWith("/alert-demo")) {
             handleAlertDemo(text)
+            return
+        }
+        if (text.startsWith("/location")) {
+            handleLocationDebug(text)
             return
         }
 
@@ -423,6 +431,46 @@ class ConversationViewModel @Inject constructor(
         )
         _state.update {
             it.copy(messages = it.messages + userMessage + ariMessage, inputText = "")
+        }
+    }
+
+    /**
+     * `/location` — debug hook: calls the coarse [LocationProvider] (the
+     * Android impl behind the `location` host capability) and prints the
+     * raw fix / status into the chat. Lets us smoke-test the on-device
+     * FusedLocation path — real fix, coarse-permission gating, services-off
+     * → UNAVAILABLE — without a location-using skill installed. Mirrors
+     * /card-demo and /alert-demo; remove once the weather skill exercises
+     * the capability end-to-end. The provider call blocks (Tasks.await), so
+     * it runs off the main thread.
+     */
+    private fun handleLocationDebug(raw: String) {
+        val userMessage = Message(text = raw, isFromUser = true)
+        _state.update { it.copy(messages = it.messages + userMessage, inputText = "") }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val r = locationProvider.current(maxAgeMs = 600_000L, timeoutMs = 5_000L)
+            val text = when (r.status) {
+                FfiLocationStatus.OK -> {
+                    val ageSeconds = (System.currentTimeMillis() - r.timestampMs) / 1000
+                    String.format(
+                        Locale.US,
+                        "📍 %.5f, %.5f  (±%.0f m, fix age %ds)",
+                        r.lat,
+                        r.lon,
+                        r.accuracyM,
+                        ageSeconds,
+                    )
+                }
+                FfiLocationStatus.PERMISSION_DENIED ->
+                    "Location permission not granted — enable it in Settings → Permissions."
+                FfiLocationStatus.UNAVAILABLE ->
+                    "Location unavailable — services off or Google Play Services missing."
+                FfiLocationStatus.TIMEOUT ->
+                    "Timed out waiting for a location fix."
+            }
+            val ariMessage = Message(text = text, isFromUser = false)
+            _state.update { it.copy(messages = it.messages + ariMessage) }
         }
     }
 
