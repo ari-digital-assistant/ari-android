@@ -443,13 +443,18 @@ class ConversationViewModel @Inject constructor(
      * /card-demo and /alert-demo; remove once the weather skill exercises
      * the capability end-to-end. The provider call blocks (Tasks.await), so
      * it runs off the main thread.
+     *
+     * Forces a fresh fix (`maxAgeMs = 0`) rather than the 10-minute cached
+     * default a real skill uses, so each invocation reflects the device's
+     * current location — otherwise repeated calls within the cache window
+     * just echo the first fix, which is useless for a live test.
      */
     private fun handleLocationDebug(raw: String) {
         val userMessage = Message(text = raw, isFromUser = true)
         _state.update { it.copy(messages = it.messages + userMessage, inputText = "") }
 
         viewModelScope.launch(Dispatchers.IO) {
-            val r = locationProvider.current(maxAgeMs = 600_000L, timeoutMs = 5_000L)
+            val r = locationProvider.current(maxAgeMs = 0L, timeoutMs = 5_000L)
             val text = when (r.status) {
                 FfiLocationStatus.OK -> {
                     val ageSeconds = (System.currentTimeMillis() - r.timestampMs) / 1000
