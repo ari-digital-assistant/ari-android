@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -448,7 +450,13 @@ private fun StatCard(
         modifier = modifier.fillMaxWidth().widthIn(max = 360.dp),
         colors = CardDefaults.cardColors(containerColor = container),
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
+        // With a background, make the card square so the full (square)
+        // illustration shows without vertical cropping; content is laid over
+        // it, header/temp up top and metrics pinned to the bottom. Without a
+        // background, fall back to a content-sized card.
+        val hasBg = bg != null
+        val boxModifier = if (hasBg) Modifier.fillMaxWidth().aspectRatio(1f) else Modifier.fillMaxWidth()
+        Box(modifier = boxModifier) {
             if (bg != null) {
                 Image(
                     bitmap = bg,
@@ -459,23 +467,27 @@ private fun StatCard(
                 Box(
                     modifier = Modifier.matchParentSize().background(
                         Brush.verticalGradient(
-                            listOf(Color.White.copy(alpha = 0.35f), Color.White.copy(alpha = 0.10f)),
+                            listOf(Color.White.copy(alpha = 0.40f), Color.White.copy(alpha = 0.25f)),
                         ),
                     ),
                 )
             }
-            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Column(
+                modifier = (if (hasBg) Modifier.fillMaxSize() else Modifier.fillMaxWidth()).padding(16.dp),
+            ) {
                 Header(card = card, onContainer = onContainer, assetResolver = assetResolver)
                 Spacer(Modifier.height(8.dp))
-                Text(stat.headline, style = MaterialTheme.typography.displaySmall, color = onContainer)
+                Text(stat.headline, style = MaterialTheme.typography.displayMedium, color = onContainer)
                 if (stat.caption != null) {
                     Text(stat.caption, style = MaterialTheme.typography.titleMedium,
-                        color = onContainer.copy(alpha = 0.8f))
+                        color = onContainer.copy(alpha = 0.85f))
                 }
                 if (stat.pill != null) {
                     Spacer(Modifier.height(12.dp))
                     FrostedChip(stat.pill, card.skillId, assetResolver, onContainer)
                 }
+                // Push the metrics/footer to the bottom of the square card.
+                Spacer(Modifier.weight(1f, fill = hasBg))
                 if (stat.metrics.isNotEmpty()) {
                     Spacer(Modifier.height(12.dp))
                     Row(modifier = Modifier.fillMaxWidth(),
