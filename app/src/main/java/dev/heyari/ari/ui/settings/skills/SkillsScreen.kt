@@ -453,9 +453,7 @@ private fun BrowseTab(
             var result = state.browse
             if (typeFilter != null) {
                 result = result.filter { entry ->
-                    entry.id.contains(typeFilter, ignoreCase = true) ||
-                        entry.name.contains(typeFilter, ignoreCase = true) ||
-                        entry.description.contains(typeFilter, ignoreCase = true)
+                    entry.skillType.equals(typeFilter, ignoreCase = true)
                 }
             }
             if (state.browseQuery.isNotBlank()) {
