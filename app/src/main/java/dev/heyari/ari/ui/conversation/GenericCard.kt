@@ -48,6 +48,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -562,21 +563,41 @@ private fun ListVariantCard(
         }
         Spacer(Modifier.height(8.dp))
         list.rows.forEach { row ->
-            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                Text(row.leading, style = MaterialTheme.typography.titleSmall, color = onContainer,
-                    modifier = Modifier.width(44.dp))
-                AssetIcon(row.icon, card.skillId, assetResolver, 28.dp)
-                if (row.text != null) {
-                    Text(row.text, style = MaterialTheme.typography.bodyMedium,
-                        color = onContainer.copy(alpha = 0.8f), modifier = Modifier.weight(1f))
-                } else { Spacer(Modifier.weight(1f)) }
-                if (row.trailing != null) {
-                    Text(row.trailing, style = MaterialTheme.typography.bodyMedium, color = onContainer)
-                }
-                if (row.badge != null) {
-                    Spacer(Modifier.width(8.dp))
-                    IconLabel(row.badge, card.skillId, assetResolver, onContainer.copy(alpha = 0.7f), small = true)
+            Surface(
+                color = onContainer.copy(alpha = 0.05f),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(row.leading, style = MaterialTheme.typography.titleSmall, color = onContainer,
+                        modifier = Modifier.width(40.dp))
+                    AssetIcon(row.icon, card.skillId, assetResolver, 34.dp)
+                    Text(
+                        row.text ?: "",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = onContainer.copy(alpha = 0.85f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    // Fixed-width, right-aligned temps so they line up across
+                    // every row regardless of the (reserved) badge slot.
+                    Text(
+                        row.trailing ?: "",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = onContainer,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier.width(84.dp),
+                    )
+                    Box(modifier = Modifier.width(58.dp), contentAlignment = Alignment.CenterEnd) {
+                        if (row.badge != null) {
+                            IconLabel(row.badge, card.skillId, assetResolver,
+                                onContainer.copy(alpha = 0.7f), small = true)
+                        }
+                    }
                 }
             }
         }
