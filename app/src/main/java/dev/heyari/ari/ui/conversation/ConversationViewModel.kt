@@ -45,7 +45,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import uniffi.ari_ffi.AriEngine
+import dev.heyari.ari.di.EngineHolder
 import uniffi.ari_ffi.FfiLocationStatus
 import uniffi.ari_ffi.FfiResponse
 import java.util.Locale
@@ -53,7 +53,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ConversationViewModel @Inject constructor(
-    private val engine: AriEngine,
+    private val engineHolder: EngineHolder,
     private val speechRecognizer: SpeechRecognizer,
     private val speechOutput: SpeechOutput,
     private val downloadManager: ModelDownloadManager,
@@ -231,7 +231,7 @@ class ConversationViewModel @Inject constructor(
             }
 
             val response = try {
-                engine.processInput(text)
+                engineHolder.engine().processInput(text)
             } finally {
                 fillerJob.cancel()
             }

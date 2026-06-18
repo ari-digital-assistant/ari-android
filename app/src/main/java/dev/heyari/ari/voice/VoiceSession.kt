@@ -21,9 +21,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import dev.heyari.ari.di.EngineHolder
 import javax.inject.Inject
 import javax.inject.Singleton
-import uniffi.ari_ffi.AriEngine
 import uniffi.ari_ffi.FfiResponse
 
 /**
@@ -55,7 +55,7 @@ sealed interface VoiceState {
 @Singleton
 class VoiceSession @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val engine: AriEngine,
+    private val engineHolder: EngineHolder,
     private val speechRecognizer: SpeechRecognizer,
     private val speechOutput: SpeechOutput,
     private val actionHandler: ActionHandler,
@@ -210,6 +210,7 @@ class VoiceSession @Inject constructor(
             }
         }
 
+        val engine = engineHolder.engine()
         var response = engine.processInput(text)
         var usedText = text
 

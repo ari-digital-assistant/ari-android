@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import uniffi.ari_ffi.AriEngine
+import dev.heyari.ari.di.EngineHolder
 import uniffi.ari_ffi.AssistantRegistry
 import uniffi.ari_ffi.SkillRegistry
 import java.io.File
@@ -72,7 +72,7 @@ class UpdateBannerViewModel @Inject constructor(
     private val checker: ModelUpdateChecker,
     private val skillRegistry: SkillRegistry,
     private val assistantRegistry: AssistantRegistry,
-    private val engine: AriEngine,
+    private val engineHolder: EngineHolder,
 ) : ViewModel() {
     private val _state = MutableStateFlow(UpdateBannerState())
     val state: StateFlow<UpdateBannerState> = _state.asStateFlow()
@@ -254,6 +254,7 @@ class UpdateBannerViewModel @Inject constructor(
             // SkillsViewModel.reloadEngineSkills.
             withContext(Dispatchers.IO) {
                 runCatching {
+                    val engine = engineHolder.engine()
                     val skillsDir = File(context.filesDir, "skills").absolutePath
                     val storageDir = File(context.filesDir, "skill-storage").absolutePath
                     engine.reloadCommunitySkills(skillsDir, storageDir)

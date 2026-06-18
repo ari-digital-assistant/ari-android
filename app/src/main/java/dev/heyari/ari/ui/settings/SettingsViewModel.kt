@@ -34,7 +34,7 @@ import dev.heyari.ari.wakeword.WakeWordModel
 import dev.heyari.ari.wakeword.WakeWordRegistry
 import dev.heyari.ari.wakeword.WakeWordSensitivity
 import dev.heyari.ari.wakeword.WakeWordService
-import uniffi.ari_ffi.AriEngine
+import dev.heyari.ari.di.EngineHolder
 import uniffi.ari_ffi.AssistantRegistry
 import uniffi.ari_ffi.FfiConfigField
 import uniffi.ari_ffi.FfiSettingsQueryResult
@@ -133,7 +133,7 @@ class SettingsViewModel @Inject constructor(
     private val speechRecognizer: SpeechRecognizer,
     private val settingsRepository: SettingsRepository,
     private val secretStore: SecretStore,
-    private val engine: AriEngine,
+    private val engineHolder: EngineHolder,
     private val assistantRegistry: AssistantRegistry,
     private val routerDownloadManager: RouterDownloadManager,
     private val speechOutput: SpeechOutput,
@@ -247,7 +247,7 @@ class SettingsViewModel @Inject constructor(
             .collect { (llmId, assistantId) ->
                 if (assistantId != EngineModule.BUILTIN_ASSISTANT_ID) {
                     if (loadedLlmId != null) {
-                        engine.unloadLlmModel()
+                        engineHolder.engine().unloadLlmModel()
                         loadedLlmId = null
                     }
                     return@collect
@@ -255,7 +255,7 @@ class SettingsViewModel @Inject constructor(
                 val model = LlmModelRegistry.byId(llmId)
                 if (model == null) {
                     if (loadedLlmId != null) {
-                        engine.unloadLlmModel()
+                        engineHolder.engine().unloadLlmModel()
                         loadedLlmId = null
                     }
                     return@collect
@@ -358,7 +358,7 @@ class SettingsViewModel @Inject constructor(
                 // Auto-load the router when download completes and it's enabled
                 if (dlState is RouterDownloadState.Completed && enabled) {
                     viewModelScope.launch(Dispatchers.IO) {
-                        engine.loadRouterModel(routerDownloadManager.modelFile().absolutePath)
+                        engineHolder.engine().loadRouterModel(routerDownloadManager.modelFile().absolutePath)
                     }
                 }
             }
@@ -377,14 +377,14 @@ class SettingsViewModel @Inject constructor(
             if (enabled) {
                 if (routerDownloadManager.isDownloaded()) {
                     viewModelScope.launch(Dispatchers.IO) {
-                        engine.loadRouterModel(routerDownloadManager.modelFile().absolutePath)
+                        engineHolder.engine().loadRouterModel(routerDownloadManager.modelFile().absolutePath)
                     }
                 } else {
                     routerDownloadManager.download()
                 }
             } else {
                 viewModelScope.launch(Dispatchers.IO) {
-                    engine.unloadRouterModel()
+                    engineHolder.engine().unloadRouterModel()
                 }
             }
         }
@@ -644,7 +644,7 @@ class SettingsViewModel @Inject constructor(
             val activeId = settingsRepository.activeLlmModelId.first()
             if (activeId == model.id) {
                 settingsRepository.setActiveLlmModelId(null)
-                engine.unloadLlmModel()
+                engineHolder.engine().unloadLlmModel()
                 loadedLlmId = null
             }
             llmDownloadManager.delete(model)
@@ -677,10 +677,10 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    private fun loadLlmIntoEngine(model: LlmModel) {
+    private suspend fun loadLlmIntoEngine(model: LlmModel) {
         val modelFile = llmDownloadManager.modelFile(model)
         if (modelFile.isFile) {
-            val ok = engine.loadLlmModel(modelFile.absolutePath)
+            val ok = engineHolder.engine().loadLlmModel(modelFile.absolutePath)
             if (ok) {
                 loadedLlmId = model.id
                 Log.i(TAG, "LLM loaded: ${model.id}")
@@ -725,7 +725,7 @@ class SettingsViewModel @Inject constructor(
                 settingsRepository.setPendingCloudAssistantSetup(false)
             }
             viewModelScope.launch(Dispatchers.IO) {
-                assistantRegistry.applyToEngine(engine)
+                assistantRegistry.applyToEngine(engineHolder.engine())
             }
         }
     }
@@ -761,7 +761,7 @@ class SettingsViewModel @Inject constructor(
             refreshAssistantEntries(activeId)
             // Re-apply to engine in case the config change affects routing.
             viewModelScope.launch(Dispatchers.IO) {
-                assistantRegistry.applyToEngine(engine)
+                assistantRegistry.applyToEngine(engineHolder.engine())
             }
         }
     }
@@ -782,7 +782,7 @@ class SettingsViewModel @Inject constructor(
         field: String,
         values: Map<String, String>,
     ): FfiSettingsQueryResult = withContext(Dispatchers.IO) {
-        engine.querySkillSetting(skillId, field, values)
+        engineHolder.engine().querySkillSetting(skillId, field, values)
     }
 
     suspend fun settingsAction(
@@ -790,7 +790,7 @@ class SettingsViewModel @Inject constructor(
         action: String,
         values: Map<String, String>,
     ): FfiSettingsQueryResult = withContext(Dispatchers.IO) {
-        engine.settingsAction(skillId, action, values)
+        engineHolder.engine().settingsAction(skillId, action, values)
     }
 
     // ── TTS voice management ────────────────────────────────────────────

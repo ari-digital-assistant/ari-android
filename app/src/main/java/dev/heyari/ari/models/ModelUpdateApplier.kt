@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import uniffi.ari_ffi.AriEngine
+import dev.heyari.ari.di.EngineHolder
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -42,7 +42,7 @@ sealed interface ApplyEvent {
  */
 @Singleton
 class ModelUpdateApplier @Inject constructor(
-    private val engine: AriEngine,
+    private val engineHolder: EngineHolder,
     private val routerDownloadManager: RouterDownloadManager,
     private val llmDownloadManager: LlmDownloadManager,
     private val sttDownloadManager: ModelDownloadManager,
@@ -59,6 +59,7 @@ class ModelUpdateApplier @Inject constructor(
     }
 
     private suspend fun ProducerScope<ApplyEvent>.applyRouter(update: ModelUpdate) {
+        val engine = engineHolder.engine()
         // 1. Release the engine's mmap on the old GGUF before overwriting.
         withContext(Dispatchers.IO) { engine.unloadRouterModel() }
 
@@ -110,6 +111,7 @@ class ModelUpdateApplier @Inject constructor(
         target: ModelTarget.Llm,
     ) {
         val model = target.model
+        val engine = engineHolder.engine()
         withContext(Dispatchers.IO) { engine.unloadLlmModel() }
 
         val progressJob = launch {

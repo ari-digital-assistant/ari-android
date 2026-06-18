@@ -11,7 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import uniffi.ari_ffi.AriEngine
+import dev.heyari.ari.di.EngineHolder
 import uniffi.ari_ffi.FfiResponse
 import javax.inject.Inject
 
@@ -30,7 +30,7 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class NotificationActionReceiver : BroadcastReceiver() {
 
-    @Inject lateinit var engine: AriEngine
+    @Inject lateinit var engineHolder: EngineHolder
     @Inject lateinit var actionHandler: ActionHandler
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -55,7 +55,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 if (!utterance.isNullOrBlank()) {
                     scope.launch {
                         runCatching {
-                            val response = engine.processInput(utterance)
+                            val response = engineHolder.engine().processInput(utterance)
                             // Apply the response so dismissals / cards /
                             // alerts the skill emits in reply actually
                             // take effect. Same shape as the chat-input

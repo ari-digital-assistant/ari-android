@@ -5,9 +5,9 @@ import dev.heyari.ari.notifications.AlertService
 import dev.heyari.ari.data.card.CardAction
 import dev.heyari.ari.data.card.CardStateRepository
 import dev.heyari.ari.model.Attachment
+import dev.heyari.ari.di.EngineHolder
 import javax.inject.Inject
 import javax.inject.Singleton
-import uniffi.ari_ffi.AriEngine
 import uniffi.ari_ffi.FfiResponse
 
 /**
@@ -32,7 +32,7 @@ class CardActionDispatcher @Inject constructor(
     private val cardRepository: CardStateRepository,
     private val cardAlarmScheduler: CardAlarmScheduler,
     private val actionHandler: ActionHandler,
-    private val engine: AriEngine,
+    private val engineHolder: EngineHolder,
     private val application: Application,
 ) {
     /** What the caller should render after dispatch. */
@@ -84,7 +84,7 @@ class CardActionDispatcher @Inject constructor(
             // when the round-trip didn't produce text, so a skill can
             // still set a static ack.
             val followupSpeak: String? = if (!followup.isNullOrBlank()) {
-                when (val response = engine.processInput(followup)) {
+                when (val response = engineHolder.engine().processInput(followup)) {
                     is FfiResponse.Action -> {
                         val r = actionHandler.handle(response.json, response.skillId)
                         r.text.ifBlank { null }
@@ -127,7 +127,7 @@ class CardActionDispatcher @Inject constructor(
         else Outcome.Spoken(speak, emptyList())
 
     private suspend fun runUtterance(utterance: String): Outcome {
-        val response = engine.processInput(utterance)
+        val response = engineHolder.engine().processInput(utterance)
         return when (response) {
             is FfiResponse.Text -> Outcome.Spoken(response.body, emptyList())
             is FfiResponse.Action -> {

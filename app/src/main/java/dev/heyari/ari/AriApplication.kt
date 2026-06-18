@@ -22,13 +22,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import uniffi.ari_ffi.AriEngine
+import dev.heyari.ari.di.EngineHolder
 import javax.inject.Inject
 
 @HiltAndroidApp
 class AriApplication : Application(), Configuration.Provider {
     @Inject lateinit var workerFactory: HiltWorkerFactory
-    @Inject lateinit var engine: AriEngine
+    @Inject lateinit var engineHolder: EngineHolder
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var speechRecognizer: SpeechRecognizer
     @Inject lateinit var downloadManager: ModelDownloadManager
@@ -43,6 +43,11 @@ class AriApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        // Kick the engine build on a background thread right away so it's
+        // ready before the first interaction — WITHOUT blocking onCreate.
+        // Building it on the main thread (the old @Inject AriEngine field
+        // did exactly that) is what tripped the startup ANR.
+        engineHolder.warmUp()
         // Idempotent — KEEP policy means reinstalls don't reset the schedule.
         SkillUpdateWorker.schedule(this)
         scheduleModelUpdateWorker()
@@ -135,8 +140,13 @@ class AriApplication : Application(), Configuration.Provider {
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
         if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
-            Log.i(TAG, "Memory pressure (level=$level), unloading LLM")
-            engine.unloadLlmModel()
+            // Best-effort: if the engine hasn't been built yet there's no
+            // mmap to release, so a null peek is a no-op rather than forcing
+            // a (blocking) build on a memory-pressure callback.
+            engineHolder.peek()?.let {
+                Log.i(TAG, "Memory pressure (level=$level), unloading LLM")
+                it.unloadLlmModel()
+            }
         }
     }
 

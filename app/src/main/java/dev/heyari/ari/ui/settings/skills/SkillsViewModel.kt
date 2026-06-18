@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import dev.heyari.ari.data.SecretStore
-import uniffi.ari_ffi.AriEngine
+import dev.heyari.ari.di.EngineHolder
 import uniffi.ari_ffi.FfiBrowseEntry
 import uniffi.ari_ffi.FfiConfigField
 import uniffi.ari_ffi.FfiInstalledSkill
@@ -39,7 +39,7 @@ import javax.inject.Inject
 class SkillsViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val skillRegistry: SkillRegistry,
-    private val engine: AriEngine,
+    private val engineHolder: EngineHolder,
     private val assistantRegistry: AssistantRegistry,
     private val notifier: SkillUpdateNotifier,
     private val prefs: SkillsPreferences,
@@ -70,6 +70,7 @@ class SkillsViewModel @Inject constructor(
      */
     private suspend fun reloadEngineSkillsBlocking() {
         withContext(Dispatchers.IO) {
+            val engine = engineHolder.engine()
             engine.reloadCommunitySkills(skillsDirPath, storageDirPath)
             // reloadAndApply re-scans the community assistant directory
             // AND re-pushes the (active + named) assistant state into
@@ -299,7 +300,7 @@ class SkillsViewModel @Inject constructor(
             assistantRegistry.setActiveAssistant(id)
             settingsRepository.setPendingCloudAssistantSetup(false)
             withContext(Dispatchers.IO) {
-                assistantRegistry.applyToEngine(engine)
+                assistantRegistry.applyToEngine(engineHolder.engine())
             }
             _state.update {
                 it.copy(pendingAssistantPromptId = null, pendingAssistantPromptName = "")
@@ -564,7 +565,7 @@ class SkillsViewModel @Inject constructor(
         field: String,
         values: Map<String, String>,
     ): FfiSettingsQueryResult = withContext(Dispatchers.IO) {
-        engine.querySkillSetting(skillId, field, values)
+        engineHolder.engine().querySkillSetting(skillId, field, values)
     }
 
     suspend fun settingsAction(
@@ -572,7 +573,7 @@ class SkillsViewModel @Inject constructor(
         action: String,
         values: Map<String, String>,
     ): FfiSettingsQueryResult = withContext(Dispatchers.IO) {
-        engine.settingsAction(skillId, action, values)
+        engineHolder.engine().settingsAction(skillId, action, values)
     }
 
     fun clearSkillSettings() {
