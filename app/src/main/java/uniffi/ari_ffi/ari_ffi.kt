@@ -7208,6 +7208,12 @@ data class FfiBrowseEntry (
     , 
     var `description`: kotlin.String
     , 
+    /**
+     * "skill" or "assistant" — from the registry index. Lets the browse
+     * UI filter assistants without substring-matching id/name/description.
+     */
+    var `skillType`: kotlin.String
+    , 
     var `installed`: kotlin.Boolean
     , 
     var `license`: kotlin.String?
@@ -7256,6 +7262,7 @@ public object FfiConverterTypeFfiBrowseEntry: FfiConverterRustBuffer<FfiBrowseEn
             FfiConverterString.read(buf),
             FfiConverterString.read(buf),
             FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
             FfiConverterBoolean.read(buf),
             FfiConverterOptionalString.read(buf),
             FfiConverterOptionalString.read(buf),
@@ -7271,6 +7278,7 @@ public object FfiConverterTypeFfiBrowseEntry: FfiConverterRustBuffer<FfiBrowseEn
             FfiConverterString.allocationSize(value.`version`) +
             FfiConverterString.allocationSize(value.`name`) +
             FfiConverterString.allocationSize(value.`description`) +
+            FfiConverterString.allocationSize(value.`skillType`) +
             FfiConverterBoolean.allocationSize(value.`installed`) +
             FfiConverterOptionalString.allocationSize(value.`license`) +
             FfiConverterOptionalString.allocationSize(value.`author`) +
@@ -7285,6 +7293,7 @@ public object FfiConverterTypeFfiBrowseEntry: FfiConverterRustBuffer<FfiBrowseEn
             FfiConverterString.write(value.`version`, buf)
             FfiConverterString.write(value.`name`, buf)
             FfiConverterString.write(value.`description`, buf)
+            FfiConverterString.write(value.`skillType`, buf)
             FfiConverterBoolean.write(value.`installed`, buf)
             FfiConverterOptionalString.write(value.`license`, buf)
             FfiConverterOptionalString.write(value.`author`, buf)
