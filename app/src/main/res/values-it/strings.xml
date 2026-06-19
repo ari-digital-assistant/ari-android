@@ -231,6 +231,8 @@
     <string name="permission_microphone_description">Necessario per la parola di attivazione e l\'input vocale</string>
     <string name="permission_notifications_label">Notifiche</string>
     <string name="permission_notifications_description">Necessario per mostrare lo stato di ascolto della parola di attivazione</string>
+    <string name="permission_location_label">Posizione</string>
+    <string name="permission_location_description">Per il meteo e le skill nelle vicinanze</string>
     <string name="permission_lockscreen_label">Parola di attivazione a schermo bloccato</string>
     <string name="permission_lockscreen_description">Necessario perché la parola di attivazione continui a funzionare quando il telefono è bloccato — come le chiamate appaiono sulla schermata di blocco. Android la chiama \"Visualizza sopra altre app\", ma Ari non disegna sopra le tue altre app. Usa questo permesso solo per aprire la propria schermata vocale quando pronunci la parola di attivazione. Senza questo permesso, la parola di attivazione funzionerà solo una volta per sessione.</string>
     <string name="permission_fsn_label">Notifiche a schermo intero</string>
