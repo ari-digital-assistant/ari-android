@@ -246,7 +246,19 @@ class SkillsViewModel @Inject constructor(
                 onSuccess = { installed ->
                     reloadEngineSkillsBlocking()
                     val active = settingsRepository.activeAssistantId.first()
-                    val match = if (active == null) {
+                    // Offer to make the just-installed skill the default
+                    // assistant when the user hasn't deliberately picked a
+                    // *real* one yet. Gating on `active == null` alone missed
+                    // the common case: onboarding leaves the built-in local
+                    // assistant active as the working default (and choosing
+                    // "Cloud" doesn't change that), so `active` is non-null
+                    // and the prompt never fired — even for a user who set
+                    // out specifically to add a cloud assistant. Treat the
+                    // built-in default the same as "nothing chosen", and
+                    // don't prompt if the installed skill is already active.
+                    val onlyDefaultActive =
+                        active == null || active == dev.heyari.ari.di.EngineModule.BUILTIN_ASSISTANT_ID
+                    val match = if (onlyDefaultActive && installed.id != active) {
                         assistantRegistry.listAssistants().firstOrNull { it.id == installed.id }
                     } else {
                         null
