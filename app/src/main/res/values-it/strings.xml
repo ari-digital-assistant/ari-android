@@ -94,6 +94,20 @@
     <string name="skills_set_as_default_assistant_dismiss">Non ora</string>
     <string name="skills_browse_in_english_fallback">Descrizione in inglese (nessuna traduzione disponibile)</string>
 
+    <!-- Skill install/registry error messages -->
+    <string name="skills_error_network">Impossibile raggiungere il registro — controlla la connessione.</string>
+    <string name="skills_error_bad_status">Il registro delle skill non è al momento disponibile. Riprova più tardi.</string>
+    <string name="skills_error_too_large">Questa skill è troppo grande per essere installata.</string>
+    <string name="skills_error_integrity">Impossibile verificare questa skill: non è stata installata.</string>
+    <string name="skills_error_registry">Impossibile caricare il registro delle skill. Riprova.</string>
+    <string name="skills_error_not_found">Il registro non contiene più questa skill.</string>
+    <string name="skills_error_not_installed">Questa skill non è installata.</string>
+    <string name="skills_error_manifest">Impossibile leggere il manifest della skill.</string>
+    <string name="skills_error_manifest_unavailable">Il registro non ha ancora un\'anteprima per questa skill.</string>
+    <string name="skills_error_trust_key">Errore della chiave di firma — reinstalla Ari.</string>
+    <string name="skills_error_store">Errore dell\'archivio locale delle skill: %1$s</string>
+    <string name="skills_error_generic">Si è verificato un errore.</string>
+
     <!-- Menu -->
     <string name="drawer_setup_wizard">Configurazione iniziale</string>
 

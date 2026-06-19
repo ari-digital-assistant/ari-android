@@ -87,6 +87,20 @@
     <string name="skills_set_as_default_assistant_dismiss">Not now</string>
     <string name="skills_browse_in_english_fallback">Description in English (no translation yet)</string>
 
+    <!-- Skill install/registry error messages -->
+    <string name="skills_error_network">Couldn\'t reach the registry — check your connection.</string>
+    <string name="skills_error_bad_status">The skill registry is temporarily unavailable. Try again later.</string>
+    <string name="skills_error_too_large">This skill is too large to install.</string>
+    <string name="skills_error_integrity">This skill couldn\'t be verified and wasn\'t installed.</string>
+    <string name="skills_error_registry">Couldn\'t load the skill registry. Please try again.</string>
+    <string name="skills_error_not_found">The registry no longer has that skill.</string>
+    <string name="skills_error_not_installed">That skill isn\'t installed.</string>
+    <string name="skills_error_manifest">Couldn\'t read the skill manifest.</string>
+    <string name="skills_error_manifest_unavailable">The registry has no preview for that skill yet.</string>
+    <string name="skills_error_trust_key">Signing key error — reinstall Ari.</string>
+    <string name="skills_error_store">Local skill store error: %1$s</string>
+    <string name="skills_error_generic">Something went wrong.</string>
+
     <!-- Menu -->
     <string name="drawer_setup_wizard">Setup Wizard</string>
 

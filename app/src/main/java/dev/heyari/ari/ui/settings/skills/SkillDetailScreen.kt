@@ -385,9 +385,9 @@ fun SkillDetailScreen(
                 }
             }
 
-            if (state.errorMessage != null) {
+            state.errorMessage?.let { err ->
                 Text(
-                    text = state.errorMessage!!,
+                    text = skillErrorText(err),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )

@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import androidx.annotation.StringRes
+import dev.heyari.ari.R
 import dev.heyari.ari.data.SkillsPreferences
 import dev.heyari.ari.skills.SkillUpdateNotifier
 import kotlinx.coroutines.CancellationException
@@ -580,35 +582,49 @@ class SkillsViewModel @Inject constructor(
         _state.update { it.copy(detailSettings = emptyList(), detailSettingsLoading = false) }
     }
 
-    private fun friendlyError(t: Throwable): String {
+    private fun friendlyError(t: Throwable): SkillErrorMessage {
         // Log the full exception (class + message + cause chain) before
-        // mapping to the friendly string. The friendly version necessarily
-        // discards information; without this Log.w we'd lose the actual
-        // failure mode (sha mismatch, signature error, network timeout,
-        // etc.) and have nothing to debug from. Tagged AriSkill so it
-        // shows up in `adb logcat -s AriSkill:V`.
+        // mapping to the user-facing message. The friendly version
+        // necessarily discards information; without this Log.w we'd lose the
+        // actual failure mode (sha mismatch, signature error, network
+        // timeout, etc.) and have nothing to debug from. Tagged AriSkill so
+        // it shows up in `adb logcat -s AriSkill:V`.
         android.util.Log.w("AriSkill", "registry error in skill flow", t)
-        return friendlyErrorMessage(t)
-    }
-
-    private fun friendlyErrorMessage(t: Throwable): String = when (t) {
-        is FfiRegistryException.Network -> "Couldn't reach the registry — check your connection."
-        is FfiRegistryException.BadStatus -> "The skill registry is temporarily unavailable. Try again later."
-        is FfiRegistryException.TooLarge -> "This skill is too large to install."
-        is FfiRegistryException.Integrity -> "This skill couldn't be verified and wasn't installed."
-        // Generic registry-format problem (unparseable index, unsupported
-        // version). No longer claims a connection fault — that's Network above.
-        is FfiRegistryException.Registry -> "Couldn't load the skill registry. Please try again."
-        is FfiRegistryException.Store -> "Local skill store error: ${t.message ?: "unknown"}"
-        is FfiRegistryException.NotFound -> "The registry no longer has that skill."
-        is FfiRegistryException.NotInstalled -> "That skill isn't installed."
-        is FfiRegistryException.Manifest -> "Couldn't read the skill manifest."
-        is FfiRegistryException.ManifestUnavailable ->
-            "The registry has no preview for that skill yet."
-        is FfiRegistryException.TrustKey -> "Signing key error — reinstall Ari."
-        else -> t.message ?: "Something went wrong."
+        // Map to a localizable string resource — resolved against the active
+        // locale in the Composable layer (see skillErrorText), not baked to
+        // English here.
+        return when (t) {
+            is FfiRegistryException.Network -> SkillErrorMessage(R.string.skills_error_network)
+            is FfiRegistryException.BadStatus -> SkillErrorMessage(R.string.skills_error_bad_status)
+            is FfiRegistryException.TooLarge -> SkillErrorMessage(R.string.skills_error_too_large)
+            is FfiRegistryException.Integrity -> SkillErrorMessage(R.string.skills_error_integrity)
+            // Generic registry-format problem (unparseable index, unsupported
+            // version). No longer claims a connection fault — that's Network.
+            is FfiRegistryException.Registry -> SkillErrorMessage(R.string.skills_error_registry)
+            is FfiRegistryException.Store ->
+                SkillErrorMessage(R.string.skills_error_store, t.message ?: "")
+            is FfiRegistryException.NotFound -> SkillErrorMessage(R.string.skills_error_not_found)
+            is FfiRegistryException.NotInstalled -> SkillErrorMessage(R.string.skills_error_not_installed)
+            is FfiRegistryException.Manifest -> SkillErrorMessage(R.string.skills_error_manifest)
+            is FfiRegistryException.ManifestUnavailable ->
+                SkillErrorMessage(R.string.skills_error_manifest_unavailable)
+            is FfiRegistryException.TrustKey -> SkillErrorMessage(R.string.skills_error_trust_key)
+            else -> SkillErrorMessage(R.string.skills_error_generic)
+        }
     }
 }
+
+/**
+ * A localizable error to surface in the skills UI. Carries a string-resource
+ * id (plus an optional arg for the one or two messages that embed detail)
+ * rather than a pre-rendered string, so the Composable layer can resolve it
+ * against the active locale. Adding a language later is then purely a matter
+ * of adding `values-<locale>/strings.xml` entries — no code change here.
+ */
+data class SkillErrorMessage(
+    @StringRes val resId: Int,
+    val arg: String? = null,
+)
 
 data class SkillsScreenState(
     val installed: List<FfiInstalledSkill> = emptyList(),
@@ -619,7 +635,7 @@ data class SkillsScreenState(
     val installingIds: Set<String> = emptySet(),
     val lastCheckOk: Boolean? = null,
     val lastBrowseOk: Boolean? = null,
-    val errorMessage: String? = null,
+    val errorMessage: SkillErrorMessage? = null,
     val browseQuery: String = "",
     val lastCheckedInstalled: Instant? = null,
     val lastCheckedBrowse: Instant? = null,

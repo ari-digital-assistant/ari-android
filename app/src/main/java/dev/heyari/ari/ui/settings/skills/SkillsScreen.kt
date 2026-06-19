@@ -202,9 +202,7 @@ private fun InstalledTab(
             }
         }
 
-        if (state.errorMessage != null) {
-            ErrorCard(state.errorMessage)
-        }
+        state.errorMessage?.let { ErrorCard(it) }
 
         if (state.updates.isNotEmpty()) {
             UpdatesBanner(
@@ -445,9 +443,7 @@ private fun BrowseTab(
             singleLine = true,
         )
 
-        if (state.errorMessage != null) {
-            ErrorCard(state.errorMessage)
-        }
+        state.errorMessage?.let { ErrorCard(it) }
 
         val filtered = remember(state.browse, state.browseQuery, typeFilter) {
             var result = state.browse
@@ -618,8 +614,18 @@ private fun LanguageChip(code: String, highlight: Boolean) {
     }
 }
 
+/**
+ * Resolve a [SkillErrorMessage] to a localised string against the active
+ * locale. Lives in the Composable layer (not the ViewModel) so the language
+ * follows the UI's configuration. Shared with [SkillDetailScreen].
+ */
 @Composable
-private fun ErrorCard(message: String) {
+internal fun skillErrorText(error: SkillErrorMessage): String =
+    if (error.arg != null) stringResource(error.resId, error.arg)
+    else stringResource(error.resId)
+
+@Composable
+private fun ErrorCard(error: SkillErrorMessage) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -628,7 +634,7 @@ private fun ErrorCard(message: String) {
     ) {
         Box(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = message,
+                text = skillErrorText(error),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onErrorContainer,
             )
