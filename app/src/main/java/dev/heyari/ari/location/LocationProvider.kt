@@ -70,8 +70,19 @@ class LocationProvider @Inject constructor(
             return LocationLogic.resolve(hasPermission = true, servicesAvailable = false, fix = null)
         }
         val nowMs = System.currentTimeMillis()
-        val fix = runCatching { lastKnownFreshEnough(maxAgeMs, nowMs) ?: activeFix(timeoutMs) }
-            .getOrNull()
+        val lastKnown = lastKnownLocation()
+        val freshFix = lastKnown?.takeIf { (nowMs - it.time) in 0..maxAgeMs }?.toFix()
+        // Degrade gracefully: prefer a fresh cached fix, else actively request
+        // one, else fall back to whatever last-known fix we have — however old.
+        // A stale coarse location still beats failing entirely: weather (and
+        // the other coarse-location skills) only need city-level, slowly-
+        // changing position, and the active request can come up empty for
+        // reasons that have nothing to do with the user (e.g. the network-
+        // location backend is off, so a BALANCED_POWER request has no source
+        // even though a perfectly good GPS fix is cached). The returned
+        // timestamp stays honest, so a caller that genuinely needs freshness
+        // can still judge the age itself.
+        val fix = freshFix ?: activeFix(timeoutMs) ?: lastKnown?.toFix()
         return LocationLogic.resolve(hasPermission = true, servicesAvailable = true, fix = fix)
     }
 
@@ -90,14 +101,12 @@ class LocationProvider @Inject constructor(
         return LocationManagerCompat.isLocationEnabled(lm)
     }
 
-    private fun lastKnownFreshEnough(maxAgeMs: Long, nowMs: Long): LocationLogic.Fix? {
-        val loc = runCatching { Tasks.await(client.lastLocation, 2, TimeUnit.SECONDS) }
+    /** The fused last-known location, or null. Fetched once and reused for
+     *  both the fresh-enough fast path and the stale fallback. */
+    private fun lastKnownLocation(): android.location.Location? =
+        runCatching { Tasks.await(client.lastLocation, 2, TimeUnit.SECONDS) }
             .onFailure { e -> Log.w(TAG, "last-known location lookup failed: ${e.message}") }
             .getOrNull()
-            ?: return null
-        val ageMs = nowMs - loc.time
-        return if (ageMs in 0..maxAgeMs) loc.toFix() else null
-    }
 
     private fun activeFix(timeoutMs: Long): LocationLogic.Fix? {
         val cts = CancellationTokenSource()
