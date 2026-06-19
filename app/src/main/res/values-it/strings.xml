@@ -332,11 +332,11 @@
     <string name="notif_model_updates_open_to_review_with_body">Apri Ari per vedere e installare. (%1$s)</string>
     <string name="notif_model_updates_open_to_review_big">Apri Ari per vedere e installare.\n%1$s</string>
     <string name="notif_alert_expired">Scaduto mentre il dispositivo era spento</string>
-    <string name="notif_wake_couldnt_open_title">Ari non è riuscito ad aprirsi</string>
+    <string name="notif_wake_couldnt_open_title">Impossibile aprire Ari</string>
     <string name="notif_wake_couldnt_open_text">Tocca per consentire ad Ari di aprirsi dalla schermata di blocco</string>
     <string name="notif_wake_listening_title">Ari</string>
     <string name="notif_wake_listening_text">In ascolto della parola di attivazione…</string>
-    <string name="notif_boot_couldnt_start_title">Ari non è riuscito ad avviare l\'ascolto</string>
+    <string name="notif_boot_couldnt_start_title">Impossibile avviare l\'ascolto</string>
     <string name="notif_boot_tap_to_fix">Tocca per risolvere: %1$s</string>
     <string name="notif_boot_tap_to_fix_big">Ari è impostato per iniziare ad ascoltare all\'accensione, ma serve la tua attenzione su: %1$s. Tocca per aprire Ari.</string>
     <string name="notif_boot_idle_title">Ari</string>
