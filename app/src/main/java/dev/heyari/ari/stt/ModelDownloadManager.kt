@@ -11,8 +11,10 @@ import androidx.work.WorkManager
 import androidx.work.workDataOf
 import dev.heyari.ari.models.InstalledModelMetadata
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -67,11 +69,21 @@ class ModelDownloadManager @Inject constructor(
         return state.first { it is ModelDownloadState.Completed || it is ModelDownloadState.Failed }
     }
 
+    // Optimistic latch: set synchronously the instant download() is
+    // called, so [state] can report Downloading(thatModelId) before
+    // WorkManager has produced any WorkInfo. Without this, the onboarding
+    // STT row kept showing its download button through the enqueue/early
+    // window and the user could tap it repeatedly. Cleared on cancel and
+    // when work reaches a terminal state.
+    private val requestedModelId = MutableStateFlow<String?>(null)
+
     fun cancel() {
+        requestedModelId.value = null
         workManager.cancelUniqueWork(UNIQUE_WORK_NAME)
     }
 
     fun download(model: SttModel) {
+        requestedModelId.value = model.id
         val request = OneTimeWorkRequestBuilder<ModelDownloadWorker>()
             .setInputData(workDataOf(ModelDownloadWorker.KEY_MODEL_ID to model.id))
             .setConstraints(
@@ -89,44 +101,72 @@ class ModelDownloadManager @Inject constructor(
     }
 
     val state: Flow<ModelDownloadState> =
-        workManager.getWorkInfosForUniqueWorkFlow(UNIQUE_WORK_NAME).map { infos ->
-            mapToState(infos)
+        combine(
+            workManager.getWorkInfosForUniqueWorkFlow(UNIQUE_WORK_NAME),
+            requestedModelId,
+        ) { infos, requestedId ->
+            mapToState(infos, requestedId)
+        }.onEach { st ->
+            // Drop the optimistic latch once the worker is terminal, so a
+            // later empty WorkInfo list resolves to Idle instead of
+            // re-synthesising a phantom Downloading from a stale request.
+            if (st is ModelDownloadState.Completed || st is ModelDownloadState.Failed) {
+                requestedModelId.value = null
+            }
         }
 
-    private fun mapToState(infos: List<WorkInfo>): ModelDownloadState {
-        val info = infos.firstOrNull() ?: return ModelDownloadState.Idle
-        return when (info.state) {
-            WorkInfo.State.RUNNING -> {
-                val modelId = info.progress.getString(ModelDownloadWorker.KEY_MODEL_ID) ?: ""
-                val bytesSoFar = info.progress.getLong(ModelDownloadWorker.KEY_BYTES_SO_FAR, 0L)
-                val totalBytes = info.progress.getLong(ModelDownloadWorker.KEY_TOTAL_BYTES, 0L)
-                if (modelId.isEmpty() && bytesSoFar == 0L) {
-                    // Worker just started, no progress yet
-                    ModelDownloadState.Downloading("", 0L, 0L, "")
-                } else {
-                    ModelDownloadState.Downloading(modelId, bytesSoFar, totalBytes, "")
-                }
-            }
-            WorkInfo.State.ENQUEUED -> {
-                // Waiting for network or constraints
-                ModelDownloadState.Downloading("", 0L, 0L, "")
-            }
-            WorkInfo.State.SUCCEEDED -> {
-                val modelId = info.outputData.getString(ModelDownloadWorker.KEY_MODEL_ID) ?: ""
-                ModelDownloadState.Completed(modelId)
-            }
-            WorkInfo.State.FAILED -> {
-                val modelId = info.outputData.getString(ModelDownloadWorker.KEY_MODEL_ID) ?: ""
-                val error = info.outputData.getString(ModelDownloadWorker.KEY_ERROR) ?: "Unknown error"
-                ModelDownloadState.Failed(modelId, error)
-            }
-            WorkInfo.State.CANCELLED -> ModelDownloadState.Idle
-            WorkInfo.State.BLOCKED -> ModelDownloadState.Downloading("", 0L, 0L, "")
-        }
+    private fun mapToState(infos: List<WorkInfo>, requestedId: String?): ModelDownloadState {
+        val info = infos.firstOrNull()
+        return resolveState(
+            workState = info?.state,
+            progressModelId = info?.progress?.getString(ModelDownloadWorker.KEY_MODEL_ID) ?: "",
+            bytesSoFar = info?.progress?.getLong(ModelDownloadWorker.KEY_BYTES_SO_FAR, 0L) ?: 0L,
+            totalBytes = info?.progress?.getLong(ModelDownloadWorker.KEY_TOTAL_BYTES, 0L) ?: 0L,
+            outputModelId = info?.outputData?.getString(ModelDownloadWorker.KEY_MODEL_ID) ?: "",
+            error = info?.outputData?.getString(ModelDownloadWorker.KEY_ERROR),
+            requestedId = requestedId,
+        )
     }
 
     companion object {
         private const val TAG = "ModelDownloadManager"
         private const val UNIQUE_WORK_NAME = "stt-model-download"
+
+        /**
+         * Pure mapping from a WorkManager work state (+ the optimistic
+         * requested-id latch) to a [ModelDownloadState]. Kept side-effect
+         * free and Android-framework free so it can be unit tested — see
+         * `ModelDownloadStateTest`.
+         *
+         * `workState == null` means WorkManager has no WorkInfo yet: if a
+         * download was just requested we still report Downloading(thatId)
+         * so the UI flips off the download button immediately. During
+         * ENQUEUED / early RUNNING the worker hasn't published its own
+         * model id into progress yet, so we fall back to the requested id
+         * rather than emitting an empty id that matches no row.
+         */
+        internal fun resolveState(
+            workState: WorkInfo.State?,
+            progressModelId: String,
+            bytesSoFar: Long,
+            totalBytes: Long,
+            outputModelId: String,
+            error: String?,
+            requestedId: String?,
+        ): ModelDownloadState = when (workState) {
+            null ->
+                if (requestedId != null) ModelDownloadState.Downloading(requestedId, 0L, 0L, "")
+                else ModelDownloadState.Idle
+            WorkInfo.State.RUNNING ->
+                ModelDownloadState.Downloading(
+                    progressModelId.ifEmpty { requestedId.orEmpty() },
+                    bytesSoFar, totalBytes, "",
+                )
+            WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED ->
+                ModelDownloadState.Downloading(requestedId.orEmpty(), 0L, 0L, "")
+            WorkInfo.State.SUCCEEDED -> ModelDownloadState.Completed(outputModelId)
+            WorkInfo.State.FAILED -> ModelDownloadState.Failed(outputModelId, error ?: "Unknown error")
+            WorkInfo.State.CANCELLED -> ModelDownloadState.Idle
+        }
     }
 }

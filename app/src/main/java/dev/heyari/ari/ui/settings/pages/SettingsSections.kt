@@ -349,20 +349,30 @@ private fun ModelRow(
             when {
                 isDownloadingThis -> {
                     val dl = downloadState as ModelDownloadState.Downloading
-                    val progress = if (dl.totalBytes > 0) dl.bytesSoFar.toFloat() / dl.totalBytes.toFloat() else 0f
-                    LinearProgressIndicator(
-                        progress = { progress.coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    // Until the worker reports a total size we don't know how
+                    // far along we are (just-tapped / connecting / enqueued),
+                    // so show an indeterminate bar rather than a frozen 0%.
+                    if (dl.totalBytes > 0) {
+                        val progress = (dl.bytesSoFar.toFloat() / dl.totalBytes.toFloat()).coerceIn(0f, 1f)
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    } else {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            text = "${formatBytes(dl.bytesSoFar)} / ${formatBytes(dl.totalBytes)} (${String.format(Locale.US, "%.0f", progress * 100)}%)",
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+                        if (dl.totalBytes > 0) {
+                            val pct = dl.bytesSoFar.toFloat() / dl.totalBytes.toFloat() * 100
+                            Text(
+                                text = "${formatBytes(dl.bytesSoFar)} / ${formatBytes(dl.totalBytes)} (${String.format(Locale.US, "%.0f", pct)}%)",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                        Spacer(Modifier.weight(1f))
                         TextButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) }
                     }
                 }

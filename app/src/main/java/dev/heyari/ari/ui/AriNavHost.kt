@@ -431,8 +431,17 @@ fun AriNavHost(
                     },
                     onBrowseCloudSkills = {
                         onboardingViewModel.completeOnboarding()
-                        navController.navigate(Routes.skills(type = "assistant")) {
+                        // Land on the conversation screen as the back-stack
+                        // root first (popping the onboarding graph), THEN push
+                        // the assistant-skills browser on top. Navigating
+                        // straight to skills with popUpTo("onboarding")
+                        // inclusive made skills the root, so backing out of the
+                        // skills list dead-ended instead of returning to chat.
+                        navController.navigate(Routes.CONVERSATION) {
                             popUpTo("onboarding") { inclusive = true }
+                            launchSingleTop = true
+                        }
+                        navController.navigate(Routes.skills(type = "assistant")) {
                             launchSingleTop = true
                         }
                     },
