@@ -8337,6 +8337,32 @@ sealed class FfiRegistryException(message: String): kotlin.Exception(message) {
         
         class TrustKey(message: String) : FfiRegistryException(message)
         
+    /**
+     * Couldn't reach the registry / a transport-level failure. This is the
+     * only variant that genuinely warrants a "check your connection" hint.
+     */
+        class Network(message: String) : FfiRegistryException(message)
+        
+    /**
+     * The registry host answered, but with a non-success HTTP status
+     * (404 for a missing bundle, 5xx for an outage, …).
+     */
+        class BadStatus(message: String) : FfiRegistryException(message)
+        
+    /**
+     * The bundle exceeds the install size cap. Distinct from a network
+     * failure so the UI can tell the user the skill is too large rather
+     * than blaming their connection.
+     */
+        class TooLarge(message: String) : FfiRegistryException(message)
+        
+    /**
+     * The downloaded bundle failed verification — sha256 mismatch, bad
+     * signature, unsafe tar entry, or a corrupt archive. The skill was
+     * not installed.
+     */
+        class Integrity(message: String) : FfiRegistryException(message)
+        
 
     companion object ErrorHandler : UniffiRustCallStatusErrorHandler<FfiRegistryException> {
         override fun lift(error_buf: RustBuffer.ByValue): FfiRegistryException = FfiConverterTypeFfiRegistryError.lift(error_buf)
@@ -8357,6 +8383,10 @@ public object FfiConverterTypeFfiRegistryError : FfiConverterRustBuffer<FfiRegis
             5 -> FfiRegistryException.Manifest(FfiConverterString.read(buf))
             6 -> FfiRegistryException.ManifestUnavailable(FfiConverterString.read(buf))
             7 -> FfiRegistryException.TrustKey(FfiConverterString.read(buf))
+            8 -> FfiRegistryException.Network(FfiConverterString.read(buf))
+            9 -> FfiRegistryException.BadStatus(FfiConverterString.read(buf))
+            10 -> FfiRegistryException.TooLarge(FfiConverterString.read(buf))
+            11 -> FfiRegistryException.Integrity(FfiConverterString.read(buf))
             else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
         }
         
@@ -8394,6 +8424,22 @@ public object FfiConverterTypeFfiRegistryError : FfiConverterRustBuffer<FfiRegis
             }
             is FfiRegistryException.TrustKey -> {
                 buf.putInt(7)
+                Unit
+            }
+            is FfiRegistryException.Network -> {
+                buf.putInt(8)
+                Unit
+            }
+            is FfiRegistryException.BadStatus -> {
+                buf.putInt(9)
+                Unit
+            }
+            is FfiRegistryException.TooLarge -> {
+                buf.putInt(10)
+                Unit
+            }
+            is FfiRegistryException.Integrity -> {
+                buf.putInt(11)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }

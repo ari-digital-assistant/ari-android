@@ -592,7 +592,13 @@ class SkillsViewModel @Inject constructor(
     }
 
     private fun friendlyErrorMessage(t: Throwable): String = when (t) {
-        is FfiRegistryException.Registry -> "Couldn't reach the registry — check your connection."
+        is FfiRegistryException.Network -> "Couldn't reach the registry — check your connection."
+        is FfiRegistryException.BadStatus -> "The skill registry is temporarily unavailable. Try again later."
+        is FfiRegistryException.TooLarge -> "This skill is too large to install."
+        is FfiRegistryException.Integrity -> "This skill couldn't be verified and wasn't installed."
+        // Generic registry-format problem (unparseable index, unsupported
+        // version). No longer claims a connection fault — that's Network above.
+        is FfiRegistryException.Registry -> "Couldn't load the skill registry. Please try again."
         is FfiRegistryException.Store -> "Local skill store error: ${t.message ?: "unknown"}"
         is FfiRegistryException.NotFound -> "The registry no longer has that skill."
         is FfiRegistryException.NotInstalled -> "That skill isn't installed."
