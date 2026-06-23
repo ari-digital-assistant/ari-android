@@ -1,17 +1,35 @@
 package dev.heyari.ari.actions
 
 import android.app.SearchManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Bundle
 import android.provider.MediaStore
+import android.support.v4.media.MediaBrowserCompat
+import android.support.v4.media.session.MediaControllerCompat
 import android.util.Log
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Plays a free-text query in a music app. No service → the OS default music
- * app via MEDIA_PLAY_FROM_SEARCH; a named service → that app's package.
+ * Plays a free-text query in a named music app, trying several dispatch
+ * strategies best-first with graceful fallback:
+ *
+ *  1. MEDIA_BROWSER          — connect to the app's MediaBrowserService, grab
+ *                              its session token and call playFromSearch on the
+ *                              transport controls. This is how Android Auto /
+ *                              Assistant get apps like YouTube Music to actually
+ *                              auto-play rather than just open a search screen.
+ *  2. PLAY_FROM_SEARCH_INTENT — the classic MEDIA_PLAY_FROM_SEARCH activity
+ *                              intent, scoped to the target package.
+ *  3. SEARCH_DEEPLINK         — last resort: ACTION_VIEW on the app's web/app
+ *                              search URL (opens results; user taps play).
  *
  * Generic media handler — carries no skill-specific knowledge. The canonical
  * service ids match the engine's `play_media` action.
@@ -20,10 +38,14 @@ import javax.inject.Singleton
 class MusicLauncher @Inject constructor(
     private val context: Context,
 ) {
+    enum class Strategy { MEDIA_BROWSER, PLAY_FROM_SEARCH_INTENT, SEARCH_DEEPLINK }
+
     data class Service(
         val id: String,
         val displayName: String,
         val packages: List<String>,
+        val strategy: List<Strategy>,
+        val searchUrl: ((String) -> String)? = null,
     )
 
     sealed interface PlayResult {
@@ -33,48 +55,112 @@ class MusicLauncher @Inject constructor(
         data class Failed(val reason: String) : PlayResult
     }
 
-    /** Returns the ids of every registered music service that is currently installed.
-     *  Stub — replaced in Task 14 with a real package-presence check. */
-    fun installedServiceIds(): List<String> = emptyList()
+    /** Ids of every registered music service with at least one installed package.
+     *  This is what the engine's media_services() reports back to the skill. */
+    fun installedServiceIds(): List<String> =
+        REGISTRY.values.filter { svc -> svc.packages.any { isInstalled(it) } }.map { it.id }
 
     fun play(query: String, serviceId: String?): PlayResult {
         if (query.isBlank()) return PlayResult.Failed("empty query")
-        if (serviceId == null) return playDefault(query)
-        val svc = REGISTRY[serviceId] ?: return playDefault(query)
+        val svc = serviceId?.let { REGISTRY[it] }
+            ?: return PlayResult.Failed(if (serviceId == null) "no service" else "unknown service $serviceId")
         val pkg = svc.packages.firstOrNull { isInstalled(it) }
             ?: return PlayResult.ServiceNotInstalled(svc.displayName)
-        return playOnPackage(query, pkg, svc.displayName)
-    }
-
-    private fun playDefault(query: String): PlayResult {
-        val intent = playFromSearchIntent(query)
-        if (intent.resolveActivity(context.packageManager) == null) {
-            return PlayResult.NoMusicApp(query)
+        for (strat in svc.strategy) {
+            val ok = when (strat) {
+                Strategy.MEDIA_BROWSER -> tryMediaBrowserPlay(pkg, query)
+                Strategy.PLAY_FROM_SEARCH_INTENT -> tryPlayFromSearchIntent(pkg, query)
+                Strategy.SEARCH_DEEPLINK -> svc.searchUrl?.let { tryDeepLink(pkg, it(query)) } ?: false
+            }
+            if (ok) return PlayResult.Playing(query, svc.displayName)
         }
-        return startSafely(intent)?.let { PlayResult.Failed(it) }
-            ?: PlayResult.Playing(query, null)
+        return PlayResult.Failed("no strategy played on ${svc.displayName}")
     }
 
-    private fun playOnPackage(query: String, pkg: String, displayName: String): PlayResult {
-        val targeted = playFromSearchIntent(query).setPackage(pkg)
-        if (targeted.resolveActivity(context.packageManager) != null) {
-            return startSafely(targeted)?.let { PlayResult.Failed(it) }
-                ?: PlayResult.Playing(query, displayName)
+    /**
+     * Connects to [pkg]'s MediaBrowserService, waits (briefly) for the
+     * connection, then dispatches playFromSearch on the resulting media
+     * session. Returns true if we connected and dispatched within the timeout,
+     * false otherwise — the caller falls through to the next strategy.
+     */
+    private fun tryMediaBrowserPlay(pkg: String, query: String): Boolean {
+        val component = browseServiceComponent(pkg) ?: return false
+        val latch = CountDownLatch(1)
+        val dispatched = AtomicBoolean(false)
+        var browser: MediaBrowserCompat? = null
+
+        val callback = object : MediaBrowserCompat.ConnectionCallback() {
+            override fun onConnected() {
+                try {
+                    val b = browser
+                    if (b != null && b.isConnected) {
+                        val controller = MediaControllerCompat(context, b.sessionToken)
+                        controller.transportControls.playFromSearch(query, Bundle())
+                        dispatched.set(true)
+                    }
+                } catch (t: Throwable) {
+                    Log.e(TAG, "MediaBrowser dispatch failed for $pkg", t)
+                } finally {
+                    latch.countDown()
+                }
+            }
+
+            override fun onConnectionSuspended() {
+                latch.countDown()
+            }
+
+            override fun onConnectionFailed() {
+                Log.w(TAG, "MediaBrowser connection failed for $pkg")
+                latch.countDown()
+            }
         }
-        // Installed but doesn't handle PLAY_FROM_SEARCH → just open the app.
-        val launch = context.packageManager.getLaunchIntentForPackage(pkg)
-            ?: return PlayResult.Failed("no way to play on $displayName")
-        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        return startSafely(launch)?.let { PlayResult.Failed(it) }
-            ?: PlayResult.Playing(query, displayName)
+
+        return try {
+            browser = MediaBrowserCompat(context, component, callback, null)
+            browser.connect()
+            val connectedInTime = latch.await(CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            connectedInTime && dispatched.get()
+        } catch (t: Throwable) {
+            Log.e(TAG, "MediaBrowser connect failed for $pkg", t)
+            false
+        } finally {
+            try {
+                browser?.disconnect()
+            } catch (t: Throwable) {
+                Log.w(TAG, "MediaBrowser disconnect failed for $pkg", t)
+            }
+        }
     }
 
-    private fun playFromSearchIntent(query: String): Intent =
-        Intent(MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH).apply {
+    /** Classic MEDIA_PLAY_FROM_SEARCH activity intent, scoped to [pkg]. */
+    private fun tryPlayFromSearchIntent(pkg: String, query: String): Boolean {
+        val intent = Intent(MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH).apply {
+            setPackage(pkg)
             putExtra(SearchManager.QUERY, query)
             putExtra(MediaStore.EXTRA_MEDIA_FOCUS, "vnd.android.cursor.item/*")
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
+        if (intent.resolveActivity(context.packageManager) == null) return false
+        return startSafely(intent)
+    }
+
+    /** ACTION_VIEW on a search [url], scoped to [pkg] so it opens in-app. */
+    private fun tryDeepLink(pkg: String, url: String): Boolean {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+            setPackage(pkg)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        if (intent.resolveActivity(context.packageManager) == null) return false
+        return startSafely(intent)
+    }
+
+    /** Discovers [pkg]'s MediaBrowserService component, or null if it has none. */
+    private fun browseServiceComponent(pkg: String): ComponentName? {
+        val intent = Intent(MEDIA_BROWSER_SERVICE_ACTION).setPackage(pkg)
+        val resolved = context.packageManager.queryIntentServices(intent, 0)
+        val info = resolved.firstOrNull()?.serviceInfo ?: return null
+        return ComponentName(info.packageName, info.name)
+    }
 
     private fun isInstalled(pkg: String): Boolean = try {
         context.packageManager.getPackageInfo(pkg, 0)
@@ -83,26 +169,51 @@ class MusicLauncher @Inject constructor(
         false
     }
 
-    /** Returns null on success, or an error message on failure. */
-    private fun startSafely(intent: Intent): String? = try {
+    /** Returns true on success, false (logged) on failure. */
+    private fun startSafely(intent: Intent): Boolean = try {
         context.startActivity(intent)
-        null
+        true
     } catch (t: Throwable) {
         Log.e(TAG, "play failed", t)
-        t.message ?: "unknown error"
+        false
     }
 
     companion object {
         private const val TAG = "MusicLauncher"
+        private const val CONNECT_TIMEOUT_MS = 3_000L
+        private const val MEDIA_BROWSER_SERVICE_ACTION = "android.media.browse.MediaBrowserService"
 
         val REGISTRY: Map<String, Service> = listOf(
-            Service("spotify", "Spotify", listOf("com.spotify.music")),
-            Service("apple_music", "Apple Music", listOf("com.apple.android.music")),
-            Service("youtube_music", "YouTube Music", listOf("com.google.android.apps.youtube.music")),
-            Service("tidal", "TIDAL", listOf("com.aspiro.tidal")),
-            Service("deezer", "Deezer", listOf("deezer.android.app")),
-            Service("youtube", "YouTube", listOf("com.google.android.youtube")),
-            Service("amazon_music", "Amazon Music", listOf("com.amazon.mp3")),
+            Service(
+                "spotify", "Spotify", listOf("com.spotify.music"),
+                listOf(Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.MEDIA_BROWSER),
+            ),
+            Service(
+                "apple_music", "Apple Music", listOf("com.apple.android.music"),
+                listOf(Strategy.MEDIA_BROWSER, Strategy.PLAY_FROM_SEARCH_INTENT),
+            ),
+            Service(
+                "youtube_music", "YouTube Music", listOf("com.google.android.apps.youtube.music"),
+                listOf(Strategy.MEDIA_BROWSER, Strategy.SEARCH_DEEPLINK),
+                searchUrl = { q -> "https://music.youtube.com/search?q=" + Uri.encode(q) },
+            ),
+            Service(
+                "tidal", "Tidal", listOf("com.aspiro.tidal"),
+                listOf(Strategy.MEDIA_BROWSER, Strategy.PLAY_FROM_SEARCH_INTENT),
+            ),
+            Service(
+                "deezer", "Deezer", listOf("deezer.android.app"),
+                listOf(Strategy.MEDIA_BROWSER, Strategy.PLAY_FROM_SEARCH_INTENT),
+            ),
+            Service(
+                "youtube", "YouTube", listOf("com.google.android.youtube"),
+                listOf(Strategy.SEARCH_DEEPLINK, Strategy.PLAY_FROM_SEARCH_INTENT),
+                searchUrl = { q -> "https://www.youtube.com/results?search_query=" + Uri.encode(q) },
+            ),
+            Service(
+                "amazon_music", "Amazon Music", listOf("com.amazon.mp3"),
+                listOf(Strategy.MEDIA_BROWSER, Strategy.PLAY_FROM_SEARCH_INTENT),
+            ),
         ).associateBy { it.id }
     }
 }

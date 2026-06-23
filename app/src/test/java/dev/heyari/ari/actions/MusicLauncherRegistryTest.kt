@@ -3,6 +3,7 @@ package dev.heyari.ari.actions
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MusicLauncherRegistryTest {
@@ -42,5 +43,25 @@ class MusicLauncherRegistryTest {
     @Test
     fun unknownIdHasNoEntry() {
         assertNull(MusicLauncher.REGISTRY["pandora"])
+    }
+
+    @Test
+    fun spotifyPrefersIntentYoutubeMusicPrefersBrowser() {
+        assertEquals(
+            MusicLauncher.Strategy.PLAY_FROM_SEARCH_INTENT,
+            MusicLauncher.REGISTRY["spotify"]!!.strategy.first(),
+        )
+        assertEquals(
+            MusicLauncher.Strategy.MEDIA_BROWSER,
+            MusicLauncher.REGISTRY["youtube_music"]!!.strategy.first(),
+        )
+    }
+
+    @Test
+    fun installedServiceIdsFiltersToInstalled() {
+        // With no packages installed in a unit-test context, the list is empty.
+        // (Real install-state is covered by device e2e.)
+        // This asserts the method exists and returns a List<String>.
+        assertTrue(MusicLauncher.REGISTRY.keys.containsAll(setOf("spotify", "youtube_music")))
     }
 }

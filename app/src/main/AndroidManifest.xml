@@ -105,6 +105,15 @@
         <intent>
             <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
         </intent>
+        <!--
+          MediaBrowserService visibility — lets tryMediaBrowserPlay discover a
+          target music app's browse service (queryIntentServices) so it can
+          connect, grab the session token and dispatch playFromSearch (the
+          mechanism Android Auto / Assistant use to actually auto-play).
+        -->
+        <intent>
+            <action android:name="android.media.browse.MediaBrowserService" />
+        </intent>
         <!-- Music services targeted by MusicLauncher (package visibility, API 30+). -->
         <package android:name="com.spotify.music" />
         <package android:name="com.apple.android.music" />

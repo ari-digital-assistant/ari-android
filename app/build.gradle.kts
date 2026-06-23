@@ -105,6 +105,7 @@ dependencies {
     implementation(libs.richtext.commonmark)
     implementation(libs.richtext.ui.material3)
     implementation(libs.play.services.location)
+    implementation(libs.androidx.media)
 
     testImplementation(libs.junit)
     // Real org.json for unit tests — the Android stub returns null from
