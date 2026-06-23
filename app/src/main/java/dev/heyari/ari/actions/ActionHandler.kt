@@ -29,6 +29,7 @@ class ActionHandler @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val appLauncher: AppLauncher,
     private val webSearchLauncher: WebSearchLauncher,
+    private val musicLauncher: MusicLauncher,
     private val presentationCoordinator: PresentationCoordinator,
 ) {
 
@@ -48,6 +49,7 @@ class ActionHandler @Inject constructor(
         env.launchApp?.let { return ActionResult.Spoken(env.speak ?: handleOpen(it)) }
         env.search?.let { return ActionResult.Spoken(env.speak ?: handleSearch(it)) }
         env.openUrl?.let { return ActionResult.Spoken(env.speak ?: handleOpenUrl(it)) }
+        env.playMedia?.let { return ActionResult.Spoken(env.speak ?: handlePlayMedia(it)) }
         env.clipboardText?.let { copyToClipboard(it) }
 
         val attachments = if (env.hasPresentationPrimitives()) {
@@ -79,6 +81,19 @@ class ActionHandler @Inject constructor(
                 "I couldn't search: ${result.reason}."
         }
     }
+
+    private fun handlePlayMedia(pm: PlayMedia): String =
+        when (val r = musicLauncher.play(pm.query, pm.service)) {
+            is MusicLauncher.PlayResult.Playing ->
+                if (r.serviceName != null) "Playing ${r.query} on ${r.serviceName}."
+                else "Playing ${r.query}."
+            is MusicLauncher.PlayResult.ServiceNotInstalled ->
+                "You don't have ${r.serviceName} installed."
+            is MusicLauncher.PlayResult.NoMusicApp ->
+                "I couldn't find a music app to play that."
+            is MusicLauncher.PlayResult.Failed ->
+                "I couldn't play that: ${r.reason}."
+        }
 
     private fun handleOpenUrl(url: String): String {
         return runCatching {

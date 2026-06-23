@@ -102,6 +102,17 @@
         -->
         <provider android:authorities="org.dmfs.tasks" />
         <provider android:authorities="org.tasks.opentasks" />
+        <intent>
+            <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+        </intent>
+        <!-- Music services targeted by MusicLauncher (package visibility, API 30+). -->
+        <package android:name="com.spotify.music" />
+        <package android:name="com.apple.android.music" />
+        <package android:name="com.google.android.apps.youtube.music" />
+        <package android:name="com.aspiro.tidal" />
+        <package android:name="deezer.android.app" />
+        <package android:name="com.google.android.youtube" />
+        <package android:name="com.amazon.mp3" />
     </queries>
 
     <application

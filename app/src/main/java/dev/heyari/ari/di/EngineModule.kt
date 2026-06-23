@@ -95,15 +95,22 @@ object EngineModule {
 
     @Provides
     @Singleton
+    fun provideMusicLauncher(@ApplicationContext context: Context): dev.heyari.ari.actions.MusicLauncher =
+        dev.heyari.ari.actions.MusicLauncher(context)
+
+    @Provides
+    @Singleton
     fun provideActionHandler(
         @ApplicationContext context: Context,
         appLauncher: AppLauncher,
         webSearchLauncher: WebSearchLauncher,
+        musicLauncher: dev.heyari.ari.actions.MusicLauncher,
         presentationCoordinator: dev.heyari.ari.actions.PresentationCoordinator,
     ): ActionHandler = ActionHandler(
         context,
         appLauncher,
         webSearchLauncher,
+        musicLauncher,
         presentationCoordinator,
     )
 }
