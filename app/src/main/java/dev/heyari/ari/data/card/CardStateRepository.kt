@@ -41,11 +41,11 @@ private val Context.cardDataStore by preferencesDataStore(name = "ari_cards")
 @Singleton
 class CardStateRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,
-) {
+) : CardStateSource {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _state = MutableStateFlow<List<Card>>(emptyList())
-    val state: StateFlow<List<Card>> = _state.asStateFlow()
+    override val state: StateFlow<List<Card>> = _state.asStateFlow()
 
     // BootReceiver awaits this before reading; otherwise it would race the
     // initial DataStore load and silently re-schedule from an empty list.

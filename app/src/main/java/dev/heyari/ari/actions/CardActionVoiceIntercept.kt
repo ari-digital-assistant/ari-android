@@ -2,6 +2,7 @@ package dev.heyari.ari.actions
 
 import dev.heyari.ari.data.card.CardAction
 import dev.heyari.ari.data.card.CardStateRepository
+import dev.heyari.ari.data.card.CardStateSource
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -12,12 +13,12 @@ import javax.inject.Singleton
  * any card with [CardAction]s gets the behaviour for free, no
  * skill-specific words baked in here.
  *
- * Match rule: the user input must be a single bare word (after
- * trimming and stripping trailing punctuation, both common artefacts
- * of typed input and STT output) that matches an action's `id` or
- * `label` case-insensitively. Multi-word inputs ("yes please", "no I
- * meant tomorrow") fall through to the engine — they're real
- * utterances, not card answers.
+ * Match rule: the user input (after trimming and stripping trailing
+ * punctuation, both common artefacts of typed input and STT output)
+ * must match an action's `id` or `label` case-insensitively. Both
+ * single-word ("spotify") and multi-word inputs ("apple music") are
+ * eligible — what matters is an exact label/id match, not word count.
+ * Inputs that don't match any visible button fall through to the engine.
  *
  * Only the most recent card with actions is consulted; older cards
  * in the conversation are presumed already-handled and shouldn't
@@ -25,7 +26,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class CardActionVoiceIntercept @Inject constructor(
-    private val cardRepository: CardStateRepository,
+    private val cardRepository: CardStateSource,
 ) {
     /**
      * @param cardId   id of the card whose action matched
@@ -39,7 +40,7 @@ class CardActionVoiceIntercept @Inject constructor(
 
     fun resolve(text: String): Match? {
         val word = text.trim().lowercase().trimEnd('.', '!', '?', ',')
-        if (word.isEmpty() || word.contains(' ')) return null
+        if (word.isEmpty()) return null
 
         // Most recent card with at least one action — the one
         // currently prompting the user. `cardRepository.state` is
