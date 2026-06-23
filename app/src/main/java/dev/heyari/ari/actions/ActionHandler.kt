@@ -49,7 +49,7 @@ class ActionHandler @Inject constructor(
         env.launchApp?.let { return ActionResult.Spoken(env.speak ?: handleOpen(it)) }
         env.search?.let { return ActionResult.Spoken(env.speak ?: handleSearch(it)) }
         env.openUrl?.let { return ActionResult.Spoken(env.speak ?: handleOpenUrl(it)) }
-        env.playMedia?.let { return ActionResult.Spoken(env.speak ?: handlePlayMedia(it)) }
+        env.media?.let { return ActionResult.Spoken(env.speak ?: handleMedia(it)) }
         env.clipboardText?.let { copyToClipboard(it) }
 
         val attachments = if (env.hasPresentationPrimitives()) {
@@ -82,8 +82,10 @@ class ActionHandler @Inject constructor(
         }
     }
 
-    private fun handlePlayMedia(pm: PlayMedia): String =
-        when (val r = musicLauncher.play(pm.query, pm.service)) {
+    private fun handleMedia(m: MediaAction): String {
+        if (m.action != "play") return "" // transport controls not implemented yet
+        val query = m.query ?: return "What would you like me to play?"
+        return when (val r = musicLauncher.play(query, m.service)) {
             is MusicLauncher.PlayResult.Playing ->
                 if (r.serviceName != null) "Playing ${r.query} on ${r.serviceName}."
                 else "Playing ${r.query}."
@@ -94,6 +96,7 @@ class ActionHandler @Inject constructor(
             is MusicLauncher.PlayResult.Failed ->
                 "I couldn't play that: ${r.reason}."
         }
+    }
 
     private fun handleOpenUrl(url: String): String {
         return runCatching {

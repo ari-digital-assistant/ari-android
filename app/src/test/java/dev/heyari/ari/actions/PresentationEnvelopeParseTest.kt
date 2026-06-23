@@ -37,37 +37,26 @@ class PresentationEnvelopeParseTest {
         assertTrue(env.notifications.isEmpty())
         assertNull(env.launchApp)
         assertNull(env.search)
-        assertNull(env.playMedia)
+        assertNull(env.media)
         assertFalse(env.hasPresentationPrimitives())
     }
 
     @Test
-    fun parsesPlayMediaWithService() {
+    fun parsesMediaPlayWithService() {
         val env = PresentationEnvelope.parse(
-            JSONObject("""{"v":1,"play_media":{"query":"hotel california","service":"spotify"}}"""),
+            JSONObject("""{"v":1,"media":{"action":"play","query":"hotel california","service":"spotify"}}"""),
             SKILL_ID,
         )!!
-        assertEquals("hotel california", env.playMedia!!.query)
-        assertEquals("spotify", env.playMedia!!.service)
+        assertEquals("play", env.media!!.action)
+        assertEquals("hotel california", env.media!!.query)
+        assertEquals("spotify", env.media!!.service)
     }
 
     @Test
-    fun parsesPlayMediaWithoutService() {
-        val env = PresentationEnvelope.parse(
-            JSONObject("""{"v":1,"play_media":{"query":"hotel california"}}"""),
-            SKILL_ID,
-        )!!
-        assertEquals("hotel california", env.playMedia!!.query)
-        assertNull(env.playMedia!!.service)
-    }
-
-    @Test
-    fun playMediaWithBlankQueryIsNull() {
-        val env = PresentationEnvelope.parse(
-            JSONObject("""{"v":1,"play_media":{"query":""}}"""),
-            SKILL_ID,
-        )!!
-        assertNull(env.playMedia)
+    fun parsesMediaWithoutAction() {
+        // action missing → null whole slot (must be explicit)
+        val env = PresentationEnvelope.parse(JSONObject("""{"v":1,"media":{"query":"x"}}"""), SKILL_ID)!!
+        assertNull(env.media)
     }
 
     @Test

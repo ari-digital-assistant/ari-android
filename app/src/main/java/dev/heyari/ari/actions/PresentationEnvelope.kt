@@ -15,8 +15,8 @@ import dev.heyari.ari.notifications.NotificationPrimitive
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** A request to play a free-text [query], optionally on a named [service] id. */
-data class PlayMedia(val query: String, val service: String?)
+/** A media action from the engine, e.g. play a [query] optionally on a named [service]. */
+data class MediaAction(val action: String, val query: String?, val service: String?)
 
 /**
  * Parsed, typed view of a presentation envelope from a skill.
@@ -36,7 +36,7 @@ data class PresentationEnvelope(
     val alerts: List<AlertSpec>,
     val notifications: List<NotificationPrimitive>,
     val launchApp: String?,
-    val playMedia: PlayMedia?,
+    val media: MediaAction?,
     val search: String?,
     val openUrl: String?,
     val clipboardText: String?,
@@ -85,8 +85,10 @@ data class PresentationEnvelope(
                     notifications = json.optJSONArray("notifications")
                         ?.let { parseNotifications(it, skillId) }.orEmpty(),
                     launchApp = json.optStringOrNull("launch_app"),
-                    playMedia = json.optJSONObject("play_media")?.let { o ->
-                        o.optStringOrNull("query")?.let { q -> PlayMedia(q, o.optStringOrNull("service")) }
+                    media = json.optJSONObject("media")?.let { o ->
+                        o.optStringOrNull("action")?.let { act ->
+                            MediaAction(act, o.optStringOrNull("query"), o.optStringOrNull("service"))
+                        }
                     },
                     search = json.optStringOrNull("search"),
                     openUrl = json.optStringOrNull("open_url"),
