@@ -5,6 +5,7 @@ import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.actions.AriFfiEnvelopeSink
 import dev.heyari.ari.calendar.AriFfiCalendarProvider
+import dev.heyari.ari.media.AriFfiMediaServicesProvider
 import dev.heyari.ari.clock.AriFfiLocalClock
 import dev.heyari.ari.data.SecretStore
 import dev.heyari.ari.data.SettingsRepository
@@ -64,6 +65,7 @@ class EngineHolder @Inject constructor(
     private val ariFfiLocaleProvider: AriFfiLocaleProvider,
     private val ariFfiSettingWriter: dev.heyari.ari.settings.AriFfiSettingWriter,
     private val ariFfiAuthorizeProvider: dev.heyari.ari.oauth.AriFfiAuthorizeProvider,
+    private val ariFfiMediaServicesProvider: AriFfiMediaServicesProvider,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -105,6 +107,7 @@ class EngineHolder @Inject constructor(
             locale = ariFfiLocaleProvider,
             settingWriter = ariFfiSettingWriter,
             authorize = ariFfiAuthorizeProvider,
+            mediaServices = ariFfiMediaServicesProvider,
         )
 
         // Rehydrate non-secret skill settings from DataStore into the

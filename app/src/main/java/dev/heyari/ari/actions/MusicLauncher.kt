@@ -33,6 +33,10 @@ class MusicLauncher @Inject constructor(
         data class Failed(val reason: String) : PlayResult
     }
 
+    /** Returns the ids of every registered music service that is currently installed.
+     *  Stub — replaced in Task 14 with a real package-presence check. */
+    fun installedServiceIds(): List<String> = emptyList()
+
     fun play(query: String, serviceId: String?): PlayResult {
         if (query.isBlank()) return PlayResult.Failed("empty query")
         if (serviceId == null) return playDefault(query)
