@@ -46,13 +46,15 @@ class MusicLauncherRegistryTest {
     }
 
     @Test
-    fun spotifyPrefersIntentYoutubeMusicPrefersBrowser() {
+    fun spotifyPrefersIntentYoutubeMusicPrefersMediaSession() {
         assertEquals(
             MusicLauncher.Strategy.PLAY_FROM_SEARCH_INTENT,
             MusicLauncher.REGISTRY["spotify"]!!.strategy.first(),
         )
+        // SPIKE: YT Music now leads with MEDIA_SESSION (getActiveSessions ->
+        // playFromSearch) because its MediaBrowser rejects our connection.
         assertEquals(
-            MusicLauncher.Strategy.MEDIA_BROWSER,
+            MusicLauncher.Strategy.MEDIA_SESSION,
             MusicLauncher.REGISTRY["youtube_music"]!!.strategy.first(),
         )
     }

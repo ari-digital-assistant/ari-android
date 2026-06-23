@@ -5,14 +5,18 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.session.MediaController
+import android.media.session.MediaSessionManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.SystemClock
 import android.provider.MediaStore
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.session.MediaControllerCompat
 import android.util.Log
+import dev.heyari.ari.media.AriMediaNotificationListener
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -40,7 +44,7 @@ import javax.inject.Singleton
 class MusicLauncher @Inject constructor(
     private val context: Context,
 ) {
-    enum class Strategy { MEDIA_BROWSER, PLAY_FROM_SEARCH_INTENT, SEARCH_DEEPLINK }
+    enum class Strategy { MEDIA_SESSION, MEDIA_BROWSER, PLAY_FROM_SEARCH_INTENT, SEARCH_DEEPLINK }
 
     data class Service(
         val id: String,
@@ -70,6 +74,7 @@ class MusicLauncher @Inject constructor(
             ?: return PlayResult.ServiceNotInstalled(svc.displayName)
         for (strat in svc.strategy) {
             val ok = when (strat) {
+                Strategy.MEDIA_SESSION -> tryMediaSessionPlay(pkg, query)
                 Strategy.MEDIA_BROWSER -> tryMediaBrowserPlay(pkg, query)
                 Strategy.PLAY_FROM_SEARCH_INTENT -> tryPlayFromSearchIntent(pkg, query)
                 Strategy.SEARCH_DEEPLINK -> svc.searchUrl?.let { tryDeepLink(pkg, it(query)) } ?: false
@@ -77,6 +82,129 @@ class MusicLauncher @Inject constructor(
             if (ok) return PlayResult.Playing(query, svc.displayName)
         }
         return PlayResult.Failed("no strategy played on ${svc.displayName}")
+    }
+
+    /**
+     * SPIKE strategy: drive [pkg]'s ALREADY-LIVE MediaSession.
+     *
+     * Some apps (notably YouTube Music) signature-gate their MediaBrowserService
+     * so MEDIA_BROWSER is a dead end for us, yet their active MediaSession still
+     * advertises ACTION_PLAY_FROM_SEARCH. So instead of binding the browser we
+     * enumerate the system's active sessions, find the controller belonging to
+     * [pkg] and dispatch playFromSearch straight onto its transport controls.
+     *
+     * Enumerating other apps' sessions needs one of:
+     *   - the MEDIA_CONTENT_CONTROL permission (system/privileged only), OR
+     *   - a notification-listener component the user has authorised, passed to
+     *     getActiveSessions(ComponentName).
+     * Being the default assistant *may* also be enough for getActiveSessions(null)
+     * — this spike tries both and logs which path actually works.
+     *
+     * Heavy MEDIASPIKE: logging throughout so the device run is greppable.
+     */
+    private fun tryMediaSessionPlay(pkg: String, query: String): Boolean {
+        val msm = context.getSystemService(Context.MEDIA_SESSION_SERVICE) as? MediaSessionManager
+        if (msm == null) {
+            Log.w(TAG, "MEDIASPIKE: MediaSessionManager unavailable")
+            return false
+        }
+
+        // First pass: maybe the session is already live (app already playing /
+        // foregrounded). If so we can dispatch immediately, no launch needed.
+        findController(msm, pkg)?.let { controller ->
+            return dispatch(controller, pkg, query)
+        }
+
+        // No live session for pkg yet. Launch the app, then poll for its session
+        // to appear. We're off the main thread (play() runs on Dispatchers.Default),
+        // so a bounded sleep-poll loop is acceptable here.
+        Log.i(TAG, "MEDIASPIKE: no active session for $pkg yet, launching app then polling")
+        val launch = context.packageManager.getLaunchIntentForPackage(pkg)
+        if (launch == null) {
+            Log.w(TAG, "MEDIASPIKE: no launch intent for $pkg, cannot bring up a session")
+            return false
+        }
+        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (!startSafely(launch)) {
+            Log.w(TAG, "MEDIASPIKE: launch of $pkg failed")
+            return false
+        }
+
+        val deadline = SystemClock.uptimeMillis() + SESSION_POLL_TIMEOUT_MS
+        while (SystemClock.uptimeMillis() < deadline) {
+            try {
+                Thread.sleep(SESSION_POLL_INTERVAL_MS)
+            } catch (ie: InterruptedException) {
+                Thread.currentThread().interrupt()
+                Log.w(TAG, "MEDIASPIKE: poll interrupted for $pkg")
+                return false
+            }
+            val controller = findController(msm, pkg)
+            if (controller != null) {
+                Log.i(TAG, "MEDIASPIKE: session for $pkg appeared after launch+poll")
+                return dispatch(controller, pkg, query)
+            }
+        }
+        Log.w(TAG, "MEDIASPIKE: session for $pkg never appeared within ${SESSION_POLL_TIMEOUT_MS}ms")
+        return false
+    }
+
+    /**
+     * Enumerates active sessions and returns the controller for [pkg], or null.
+     * Tries getActiveSessions(null) first (works if the assistant role alone
+     * suffices), then falls back to passing our authorised notification-listener
+     * component. Logs exactly which path worked so the spike can conclude.
+     */
+    private fun findController(msm: MediaSessionManager, pkg: String): MediaController? {
+        var sessions: List<MediaController>? = null
+
+        // (a) getActiveSessions(null) — needs MEDIA_CONTENT_CONTROL or, on some
+        //     builds, the enabled notification-listener / assistant privilege.
+        try {
+            sessions = msm.getActiveSessions(null)
+            Log.i(TAG, "MEDIASPIKE: getActiveSessions(null) ok, ${sessions.size} sessions")
+        } catch (se: SecurityException) {
+            Log.w(TAG, "MEDIASPIKE: getActiveSessions(null) SecurityException: ${se.message}")
+        }
+
+        // (b) Fallback: pass our notification-listener component. Only valid if
+        //     the user has granted notification access to it.
+        if (sessions == null) {
+            val component = ComponentName(context, AriMediaNotificationListener::class.java)
+            try {
+                sessions = msm.getActiveSessions(component)
+                Log.i(TAG, "MEDIASPIKE: getActiveSessions($component) ok, ${sessions.size} sessions")
+            } catch (se: SecurityException) {
+                Log.w(TAG, "MEDIASPIKE: getActiveSessions($component) SecurityException: ${se.message}")
+            }
+        }
+
+        if (sessions == null) {
+            Log.w(TAG, "MEDIASPIKE: no session access by either path")
+            return null
+        }
+
+        val match = sessions.firstOrNull { it.packageName == pkg }
+        if (match == null) {
+            val pkgs = sessions.joinToString(", ") { it.packageName }
+            Log.i(TAG, "MEDIASPIKE: no controller for $pkg (live packages: [$pkgs])")
+        } else {
+            val actions = match.playbackState?.actions
+            Log.i(TAG, "MEDIASPIKE: controller found for $pkg, playbackState.actions=$actions")
+        }
+        return match
+    }
+
+    /** Dispatches playFromSearch onto [controller]. Returns true on dispatch. */
+    private fun dispatch(controller: MediaController, pkg: String, query: String): Boolean {
+        return try {
+            Log.i(TAG, "MEDIASPIKE: dispatching playFromSearch(\"$query\") to $pkg")
+            controller.transportControls.playFromSearch(query, Bundle())
+            true
+        } catch (t: Throwable) {
+            Log.e(TAG, "MEDIASPIKE: playFromSearch dispatch failed for $pkg", t)
+            false
+        }
     }
 
     /**
@@ -219,6 +347,11 @@ class MusicLauncher @Inject constructor(
         private const val CONNECT_TIMEOUT_MS = 3_000L
         private const val MEDIA_BROWSER_SERVICE_ACTION = "android.media.browse.MediaBrowserService"
 
+        // MEDIA_SESSION spike: after launching the target app, poll for its
+        // active session to come up before giving up (~5s total).
+        private const val SESSION_POLL_INTERVAL_MS = 300L
+        private const val SESSION_POLL_TIMEOUT_MS = 5_000L
+
         val REGISTRY: Map<String, Service> = listOf(
             Service(
                 "spotify", "Spotify", listOf("com.spotify.music"),
@@ -230,7 +363,7 @@ class MusicLauncher @Inject constructor(
             ),
             Service(
                 "youtube_music", "YouTube Music", listOf("com.google.android.apps.youtube.music"),
-                listOf(Strategy.MEDIA_BROWSER, Strategy.SEARCH_DEEPLINK),
+                listOf(Strategy.MEDIA_SESSION, Strategy.SEARCH_DEEPLINK),
                 searchUrl = { q -> "https://music.youtube.com/search?q=" + Uri.encode(q) },
             ),
             Service(

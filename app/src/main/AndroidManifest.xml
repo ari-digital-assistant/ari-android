@@ -319,6 +319,23 @@
                 android:name="android.speech"
                 android:resource="@xml/recognition_service" />
         </service>
+
+        <!--
+          SPIKE: Empty NotificationListenerService. Holds no logic — it exists
+          only so the user can grant notification access, which authorises
+          MusicLauncher to call MediaSessionManager.getActiveSessions(component)
+          and enumerate other apps' active media sessions (the path to
+          auto-playing in YouTube Music via its live MediaSession's
+          ACTION_PLAY_FROM_SEARCH, since its MediaBrowser rejects us).
+        -->
+        <service
+            android:name=".media.AriMediaNotificationListener"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>
