@@ -37,7 +37,37 @@ class PresentationEnvelopeParseTest {
         assertTrue(env.notifications.isEmpty())
         assertNull(env.launchApp)
         assertNull(env.search)
+        assertNull(env.playMedia)
         assertFalse(env.hasPresentationPrimitives())
+    }
+
+    @Test
+    fun parsesPlayMediaWithService() {
+        val env = PresentationEnvelope.parse(
+            JSONObject("""{"v":1,"play_media":{"query":"hotel california","service":"spotify"}}"""),
+            SKILL_ID,
+        )!!
+        assertEquals("hotel california", env.playMedia!!.query)
+        assertEquals("spotify", env.playMedia!!.service)
+    }
+
+    @Test
+    fun parsesPlayMediaWithoutService() {
+        val env = PresentationEnvelope.parse(
+            JSONObject("""{"v":1,"play_media":{"query":"hotel california"}}"""),
+            SKILL_ID,
+        )!!
+        assertEquals("hotel california", env.playMedia!!.query)
+        assertNull(env.playMedia!!.service)
+    }
+
+    @Test
+    fun playMediaWithBlankQueryIsNull() {
+        val env = PresentationEnvelope.parse(
+            JSONObject("""{"v":1,"play_media":{"query":""}}"""),
+            SKILL_ID,
+        )!!
+        assertNull(env.playMedia)
     }
 
     @Test
