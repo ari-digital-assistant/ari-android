@@ -58,10 +58,18 @@ class MusicLauncherRegistryTest {
     }
 
     @Test
-    fun installedServiceIdsFiltersToInstalled() {
-        // With no packages installed in a unit-test context, the list is empty.
-        // (Real install-state is covered by device e2e.)
-        // This asserts the method exists and returns a List<String>.
-        assertTrue(MusicLauncher.REGISTRY.keys.containsAll(setOf("spotify", "youtube_music")))
+    fun everyRegisteredServiceDeclaresAtLeastOnePackageAndStrategy() {
+        // installedServiceIds() filters the registry by isInstalled(pkg),
+        // which needs a real PackageManager (Context). We have no Robolectric
+        // or Mockito on the unit classpath, so the install-filtering behaviour
+        // itself is covered by device e2e (T16). What we CAN assert here without
+        // a Context is the precondition installedServiceIds() relies on: every
+        // registered service has packages to probe and strategies to dispatch.
+        // An entry with no packages would silently never be returned; an entry
+        // with no strategy would always Fail. This guards both.
+        for ((id, svc) in MusicLauncher.REGISTRY) {
+            assertTrue("service '$id' must declare at least one package", svc.packages.isNotEmpty())
+            assertTrue("service '$id' must declare at least one strategy", svc.strategy.isNotEmpty())
+        }
     }
 }

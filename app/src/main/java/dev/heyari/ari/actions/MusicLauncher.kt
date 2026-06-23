@@ -7,6 +7,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.HandlerThread
 import android.provider.MediaStore
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.session.MediaControllerCompat
@@ -89,6 +91,18 @@ class MusicLauncher @Inject constructor(
         val dispatched = AtomicBoolean(false)
         var browser: MediaBrowserCompat? = null
 
+        // MediaBrowserCompat posts its ConnectionCallback to the Handler of the
+        // thread that CONSTRUCTS it. If we built/connected it on the calling
+        // thread (which on the voice path is Dispatchers.Main, then blocked on
+        // the latch below), the callbacks would queue behind the blocked looper
+        // and never fire — the latch would only release on the timeout and this
+        // strategy could never succeed. So we give the browser its OWN looper:
+        // a dedicated HandlerThread whose looper is never blocked, so the
+        // connect callbacks dispatch and the latch releases promptly regardless
+        // of which thread play() runs on.
+        val handlerThread = HandlerThread("ari-mediabrowser-$pkg").apply { start() }
+        val handler = Handler(handlerThread.looper)
+
         val callback = object : MediaBrowserCompat.ConnectionCallback() {
             override fun onConnected() {
                 try {
@@ -116,18 +130,40 @@ class MusicLauncher @Inject constructor(
         }
 
         return try {
-            browser = MediaBrowserCompat(context, component, callback, null)
-            browser.connect()
+            // Construct + connect ON the HandlerThread's looper so the browser
+            // binds its internal Handler to that looper rather than the caller's.
+            // We block here until construction has happened so `browser` is
+            // populated before any callback can read it.
+            val constructed = CountDownLatch(1)
+            handler.post {
+                try {
+                    browser = MediaBrowserCompat(context, component, callback, null).also {
+                        it.connect()
+                    }
+                } catch (t: Throwable) {
+                    Log.e(TAG, "MediaBrowser connect failed for $pkg", t)
+                    latch.countDown()
+                } finally {
+                    constructed.countDown()
+                }
+            }
+            constructed.await(CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
             val connectedInTime = latch.await(CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
             connectedInTime && dispatched.get()
         } catch (t: Throwable) {
             Log.e(TAG, "MediaBrowser connect failed for $pkg", t)
             false
         } finally {
-            try {
-                browser?.disconnect()
-            } catch (t: Throwable) {
-                Log.w(TAG, "MediaBrowser disconnect failed for $pkg", t)
+            // disconnect() must run on the same looper the browser was created
+            // on, then tear the thread down so it doesn't leak.
+            handler.post {
+                try {
+                    browser?.disconnect()
+                } catch (t: Throwable) {
+                    Log.w(TAG, "MediaBrowser disconnect failed for $pkg", t)
+                } finally {
+                    handlerThread.quitSafely()
+                }
             }
         }
     }

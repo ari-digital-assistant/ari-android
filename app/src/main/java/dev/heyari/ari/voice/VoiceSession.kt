@@ -268,7 +268,17 @@ class VoiceSession @Inject constructor(
             // Voice path doesn't render attachments (the overlay is text-only);
             // coordinator side-effects on the repo still happen so the card
             // shows up in the conversation screen next time it's opened.
-            is FfiResponse.Action -> actionHandler.handle(response.json, response.skillId).text
+            //
+            // We're on Dispatchers.Main here. handle() can block — the media
+            // path connects a MediaBrowser and waits on a latch for up to 3s —
+            // and blocking Main would ANR AND deadlock the MediaBrowser
+            // callbacks. handle() touches no UI directly (it dispatches
+            // Intents, writes the clipboard, and drives PresentationCoordinator,
+            // which mutates StateFlow-backed repos — all thread-safe off Main),
+            // so dispatch it to Default exactly like transcribeOffline above.
+            is FfiResponse.Action -> kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                actionHandler.handle(response.json, response.skillId).text
+            }
             is FfiResponse.Binary -> "[Binary: ${response.mime}, ${response.data.size} bytes]"
             is FfiResponse.NotUnderstood -> response.body
         }
