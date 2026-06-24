@@ -29,8 +29,6 @@ fun PermissionsScreen(
     onBack: () -> Unit,
     onRequestRecordAudio: () -> Unit,
     onRequestNotifications: () -> Unit,
-    onRequestLocation: () -> Unit,
-    onOpenFsnSettings: () -> Unit,
     onOpenOverlaySettings: () -> Unit,
     onOpenAppSettings: () -> Unit,
 ) {
@@ -74,8 +72,11 @@ fun PermissionsScreen(
             permissions = state.permissions,
             onRequestRecordAudio = onRequestRecordAudio,
             onRequestNotifications = onRequestNotifications,
-            onRequestLocation = onRequestLocation,
-            onOpenFsnSettings = onOpenFsnSettings,
+            // Location and full-screen alerts are requested at skill-install
+            // time, not during first-run — keep both off the onboarding
+            // screen entirely.
+            showLocation = false,
+            showFsn = false,
             onOpenOverlaySettings = onOpenOverlaySettings,
             onOpenAppSettings = onOpenAppSettings,
         )

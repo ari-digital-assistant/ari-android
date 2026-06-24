@@ -49,10 +49,18 @@ internal fun PermissionsSection(
     permissions: PermissionStatus,
     onRequestRecordAudio: () -> Unit,
     onRequestNotifications: () -> Unit,
-    onRequestLocation: () -> Unit,
-    onOpenFsnSettings: () -> Unit,
     onOpenOverlaySettings: () -> Unit,
     onOpenAppSettings: () -> Unit,
+    // Location and full-screen alerts are no longer core, asked-up-front
+    // permissions: each is requested at skill-install time by whichever
+    // skill declares the matching capability (`location` → weather etc;
+    // `critical_alert` → timer etc). Onboarding hides both rows
+    // (showLocation / showFsn = false); the Settings → Permissions page
+    // keeps them so a user who declined at install can manage them later.
+    showLocation: Boolean = true,
+    onRequestLocation: () -> Unit = {},
+    showFsn: Boolean = true,
+    onOpenFsnSettings: () -> Unit = {},
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         PermissionRow(
@@ -79,17 +87,19 @@ internal fun PermissionsSection(
             onAction = if (permissions.postNotifications) onOpenAppSettings else onRequestNotifications,
         )
 
-        PermissionRow(
-            label = stringResource(R.string.permission_location_label),
-            description = stringResource(R.string.permission_location_description),
-            granted = permissions.location,
-            required = false,
-            actionLabel = stringResource(
-                if (permissions.location) R.string.permission_status_granted
-                else R.string.permission_status_grant
-            ),
-            onAction = if (permissions.location) onOpenAppSettings else onRequestLocation,
-        )
+        if (showLocation) {
+            PermissionRow(
+                label = stringResource(R.string.permission_location_label),
+                description = stringResource(R.string.permission_location_description),
+                granted = permissions.location,
+                required = false,
+                actionLabel = stringResource(
+                    if (permissions.location) R.string.permission_status_granted
+                    else R.string.permission_status_grant
+                ),
+                onAction = if (permissions.location) onOpenAppSettings else onRequestLocation,
+            )
+        }
 
         PermissionRow(
             label = stringResource(R.string.permission_lockscreen_label),
@@ -103,17 +113,19 @@ internal fun PermissionsSection(
             onAction = onOpenOverlaySettings,
         )
 
-        PermissionRow(
-            label = stringResource(R.string.permission_fsn_label),
-            description = stringResource(R.string.permission_fsn_description),
-            granted = permissions.fullScreenIntent,
-            required = false,
-            actionLabel = stringResource(
-                if (permissions.fullScreenIntent) R.string.permission_status_granted
-                else R.string.action_open_settings
-            ),
-            onAction = onOpenFsnSettings,
-        )
+        if (showFsn) {
+            PermissionRow(
+                label = stringResource(R.string.permission_fsn_label),
+                description = stringResource(R.string.permission_fsn_description),
+                granted = permissions.fullScreenIntent,
+                required = false,
+                actionLabel = stringResource(
+                    if (permissions.fullScreenIntent) R.string.permission_status_granted
+                    else R.string.action_open_settings
+                ),
+                onAction = onOpenFsnSettings,
+            )
+        }
     }
 }
 

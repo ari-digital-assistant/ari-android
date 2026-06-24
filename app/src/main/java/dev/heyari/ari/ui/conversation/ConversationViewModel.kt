@@ -2,10 +2,8 @@ package dev.heyari.ari.ui.conversation
 
 import android.Manifest
 import android.app.Application
-import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.core.content.ContextCompat
@@ -575,28 +573,6 @@ class ConversationViewModel @Inject constructor(
         }
     }
 
-    fun checkFsnPermission(): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            val nm = application.getSystemService(NotificationManager::class.java)
-            return nm.canUseFullScreenIntent()
-        }
-        return true
-    }
-
-    fun openFsnSettings() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            val intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
-                data = Uri.parse("package:${application.packageName}")
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            application.startActivity(intent)
-        }
-    }
-
-    fun dismissFsnPrompt() {
-        _state.update { it.copy(needsFsnPermission = false) }
-    }
-
     /**
      * Set the wake word service to a desired state. Idempotent against the
      * actual service state, not the displayed state — so we can't get into a
@@ -606,9 +582,6 @@ class ConversationViewModel @Inject constructor(
         val intent = Intent(application, WakeWordService::class.java)
         if (enabled) {
             if (WakeWordService.isRunning) return
-            if (!checkFsnPermission()) {
-                _state.update { it.copy(needsFsnPermission = true) }
-            }
             ContextCompat.startForegroundService(application, intent)
         } else {
             if (!WakeWordService.isRunning) return

@@ -31,7 +31,6 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -128,26 +127,6 @@ fun ConversationScreen(
         }
     }
 
-    if (state.needsFsnPermission) {
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissFsnPrompt() },
-            title = { Text(stringResource(R.string.conversation_fsn_dialog_title)) },
-            text = { Text(stringResource(R.string.conversation_fsn_dialog_body)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.dismissFsnPrompt()
-                    viewModel.openFsnSettings()
-                }) {
-                    Text(stringResource(R.string.action_open_settings))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.dismissFsnPrompt() }) {
-                    Text(stringResource(R.string.action_later))
-                }
-            }
-        )
-    }
 
     Scaffold(
         topBar = {

@@ -1,6 +1,14 @@
 package dev.heyari.ari.ui.settings.skills
 
+import android.Manifest
+import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -46,6 +54,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -176,6 +185,72 @@ fun SkillDetailScreen(
     }
     val busy = skillId in state.installingIds
 
+    // Skill-install-time permission request. A skill that declares the
+    // `location` host capability (weather, "near me", …) gets coarse
+    // location asked for at the honest moment of consent — when the user
+    // installs it — rather than up front in the first-run wizard. This is
+    // capability-driven, never keyed on a skill id, so it stays
+    // frontend-independent: any skill declaring `location` trips it, and
+    // the host owns the capability → Android-permission mapping. Location
+    // is optional, so the install proceeds regardless of the grant
+    // outcome; the location capability degrades gracefully to
+    // PERMISSION_DENIED when refused.
+    val context = LocalContext.current
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { viewModel.installById(skillId) }
+    fun startInstall() {
+        val wantsLocation = view.capabilities.any { it.equals("location", ignoreCase = true) }
+        val hasLocation = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (wantsLocation && !hasLocation) {
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+        } else {
+            viewModel.installById(skillId)
+        }
+    }
+
+    // Post-install nudge for skills that emit critical full-takeover alerts
+    // (the `critical_alert` capability — timer and friends). Those alerts
+    // reach the user over the locked screen via Android's full-screen
+    // intent, which on API 34+ is a special-access permission the user must
+    // grant in system settings. Rather than nag every first-run user in the
+    // wizard, ask once — gently — right after they install a skill that
+    // actually needs it. Capability-driven, never keyed on a skill id, and
+    // fires on the real not-installed → installed transition only.
+    var pendingFsnNudge by remember(skillId) { mutableStateOf(false) }
+    var fsnNudgeResolved by remember(skillId) { mutableStateOf(false) }
+    LaunchedEffect(isInstalledLocally, view.capabilities) {
+        if (isInstalledLocally && !wasInstalledOnEntry && !fsnNudgeResolved &&
+            view.capabilities.any { it.equals("critical_alert", ignoreCase = true) }
+        ) {
+            fsnNudgeResolved = true
+            if (!canUseFullScreenIntent(context)) pendingFsnNudge = true
+        }
+    }
+
+    if (pendingFsnNudge) {
+        AlertDialog(
+            onDismissRequest = { pendingFsnNudge = false },
+            title = { Text(stringResource(R.string.skills_fsn_nudge_title)) },
+            text = { Text(stringResource(R.string.skills_fsn_nudge_message, view.title)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingFsnNudge = false
+                    openFullScreenIntentSettings(context)
+                }) {
+                    Text(stringResource(R.string.skills_fsn_nudge_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingFsnNudge = false }) {
+                    Text(stringResource(R.string.skills_fsn_nudge_dismiss))
+                }
+            },
+        )
+    }
+
     if (pendingUninstall) {
         AlertDialog(
             onDismissRequest = { pendingUninstall = false },
@@ -250,7 +325,7 @@ fun SkillDetailScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.installById(skillId)
+                    startInstall()
                     pendingLocaleMismatchInstall = false
                 }) {
                     Text(stringResource(R.string.skills_install_locale_mismatch_continue))
@@ -281,7 +356,7 @@ fun SkillDetailScreen(
                             val supports = view.languages.isEmpty() ||
                                 view.languages.any { it.equals(state.activeLocale, ignoreCase = true) }
                             if (supports) {
-                                viewModel.installById(skillId)
+                                startInstall()
                             } else {
                                 pendingLocaleMismatchInstall = true
                             }
@@ -621,6 +696,28 @@ private fun buildSubtitle(version: String, skillId: String): String {
     if (version.isNotBlank()) parts.add(version)
     parts.add(skillId)
     return parts.joinToString(" · ")
+}
+
+/**
+ * Whether full-screen-intent alerts can currently fire. Below API 34 the
+ * permission is granted at install, so it's always usable; from API 34 it's
+ * a special-access grant the user controls.
+ */
+private fun canUseFullScreenIntent(context: Context): Boolean =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        context.getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
+    } else {
+        true
+    }
+
+/** Deep-link to the system "Full screen notifications" special-access page. */
+private fun openFullScreenIntentSettings(context: Context) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
+    val intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
+        data = "package:${context.packageName}".toUri()
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    runCatching { context.startActivity(intent) }
 }
 
 /**

@@ -85,6 +85,10 @@
     <string name="skills_set_as_default_assistant_message">%1$s is installed. Would you like to set it as your default assistant? Ari will route everything that doesn\'t match a direct skill through it.</string>
     <string name="skills_set_as_default_assistant_confirm">Set as default</string>
     <string name="skills_set_as_default_assistant_dismiss">Not now</string>
+    <string name="skills_fsn_nudge_title">Allow full-screen alerts?</string>
+    <string name="skills_fsn_nudge_message">%1$s can show a full-screen alert that takes over your locked screen — like an alarm going off. Turn on full-screen alerts so it can reach you even when your phone is locked.</string>
+    <string name="skills_fsn_nudge_confirm">Open settings</string>
+    <string name="skills_fsn_nudge_dismiss">Not now</string>
     <string name="skills_browse_in_english_fallback">Description in English (no translation yet)</string>
 
     <!-- Skill install/registry error messages -->
@@ -224,8 +228,6 @@
     <string name="conversation_downloading_header">Downloading in the background</string>
     <string name="conversation_downloading_stt_model">Voice recognition model</string>
     <string name="conversation_downloading_llm_model">Assistant model</string>
-    <string name="conversation_fsn_dialog_title">Full-screen notifications</string>
-    <string name="conversation_fsn_dialog_body">For hands-free wake word activation, Ari needs permission to show full-screen notifications. Without this, you\'ll get a banner notification instead.</string>
 
     <!-- Voice overlay -->
     <string name="voice_overlay_title">Ari</string>
@@ -243,7 +245,7 @@
     <string name="permission_lockscreen_label">Lock screen wake word</string>
     <string name="permission_lockscreen_description">Required for the wake word to keep working when your phone is locked — like how phone calls appear on the lock screen. Android calls this \"Display over other apps\", but Ari does not draw on top of your other apps. It only uses this permission to open its own voice screen when you say the wake word. Without it, the wake word will only work once per session.</string>
     <string name="permission_fsn_label">Full-screen notifications</string>
-    <string name="permission_fsn_description">Optional. Legacy fallback path — not used by Ari\'s current wake word flow, but kept available in case Android tightens overlay rules in future.</string>
+    <string name="permission_fsn_description">Optional. Lets a timer or other critical alert take over the locked screen as a fallback when the direct launch is suppressed. Requested when you install a skill that needs it; not used by the wake word flow.</string>
     <string name="permission_status_granted">Granted</string>
     <string name="permission_status_grant">Grant</string>
     <string name="permission_status_open_android_settings">Open Android settings</string>

@@ -75,8 +75,11 @@
     <!--
       Coarse location — needed by location-using skills (weather, "near me")
       via the `location` host capability. Coarse only; we never request
-      ACCESS_FINE_LOCATION. Runtime-granted; the request is triggered from
-      the permissions settings page, never at launch.
+      ACCESS_FINE_LOCATION. Runtime-granted; the request is triggered when
+      the user installs a skill that declares the `location` capability
+      (capability-driven, never at launch / never in the first-run wizard).
+      The Settings → Permissions page also lets the user grant or revoke it
+      after the fact.
     -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
