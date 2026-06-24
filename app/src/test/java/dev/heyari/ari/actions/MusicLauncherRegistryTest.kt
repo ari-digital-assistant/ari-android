@@ -14,7 +14,7 @@ class MusicLauncherRegistryTest {
         assertEquals(
             setOf(
                 "spotify", "apple_music",
-                "tidal", "deezer", "youtube", "amazon_music",
+                "tidal", "deezer", "amazon_music",
             ),
             ids,
         )
@@ -26,14 +26,6 @@ class MusicLauncherRegistryTest {
         assertNotNull(s)
         assertEquals("Spotify", s!!.displayName)
         assertEquals(listOf("com.spotify.music"), s.packages)
-    }
-
-    @Test
-    fun youtubeEntryIsPresent() {
-        assertEquals(
-            listOf("com.google.android.youtube"),
-            MusicLauncher.REGISTRY["youtube"]!!.packages,
-        )
     }
 
     @Test

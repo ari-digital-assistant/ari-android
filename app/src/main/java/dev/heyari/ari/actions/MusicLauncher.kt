@@ -140,11 +140,6 @@ class MusicLauncher @Inject constructor(
                 listOf(Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.SEARCH_DEEPLINK),
             ),
             Service(
-                "youtube", "YouTube", listOf("com.google.android.youtube"),
-                listOf(Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.SEARCH_DEEPLINK),
-                searchUrl = { q -> "https://www.youtube.com/results?search_query=" + Uri.encode(q) },
-            ),
-            Service(
                 "amazon_music", "Amazon Music", listOf("com.amazon.mp3"),
                 listOf(Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.SEARCH_DEEPLINK),
             ),
