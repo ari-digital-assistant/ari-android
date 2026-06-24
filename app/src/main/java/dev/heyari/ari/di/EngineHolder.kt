@@ -24,6 +24,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import uniffi.ari_ffi.AriEngine
+import uniffi.ari_ffi.AriEngineBuilder
 import uniffi.ari_ffi.AssistantRegistry
 import uniffi.ari_ffi.SkillSettingsStore
 import java.io.File
@@ -96,19 +97,25 @@ class EngineHolder @Inject constructor(
     fun peek(): AriEngine? = built
 
     private suspend fun build(): AriEngine {
-        val engine = AriEngine.withPlatformProviders(
-            sink = AndroidSkillLogSink(),
-            tasks = ariFfiTasksProvider,
-            calendar = ariFfiCalendarProvider,
-            location = ariFfiLocationProvider,
-            clock = ariFfiLocalClock,
-            settings = skillSettingsStore,
-            envelopeSink = ariFfiEnvelopeSink,
-            locale = ariFfiLocaleProvider,
-            settingWriter = ariFfiSettingWriter,
-            authorize = ariFfiAuthorizeProvider,
-            mediaServices = ariFfiMediaServicesProvider,
-        )
+        // Build via the per-provider builder rather than one many-arg
+        // constructor: passing all 11 providers in a single FFI call marshals
+        // 11 by-value structs, which JNA mis-handles on arm64 (startup SIGSEGV
+        // on real devices; benign on the x86_64 emulator). Each setter is one
+        // call with a single arg, so nothing spills to the stack.
+        val engine = AriEngineBuilder().use { b ->
+            b.sink(AndroidSkillLogSink())
+            b.tasks(ariFfiTasksProvider)
+            b.calendar(ariFfiCalendarProvider)
+            b.location(ariFfiLocationProvider)
+            b.clock(ariFfiLocalClock)
+            b.settings(skillSettingsStore)
+            b.envelopeSink(ariFfiEnvelopeSink)
+            b.locale(ariFfiLocaleProvider)
+            b.settingWriter(ariFfiSettingWriter)
+            b.authorize(ariFfiAuthorizeProvider)
+            b.mediaServices(ariFfiMediaServicesProvider)
+            b.build()
+        }
 
         // Rehydrate non-secret skill settings from DataStore into the
         // in-memory FFI store BEFORE any skill runs. The store is

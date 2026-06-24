@@ -934,6 +934,30 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_unload_router_model(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_authorize(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_build(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_calendar(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_clock(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_envelope_sink(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_locale(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_location(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_media_services(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_setting_writer(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_settings(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_sink(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_tasks(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ffiauthorizeprovider_authorize(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ffiauthorizeprovider_redirect_uri(
@@ -1016,7 +1040,7 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_constructor_ariengine_with_log_sink(
     ): Short
-    external fun uniffi_ari_ffi_checksum_constructor_ariengine_with_platform_providers(
+    external fun uniffi_ari_ffi_checksum_constructor_arienginebuilder_new(
     ): Short
     external fun uniffi_ari_ffi_checksum_constructor_assistantregistry_new(
     ): Short
@@ -1060,8 +1084,6 @@ external fun uniffi_ari_ffi_fn_constructor_ariengine_new(uniffi_out_err: UniffiR
 ): Long
 external fun uniffi_ari_ffi_fn_constructor_ariengine_with_log_sink(`sink`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
-external fun uniffi_ari_ffi_fn_constructor_ariengine_with_platform_providers(`sink`: RustBuffer.ByValue,`tasks`: RustBuffer.ByValue,`calendar`: RustBuffer.ByValue,`location`: RustBuffer.ByValue,`clock`: RustBuffer.ByValue,`settings`: RustBuffer.ByValue,`envelopeSink`: RustBuffer.ByValue,`locale`: RustBuffer.ByValue,`settingWriter`: RustBuffer.ByValue,`authorize`: RustBuffer.ByValue,`mediaServices`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-): Long
 external fun uniffi_ari_ffi_fn_method_ariengine_current_locale(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ariengine_load_llm_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1079,6 +1101,36 @@ external fun uniffi_ari_ffi_fn_method_ariengine_settings_action(`ptr`: Long,`ski
 external fun uniffi_ari_ffi_fn_method_ariengine_unload_llm_model(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_unload_router_model(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_clone_arienginebuilder(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun uniffi_ari_ffi_fn_free_arienginebuilder(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_constructor_arienginebuilder_new(uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun uniffi_ari_ffi_fn_method_arienginebuilder_authorize(`ptr`: Long,`v`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_arienginebuilder_build(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun uniffi_ari_ffi_fn_method_arienginebuilder_calendar(`ptr`: Long,`v`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_arienginebuilder_clock(`ptr`: Long,`v`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_arienginebuilder_envelope_sink(`ptr`: Long,`v`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_arienginebuilder_locale(`ptr`: Long,`v`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_arienginebuilder_location(`ptr`: Long,`v`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_arienginebuilder_media_services(`ptr`: Long,`v`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_arienginebuilder_setting_writer(`ptr`: Long,`v`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_arienginebuilder_settings(`ptr`: Long,`v`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_arienginebuilder_sink(`ptr`: Long,`v`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_arienginebuilder_tasks(`ptr`: Long,`v`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_clone_ffiauthorizeprovider(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
@@ -1355,7 +1407,7 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
-    if (lib.uniffi_ari_ffi_checksum_method_ariengine_current_locale() != 17876.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_current_locale() != 7320.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_llm_model() != 22848.toShort()) {
@@ -1380,6 +1432,42 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_unload_router_model() != 1304.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_arienginebuilder_authorize() != 22452.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_arienginebuilder_build() != 33464.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_arienginebuilder_calendar() != 58771.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_arienginebuilder_clock() != 54318.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_arienginebuilder_envelope_sink() != 33221.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_arienginebuilder_locale() != 29920.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_arienginebuilder_location() != 36997.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_arienginebuilder_media_services() != 60697.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_arienginebuilder_setting_writer() != 34748.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_arienginebuilder_settings() != 38133.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_arienginebuilder_sink() != 55164.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_arienginebuilder_tasks() != 33770.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ffiauthorizeprovider_authorize() != 57956.toShort()) {
@@ -1505,7 +1593,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_constructor_ariengine_with_log_sink() != 21525.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_constructor_ariengine_with_platform_providers() != 54000.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_constructor_arienginebuilder_new() != 4825.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_constructor_assistantregistry_new() != 53209.toShort()) {
@@ -2041,6 +2129,13 @@ public object FfiConverterByteArray: FfiConverterRustBuffer<ByteArray> {
 public interface AriEngineInterface {
     
     /**
+     * Construct with the full set of host-supplied platform
+     * providers. This is the constructor the Android frontend uses
+     * at startup so any skill that declares the `tasks`, `calendar`
+     * or clock capabilities gets real implementations rather than
+     * the Null defaults. Any provider argument can be left `None`
+     * to fall back to the corresponding Null/UTC default — useful
+     * for frontends that only wire up part of the surface.
      * The user's currently-active language, as seen by the engine.
      * Reads through the [`LocaleProvider`] the host wired up at
      * construction time. ISO 639-1 lowercase (e.g. `"en"`, `"it"`).
@@ -2230,6 +2325,13 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
 
     
     /**
+     * Construct with the full set of host-supplied platform
+     * providers. This is the constructor the Android frontend uses
+     * at startup so any skill that declares the `tasks`, `calendar`
+     * or clock capabilities gets real implementations rather than
+     * the Null defaults. Any provider argument can be left `None`
+     * to fall back to the corresponding Null/UTC default — useful
+     * for frontends that only wire up part of the surface.
      * The user's currently-active language, as seen by the engine.
      * Reads through the [`LocaleProvider`] the host wired up at
      * construction time. ISO 639-1 lowercase (e.g. `"en"`, `"it"`).
@@ -2431,26 +2533,6 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     
 
         
-    /**
-     * Construct with the full set of host-supplied platform
-     * providers. This is the constructor the Android frontend uses
-     * at startup so any skill that declares the `tasks`, `calendar`
-     * or clock capabilities gets real implementations rather than
-     * the Null defaults. Any provider argument can be left `None`
-     * to fall back to the corresponding Null/UTC default — useful
-     * for frontends that only wire up part of the surface.
-     */ fun `withPlatformProviders`(`sink`: FfiLogSink?, `tasks`: FfiTasksProvider?, `calendar`: FfiCalendarProvider?, `location`: FfiLocationProvider?, `clock`: FfiLocalClock?, `settings`: SkillSettingsStore?, `envelopeSink`: FfiEnvelopeSink?, `locale`: FfiLocaleProvider?, `settingWriter`: FfiSettingWriter?, `authorize`: FfiAuthorizeProvider?, `mediaServices`: FfiMediaServicesProvider?): AriEngine {
-            return FfiConverterTypeAriEngine.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_ari_ffi_fn_constructor_ariengine_with_platform_providers(
-    
-        FfiConverterOptionalTypeFfiLogSink.lower(`sink`),FfiConverterOptionalTypeFfiTasksProvider.lower(`tasks`),FfiConverterOptionalTypeFfiCalendarProvider.lower(`calendar`),FfiConverterOptionalTypeFfiLocationProvider.lower(`location`),FfiConverterOptionalTypeFfiLocalClock.lower(`clock`),FfiConverterOptionalTypeSkillSettingsStore.lower(`settings`),FfiConverterOptionalTypeFfiEnvelopeSink.lower(`envelopeSink`),FfiConverterOptionalTypeFfiLocaleProvider.lower(`locale`),FfiConverterOptionalTypeFfiSettingWriter.lower(`settingWriter`),FfiConverterOptionalTypeFfiAuthorizeProvider.lower(`authorize`),FfiConverterOptionalTypeFfiMediaServicesProvider.lower(`mediaServices`),_status)
-}
-    )
-    }
-    
-
-        
     }
     
 }
@@ -2475,6 +2557,434 @@ public object FfiConverterTypeAriEngine: FfiConverter<AriEngine, Long> {
     override fun allocationSize(value: AriEngine) = 8UL
 
     override fun write(value: AriEngine, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a handle
+// to the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque handle to the underlying Rust struct.
+//     Method calls need to read this handle from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its handle should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the handle, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the handle, but is interrupted
+//      before it can pass the handle over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read handle value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * Builds an [`AriEngine`] one provider at a time. This exists specifically to
+ * avoid a UniFFI/JNA arm64 calling-convention bug: a single constructor taking
+ * all 11 providers passes 11 by-value `RustBuffer` structs, and JNA mishandles
+ * the ones that spill onto the stack on AArch64 (benign on x86_64), crashing at
+ * startup on real devices. Each setter here is one FFI call with <=2 args, so
+ * nothing ever spills to the stack.
+ */
+public interface AriEngineBuilderInterface {
+    
+    fun `authorize`(`v`: FfiAuthorizeProvider)
+    
+    fun `build`(): AriEngine
+    
+    fun `calendar`(`v`: FfiCalendarProvider)
+    
+    fun `clock`(`v`: FfiLocalClock)
+    
+    fun `envelopeSink`(`v`: FfiEnvelopeSink)
+    
+    fun `locale`(`v`: FfiLocaleProvider)
+    
+    fun `location`(`v`: FfiLocationProvider)
+    
+    fun `mediaServices`(`v`: FfiMediaServicesProvider)
+    
+    fun `settingWriter`(`v`: FfiSettingWriter)
+    
+    fun `settings`(`v`: SkillSettingsStore)
+    
+    fun `sink`(`v`: FfiLogSink)
+    
+    fun `tasks`(`v`: FfiTasksProvider)
+    
+    companion object
+}
+
+/**
+ * Builds an [`AriEngine`] one provider at a time. This exists specifically to
+ * avoid a UniFFI/JNA arm64 calling-convention bug: a single constructor taking
+ * all 11 providers passes 11 by-value `RustBuffer` structs, and JNA mishandles
+ * the ones that spill onto the stack on AArch64 (benign on x86_64), crashing at
+ * startup on real devices. Each setter here is one FFI call with <=2 args, so
+ * nothing ever spills to the stack.
+ */
+open class AriEngineBuilder: Disposable, AutoCloseable, AriEngineBuilderInterface
+{
+
+    @Suppress("UNUSED_PARAMETER")
+    /**
+     * @suppress
+     */
+    constructor(withHandle: UniffiWithHandle, handle: Long) {
+        this.handle = handle
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(handle))
+    }
+
+    /**
+     * @suppress
+     *
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noHandle: NoHandle) {
+        this.handle = 0
+        this.cleanable = null
+    }
+    constructor() :
+        this(UniffiWithHandle, 
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_constructor_arienginebuilder_new(
+    
+        _status)
+}
+    )
+
+    protected val handle: Long
+    protected val cleanable: UniffiCleaner.Cleanable?
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithHandle(block: (handle: Long) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the handle being freed concurrently.
+        try {
+            return block(this.uniffiCloneHandle())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val handle: Long) : Runnable {
+        override fun run() {
+            if (handle == 0.toLong()) {
+                // Fake object created with `NoHandle`, don't try to free.
+                return;
+            }
+            uniffiRustCall { status ->
+                UniffiLib.uniffi_ari_ffi_fn_free_arienginebuilder(handle, status)
+            }
+        }
+    }
+
+    /**
+     * @suppress
+     */
+    fun uniffiCloneHandle(): Long {
+        if (handle == 0.toLong()) {
+            throw InternalException("uniffiCloneHandle() called on NoHandle object");
+        }
+        return uniffiRustCall() { status ->
+            UniffiLib.uniffi_ari_ffi_fn_clone_arienginebuilder(handle, status)
+        }
+    }
+
+    override fun `authorize`(`v`: FfiAuthorizeProvider)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_arienginebuilder_authorize(
+        it,
+        FfiConverterTypeFfiAuthorizeProvider.lower(`v`),_status)
+}
+    }
+    
+    
+
+    override fun `build`(): AriEngine {
+            return FfiConverterTypeAriEngine.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_arienginebuilder_build(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    override fun `calendar`(`v`: FfiCalendarProvider)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_arienginebuilder_calendar(
+        it,
+        FfiConverterTypeFfiCalendarProvider.lower(`v`),_status)
+}
+    }
+    
+    
+
+    override fun `clock`(`v`: FfiLocalClock)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_arienginebuilder_clock(
+        it,
+        FfiConverterTypeFfiLocalClock.lower(`v`),_status)
+}
+    }
+    
+    
+
+    override fun `envelopeSink`(`v`: FfiEnvelopeSink)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_arienginebuilder_envelope_sink(
+        it,
+        FfiConverterTypeFfiEnvelopeSink.lower(`v`),_status)
+}
+    }
+    
+    
+
+    override fun `locale`(`v`: FfiLocaleProvider)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_arienginebuilder_locale(
+        it,
+        FfiConverterTypeFfiLocaleProvider.lower(`v`),_status)
+}
+    }
+    
+    
+
+    override fun `location`(`v`: FfiLocationProvider)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_arienginebuilder_location(
+        it,
+        FfiConverterTypeFfiLocationProvider.lower(`v`),_status)
+}
+    }
+    
+    
+
+    override fun `mediaServices`(`v`: FfiMediaServicesProvider)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_arienginebuilder_media_services(
+        it,
+        FfiConverterTypeFfiMediaServicesProvider.lower(`v`),_status)
+}
+    }
+    
+    
+
+    override fun `settingWriter`(`v`: FfiSettingWriter)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_arienginebuilder_setting_writer(
+        it,
+        FfiConverterTypeFfiSettingWriter.lower(`v`),_status)
+}
+    }
+    
+    
+
+    override fun `settings`(`v`: SkillSettingsStore)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_arienginebuilder_settings(
+        it,
+        FfiConverterTypeSkillSettingsStore.lower(`v`),_status)
+}
+    }
+    
+    
+
+    override fun `sink`(`v`: FfiLogSink)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_arienginebuilder_sink(
+        it,
+        FfiConverterTypeFfiLogSink.lower(`v`),_status)
+}
+    }
+    
+    
+
+    override fun `tasks`(`v`: FfiTasksProvider)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_arienginebuilder_tasks(
+        it,
+        FfiConverterTypeFfiTasksProvider.lower(`v`),_status)
+}
+    }
+    
+    
+
+    
+
+    
+
+
+    
+    
+    /**
+     * @suppress
+     */
+    companion object
+    
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAriEngineBuilder: FfiConverter<AriEngineBuilder, Long> {
+    override fun lower(value: AriEngineBuilder): Long {
+        return value.uniffiCloneHandle()
+    }
+
+    override fun lift(value: Long): AriEngineBuilder {
+        return AriEngineBuilder(UniffiWithHandle, value)
+    }
+
+    override fun read(buf: ByteBuffer): AriEngineBuilder {
+        return lift(buf.getLong())
+    }
+
+    override fun allocationSize(value: AriEngineBuilder) = 8UL
+
+    override fun write(value: AriEngineBuilder, buf: ByteBuffer) {
         buf.putLong(lower(value))
     }
 }
@@ -9076,358 +9586,6 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
         } else {
             buf.put(1)
             FfiConverterString.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterOptionalTypeFfiAuthorizeProvider: FfiConverterRustBuffer<FfiAuthorizeProvider?> {
-    override fun read(buf: ByteBuffer): FfiAuthorizeProvider? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterTypeFfiAuthorizeProvider.read(buf)
-    }
-
-    override fun allocationSize(value: FfiAuthorizeProvider?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterTypeFfiAuthorizeProvider.allocationSize(value)
-        }
-    }
-
-    override fun write(value: FfiAuthorizeProvider?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterTypeFfiAuthorizeProvider.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterOptionalTypeFfiCalendarProvider: FfiConverterRustBuffer<FfiCalendarProvider?> {
-    override fun read(buf: ByteBuffer): FfiCalendarProvider? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterTypeFfiCalendarProvider.read(buf)
-    }
-
-    override fun allocationSize(value: FfiCalendarProvider?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterTypeFfiCalendarProvider.allocationSize(value)
-        }
-    }
-
-    override fun write(value: FfiCalendarProvider?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterTypeFfiCalendarProvider.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterOptionalTypeFfiEnvelopeSink: FfiConverterRustBuffer<FfiEnvelopeSink?> {
-    override fun read(buf: ByteBuffer): FfiEnvelopeSink? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterTypeFfiEnvelopeSink.read(buf)
-    }
-
-    override fun allocationSize(value: FfiEnvelopeSink?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterTypeFfiEnvelopeSink.allocationSize(value)
-        }
-    }
-
-    override fun write(value: FfiEnvelopeSink?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterTypeFfiEnvelopeSink.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterOptionalTypeFfiLocalClock: FfiConverterRustBuffer<FfiLocalClock?> {
-    override fun read(buf: ByteBuffer): FfiLocalClock? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterTypeFfiLocalClock.read(buf)
-    }
-
-    override fun allocationSize(value: FfiLocalClock?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterTypeFfiLocalClock.allocationSize(value)
-        }
-    }
-
-    override fun write(value: FfiLocalClock?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterTypeFfiLocalClock.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterOptionalTypeFfiLocaleProvider: FfiConverterRustBuffer<FfiLocaleProvider?> {
-    override fun read(buf: ByteBuffer): FfiLocaleProvider? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterTypeFfiLocaleProvider.read(buf)
-    }
-
-    override fun allocationSize(value: FfiLocaleProvider?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterTypeFfiLocaleProvider.allocationSize(value)
-        }
-    }
-
-    override fun write(value: FfiLocaleProvider?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterTypeFfiLocaleProvider.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterOptionalTypeFfiLocationProvider: FfiConverterRustBuffer<FfiLocationProvider?> {
-    override fun read(buf: ByteBuffer): FfiLocationProvider? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterTypeFfiLocationProvider.read(buf)
-    }
-
-    override fun allocationSize(value: FfiLocationProvider?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterTypeFfiLocationProvider.allocationSize(value)
-        }
-    }
-
-    override fun write(value: FfiLocationProvider?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterTypeFfiLocationProvider.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterOptionalTypeFfiLogSink: FfiConverterRustBuffer<FfiLogSink?> {
-    override fun read(buf: ByteBuffer): FfiLogSink? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterTypeFfiLogSink.read(buf)
-    }
-
-    override fun allocationSize(value: FfiLogSink?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterTypeFfiLogSink.allocationSize(value)
-        }
-    }
-
-    override fun write(value: FfiLogSink?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterTypeFfiLogSink.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterOptionalTypeFfiMediaServicesProvider: FfiConverterRustBuffer<FfiMediaServicesProvider?> {
-    override fun read(buf: ByteBuffer): FfiMediaServicesProvider? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterTypeFfiMediaServicesProvider.read(buf)
-    }
-
-    override fun allocationSize(value: FfiMediaServicesProvider?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterTypeFfiMediaServicesProvider.allocationSize(value)
-        }
-    }
-
-    override fun write(value: FfiMediaServicesProvider?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterTypeFfiMediaServicesProvider.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterOptionalTypeFfiSettingWriter: FfiConverterRustBuffer<FfiSettingWriter?> {
-    override fun read(buf: ByteBuffer): FfiSettingWriter? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterTypeFfiSettingWriter.read(buf)
-    }
-
-    override fun allocationSize(value: FfiSettingWriter?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterTypeFfiSettingWriter.allocationSize(value)
-        }
-    }
-
-    override fun write(value: FfiSettingWriter?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterTypeFfiSettingWriter.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterOptionalTypeFfiTasksProvider: FfiConverterRustBuffer<FfiTasksProvider?> {
-    override fun read(buf: ByteBuffer): FfiTasksProvider? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterTypeFfiTasksProvider.read(buf)
-    }
-
-    override fun allocationSize(value: FfiTasksProvider?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterTypeFfiTasksProvider.allocationSize(value)
-        }
-    }
-
-    override fun write(value: FfiTasksProvider?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterTypeFfiTasksProvider.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterOptionalTypeSkillSettingsStore: FfiConverterRustBuffer<SkillSettingsStore?> {
-    override fun read(buf: ByteBuffer): SkillSettingsStore? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterTypeSkillSettingsStore.read(buf)
-    }
-
-    override fun allocationSize(value: SkillSettingsStore?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterTypeSkillSettingsStore.allocationSize(value)
-        }
-    }
-
-    override fun write(value: SkillSettingsStore?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterTypeSkillSettingsStore.write(value, buf)
         }
     }
 }
