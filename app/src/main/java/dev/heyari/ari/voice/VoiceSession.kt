@@ -38,6 +38,20 @@ sealed interface VoiceState {
 }
 
 /**
+ * Pure decision: does this engine response ask for a spoken reply (and thus
+ * warrant re-arming the mic without a second wake word)?
+ *
+ * Only [FfiResponse.Text] and [FfiResponse.Action] carry a `rearm` flag;
+ * everything else (NotUnderstood, Binary) can never re-arm. Kept top-level and
+ * free of Android types so it can be unit-tested without Robolectric.
+ */
+internal fun shouldRearm(response: FfiResponse): Boolean = when (response) {
+    is FfiResponse.Text -> response.rearm
+    is FfiResponse.Action -> response.rearm
+    else -> false
+}
+
+/**
  * Singleton state machine + pipeline for one voice interaction. Owned by Hilt
  * at the singleton scope so it can be injected by both [WakeWordService] (which
  * triggers the session) and [VoiceOverlayActivity] (which renders the UI).
@@ -70,6 +84,18 @@ class VoiceSession @Inject constructor(
 
     val isActive: Boolean get() = sessionJob?.isActive == true
 
+    // Last moment we saw user/STT activity. Read by the silence watcher; reset
+    // by rearmForReply() so a re-armed reply gets a full fresh listening window.
+    // A field (not a local in start()) precisely so re-arm can refresh it.
+    @Volatile
+    private var lastActivityAt: Long = 0L
+
+    // True between a skill asking a question (rearm) and the next final
+    // transcript. While true, the legacy CardActionVoiceIntercept shortcut is
+    // skipped so the engine's pending-reply path stays authoritative.
+    @Volatile
+    private var awaitingReply: Boolean = false
+
     /**
      * Begin a voice session. If one is already in progress, do nothing —
      * we don't want re-entrant sessions stomping on each other.
@@ -79,6 +105,11 @@ class VoiceSession @Inject constructor(
             Log.w(TAG, "VoiceSession.start() called while already active — ignoring")
             return
         }
+        // A fresh wake cancels any reply the engine was still waiting on from a
+        // previous turn — the user has clearly moved on. No-op when nothing is
+        // pending.
+        engineHolder.peek()?.cancelPendingReply()
+        awaitingReply = false
         if (!speechRecognizer.isModelLoaded) {
             Log.w(TAG, "No STT model loaded — cannot start voice session")
             _state.value = VoiceState.Error("No speech model installed")
@@ -108,9 +139,13 @@ class VoiceSession @Inject constructor(
                 startReadyCue()
 
                 // Track activity so we can dismiss after a silence timeout if
-                // the user never actually speaks.
-                var lastActivityAt = System.currentTimeMillis()
-                val silenceWatcher = launch {
+                // the user never actually speaks. Uses the class field so a
+                // re-armed reply (rearmForReply) can refresh the window.
+                lastActivityAt = System.currentTimeMillis()
+                // Dismiss after a silence timeout if the user never speaks.
+                // Hoisted into a local fun so it can be relaunched for a
+                // re-armed reply turn (the previous one self-cancels at Done).
+                fun launchSilenceWatcher(): Job = launch {
                     while (isActive) {
                         delay(1000)
                         val idle = System.currentTimeMillis() - lastActivityAt
@@ -121,6 +156,9 @@ class VoiceSession @Inject constructor(
                         }
                     }
                 }
+                // The silence watcher is held in a var so we can relaunch it for
+                // a re-armed reply turn (the previous one self-cancels at Done).
+                var silenceWatcher = launchSilenceWatcher()
 
                 try {
                     speechRecognizer.state.collect { sttState ->
@@ -146,7 +184,16 @@ class VoiceSession @Inject constructor(
                                     sttState.parallel,
                                     sttState.audio,
                                 )
-                                return@collect
+                                // If the skill asked a follow-up question,
+                                // handleFinalText re-armed the mic instead of
+                                // dismissing. Keep collecting and relaunch the
+                                // silence watcher for the reply turn. Otherwise
+                                // the session is done.
+                                if (awaitingReply && isActive) {
+                                    silenceWatcher = launchSilenceWatcher()
+                                } else {
+                                    return@collect
+                                }
                             }
                             is SttState.Error -> {
                                 _state.value = VoiceState.Error(sttState.message)
@@ -191,24 +238,32 @@ class VoiceSession @Inject constructor(
         // run_utterance, and other generic primitives all fire the
         // same way they would on tap. Falls through to normal engine
         // dispatch when no card is active or no button matches.
-        val intercept = cardActionVoiceIntercept.resolve(text)
-        if (intercept != null) {
-            val outcome = cardActionDispatcher.dispatch(intercept.cardId, intercept.action)
-            when (outcome) {
-                is dev.heyari.ari.actions.CardActionDispatcher.Outcome.Silent -> {
-                    dismiss()
-                    return
-                }
-                is dev.heyari.ari.actions.CardActionDispatcher.Outcome.Spoken -> {
-                    _state.value = VoiceState.Responding(outcome.text)
-                    speechOutput.speak(outcome.text)
-                    val readMs = (outcome.text.length * 80L).coerceIn(3000L, 10_000L)
-                    delay(readMs)
-                    dismiss()
-                    return
+        // While re-armed for a skill's follow-up question, the engine holds a
+        // pending reply and is authoritative — skip the legacy card-intercept
+        // shortcut so the answer flows back through processInput().
+        if (!awaitingReply) {
+            val intercept = cardActionVoiceIntercept.resolve(text)
+            if (intercept != null) {
+                val outcome = cardActionDispatcher.dispatch(intercept.cardId, intercept.action)
+                when (outcome) {
+                    is dev.heyari.ari.actions.CardActionDispatcher.Outcome.Silent -> {
+                        dismiss()
+                        return
+                    }
+                    is dev.heyari.ari.actions.CardActionDispatcher.Outcome.Spoken -> {
+                        _state.value = VoiceState.Responding(outcome.text)
+                        speechOutput.speak(outcome.text)
+                        val readMs = (outcome.text.length * 80L).coerceIn(3000L, 10_000L)
+                        delay(readMs)
+                        dismiss()
+                        return
+                    }
                 }
             }
         }
+        // Consume the flag for this turn: from here on this is a normal engine
+        // dispatch. If the engine asks another question, rearm flips it back on.
+        awaitingReply = false
 
         val engine = engineHolder.engine()
         var response = engine.processInput(text)
@@ -283,6 +338,11 @@ class VoiceSession @Inject constructor(
             is FfiResponse.NotUnderstood -> response.body
         }
 
+        // Does the engine want a spoken reply to this response? If so we keep
+        // the mic open instead of dismissing. Computed off the final response
+        // (after any parallel/offline retry reassignment).
+        val rearm = shouldRearm(response)
+
         _state.value = VoiceState.Responding(responseText)
         speechOutput.speak(responseText)
 
@@ -290,7 +350,25 @@ class VoiceSession @Inject constructor(
         // Rough-time it based on text length: ~80ms per character, clamped to 3..10 seconds.
         val readMs = (responseText.length * 80L).coerceIn(3000L, 10_000L)
         delay(readMs)
-        dismiss()
+        if (rearm) {
+            rearmForReply()
+        } else {
+            dismiss()
+        }
+    }
+
+    /**
+     * Re-arm the mic for a skill's follow-up question without a second wake
+     * word. State is set to Listening SYNCHRONOUSLY (before startListening)
+     * to dodge the lock-screen race the wake path also avoids in [start].
+     */
+    private fun rearmForReply() {
+        awaitingReply = true
+        // Give the reply a full fresh silence window — the watcher reads this.
+        lastActivityAt = System.currentTimeMillis()
+        _state.value = VoiceState.Listening("")
+        startListeningAgainCue()
+        speechRecognizer.startListening()
     }
 
     /**
@@ -328,8 +406,36 @@ class VoiceSession @Inject constructor(
         }
     }
 
+    /**
+     * Softer "I'm still listening" cue played when the mic is re-armed for a
+     * skill's follow-up question. Reuses [R.raw.ready] at reduced volume rather
+     * than shipping a second audio asset — quiet enough to read as "still
+     * here", not "fresh start". A dedicated file can replace it here later with
+     * no other changes. Fire-and-forget; failures are swallowed.
+     */
+    private fun startListeningAgainCue() {
+        runCatching {
+            MediaPlayer.create(context, R.raw.ready)?.apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
+                setVolume(0.3f, 0.3f)
+                setOnCompletionListener { runCatching { it.release() } }
+                start()
+            }
+        }
+    }
+
     fun dismiss() {
         Log.i(TAG, "Dismissing voice session")
+        // Drop any reply the engine was still waiting on. No-op on the normal
+        // happy path (nothing pending); covers tap-dismiss, the silence-timeout
+        // path (which calls dismiss()), and lifecycle stop.
+        engineHolder.peek()?.cancelPendingReply()
+        awaitingReply = false
         speechRecognizer.stopListening()
         speechRecognizer.reset()
         speechOutput.stop()
