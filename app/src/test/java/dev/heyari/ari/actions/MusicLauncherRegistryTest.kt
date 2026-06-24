@@ -9,11 +9,11 @@ import org.junit.Test
 class MusicLauncherRegistryTest {
 
     @Test
-    fun registryCoversAllSevenCanonicalIds() {
+    fun registryCoversAllSixCanonicalIds() {
         val ids = MusicLauncher.REGISTRY.keys
         assertEquals(
             setOf(
-                "spotify", "apple_music", "youtube_music",
+                "spotify", "apple_music",
                 "tidal", "deezer", "youtube", "amazon_music",
             ),
             ids,
@@ -29,15 +29,16 @@ class MusicLauncherRegistryTest {
     }
 
     @Test
-    fun youtubeMusicEntryDistinctFromYoutube() {
-        assertEquals(
-            listOf("com.google.android.apps.youtube.music"),
-            MusicLauncher.REGISTRY["youtube_music"]!!.packages,
-        )
+    fun youtubeEntryIsPresent() {
         assertEquals(
             listOf("com.google.android.youtube"),
             MusicLauncher.REGISTRY["youtube"]!!.packages,
         )
+    }
+
+    @Test
+    fun youtubeMusicIsRemoved() {
+        assertNull(MusicLauncher.REGISTRY["youtube_music"])
     }
 
     @Test
@@ -46,16 +47,10 @@ class MusicLauncherRegistryTest {
     }
 
     @Test
-    fun spotifyPrefersIntentYoutubeMusicPrefersMediaSession() {
+    fun spotifyPrefersPlayFromSearchIntent() {
         assertEquals(
             MusicLauncher.Strategy.PLAY_FROM_SEARCH_INTENT,
             MusicLauncher.REGISTRY["spotify"]!!.strategy.first(),
-        )
-        // SPIKE: YT Music now leads with MEDIA_SESSION (getActiveSessions ->
-        // playFromSearch) because its MediaBrowser rejects our connection.
-        assertEquals(
-            MusicLauncher.Strategy.MEDIA_SESSION,
-            MusicLauncher.REGISTRY["youtube_music"]!!.strategy.first(),
         )
     }
 
@@ -72,6 +67,17 @@ class MusicLauncherRegistryTest {
         for ((id, svc) in MusicLauncher.REGISTRY) {
             assertTrue("service '$id' must declare at least one package", svc.packages.isNotEmpty())
             assertTrue("service '$id' must declare at least one strategy", svc.strategy.isNotEmpty())
+        }
+    }
+
+    @Test
+    fun everyServiceFirstStrategyIsPlayFromSearchIntent() {
+        for ((id, svc) in MusicLauncher.REGISTRY) {
+            assertEquals(
+                "service '$id' should lead with PLAY_FROM_SEARCH_INTENT",
+                MusicLauncher.Strategy.PLAY_FROM_SEARCH_INTENT,
+                svc.strategy.first(),
+            )
         }
     }
 }

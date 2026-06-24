@@ -89,6 +89,8 @@ class ActionHandler @Inject constructor(
             is MusicLauncher.PlayResult.Playing ->
                 if (r.serviceName != null) "Playing ${r.query} on ${r.serviceName}."
                 else "Playing ${r.query}."
+            is MusicLauncher.PlayResult.OpenedResults ->
+                "Here are results for ${r.query} on ${r.serviceName}."
             is MusicLauncher.PlayResult.ServiceNotInstalled ->
                 "You don't have ${r.serviceName} installed."
             is MusicLauncher.PlayResult.NoMusicApp ->
