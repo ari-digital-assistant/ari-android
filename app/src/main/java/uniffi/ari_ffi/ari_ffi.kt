@@ -916,6 +916,8 @@ internal object IntegrityCheckingUniffiLib {
         uniffiCheckContractApiVersion(this)
         uniffiCheckApiChecksums(this)
     }
+    external fun uniffi_ari_ffi_checksum_method_ariengine_cancel_pending_reply(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_current_locale(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_load_llm_model(
@@ -1084,6 +1086,8 @@ external fun uniffi_ari_ffi_fn_constructor_ariengine_new(uniffi_out_err: UniffiR
 ): Long
 external fun uniffi_ari_ffi_fn_constructor_ariengine_with_log_sink(`sink`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
+external fun uniffi_ari_ffi_fn_method_ariengine_cancel_pending_reply(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_current_locale(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ariengine_load_llm_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1407,6 +1411,9 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_cancel_pending_reply() != 705.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_current_locale() != 7320.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -2129,6 +2136,13 @@ public object FfiConverterByteArray: FfiConverterRustBuffer<ByteArray> {
 public interface AriEngineInterface {
     
     /**
+     * Discard any pending question the engine is awaiting a reply to. Called
+     * by the host when the re-armed mic times out, the user dismisses, or a
+     * fresh wake word starts a new session. No-op when nothing is pending.
+     */
+    fun `cancelPendingReply`()
+    
+    /**
      * Construct with the full set of host-supplied platform
      * providers. This is the constructor the Android frontend uses
      * at startup so any skill that declares the `tasks`, `calendar`
@@ -2322,6 +2336,23 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
             UniffiLib.uniffi_ari_ffi_fn_clone_ariengine(handle, status)
         }
     }
+
+    
+    /**
+     * Discard any pending question the engine is awaiting a reply to. Called
+     * by the host when the re-armed mic times out, the user dismisses, or a
+     * fresh wake word starts a new session. No-op when nothing is pending.
+     */override fun `cancelPendingReply`()
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_cancel_pending_reply(
+        it,
+        _status)
+}
+    }
+    
+    
 
     
     /**
@@ -9312,8 +9343,13 @@ public object FfiConverterTypeFfiRegistryError : FfiConverterRustBuffer<FfiRegis
 
 sealed class FfiResponse {
     
+    /**
+     * `rearm` true means the engine is awaiting a spoken reply — the host
+     * should re-arm the mic without a wake word (see multi-turn design).
+     */
     data class Text(
-        val `body`: kotlin.String) : FfiResponse()
+        val `body`: kotlin.String, 
+        val `rearm`: kotlin.Boolean) : FfiResponse()
         
     {
         
@@ -9328,10 +9364,13 @@ sealed class FfiResponse {
      * the engine couldn't attribute the response to a specific skill
      * (router-direct actions, fallbacks) — treat that as "no bundle,
      * asset references will fail to resolve".
+     * `rearm` true means the engine is awaiting a spoken reply — the host
+     * should re-arm the mic without a wake word (see multi-turn design).
      */
     data class Action(
         val `json`: kotlin.String, 
-        val `skillId`: kotlin.String) : FfiResponse()
+        val `skillId`: kotlin.String, 
+        val `rearm`: kotlin.Boolean) : FfiResponse()
         
     {
         
@@ -9383,10 +9422,12 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
         return when(buf.getInt()) {
             1 -> FfiResponse.Text(
                 FfiConverterString.read(buf),
+                FfiConverterBoolean.read(buf),
                 )
             2 -> FfiResponse.Action(
                 FfiConverterString.read(buf),
                 FfiConverterString.read(buf),
+                FfiConverterBoolean.read(buf),
                 )
             3 -> FfiResponse.Binary(
                 FfiConverterString.read(buf),
@@ -9405,6 +9446,7 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
             (
                 4UL
                 + FfiConverterString.allocationSize(value.`body`)
+                + FfiConverterBoolean.allocationSize(value.`rearm`)
             )
         }
         is FfiResponse.Action -> {
@@ -9413,6 +9455,7 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
                 4UL
                 + FfiConverterString.allocationSize(value.`json`)
                 + FfiConverterString.allocationSize(value.`skillId`)
+                + FfiConverterBoolean.allocationSize(value.`rearm`)
             )
         }
         is FfiResponse.Binary -> {
@@ -9437,12 +9480,14 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
             is FfiResponse.Text -> {
                 buf.putInt(1)
                 FfiConverterString.write(value.`body`, buf)
+                FfiConverterBoolean.write(value.`rearm`, buf)
                 Unit
             }
             is FfiResponse.Action -> {
                 buf.putInt(2)
                 FfiConverterString.write(value.`json`, buf)
                 FfiConverterString.write(value.`skillId`, buf)
+                FfiConverterBoolean.write(value.`rearm`, buf)
                 Unit
             }
             is FfiResponse.Binary -> {
