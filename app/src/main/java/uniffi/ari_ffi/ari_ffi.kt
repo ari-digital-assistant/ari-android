@@ -920,6 +920,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_current_locale(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_debug_assistant_route(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_debug_route(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_load_llm_model(
@@ -1091,6 +1093,8 @@ external fun uniffi_ari_ffi_fn_constructor_ariengine_with_log_sink(`sink`: Long,
 external fun uniffi_ari_ffi_fn_method_ariengine_cancel_pending_reply(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_current_locale(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_ariengine_debug_assistant_route(`ptr`: Long,`input`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ariengine_debug_route(`ptr`: Long,`input`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1419,6 +1423,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_current_locale() != 7320.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_debug_assistant_route() != 14200.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_debug_route() != 61667.toShort()) {
@@ -2167,6 +2174,15 @@ public interface AriEngineInterface {
     fun `currentLocale`(): kotlin.String
     
     /**
+     * Force the assistant-routing path (cloud or on-device) for `input` and
+     * return what it picks — a skill id, or NONE → general-knowledge answer.
+     * Backs the `/route` chat command: lets us test the post-FunctionGemma
+     * routing (especially the on-device LLM, which normal English routing
+     * doesn't reach yet) before FunctionGemma is removed.
+     */
+    fun `debugAssistantRoute`(`input`: kotlin.String): kotlin.String
+    
+    /**
      * Run ONLY the on-device FunctionGemma router against `input` and return
      * a human-readable summary of its pick (skill + confidence, or NoMatch),
      * bypassing the keyword scorer and the assistant. Backs the `/router`
@@ -2393,6 +2409,26 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     UniffiLib.uniffi_ari_ffi_fn_method_ariengine_current_locale(
         it,
         _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Force the assistant-routing path (cloud or on-device) for `input` and
+     * return what it picks — a skill id, or NONE → general-knowledge answer.
+     * Backs the `/route` chat command: lets us test the post-FunctionGemma
+     * routing (especially the on-device LLM, which normal English routing
+     * doesn't reach yet) before FunctionGemma is removed.
+     */override fun `debugAssistantRoute`(`input`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_debug_assistant_route(
+        it,
+        FfiConverterString.lower(`input`),_status)
 }
     }
     )

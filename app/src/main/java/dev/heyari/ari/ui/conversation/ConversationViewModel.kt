@@ -195,6 +195,14 @@ class ConversationViewModel @Inject constructor(
             handleRouterDebug(text)
             return
         }
+        // `/route <query>` forces the assistant-routing path (cloud or
+        // on-device) and shows its pick — used to test the post-FunctionGemma
+        // routing before FunctionGemma is removed. Checked after "/router" so
+        // the prefix doesn't collide.
+        if (text.startsWith("/route")) {
+            handleAssistantRouteDebug(text)
+            return
+        }
 
         val userMessage = Message(text = text, isFromUser = true)
         _state.update { it.copy(messages = it.messages + userMessage, inputText = "", wakeWordDetected = false) }
@@ -516,6 +524,34 @@ class ConversationViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.Default) {
             val result = engineHolder.engine().debugRoute(query)
             val ariMessage = Message(text = "🧭 $result", isFromUser = false)
+            _state.update { it.copy(messages = it.messages + ariMessage) }
+        }
+    }
+
+    private fun handleAssistantRouteDebug(raw: String) {
+        val query = raw.removePrefix("/route").trim()
+        val userMessage = Message(text = raw, isFromUser = true)
+        _state.update { it.copy(messages = it.messages + userMessage, inputText = "") }
+
+        if (query.isEmpty()) {
+            val help = Message(
+                text = "Usage: /route <query> — forces the assistant (cloud or on-device) " +
+                    "to route <query>, showing the skill it picks or NONE (→ general-knowledge " +
+                    "answer). This is the post-FunctionGemma routing path.",
+                isFromUser = false,
+            )
+            _state.update { it.copy(messages = it.messages + help) }
+            return
+        }
+
+        // May call the assistant (network or on-device LLM) — keep off the main thread.
+        viewModelScope.launch(Dispatchers.Default) {
+            val fmt = java.text.SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
+            val sentAt = System.currentTimeMillis()
+            val result = engineHolder.engine().debugAssistantRoute(query)
+            val recvAt = System.currentTimeMillis()
+            val timing = "⏱ sent ${fmt.format(sentAt)} · recv ${fmt.format(recvAt)} · Δ ${recvAt - sentAt} ms"
+            val ariMessage = Message(text = "🧠 $result\n$timing", isFromUser = false)
             _state.update { it.copy(messages = it.messages + ariMessage) }
         }
     }
