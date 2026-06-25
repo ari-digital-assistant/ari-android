@@ -344,15 +344,21 @@ class VoiceSession @Inject constructor(
         val rearm = shouldRearm(response)
 
         _state.value = VoiceState.Responding(responseText)
-        speechOutput.speak(responseText)
 
-        // Wait long enough for the user to see the response and TTS to roughly finish.
-        // Rough-time it based on text length: ~80ms per character, clamped to 3..10 seconds.
-        val readMs = (responseText.length * 80L).coerceIn(3000L, 10_000L)
-        delay(readMs)
         if (rearm) {
+            // Re-arm AFTER Ari finishes speaking the question. We wait on the
+            // TTS completion callback (not a guess-timer): the mic's rewind
+            // would otherwise ingest the tail of Ari's own prompt and it would
+            // answer its own question ("…to use, Apple Music"). rearmForReply()
+            // then opens the mic with zero rewind for the same reason.
+            speechOutput.speakAndAwait(responseText)
             rearmForReply()
         } else {
+            speechOutput.speak(responseText)
+            // Wait long enough for the user to see the response and TTS to roughly finish.
+            // Rough-time it based on text length: ~80ms per character, clamped to 3..10 seconds.
+            val readMs = (responseText.length * 80L).coerceIn(3000L, 10_000L)
+            delay(readMs)
             dismiss()
         }
     }
@@ -368,7 +374,10 @@ class VoiceSession @Inject constructor(
         lastActivityAt = System.currentTimeMillis()
         _state.value = VoiceState.Listening("")
         startListeningAgainCue()
-        speechRecognizer.startListening()
+        // Zero rewind: a follow-up answer comes AFTER the prompt, so there's no
+        // pre-roll worth keeping — and a non-zero rewind would replay the tail
+        // of Ari's just-finished question/cue into the recogniser.
+        speechRecognizer.startListening(rewindSeconds = 0f)
     }
 
     /**

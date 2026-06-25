@@ -6,13 +6,16 @@ import android.speech.tts.UtteranceProgressListener
 import android.speech.tts.Voice
 import android.util.Log
 import dev.heyari.ari.data.SettingsRepository
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 class SpeechOutput(
@@ -38,6 +41,14 @@ class SpeechOutput(
     private var activeLocale: String = "en"
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    /**
+     * Utterances awaiting their `onDone`/`onError` callback, keyed by
+     * utteranceId. [speakAndAwait] registers one and suspends on it so a
+     * caller can re-arm the mic only AFTER Ari has stopped talking — without
+     * this, the STT rewind ingests Ari's own speech ("…to use, Apple Music").
+     */
+    private val pendingDone = ConcurrentHashMap<String, CompletableDeferred<Unit>>()
 
     init {
         // Mirror SettingsRepository.activeLocale into our local state
@@ -67,6 +78,16 @@ class SpeechOutput(
                 activeLocale = settingsRepository.activeLocale.first()
             }
             applyVoice()
+            // One persistent listener for the engine's lifetime: it resolves
+            // any pending speakAndAwait() and re-applies the voice after a
+            // preview utterance. (Previously preview() installed its own
+            // listener; a single owner avoids one path clobbering the other.)
+            tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                override fun onStart(utteranceId: String?) {}
+                override fun onDone(utteranceId: String?) = finishUtterance(utteranceId)
+                @Deprecated("Deprecated in Java")
+                override fun onError(utteranceId: String?) = finishUtterance(utteranceId)
+            })
             ready = true
             Log.i(TAG, "TTS initialised (locale=$activeLocale)")
         } else {
@@ -88,17 +109,9 @@ class SpeechOutput(
         val voice = tts.voices?.find { it.name == voiceName } ?: return
         tts.voice = voice
 
+        // The persistent listener re-applies the voice when a preview id
+        // finishes (see finishUtterance).
         val id = "ari-preview-${utteranceId.incrementAndGet()}"
-        tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) {}
-            override fun onDone(utteranceId: String?) {
-                if (utteranceId == id) applyVoice()
-            }
-            @Deprecated("Deprecated in Java")
-            override fun onError(utteranceId: String?) {
-                if (utteranceId == id) applyVoice()
-            }
-        })
         tts.speak("Hello, I'm Ari", TextToSpeech.QUEUE_FLUSH, null, id)
     }
 
@@ -108,6 +121,39 @@ class SpeechOutput(
             return
         }
         tts.speak(text, TextToSpeech.QUEUE_ADD, null, "ari-${utteranceId.incrementAndGet()}")
+    }
+
+    /**
+     * Speak [text] and suspend until the TTS engine reports it finished (or a
+     * length-based safety timeout elapses, in case `onDone` never fires).
+     * Used by the voice session before re-arming the mic for a follow-up, so
+     * the mic opens only after Ari has stopped speaking — never capturing its
+     * own voice. Uses QUEUE_FLUSH: the prompt is the only thing that should be
+     * playing at this point.
+     */
+    suspend fun speakAndAwait(text: String) {
+        if (!ready) {
+            Log.w(TAG, "TTS not ready, dropping: $text")
+            return
+        }
+        val id = "ari-${utteranceId.incrementAndGet()}"
+        val done = CompletableDeferred<Unit>()
+        pendingDone[id] = done
+        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, id)
+        // Safety ceiling: ~120ms/char, clamped, so a missed callback can't
+        // hang the voice session forever.
+        val maxMs = (text.length * 120L).coerceIn(4000L, 15_000L)
+        if (withTimeoutOrNull(maxMs) { done.await() } == null) {
+            Log.w(TAG, "speakAndAwait timed out after ${maxMs}ms for id=$id")
+        }
+        pendingDone.remove(id)
+    }
+
+    private fun finishUtterance(id: String?) {
+        id ?: return
+        pendingDone.remove(id)?.complete(Unit)
+        // Preview restores the user's real voice once the sample finishes.
+        if (id.startsWith("ari-preview")) applyVoice()
     }
 
     fun stop() {
