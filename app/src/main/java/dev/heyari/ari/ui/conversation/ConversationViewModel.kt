@@ -188,6 +188,13 @@ class ConversationViewModel @Inject constructor(
             handleLocationDebug(text)
             return
         }
+        // `/router <query>` runs the on-device FunctionGemma router directly
+        // and shows its raw pick. Cloud-assistant users never hit FunctionGemma
+        // in normal routing, so this is the only way to test/debug it.
+        if (text.startsWith("/router")) {
+            handleRouterDebug(text)
+            return
+        }
 
         val userMessage = Message(text = text, isFromUser = true)
         _state.update { it.copy(messages = it.messages + userMessage, inputText = "", wakeWordDetected = false) }
@@ -485,6 +492,30 @@ class ConversationViewModel @Inject constructor(
                     "Timed out waiting for a location fix (no cached fix either)."
             }
             val ariMessage = Message(text = text, isFromUser = false)
+            _state.update { it.copy(messages = it.messages + ariMessage) }
+        }
+    }
+
+    private fun handleRouterDebug(raw: String) {
+        val query = raw.removePrefix("/router").trim()
+        val userMessage = Message(text = raw, isFromUser = true)
+        _state.update { it.copy(messages = it.messages + userMessage, inputText = "") }
+
+        if (query.isEmpty()) {
+            val help = Message(
+                text = "Usage: /router <query> — runs the on-device FunctionGemma " +
+                    "router on <query> and shows its pick (skill + confidence, or NoMatch).",
+                isFromUser = false,
+            )
+            _state.update { it.copy(messages = it.messages + help) }
+            return
+        }
+
+        // Router inference is CPU-bound and may lazily load the model on first
+        // use, so keep it off the main thread.
+        viewModelScope.launch(Dispatchers.Default) {
+            val result = engineHolder.engine().debugRoute(query)
+            val ariMessage = Message(text = "🧭 $result", isFromUser = false)
             _state.update { it.copy(messages = it.messages + ariMessage) }
         }
     }

@@ -920,6 +920,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_current_locale(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_debug_route(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_load_llm_model(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_load_router_model(
@@ -1089,6 +1091,8 @@ external fun uniffi_ari_ffi_fn_constructor_ariengine_with_log_sink(`sink`: Long,
 external fun uniffi_ari_ffi_fn_method_ariengine_cancel_pending_reply(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_current_locale(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_ariengine_debug_route(`ptr`: Long,`input`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ariengine_load_llm_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
@@ -1415,6 +1419,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_current_locale() != 7320.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_debug_route() != 61667.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_llm_model() != 22848.toShort()) {
@@ -2160,6 +2167,16 @@ public interface AriEngineInterface {
     fun `currentLocale`(): kotlin.String
     
     /**
+     * Run ONLY the on-device FunctionGemma router against `input` and return
+     * a human-readable summary of its pick (skill + confidence, or NoMatch),
+     * bypassing the keyword scorer and the assistant. Backs the `/router`
+     * chat debug command — useful because a cloud-assistant user's normal
+     * routing never reaches FunctionGemma, so there's otherwise no way to
+     * see what the on-device router would have done.
+     */
+    fun `debugRoute`(`input`: kotlin.String): kotlin.String
+    
+    /**
      * Set the GGUF model path for the LLM fallback. The model is NOT
      * loaded immediately — it loads on demand when the first unmatched
      * query arrives, and unloads after 60 seconds of idle to free RAM.
@@ -2376,6 +2393,27 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     UniffiLib.uniffi_ari_ffi_fn_method_ariengine_current_locale(
         it,
         _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Run ONLY the on-device FunctionGemma router against `input` and return
+     * a human-readable summary of its pick (skill + confidence, or NoMatch),
+     * bypassing the keyword scorer and the assistant. Backs the `/router`
+     * chat debug command — useful because a cloud-assistant user's normal
+     * routing never reaches FunctionGemma, so there's otherwise no way to
+     * see what the on-device router would have done.
+     */override fun `debugRoute`(`input`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_debug_route(
+        it,
+        FfiConverterString.lower(`input`),_status)
 }
     }
     )
