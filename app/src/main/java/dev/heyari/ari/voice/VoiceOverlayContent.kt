@@ -86,6 +86,24 @@ fun VoiceOverlayContent(
             }
 
             when (state) {
+                is VoiceState.Preparing -> {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                        Text(
+                            text = state.message,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontStyle = FontStyle.Italic,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    }
+                }
                 is VoiceState.Listening -> {
                     Text(
                         text = if (state.partial.isNotBlank()) state.partial else stringResource(R.string.voice_overlay_listening),

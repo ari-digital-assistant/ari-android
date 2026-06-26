@@ -31,6 +31,7 @@ import uniffi.ari_ffi.FfiResponse
  */
 sealed interface VoiceState {
     data object Idle : VoiceState
+    data class Preparing(val message: String) : VoiceState
     data class Listening(val partial: String) : VoiceState
     data object Thinking : VoiceState
     data class Responding(val text: String) : VoiceState
