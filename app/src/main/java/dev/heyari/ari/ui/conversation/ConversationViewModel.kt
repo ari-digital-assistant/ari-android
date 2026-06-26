@@ -30,8 +30,9 @@ import dev.heyari.ari.notifications.AlertService
 import dev.heyari.ari.notifications.AlertSpec
 import dev.heyari.ari.stt.ModelDownloadManager
 import dev.heyari.ari.stt.SpeechRecognizer
-import dev.heyari.ari.stt.SttModelRegistry
+import dev.heyari.ari.stt.SttModelLoader
 import dev.heyari.ari.tts.SpeechOutput
+import dev.heyari.ari.tts.pleaseWaitPhrase
 import dev.heyari.ari.wakeword.WakeWordService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -54,6 +55,7 @@ class ConversationViewModel @Inject constructor(
     private val engineHolder: EngineHolder,
     private val speechRecognizer: SpeechRecognizer,
     private val speechOutput: SpeechOutput,
+    private val sttModelLoader: SttModelLoader,
     private val downloadManager: ModelDownloadManager,
     private val llmDownloadManager: LlmDownloadManager,
     private val settingsRepository: SettingsRepository,
@@ -74,31 +76,21 @@ class ConversationViewModel @Inject constructor(
     private var suppressPollUntil = 0L
 
     init {
-        // Load active model + mark setup checked once. Done as a launch-and-await sequence
-        // so the onboarding flag flips correctly only after the model has had a chance to load.
+        // Load active model + mark setup checked once. ensureLoaded() resolves
+        // the active model and warms it (idempotent — rides the same lock as
+        // AriApplication's eager load and any wake-triggered VoiceSession load).
         viewModelScope.launch(Dispatchers.IO) {
-            val activeId = settingsRepository.activeSttModelId.first()
-            val model = SttModelRegistry.byId(activeId)
-            if (model != null && downloadManager.isDownloaded(model) && speechRecognizer.currentModelId != model.id) {
-                runCatching {
-                    speechRecognizer.loadModel(model, downloadManager.modelDir(model))
-                }
-            }
+            sttModelLoader.ensureLoaded()
             _state.update { it.copy(setupChecked = true) }
             refreshOnboarding()
         }
 
-        // Then keep watching for subsequent active-model changes (e.g. user picks a
-        // different model in Settings). Skip the very first emission so we don't
-        // duplicate work the block above just did.
+        // Then keep watching for subsequent active-model changes (e.g. user
+        // picks a different model in Settings). Skip the first emission so we
+        // don't duplicate the load above.
         viewModelScope.launch(Dispatchers.IO) {
-            settingsRepository.activeSttModelId.drop(1).collect { activeId ->
-                val model = SttModelRegistry.byId(activeId)
-                if (model != null && downloadManager.isDownloaded(model) && speechRecognizer.currentModelId != model.id) {
-                    runCatching {
-                        speechRecognizer.loadModel(model, downloadManager.modelDir(model))
-                    }
-                }
+            settingsRepository.activeSttModelId.drop(1).collect {
+                sttModelLoader.ensureLoaded()
                 refreshOnboarding()
             }
         }
@@ -223,16 +215,13 @@ class ConversationViewModel @Inject constructor(
             // assistant message below it.
             val fillerJob = launch {
                 delay(STILL_WORKING_DELAY_MS)
-                val filler = Message(
-                    text = STILL_WORKING_PHRASE,
-                    isFromUser = false,
-                )
+                // Same shared "please wait" vocabulary the STT warm-up uses, so
+                // the two slow paths feel like one feature. Picked once per
+                // trigger and used for both the bubble and the spoken line.
+                val phrase = pleaseWaitPhrase(application)
+                val filler = Message(text = phrase, isFromUser = false)
                 _state.update { it.copy(messages = it.messages + filler) }
-                // Match Layer C's behaviour: the delay phrase is spoken
-                // as well as shown so the user gets audible confirmation
-                // that Ari is still working, particularly useful in
-                // hands-free / driving contexts.
-                speechOutput.speak(STILL_WORKING_PHRASE)
+                speechOutput.speak(phrase)
             }
 
             val response = try {
@@ -279,10 +268,6 @@ class ConversationViewModel @Inject constructor(
     private companion object {
         /** How long processInput can block before we surface a "still working" bubble. */
         const val STILL_WORKING_DELAY_MS: Long = 4000
-
-        /** Phrase shown when the threshold trips. Mirrors Layer C's vocabulary
-         * deliberately so the two paths feel like one feature to the user. */
-        const val STILL_WORKING_PHRASE: String = "Working…"
     }
 
     /**
