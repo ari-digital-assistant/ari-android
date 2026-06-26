@@ -8,8 +8,11 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.R
 import dev.heyari.ari.actions.ActionHandler
 import dev.heyari.ari.stt.SpeechRecognizer
+import dev.heyari.ari.stt.SttModelLoader
 import dev.heyari.ari.stt.SttState
 import dev.heyari.ari.tts.SpeechOutput
+import dev.heyari.ari.tts.pleaseWaitPhrase
+import dev.heyari.ari.tts.pleaseRepeatPhrase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -72,6 +75,7 @@ class VoiceSession @Inject constructor(
     @ApplicationContext private val context: Context,
     private val engineHolder: EngineHolder,
     private val speechRecognizer: SpeechRecognizer,
+    private val sttModelLoader: SttModelLoader,
     private val speechOutput: SpeechOutput,
     private val actionHandler: ActionHandler,
     private val cardActionVoiceIntercept: dev.heyari.ari.actions.CardActionVoiceIntercept,
@@ -111,32 +115,43 @@ class VoiceSession @Inject constructor(
         // pending.
         engineHolder.peek()?.cancelPendingReply()
         awaitingReply = false
-        if (!speechRecognizer.isModelLoaded) {
-            Log.w(TAG, "No STT model loaded — cannot start voice session")
-            _state.value = VoiceState.Error("No speech model installed")
-            scope.launch {
-                delay(2500)
-                dismiss()
-            }
-            return
-        }
-
-        // Set the state synchronously BEFORE launching the coroutine, so any
-        // observer (e.g. VoiceOverlayActivity) that attaches a collector
-        // immediately after start() returns will see Listening as the first
-        // emission rather than the stale Idle value. Otherwise the activity
-        // finishes itself in the same millisecond it opened, because the
-        // coroutine body that sets Listening hasn't been dispatched yet.
-        _state.value = VoiceState.Listening("")
+        // Decide readiness synchronously (isModelLoaded is a cheap flag) and
+        // set a non-Idle state BEFORE launching the coroutine, so the overlay's
+        // collector doesn't see Idle and finish itself (the lock-screen race
+        // the wake path must avoid): Listening when warm, Preparing when cold.
+        val modelLoaded = speechRecognizer.isModelLoaded
+        val waitPhrase = if (modelLoaded) null else pleaseWaitPhrase(context)
+        _state.value =
+            if (modelLoaded) VoiceState.Listening("")
+            else VoiceState.Preparing(waitPhrase!!)
 
         sessionJob = scope.launch {
             try {
-                // Unified audio pipeline: the mic is already open and the
-                // CaptureBus has been buffering the user's first words since
-                // before the wake-word fired. Arming sherpa is instant — we
-                // do it FIRST, then play the ready cue cosmetically. There is
-                // no drain delay, no cue-discard window, no mic handover.
-                speechRecognizer.startListening()
+                if (!modelLoaded) {
+                    // Cold start: acknowledge, wait for the warm-up, then ask
+                    // the user to repeat — their words have already aged out of
+                    // the 2 s CaptureBus ring buffer, so there's nothing to
+                    // transcribe.
+                    speechOutput.speak(waitPhrase!!)
+                    val model = sttModelLoader.activeDownloadedModel()
+                    if (model == null || !sttModelLoader.load(model)) {
+                        _state.value =
+                            VoiceState.Error(context.getString(R.string.voice_no_speech_model))
+                        delay(2500)
+                        dismiss()
+                        return@launch
+                    }
+                    speechOutput.speakAndAwait(pleaseRepeatPhrase(context))
+                    _state.value = VoiceState.Listening("")
+                    // Zero rewind: the repeat prompt + ready cue must not be
+                    // ingested as the user's answer (same guard as rearmForReply).
+                    speechRecognizer.startListening(rewindSeconds = 0f)
+                } else {
+                    // Unified audio pipeline: the mic is already open and the
+                    // CaptureBus has been buffering the user's first words since
+                    // before the wake-word fired. Arming sherpa is instant.
+                    speechRecognizer.startListening()
+                }
                 startReadyCue()
 
                 // Track activity so we can dismiss after a silence timeout if
