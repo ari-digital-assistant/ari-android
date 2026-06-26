@@ -333,4 +333,20 @@
     <string name="notif_boot_tap_to_fix_big">Ari è impostato per iniziare ad ascoltare all\'accensione, ma serve la tua attenzione su: %1$s. Tocca per aprire Ari.</string>
     <string name="notif_boot_idle_title">Ari</string>
     <string name="notif_boot_idle_text">Tocca per iniziare ad ascoltare</string>
+
+    <string name="voice_no_speech_model">Nessun modello vocale installato</string>
+
+    <string-array name="please_wait_phrases">
+        <item>Un momento…</item>
+        <item>Solo un secondo…</item>
+        <item>Aspetta un momento…</item>
+        <item>Un attimo…</item>
+        <item>Dammi un secondo…</item>
+    </string-array>
+    <string-array name="please_repeat_phrases">
+        <item>Scusa, cosa hai detto?</item>
+        <item>Puoi ripetere?</item>
+        <item>Scusa, non ho capito — puoi ripetere?</item>
+        <item>Ancora una volta?</item>
+    </string-array>
 </resources>

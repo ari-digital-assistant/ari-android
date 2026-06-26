@@ -329,4 +329,20 @@
     <string name="notif_boot_tap_to_fix_big">Ari is set to start listening when your device boots, but these need attention: %1$s. Tap to open Ari.</string>
     <string name="notif_boot_idle_title">Ari</string>
     <string name="notif_boot_idle_text">Tap to start listening</string>
+
+    <string name="voice_no_speech_model">No speech model installed</string>
+
+    <string-array name="please_wait_phrases">
+        <item>One moment…</item>
+        <item>Just a sec…</item>
+        <item>Hang on…</item>
+        <item>One sec…</item>
+        <item>Give me a moment…</item>
+    </string-array>
+    <string-array name="please_repeat_phrases">
+        <item>Sorry, what was that?</item>
+        <item>Could you say that again?</item>
+        <item>Sorry, I didn\'t catch that — say it again?</item>
+        <item>One more time?</item>
+    </string-array>
 </resources>
