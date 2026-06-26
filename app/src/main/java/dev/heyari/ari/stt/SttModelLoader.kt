@@ -60,8 +60,9 @@ class SttModelLoader @Inject constructor(
         return speechRecognizer.isModelLoaded && speechRecognizer.currentModelId == model.id
     }
 
-    /** Resolve + warm the active model; suspends until loaded or timeout. The
-     *  eager-load call sites invoke it fire-and-forget. */
+    /** Resolve + warm the active model; suspends until loaded or timeout, then
+     *  reports the [Outcome]. Eager-load call sites await it but ignore the
+     *  result; the model-change watcher uses it as a readiness check. */
     suspend fun ensureLoaded(): Outcome {
         val model = activeDownloadedModel()
         return when (decide(speechRecognizer.isModelLoaded, model != null)) {

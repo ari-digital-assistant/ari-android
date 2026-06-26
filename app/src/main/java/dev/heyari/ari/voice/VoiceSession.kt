@@ -64,7 +64,11 @@ internal fun shouldRearm(response: FfiResponse): Boolean = when (response) {
  * itself when the state returns to [VoiceState.Idle].
  *
  * Flow:
- *  1. start() — set state to Listening, drain wake-word audio, open STT
+ *  1. start() — set state to Listening, drain wake-word audio, open STT.
+ *     If the STT model is still warming up (cold start), first show/speak a
+ *     "one moment" phrase (Preparing), await the load, then speak a "say that
+ *     again" phrase and open STT — the original utterance has aged out of the
+ *     capture buffer by then.
  *  2. STT emits partial — update state
  *  3. STT detects endpoint — feed final text to engine, transition through
  *     Thinking → Responding, speak via TTS, then dismiss
