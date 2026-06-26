@@ -14,9 +14,7 @@ import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.models.ModelUpdateWorker
 import dev.heyari.ari.notifications.NotificationChannels
 import dev.heyari.ari.skills.SkillUpdateWorker
-import dev.heyari.ari.stt.ModelDownloadManager
-import dev.heyari.ari.stt.SpeechRecognizer
-import dev.heyari.ari.stt.SttModelRegistry
+import dev.heyari.ari.stt.SttModelLoader
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -30,8 +28,7 @@ class AriApplication : Application(), Configuration.Provider {
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var engineHolder: EngineHolder
     @Inject lateinit var settingsRepository: SettingsRepository
-    @Inject lateinit var speechRecognizer: SpeechRecognizer
-    @Inject lateinit var downloadManager: ModelDownloadManager
+    @Inject lateinit var sttModelLoader: SttModelLoader
     @Inject lateinit var autoUpdatePreferences: AutoUpdatePreferences
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -114,26 +111,14 @@ class AriApplication : Application(), Configuration.Provider {
     }
 
     /**
-     * Start loading the user's active STT model as early as possible.
-     *
-     * Nemotron (663 MB) takes ~3 s to warm sherpa-onnx's recogniser. If the
-     * user says "Hey Ari" during that window, VoiceSession sees
-     * `isModelLoaded == false` and renders "No speech model installed".
-     * Kicking the load here (rather than waiting for ConversationViewModel
-     * to be instantiated) means the wake-word-triggered voice path has a
-     * head start on every process respawn — fresh install, cold boot, or
-     * recovery after OOM-kill. Idempotent: `currentModelId != model.id`
-     * short-circuits if a later caller tries to load the same model.
+     * Start loading the user's active STT model as early as possible so a
+     * wake fired during the ~3 s warm-up doesn't race an unloaded recogniser.
+     * Idempotent (SttModelLoader rides loadModel's lock); fire-and-forget.
      */
     private fun eagerLoadActiveSttModel() {
         scope.launch {
-            runCatching {
-                val activeId = settingsRepository.activeSttModelId.first()
-                val model = SttModelRegistry.byId(activeId) ?: return@runCatching
-                if (!downloadManager.isDownloaded(model)) return@runCatching
-                if (speechRecognizer.currentModelId == model.id) return@runCatching
-                speechRecognizer.loadModel(model, downloadManager.modelDir(model))
-            }.onFailure { Log.w(TAG, "eager STT model load failed", it) }
+            runCatching { sttModelLoader.ensureLoaded() }
+                .onFailure { Log.w(TAG, "eager STT model load failed", it) }
         }
     }
 
