@@ -92,6 +92,10 @@
     <string name="skills_set_as_default_assistant_message">%1$s è installato. Vuoi impostarlo come assistente predefinito? Ari instraderà tutto ciò che non corrisponde a uno skill diretto attraverso di esso.</string>
     <string name="skills_set_as_default_assistant_confirm">Imposta come predefinito</string>
     <string name="skills_set_as_default_assistant_dismiss">Non ora</string>
+    <string name="skills_fsn_nudge_title">Consenti alle notifiche a schermo intero?</string>
+    <string name="skills_fsn_nudge_message">%1$s può mostrare un avviso a schermo intero che prende il controllo della schermata di blocco — come una sveglia che suona. Attiva gli avvisi a schermo intero così può raggiungerti anche quando il telefono è bloccato.</string>
+    <string name="skills_fsn_nudge_confirm">Apri impostazioni</string>
+    <string name="skills_fsn_nudge_dismiss">Non ora</string>
     <string name="skills_browse_in_english_fallback">Descrizione in inglese (nessuna traduzione disponibile)</string>
 
     <!-- Skill install/registry error messages -->
@@ -170,6 +174,7 @@
     <string name="onboarding_assistant_cloud_con_3">Può richiedere una API key o un account</string>
     <string name="onboarding_assistant_cloud_privacy">La tua voce viene trascritta sul dispositivo. Solo il testo viene inviato al servizio cloud. Ari non invia mai audio a terzi.</string>
     <string name="onboarding_assistant_cloud_later">Gli assistenti cloud si installano come skill. Ari supporta vari provider come ChatGPT, Claude e Gemini. Puoi sfogliarli e installare quello che preferisci dalla schermata Skill dopo la configurazione.</string>
+    <string name="onboarding_assistant_router_note">Ari scaricherà anche un piccolo modello di routing intelligente (~253 MB) in background, in modo da poter comprendere i comandi formulati in modi diversi.</string>
 
     <string name="onboarding_general_title">Ultimi ritocchi</string>
     <string name="onboarding_general_body">Un paio di opzioni per personalizzare il funzionamento di Ari.</string>
@@ -227,8 +232,6 @@
     <string name="conversation_downloading_header">Scaricamento in background</string>
     <string name="conversation_downloading_stt_model">Modello di riconoscimento vocale</string>
     <string name="conversation_downloading_llm_model">Modello assistente</string>
-    <string name="conversation_fsn_dialog_title">Notifiche a schermo intero</string>
-    <string name="conversation_fsn_dialog_body">Per attivare la parola di attivazione a mani libere, Ari ha bisogno del permesso di mostrare notifiche a schermo intero. Senza questo permesso, riceverai una notifica a banner.</string>
 
     <!-- Voice overlay -->
     <string name="voice_overlay_title">Ari</string>
