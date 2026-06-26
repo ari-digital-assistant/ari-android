@@ -56,6 +56,7 @@ class EngineHolder @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val secretStore: SecretStore,
     private val llmDownloadManager: LlmDownloadManager,
+    private val routerPolicy: dev.heyari.ari.router.RouterPolicy,
     private val assistantRegistry: AssistantRegistry,
     private val skillSettingsStore: SkillSettingsStore,
     private val ariFfiTasksProvider: AriFfiTasksProvider,
@@ -214,14 +215,20 @@ class EngineHolder @Inject constructor(
         // touched assistant Settings.
         assistantRegistry.applyToEngine(engine)
 
-        // Load the FunctionGemma router if enabled and downloaded.
-        val routerEnabled = settingsRepository.routerEnabled.first()
-        if (routerEnabled) {
-            val routerFile = File(context.filesDir, "models/router/${EngineModule.ROUTER_MODEL_FILENAME}")
-            if (routerFile.isFile) {
-                val ok = engine.loadRouterModel(routerFile.absolutePath)
-                Log.i(TAG, if (ok) "Router loaded (lazy)" else "Router path invalid")
-            }
+        // Bring the FunctionGemma router in line with the active assistant:
+        // on-device / none (English) need it, cloud / non-English don't —
+        // loading, downloading or deleting as required. Skipped until
+        // onboarding is done so a fresh install doesn't kick a 253 MB
+        // download before the user has even picked an assistant; the wizard
+        // drives router setup during onboarding.
+        if (settingsRepository.onboardingCompleted.first()) {
+            val routerRequired = dev.heyari.ari.router.RouterPolicy.required(
+                activeAssistantId,
+                settingsRepository.pendingCloudAssistantSetup.first(),
+                settingsRepository.activeLocale.first(),
+            )
+            routerPolicy.reconcile(engine, routerRequired)
+            Log.i(TAG, "Router reconciled at startup: required=$routerRequired")
         }
 
         return engine

@@ -11,8 +11,10 @@ import androidx.work.WorkManager
 import androidx.work.workDataOf
 import dev.heyari.ari.models.InstalledModelMetadata
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -55,11 +57,21 @@ class LlmDownloadManager @Inject constructor(
         return state.first { it is LlmDownloadState.Completed || it is LlmDownloadState.Failed }
     }
 
+    // Optimistic latch: set synchronously the instant download() is
+    // called, so [state] can report Downloading(thatModelId) before
+    // WorkManager has produced any WorkInfo. Without this the settings
+    // model rows kept showing their download button through the
+    // enqueue/early window and the user could tap it repeatedly. Cleared
+    // on cancel and when work reaches a terminal state.
+    private val requestedModelId = MutableStateFlow<String?>(null)
+
     fun cancel() {
+        requestedModelId.value = null
         workManager.cancelUniqueWork(UNIQUE_WORK_NAME)
     }
 
     fun download(model: LlmModel) {
+        requestedModelId.value = model.id
         val request = OneTimeWorkRequestBuilder<LlmDownloadWorker>()
             .setInputData(workDataOf(LlmDownloadWorker.KEY_MODEL_ID to model.id))
             .setConstraints(
@@ -77,36 +89,62 @@ class LlmDownloadManager @Inject constructor(
     }
 
     val state: Flow<LlmDownloadState> =
-        workManager.getWorkInfosForUniqueWorkFlow(UNIQUE_WORK_NAME).map { infos ->
-            mapToState(infos)
+        combine(
+            workManager.getWorkInfosForUniqueWorkFlow(UNIQUE_WORK_NAME),
+            requestedModelId,
+        ) { infos, requestedId ->
+            mapToState(infos, requestedId)
+        }.onEach { st ->
+            if (st is LlmDownloadState.Completed || st is LlmDownloadState.Failed) {
+                requestedModelId.value = null
+            }
         }
 
-    private fun mapToState(infos: List<WorkInfo>): LlmDownloadState {
-        val info = infos.firstOrNull() ?: return LlmDownloadState.Idle
-        return when (info.state) {
-            WorkInfo.State.RUNNING -> {
-                val modelId = info.progress.getString(LlmDownloadWorker.KEY_MODEL_ID) ?: ""
-                val bytesSoFar = info.progress.getLong(LlmDownloadWorker.KEY_BYTES_SO_FAR, 0L)
-                val totalBytes = info.progress.getLong(LlmDownloadWorker.KEY_TOTAL_BYTES, 0L)
-                LlmDownloadState.Downloading(modelId, bytesSoFar, totalBytes)
-            }
-            WorkInfo.State.ENQUEUED -> LlmDownloadState.Downloading("", 0L, 0L)
-            WorkInfo.State.SUCCEEDED -> {
-                val modelId = info.outputData.getString(LlmDownloadWorker.KEY_MODEL_ID) ?: ""
-                LlmDownloadState.Completed(modelId)
-            }
-            WorkInfo.State.FAILED -> {
-                val modelId = info.outputData.getString(LlmDownloadWorker.KEY_MODEL_ID) ?: ""
-                val error = info.outputData.getString(LlmDownloadWorker.KEY_ERROR) ?: "Unknown error"
-                LlmDownloadState.Failed(modelId, error)
-            }
-            WorkInfo.State.CANCELLED -> LlmDownloadState.Idle
-            WorkInfo.State.BLOCKED -> LlmDownloadState.Downloading("", 0L, 0L)
-        }
+    private fun mapToState(infos: List<WorkInfo>, requestedId: String?): LlmDownloadState {
+        val info = infos.firstOrNull()
+        return resolveState(
+            workState = info?.state,
+            progressModelId = info?.progress?.getString(LlmDownloadWorker.KEY_MODEL_ID) ?: "",
+            bytesSoFar = info?.progress?.getLong(LlmDownloadWorker.KEY_BYTES_SO_FAR, 0L) ?: 0L,
+            totalBytes = info?.progress?.getLong(LlmDownloadWorker.KEY_TOTAL_BYTES, 0L) ?: 0L,
+            outputModelId = info?.outputData?.getString(LlmDownloadWorker.KEY_MODEL_ID) ?: "",
+            error = info?.outputData?.getString(LlmDownloadWorker.KEY_ERROR),
+            requestedId = requestedId,
+        )
     }
 
     companion object {
         private const val TAG = "LlmDownloadManager"
         private const val UNIQUE_WORK_NAME = "llm-model-download"
+
+        /**
+         * Pure mapping from a WorkManager work state (+ the optimistic
+         * requested-id latch) to a [LlmDownloadState]. Side-effect and
+         * Android-framework free so it can be unit tested — mirrors
+         * `ModelDownloadManager.resolveState`. See `LlmDownloadStateTest`.
+         */
+        internal fun resolveState(
+            workState: WorkInfo.State?,
+            progressModelId: String,
+            bytesSoFar: Long,
+            totalBytes: Long,
+            outputModelId: String,
+            error: String?,
+            requestedId: String?,
+        ): LlmDownloadState = when (workState) {
+            null ->
+                if (requestedId != null) LlmDownloadState.Downloading(requestedId, 0L, 0L)
+                else LlmDownloadState.Idle
+            WorkInfo.State.RUNNING ->
+                LlmDownloadState.Downloading(
+                    progressModelId.ifEmpty { requestedId.orEmpty() },
+                    bytesSoFar, totalBytes,
+                )
+            WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED ->
+                LlmDownloadState.Downloading(requestedId.orEmpty(), 0L, 0L)
+            WorkInfo.State.SUCCEEDED -> LlmDownloadState.Completed(outputModelId)
+            WorkInfo.State.FAILED -> LlmDownloadState.Failed(outputModelId, error ?: "Unknown error")
+            WorkInfo.State.CANCELLED -> LlmDownloadState.Idle
+        }
     }
 }

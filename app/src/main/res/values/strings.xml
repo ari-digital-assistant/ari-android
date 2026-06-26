@@ -167,10 +167,7 @@
     <string name="onboarding_assistant_cloud_con_3">May need an API key or account</string>
     <string name="onboarding_assistant_cloud_privacy">Your voice is transcribed on-device. Only the text is sent to the cloud provider. Ari never streams audio to a third party.</string>
     <string name="onboarding_assistant_cloud_later">Cloud assistants are installed as skills. Ari supports various skill providers including ChatGPT, Claude and Gemini. You can browse and install your preferred provider from the Skills screen after onboarding.</string>
-
-    <string name="onboarding_router_title">Smart skill routing</string>
-    <string name="onboarding_router_body">Ari can use a small on-device model to understand paraphrases the keyword matcher misses. \"Launch my music player\" routes to the open-app skill even though no keyword matched. Disable if you\'d rather skip the ~253 MB download.</string>
-    <string name="onboarding_router_continue_hint">You can continue — the model downloads in the background and starts working as soon as it\'s ready.</string>
+    <string name="onboarding_assistant_router_note">Ari will also download a small (~253 MB) smart-routing model in the background, so it can understand commands phrased in different ways.</string>
 
     <string name="onboarding_general_title">Finishing touches</string>
     <string name="onboarding_general_body">A couple of options to make Ari work the way you want.</string>
@@ -267,10 +264,6 @@
     <string name="settings_cloud_stt_for_non_english_blurb">When on, non-English voice is transcribed by your configured cloud assistant instead of the on-device Whisper model. Faster on slow phones, but your audio leaves your device. Has no effect unless you\'ve set up a cloud assistant.</string>
     <string name="settings_start_on_boot_title">Start Ari on boot</string>
     <string name="settings_start_on_boot_blurb">When your device boots, Ari will start listening for the wake word automatically. Uses a bit more battery since the microphone is always on — leave it off if you\'d rather start Ari manually.</string>
-    <string name="settings_router_title">Smart skill routing</string>
-    <string name="settings_router_blurb">Uses a small on-device model (~253 MB) to understand paraphrases that keyword matching misses. For example, \"launch my music player\" routes to the open-app skill even though no keyword matched.</string>
-    <string name="settings_router_downloading">Downloading router model… %1$s / %2$s</string>
-    <string name="settings_router_download_failed">Download failed: %1$s</string>
     <string name="settings_default_assistant_title">Default digital assistant</string>
     <string name="settings_default_assistant_blurb">Set Ari as your default digital assistant so it can be invoked with the assist gesture (long-press home button or power button).</string>
     <string name="settings_llm_blurb">Choose an on-device language model. When enabled, Ari can answer general questions and reroute misheard commands to the right skill. Larger models give better answers but use more storage and RAM.</string>

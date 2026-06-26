@@ -29,7 +29,6 @@ import dev.heyari.ari.ui.onboarding.CompleteScreen
 import dev.heyari.ari.ui.onboarding.GeneralScreen
 import dev.heyari.ari.ui.onboarding.OnboardingViewModel
 import dev.heyari.ari.ui.onboarding.PermissionsScreen
-import dev.heyari.ari.ui.onboarding.RouterScreen
 import dev.heyari.ari.ui.onboarding.LanguageScreen
 import dev.heyari.ari.ui.onboarding.SttScreen
 import dev.heyari.ari.ui.onboarding.WakeWordScreen
@@ -73,7 +72,6 @@ object Routes {
     const val ONBOARDING_WAKE_WORD = "onboarding/wakeword"
     const val ONBOARDING_STT = "onboarding/stt"
     const val ONBOARDING_ASSISTANT = "onboarding/assistant"
-    const val ONBOARDING_ROUTER = "onboarding/router"
     const val ONBOARDING_GENERAL = "onboarding/general"
     const val ONBOARDING_COMPLETE = "onboarding/complete"
 
@@ -369,33 +367,11 @@ fun AriNavHost(
                 val graphEntry = remember(it) { navController.getBackStackEntry("onboarding") }
                 val settingsViewModel: SettingsViewModel = hiltViewModel()
                 val onboardingViewModel: OnboardingViewModel = hiltViewModel(graphEntry)
-                val wizardState by onboardingViewModel.state.collectAsStateWithLifecycle()
                 AssistantScreen(
                     settingsViewModel = settingsViewModel,
                     onboardingViewModel = onboardingViewModel,
-                    onNext = {
-                        // FunctionGemma is English-only (per the multi-language
-                        // plan: "FunctionGemma as English-only tie-breaker").
-                        // Skip the router screen entirely for non-English users
-                        // and explicitly disable the toggle so the default-on
-                        // flag doesn't kick off a 253 MB download they'll never
-                        // benefit from.
-                        if (wizardState.selectedLocale == "en"
-                            || wizardState.selectedLocale == null) {
-                            navController.navigate(Routes.ONBOARDING_ROUTER)
-                        } else {
-                            settingsViewModel.setRouterEnabled(false)
-                            navController.navigate(Routes.ONBOARDING_GENERAL)
-                        }
-                    },
-                    onBack = { navController.popBackStack() },
-                )
-            }
-
-            composable(Routes.ONBOARDING_ROUTER) {
-                val settingsViewModel: SettingsViewModel = hiltViewModel()
-                RouterScreen(
-                    settingsViewModel = settingsViewModel,
+                    // AssistantScreen.onPrimary commits the router decision
+                    // from the chosen assistant + locale before this fires.
                     onNext = { navController.navigate(Routes.ONBOARDING_GENERAL) },
                     onBack = { navController.popBackStack() },
                 )

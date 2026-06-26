@@ -73,6 +73,15 @@ fun AssistantScreen(
                     }
                 }
             }
+            // FunctionGemma is essential when Ari has to understand commands
+            // itself (on-device or no assistant) but redundant with a cloud
+            // assistant, and English-only either way. The wizard choice is
+            // the source of truth here — Cloud is only a deferred flag at
+            // this point — so commit the router decision explicitly.
+            val english = wizardState.selectedLocale == "en" || wizardState.selectedLocale == null
+            settingsViewModel.setRouterRequired(
+                wizardState.assistantChoice != AssistantChoice.CLOUD && english,
+            )
             onNext()
         },
     ) {
@@ -194,6 +203,21 @@ fun AssistantScreen(
                     )
                 }
             }
+        }
+
+        // On-device / none (in English) pull in the ~253 MB FunctionGemma
+        // routing model in the background — give the user a heads-up so the
+        // silent download isn't a surprise.
+        val english = wizardState.selectedLocale == "en" || wizardState.selectedLocale == null
+        AnimatedVisibility(
+            visible = english && wizardState.assistantChoice != AssistantChoice.CLOUD,
+        ) {
+            Text(
+                text = stringResource(R.string.onboarding_assistant_router_note),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 12.dp),
+            )
         }
     }
 }

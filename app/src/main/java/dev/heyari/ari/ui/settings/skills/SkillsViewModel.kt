@@ -47,6 +47,7 @@ class SkillsViewModel @Inject constructor(
     private val prefs: SkillsPreferences,
     private val settingsRepository: dev.heyari.ari.data.SettingsRepository,
     private val secretStore: SecretStore,
+    private val routerPolicy: dev.heyari.ari.router.RouterPolicy,
     @dev.heyari.ari.di.ApplicationScope private val appScope: kotlinx.coroutines.CoroutineScope,
 ) : ViewModel() {
 
@@ -316,6 +317,9 @@ class SkillsViewModel @Inject constructor(
             withContext(Dispatchers.IO) {
                 assistantRegistry.applyToEngine(engineHolder.engine())
             }
+            // A cloud assistant now does the NLU, so FunctionGemma is
+            // redundant — unload + delete it (a built-in pick keeps it).
+            routerPolicy.reconcile(engineHolder.engine(), routerPolicy.requiredFromState())
             _state.update {
                 it.copy(pendingAssistantPromptId = null, pendingAssistantPromptName = "")
             }

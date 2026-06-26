@@ -171,10 +171,6 @@
     <string name="onboarding_assistant_cloud_privacy">La tua voce viene trascritta sul dispositivo. Solo il testo viene inviato al servizio cloud. Ari non invia mai audio a terzi.</string>
     <string name="onboarding_assistant_cloud_later">Gli assistenti cloud si installano come skill. Ari supporta vari provider come ChatGPT, Claude e Gemini. Puoi sfogliarli e installare quello che preferisci dalla schermata Skill dopo la configurazione.</string>
 
-    <string name="onboarding_router_title">Routing intelligente degli skill</string>
-    <string name="onboarding_router_body">Ari può usare un piccolo modello sul dispositivo per interpretare le parafrasi che il riconoscimento per parole chiave non coglie. \"Apri il mio lettore musicale\" instrada allo skill apri-app anche se nessuna parola chiave corrisponde. Disabilita se preferisci evitare il download di ~253 MB.</string>
-    <string name="onboarding_router_continue_hint">Puoi continuare — il modello viene scaricato in background e inizia a funzionare appena è pronto.</string>
-
     <string name="onboarding_general_title">Ultimi ritocchi</string>
     <string name="onboarding_general_body">Un paio di opzioni per personalizzare il funzionamento di Ari.</string>
 
@@ -272,10 +268,6 @@
     <string name="settings_cloud_stt_for_non_english_blurb">Se attivo, la voce non in inglese viene trascritta dall\'assistente cloud configurato invece che dal modello Whisper sul dispositivo. Più veloce sui telefoni lenti, ma il tuo audio lascia il dispositivo. Non ha effetto se non hai configurato un assistente cloud.</string>
     <string name="settings_start_on_boot_title">Avvia Ari all\'accensione</string>
     <string name="settings_start_on_boot_blurb">Quando il dispositivo si avvia, Ari inizierà ad ascoltare la parola di attivazione automaticamente. Consuma un po\' più di batteria poiché il microfono resta sempre attivo — lascia disattivato se preferisci avviare Ari manualmente.</string>
-    <string name="settings_router_title">Routing intelligente degli skill</string>
-    <string name="settings_router_blurb">Usa un piccolo modello sul dispositivo (~253 MB) per interpretare le parafrasi che il riconoscimento per parole chiave non coglie. Per esempio, \"apri il mio lettore musicale\" instrada allo skill apri-app anche se nessuna parola chiave corrisponde.</string>
-    <string name="settings_router_downloading">Download del modello router… %1$s / %2$s</string>
-    <string name="settings_router_download_failed">Download fallito: %1$s</string>
     <string name="settings_default_assistant_title">Assistente digitale predefinito</string>
     <string name="settings_default_assistant_blurb">Imposta Ari come assistente digitale predefinito per poterlo richiamare con il gesto di assist (pressione lunga su tasto Home o accensione).</string>
     <string name="settings_llm_blurb">Scegli un modello linguistico sul dispositivo. Quando attivo, Ari può rispondere a domande generiche e instradare i comandi mal compresi allo skill giusto. I modelli più grandi danno risposte migliori ma occupano più spazio e RAM.</string>

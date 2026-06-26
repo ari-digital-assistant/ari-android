@@ -24,6 +24,7 @@ import dev.heyari.ari.llm.LlmModel
 import dev.heyari.ari.llm.LlmModelRegistry
 import dev.heyari.ari.router.RouterDownloadManager
 import dev.heyari.ari.router.RouterDownloadState
+import dev.heyari.ari.router.RouterPolicy
 import dev.heyari.ari.stt.ModelDownloadManager
 import dev.heyari.ari.stt.ModelDownloadState
 import dev.heyari.ari.stt.SpeechRecognizer
@@ -110,9 +111,6 @@ data class SettingsState(
     val activeAssistantId: String? = null,
     val assistantEntries: List<AssistantUiEntry> = emptyList(),
     val startOnBoot: Boolean = false,
-    val routerEnabled: Boolean = false,
-    val routerDownloaded: Boolean = false,
-    val routerDownloadState: RouterDownloadState = RouterDownloadState.Idle,
     val ttsVoices: List<TtsVoiceOption> = emptyList(),
     val activeTtsVoice: String? = null,
     /** ISO 639-1 lowercase code of the user's active language. */
@@ -136,6 +134,7 @@ class SettingsViewModel @Inject constructor(
     private val engineHolder: EngineHolder,
     private val assistantRegistry: AssistantRegistry,
     private val routerDownloadManager: RouterDownloadManager,
+    private val routerPolicy: RouterPolicy,
     private val speechOutput: SpeechOutput,
 ) : ViewModel() {
 
@@ -341,23 +340,16 @@ class SettingsViewModel @Inject constructor(
             }
         }
 
-        // Router state
+        // Load the router into the engine once its background download
+        // lands, while it's still wanted. The download itself is kicked by
+        // [RouterPolicy] whenever the active assistant or locale makes the
+        // router necessary — it's no longer a user toggle.
         viewModelScope.launch {
-            combine(
-                settingsRepository.routerEnabled,
-                routerDownloadManager.state,
-            ) { enabled, dlState -> Pair(enabled, dlState) }
-            .collect { (enabled, dlState) ->
-                _state.update {
-                    it.copy(
-                        routerEnabled = enabled,
-                        routerDownloaded = routerDownloadManager.isDownloaded(),
-                        routerDownloadState = dlState,
-                    )
-                }
-                // Auto-load the router when download completes and it's enabled
-                if (dlState is RouterDownloadState.Completed && enabled) {
-                    viewModelScope.launch(Dispatchers.IO) {
+            routerDownloadManager.state.collect { dlState ->
+                if (dlState is RouterDownloadState.Completed
+                    && settingsRepository.routerEnabled.first()
+                ) {
+                    withContext(Dispatchers.IO) {
                         engineHolder.engine().loadRouterModel(routerDownloadManager.modelFile().absolutePath)
                     }
                 }
@@ -371,23 +363,23 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun setRouterEnabled(enabled: Boolean) {
+    /**
+     * Onboarding commit point. During the wizard the assistant choice is
+     * the source of truth before it's been persisted (Cloud in particular
+     * is only a deferred "pending" flag), so the assistant screen passes
+     * the decision in directly: on-device / none in English → router
+     * required; cloud or non-English → not. Outside onboarding the router
+     * is reconciled automatically from persisted state — see
+     * [reconcileRouter].
+     */
+    fun setRouterRequired(required: Boolean) {
         viewModelScope.launch {
-            settingsRepository.setRouterEnabled(enabled)
-            if (enabled) {
-                if (routerDownloadManager.isDownloaded()) {
-                    viewModelScope.launch(Dispatchers.IO) {
-                        engineHolder.engine().loadRouterModel(routerDownloadManager.modelFile().absolutePath)
-                    }
-                } else {
-                    routerDownloadManager.download()
-                }
-            } else {
-                viewModelScope.launch(Dispatchers.IO) {
-                    engineHolder.engine().unloadRouterModel()
-                }
-            }
+            routerPolicy.reconcile(engineHolder.engine(), required)
         }
+    }
+
+    private suspend fun reconcileRouter() {
+        routerPolicy.reconcile(engineHolder.engine(), routerPolicy.requiredFromState())
     }
 
     /**
@@ -405,6 +397,9 @@ class SettingsViewModel @Inject constructor(
             runCatching {
                 settingsRepository.setActiveLocale(code)
                 applyAppLocale(code)
+                // FunctionGemma is English-only, so a language change can
+                // flip whether the router is wanted.
+                reconcileRouter()
             }.onFailure { Log.w(TAG, "setActiveLocale($code) failed", it) }
         }
     }
@@ -727,6 +722,10 @@ class SettingsViewModel @Inject constructor(
             viewModelScope.launch(Dispatchers.IO) {
                 assistantRegistry.applyToEngine(engineHolder.engine())
             }
+            // On-device / none need FunctionGemma; cloud doesn't. Switching
+            // to cloud unloads + deletes the 253 MB model; switching back
+            // re-downloads it.
+            reconcileRouter()
         }
     }
 
