@@ -136,6 +136,7 @@ class VoiceSession @Inject constructor(
         // pending.
         engineHolder.peek()?.cancelPendingReply()
         awaitingReply = false
+        talkMode = false
         // Decide readiness synchronously (isModelLoaded is a cheap flag) and
         // set a non-Idle state BEFORE launching the coroutine, so the overlay's
         // collector doesn't see Idle and finish itself (the lock-screen race

@@ -1443,7 +1443,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_reload_community_skills() != 23146.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_conversation_active() != 5986.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_conversation_active() != 9093.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_settings_action() != 45712.toShort()) {
@@ -2234,9 +2234,12 @@ public interface AriEngineInterface {
     fun `reloadCommunitySkills`(`skillStoreDir`: kotlin.String, `storageDir`: kotlin.String): kotlin.UInt
     
     /**
-     * Tell the engine whether a conversation session is currently active.
-     * The host calls this when the user opens or closes the conversation UI
-     * so the engine can manage conversational state (e.g. enter/exit signals).
+     * Tell the engine whether "let's talk" continuous-conversation mode is
+     * currently active. The frontend `VoiceSession` loop calls this — `true`
+     * on entry, `false` on every exit route (exit phrase, silence timeout, or
+     * error). While active the engine interprets exit phrases (a bare "stop"
+     * ends the mode instead of routing to a skill) and records skill turns
+     * into the conversation buffer.
      */
     fun `setConversationActive`(`active`: kotlin.Boolean)
     
@@ -2541,9 +2544,12 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
 
     
     /**
-     * Tell the engine whether a conversation session is currently active.
-     * The host calls this when the user opens or closes the conversation UI
-     * so the engine can manage conversational state (e.g. enter/exit signals).
+     * Tell the engine whether "let's talk" continuous-conversation mode is
+     * currently active. The frontend `VoiceSession` loop calls this — `true`
+     * on entry, `false` on every exit route (exit phrase, silence timeout, or
+     * error). While active the engine interprets exit phrases (a bare "stop"
+     * ends the mode instead of routing to a skill) and records skill turns
+     * into the conversation buffer.
      */override fun `setConversationActive`(`active`: kotlin.Boolean)
         = 
     callWithHandle {
@@ -9415,6 +9421,9 @@ sealed class FfiResponse {
     /**
      * `rearm` true means the engine is awaiting a spoken reply — the host
      * should re-arm the mic without a wake word (see multi-turn design).
+     * `enter_conversation` true means the engine entered "let's talk"
+     * continuous-conversation mode this turn; `exit_conversation` true means
+     * it left the mode this turn — the host mirrors that state.
      */
     data class Text(
         val `body`: kotlin.String, 
@@ -9437,6 +9446,9 @@ sealed class FfiResponse {
      * asset references will fail to resolve".
      * `rearm` true means the engine is awaiting a spoken reply — the host
      * should re-arm the mic without a wake word (see multi-turn design).
+     * `enter_conversation` true means the engine entered "let's talk"
+     * continuous-conversation mode this turn; `exit_conversation` true means
+     * it left the mode this turn — the host mirrors that state.
      */
     data class Action(
         val `json`: kotlin.String, 
