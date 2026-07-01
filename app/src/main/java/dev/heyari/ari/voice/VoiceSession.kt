@@ -117,6 +117,11 @@ class VoiceSession @Inject constructor(
     @Volatile
     private var awaitingReply: Boolean = false
 
+    // "Let's talk" continuous mode: while true, every turn re-arms the mic
+    // (no wake word) until an exit phrase, 30s silence, or an error.
+    @Volatile
+    private var talkMode: Boolean = false
+
     /**
      * Begin a voice session. If one is already in progress, do nothing —
      * we don't want re-entrant sessions stomping on each other.
@@ -373,9 +378,27 @@ class VoiceSession @Inject constructor(
         // Does the engine want a spoken reply to this response? If so we keep
         // the mic open instead of dismissing. Computed off the final response
         // (after any parallel/offline retry reassignment).
-        val rearm = shouldRearm(response)
+        val enter = shouldEnterConversation(response)
+        val exit = shouldExitConversation(response)
+        // Re-arm if the engine wants a reply (behaviour A) OR we're in
+        // continuous mode OR we're entering it.
+        val rearm = shouldRearm(response) || talkMode || enter
 
         _state.value = VoiceState.Responding(responseText)
+
+        if (exit) {
+            // Speak the ack, then leave the mode and close the session.
+            speechOutput.speakAndAwait(responseText)
+            talkMode = false
+            engineHolder.peek()?.setConversationActive(false)
+            dismiss()
+            return
+        }
+
+        if (enter) {
+            talkMode = true
+            engineHolder.peek()?.setConversationActive(true)
+        }
 
         if (rearm) {
             // Re-arm AFTER Ari finishes speaking the question. We wait on the
@@ -475,6 +498,8 @@ class VoiceSession @Inject constructor(
         // Drop any reply the engine was still waiting on. No-op on the normal
         // happy path (nothing pending); covers tap-dismiss, the silence-timeout
         // path (which calls dismiss()), and lifecycle stop.
+        talkMode = false
+        engineHolder.peek()?.setConversationActive(false)
         engineHolder.peek()?.cancelPendingReply()
         awaitingReply = false
         speechRecognizer.stopListening()
