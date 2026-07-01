@@ -17,7 +17,7 @@ class VoiceSessionTest {
 
     @Test
     fun `Text with rearm true re-arms`() {
-        assertTrue(shouldRearm(FfiResponse.Text(body = "Which one?", rearm = true)))
+        assertTrue(shouldRearm(FfiResponse.Text(body = "Which one?", rearm = true, enterConversation = false, exitConversation = false)))
     }
 
     @Test
@@ -28,6 +28,8 @@ class VoiceSessionTest {
                     json = "{\"v\":1}",
                     skillId = "dev.heyari.music",
                     rearm = true,
+                    enterConversation = false,
+                    exitConversation = false,
                 )
             )
         )
@@ -35,7 +37,7 @@ class VoiceSessionTest {
 
     @Test
     fun `Text with rearm false does not re-arm`() {
-        assertFalse(shouldRearm(FfiResponse.Text(body = "Playing.", rearm = false)))
+        assertFalse(shouldRearm(FfiResponse.Text(body = "Playing.", rearm = false, enterConversation = false, exitConversation = false)))
     }
 
     @Test
@@ -46,6 +48,8 @@ class VoiceSessionTest {
                     json = "{\"v\":1}",
                     skillId = "dev.heyari.music",
                     rearm = false,
+                    enterConversation = false,
+                    exitConversation = false,
                 )
             )
         )
@@ -59,5 +63,21 @@ class VoiceSessionTest {
     @Test
     fun `Binary never re-arms`() {
         assertFalse(shouldRearm(FfiResponse.Binary(mime = "image/png", data = ByteArray(4))))
+    }
+
+    @Test
+    fun shouldEnterConversation_trueOnlyWhenFlagSet() {
+        assertTrue(shouldEnterConversation(FfiResponse.Text("Okay, I'm listening.", false, true, false)))
+        assertTrue(shouldEnterConversation(FfiResponse.Action("{}", "skill", false, true, false)))
+        assertFalse(shouldEnterConversation(FfiResponse.Text("hi", false, false, false)))
+        assertFalse(shouldEnterConversation(FfiResponse.NotUnderstood("?")))
+    }
+
+    @Test
+    fun shouldExitConversation_trueOnlyWhenFlagSet() {
+        assertTrue(shouldExitConversation(FfiResponse.Text("Okay.", false, false, true)))
+        assertTrue(shouldExitConversation(FfiResponse.Action("{}", "skill", false, false, true)))
+        assertFalse(shouldExitConversation(FfiResponse.Text("hi", false, false, false)))
+        assertFalse(shouldExitConversation(FfiResponse.NotUnderstood("?")))
     }
 }

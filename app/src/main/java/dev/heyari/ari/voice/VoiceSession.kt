@@ -55,6 +55,18 @@ internal fun shouldRearm(response: FfiResponse): Boolean = when (response) {
     else -> false
 }
 
+internal fun shouldEnterConversation(response: FfiResponse): Boolean = when (response) {
+    is FfiResponse.Text -> response.enterConversation
+    is FfiResponse.Action -> response.enterConversation
+    else -> false
+}
+
+internal fun shouldExitConversation(response: FfiResponse): Boolean = when (response) {
+    is FfiResponse.Text -> response.exitConversation
+    is FfiResponse.Action -> response.exitConversation
+    else -> false
+}
+
 /**
  * Singleton state machine + pipeline for one voice interaction. Owned by Hilt
  * at the singleton scope so it can be injected by both [WakeWordService] (which
