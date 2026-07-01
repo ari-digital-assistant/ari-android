@@ -932,6 +932,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_reload_community_skills(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_set_conversation_active(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_settings_action(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_unload_llm_model(
@@ -1104,6 +1106,8 @@ external fun uniffi_ari_ffi_fn_method_ariengine_query_skill_setting(`ptr`: Long,
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ariengine_reload_community_skills(`ptr`: Long,`skillStoreDir`: RustBuffer.ByValue,`storageDir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Int
+external fun uniffi_ari_ffi_fn_method_ariengine_set_conversation_active(`ptr`: Long,`active`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_settings_action(`ptr`: Long,`skillId`: RustBuffer.ByValue,`action`: RustBuffer.ByValue,`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ariengine_unload_llm_model(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -1437,6 +1441,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_reload_community_skills() != 23146.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_conversation_active() != 5986.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_settings_action() != 45712.toShort()) {
@@ -2227,6 +2234,13 @@ public interface AriEngineInterface {
     fun `reloadCommunitySkills`(`skillStoreDir`: kotlin.String, `storageDir`: kotlin.String): kotlin.UInt
     
     /**
+     * Tell the engine whether a conversation session is currently active.
+     * The host calls this when the user opens or closes the conversation UI
+     * so the engine can manage conversational state (e.g. enter/exit signals).
+     */
+    fun `setConversationActive`(`active`: kotlin.Boolean)
+    
+    /**
      * Effectful settings-time skill invocation: run `skill_id`'s `settings_action`
      * for `action`, passing the current `values` (sibling field values the
      * skill reads during the action — e.g. `base_url`/`token` for HA sign-in).
@@ -2523,6 +2537,23 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     }
     )
     }
+    
+
+    
+    /**
+     * Tell the engine whether a conversation session is currently active.
+     * The host calls this when the user opens or closes the conversation UI
+     * so the engine can manage conversational state (e.g. enter/exit signals).
+     */override fun `setConversationActive`(`active`: kotlin.Boolean)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_set_conversation_active(
+        it,
+        FfiConverterBoolean.lower(`active`),_status)
+}
+    }
+    
     
 
     
@@ -9387,7 +9418,9 @@ sealed class FfiResponse {
      */
     data class Text(
         val `body`: kotlin.String, 
-        val `rearm`: kotlin.Boolean) : FfiResponse()
+        val `rearm`: kotlin.Boolean, 
+        val `enterConversation`: kotlin.Boolean, 
+        val `exitConversation`: kotlin.Boolean) : FfiResponse()
         
     {
         
@@ -9408,7 +9441,9 @@ sealed class FfiResponse {
     data class Action(
         val `json`: kotlin.String, 
         val `skillId`: kotlin.String, 
-        val `rearm`: kotlin.Boolean) : FfiResponse()
+        val `rearm`: kotlin.Boolean, 
+        val `enterConversation`: kotlin.Boolean, 
+        val `exitConversation`: kotlin.Boolean) : FfiResponse()
         
     {
         
@@ -9461,10 +9496,14 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
             1 -> FfiResponse.Text(
                 FfiConverterString.read(buf),
                 FfiConverterBoolean.read(buf),
+                FfiConverterBoolean.read(buf),
+                FfiConverterBoolean.read(buf),
                 )
             2 -> FfiResponse.Action(
                 FfiConverterString.read(buf),
                 FfiConverterString.read(buf),
+                FfiConverterBoolean.read(buf),
+                FfiConverterBoolean.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
             3 -> FfiResponse.Binary(
@@ -9485,6 +9524,8 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
                 4UL
                 + FfiConverterString.allocationSize(value.`body`)
                 + FfiConverterBoolean.allocationSize(value.`rearm`)
+                + FfiConverterBoolean.allocationSize(value.`enterConversation`)
+                + FfiConverterBoolean.allocationSize(value.`exitConversation`)
             )
         }
         is FfiResponse.Action -> {
@@ -9494,6 +9535,8 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
                 + FfiConverterString.allocationSize(value.`json`)
                 + FfiConverterString.allocationSize(value.`skillId`)
                 + FfiConverterBoolean.allocationSize(value.`rearm`)
+                + FfiConverterBoolean.allocationSize(value.`enterConversation`)
+                + FfiConverterBoolean.allocationSize(value.`exitConversation`)
             )
         }
         is FfiResponse.Binary -> {
@@ -9519,6 +9562,8 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
                 buf.putInt(1)
                 FfiConverterString.write(value.`body`, buf)
                 FfiConverterBoolean.write(value.`rearm`, buf)
+                FfiConverterBoolean.write(value.`enterConversation`, buf)
+                FfiConverterBoolean.write(value.`exitConversation`, buf)
                 Unit
             }
             is FfiResponse.Action -> {
@@ -9526,6 +9571,8 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
                 FfiConverterString.write(value.`json`, buf)
                 FfiConverterString.write(value.`skillId`, buf)
                 FfiConverterBoolean.write(value.`rearm`, buf)
+                FfiConverterBoolean.write(value.`enterConversation`, buf)
+                FfiConverterBoolean.write(value.`exitConversation`, buf)
                 Unit
             }
             is FfiResponse.Binary -> {
