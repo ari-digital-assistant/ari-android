@@ -437,61 +437,58 @@ class VoiceSession @Inject constructor(
     }
 
     /**
-     * Start playing the "ready" cue tone (fire-and-forget) and return its
-     * duration in milliseconds so the caller knows how long to discard mic
-     * samples for. Returns 0 if playback fails to start, in which case there's
-     * nothing to discard. Uses ASSISTANCE_SONIFICATION audio attributes so it
-     * plays through the notification stream and respects DND assistant rules.
+     * Play the "ready" cue at full volume and return its duration in ms so the
+     * caller knows how long to discard mic samples for (0 on failure). See
+     * [playReadyCue] for the audio-attributes and stream rationale.
      */
-    private fun startReadyCue(): Long {
-        val player = MediaPlayer.create(context, R.raw.ready) ?: run {
-            Log.w(TAG, "Failed to create MediaPlayer for ready cue — skipping")
-            return 0L
-        }
+    private fun startReadyCue(): Long = playReadyCue(1.0f)
+
+    /**
+     * "I'm still listening" cue played when the mic re-arms for a follow-up
+     * question or a "let's talk" turn. Played a touch below the fresh cue to
+     * still read as "still here" rather than "fresh start" — but clearly
+     * audible (the previous 0.3 was inaudible on-device). Fire-and-forget.
+     */
+    private fun startListeningAgainCue() {
+        playReadyCue(RE_ARM_CUE_VOLUME)
+    }
+
+    /**
+     * Play [R.raw.ready] at [volume]; returns its duration in ms (0 on
+     * failure). Audio attributes MUST be set BEFORE prepare: `MediaPlayer.create()`
+     * prepares eagerly, so setting attributes afterwards is rejected by the
+     * native layer ("trying to set audio attributes called in state 8") and
+     * silently dropped — which is why the old code accidentally ran on the
+     * default media stream. We now deliberately use USAGE_MEDIA: on-device A/B
+     * testing showed USAGE_ASSISTANT / ASSISTANCE_SONIFICATION route to a much
+     * quieter stream, too soft for a "your turn" prompt. Trade-off: the cue
+     * follows the media volume.
+     */
+    private fun playReadyCue(volume: Float): Long = runCatching {
+        val player = MediaPlayer()
         player.setAudioAttributes(
             AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                .setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .build()
         )
+        context.resources.openRawResourceFd(R.raw.ready).use { afd ->
+            player.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+        }
+        player.prepare()
         val durationMs = player.duration.toLong().coerceAtLeast(0L)
+        player.setVolume(volume, volume)
         player.setOnCompletionListener { runCatching { it.release() } }
         player.setOnErrorListener { mp, what, extra ->
             Log.w(TAG, "Ready cue playback error what=$what extra=$extra")
             runCatching { mp.release() }
             true
         }
-        return runCatching {
-            player.start()
-            durationMs
-        }.getOrElse {
-            Log.w(TAG, "Ready cue start() failed", it)
-            runCatching { player.release() }
-            0L
-        }
-    }
-
-    /**
-     * Softer "I'm still listening" cue played when the mic is re-armed for a
-     * skill's follow-up question. Reuses [R.raw.ready] at reduced volume rather
-     * than shipping a second audio asset — quiet enough to read as "still
-     * here", not "fresh start". A dedicated file can replace it here later with
-     * no other changes. Fire-and-forget; failures are swallowed.
-     */
-    private fun startListeningAgainCue() {
-        runCatching {
-            MediaPlayer.create(context, R.raw.ready)?.apply {
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build()
-                )
-                setVolume(0.3f, 0.3f)
-                setOnCompletionListener { runCatching { it.release() } }
-                start()
-            }
-        }
+        player.start()
+        durationMs
+    }.getOrElse {
+        Log.w(TAG, "Ready cue playback failed", it)
+        0L
     }
 
     fun dismiss() {
@@ -527,5 +524,9 @@ class VoiceSession @Inject constructor(
         // transitioning to the response. Long enough for the user to notice
         // the text changed, short enough not to feel like a stall.
         private const val CORRECTION_FLASH_MS = 600L
+
+        // Re-arm cue volume: clearly audible after Ari's TTS, a touch below the
+        // fresh cue's full volume. The old 0.3 was inaudible on-device.
+        private const val RE_ARM_CUE_VOLUME = 0.8f
     }
 }
