@@ -131,6 +131,12 @@ class EngineHolder @Inject constructor(
         }
         Log.i(TAG, "hydrated ${entries.size} non-secret skill setting(s) from DataStore")
 
+        // Conversation memory master switch (behaviours B + C). Default on;
+        // apply the persisted value before any input is processed.
+        val memoryEnabled = settingsRepository.conversationMemoryEnabled.first()
+        engine.setConversationMemoryEnabled(memoryEnabled)
+        Log.i(TAG, "conversation memory enabled=$memoryEnabled")
+
         val skillsDir = File(context.filesDir, "skills").apply { mkdirs() }
         val storageDir = File(context.filesDir, "skill-storage").apply { mkdirs() }
         val loaded = engine.reloadCommunitySkills(
