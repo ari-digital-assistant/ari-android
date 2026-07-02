@@ -124,6 +124,39 @@ class SettingsRepository @Inject constructor(
     }
 
     /**
+     * Durable personal facts the user explicitly asked Ari to remember. Stored
+     * as a JSON array string. Empty when nothing has been remembered.
+     */
+    val rememberedFacts: Flow<List<String>> = context.dataStore.data.map { prefs ->
+        decodeFacts(prefs[KEY_REMEMBERED_FACTS])
+    }
+
+    suspend fun rememberedFactsOnce(): List<String> =
+        decodeFacts(context.dataStore.data.first()[KEY_REMEMBERED_FACTS])
+
+    suspend fun setRememberedFacts(facts: List<String>) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_REMEMBERED_FACTS] = encodeFacts(facts)
+        }
+    }
+
+    private fun encodeFacts(facts: List<String>): String {
+        val arr = org.json.JSONArray()
+        facts.forEach { arr.put(it) }
+        return arr.toString()
+    }
+
+    private fun decodeFacts(raw: String?): List<String> {
+        if (raw.isNullOrBlank()) return emptyList()
+        return try {
+            val arr = org.json.JSONArray(raw)
+            (0 until arr.length()).map { arr.getString(it) }
+        } catch (e: org.json.JSONException) {
+            emptyList()
+        }
+    }
+
+    /**
      * Read/write per-assistant config values. Scoped by skill ID + key.
      * Used for non-secret config (model name, endpoint URL, etc.).
      */
@@ -286,6 +319,7 @@ class SettingsRepository @Inject constructor(
         private val KEY_BARGE_IN_ENABLED = booleanPreferencesKey("barge_in_enabled")
         private val KEY_CONVERSATION_MEMORY_ENABLED =
             booleanPreferencesKey("conversation_memory_enabled")
+        private val KEY_REMEMBERED_FACTS = stringPreferencesKey("remembered_facts")
         private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         private val KEY_ROUTER_ENABLED = booleanPreferencesKey("router_enabled")
         private val KEY_CLOUD_STT_FOR_NON_ENGLISH = booleanPreferencesKey("cloud_stt_for_non_english")
