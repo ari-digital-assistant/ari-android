@@ -27,6 +27,7 @@
     <string name="settings_category_tts">Voce</string>
     <string name="settings_category_auto_update">Aggiornamenti automatici</string>
     <string name="settings_category_conversation">Conversazione</string>
+    <!-- Conversation settings -->
     <string name="settings_conversation_barge_in_title">Lasciami interrompere mentre Ari parla</string>
     <string name="settings_conversation_barge_in_desc">Durante una conversazione, inizia a parlare per interrompere Ari e prendere la parola. Richiede un dispositivo con cancellazione dell\'eco hardware.</string>
     <string name="settings_conversation_memory_title">Ricorda le conversazioni</string>
