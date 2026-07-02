@@ -132,6 +132,23 @@ class VoiceSession @Inject constructor(
     @Volatile
     private var bargeInActive: Boolean = false
 
+    // True while Ari's TTS is actively playing in a barge-in turn — the mic is
+    // armed concurrently, so a recognised final while this is set is a barge.
+    @Volatile private var speaking: Boolean = false
+
+    // The concurrent TTS job for a barge-in turn. Held so the STT collector can
+    // cancel it the instant a barge final lands: tts.stop() does NOT fire the
+    // utterance onDone callback, so speakAndAwait() would otherwise block on its
+    // 4-15s safety timeout. Cancelling the job unblocks the speaking turn at once.
+    @Volatile private var ttsJob: Job? = null
+
+    // Bumped whenever a turn is superseded (fresh arm or dismiss); snapshotted
+    // at arm time into armedGeneration. A Done whose armedGeneration no longer
+    // matches turnGeneration is a straggler from a turn the session left behind.
+    // A barge does NOT bump the generation, so the barge final is never dropped.
+    @Volatile private var turnGeneration: Long = 0L
+    @Volatile private var armedGeneration: Long = 0L
+
     /**
      * Begin a voice session. If one is already in progress, do nothing —
      * we don't want re-entrant sessions stomping on each other.
@@ -185,6 +202,11 @@ class VoiceSession @Inject constructor(
                     speechRecognizer.startListening()
                 }
                 startReadyCue()
+                // Fresh arm supersedes any prior turn: bump the generation and
+                // snapshot it, so a straggling final from before this listen
+                // (or from a turn we left behind) is detected as stale.
+                turnGeneration += 1
+                armedGeneration = turnGeneration
 
                 // Track activity so we can dismiss after a silence timeout if
                 // the user never actually speaks. Uses the class field so a
@@ -225,8 +247,34 @@ class VoiceSession @Inject constructor(
                                 _state.update { VoiceState.Thinking }
                             }
                             is SttState.Done -> {
+                                // Snapshot the generation this final was armed
+                                // under BEFORE reset() (which doesn't touch it).
+                                val finalGeneration = armedGeneration
                                 speechRecognizer.reset()
                                 silenceWatcher.cancel()
+                                if (shouldCutTts(speaking, bargeInActive)) {
+                                    // User barged in: stop Ari immediately and
+                                    // cancel the concurrent TTS job (tts.stop()
+                                    // alone doesn't unblock speakAndAwait). This
+                                    // utterance becomes the next turn — a barge
+                                    // does NOT bump turnGeneration, so it isn't
+                                    // stale.
+                                    speechOutput.stop()
+                                    speaking = false
+                                    ttsJob?.cancel()
+                                    ttsJob = null
+                                }
+                                if (isStaleTurn(finalGeneration, turnGeneration)) {
+                                    // Straggler from a superseded turn (e.g. a
+                                    // final that landed after dismiss()/re-arm) —
+                                    // ignore it so it can't fire a phantom turn.
+                                    // Keep listening if the session is still
+                                    // armed for a reply; otherwise stop collecting.
+                                    if (awaitingReply && isActive) {
+                                        silenceWatcher = launchSilenceWatcher()
+                                    }
+                                    return@collect
+                                }
                                 handleFinalText(
                                     sttState.text,
                                     sttState.parallel,
@@ -418,12 +466,35 @@ class VoiceSession @Inject constructor(
             if (bargeInActive) _captureMode.value = CaptureMode.CONVERSATION
         }
 
-        if (rearm) {
-            // Re-arm AFTER Ari finishes speaking the question. We wait on the
-            // TTS completion callback (not a guess-timer): the mic's rewind
-            // would otherwise ingest the tail of Ari's own prompt and it would
-            // answer its own question ("…to use, Apple Music"). rearmForReply()
-            // then opens the mic with zero rewind for the same reason.
+        if (rearm && talkMode && bargeInActive) {
+            // Barge-in: arm the mic NOW (the AEC removes Ari's voice from the
+            // capture) and speak CONCURRENTLY. A recognised final while
+            // `speaking` is set cuts Ari off — the STT collector's Done handler
+            // calls speechOutput.stop() and cancels ttsJob. rearmForReply()
+            // opens STT with zero rewind and bumps the turn generation.
+            rearmForReply()
+            speaking = true
+            // Speak on the session scope, NOT inline: the collector must stay
+            // free to receive the barge final. tts.stop() does not fire the
+            // utterance onDone, so the Done handler cancels this job to unblock
+            // the speaking turn immediately rather than waiting on the
+            // speakAndAwait safety timeout.
+            ttsJob = scope.launch {
+                try {
+                    speechOutput.speakAndAwait(responseText)
+                } finally {
+                    speaking = false
+                }
+            }
+            // No barge during TTS: STT stays armed, the silence watcher covers
+            // the 30s window. The collector keeps going (awaitingReply is set).
+        } else if (rearm) {
+            // Turn-based (behaviour A, or talk-mode without AEC): speak first,
+            // then open the mic — unchanged from today. We wait on the TTS
+            // completion callback (not a guess-timer): the mic's rewind would
+            // otherwise ingest the tail of Ari's own prompt and it would answer
+            // its own question ("…to use, Apple Music"). rearmForReply() then
+            // opens the mic with zero rewind for the same reason.
             speechOutput.speakAndAwait(responseText)
             rearmForReply()
         } else {
@@ -442,6 +513,10 @@ class VoiceSession @Inject constructor(
      * to dodge the lock-screen race the wake path also avoids in [start].
      */
     private fun rearmForReply() {
+        // Re-arming supersedes the turn just finished: bump the generation and
+        // snapshot it so any late final from the previous turn reads as stale.
+        turnGeneration += 1
+        armedGeneration = turnGeneration
         awaitingReply = true
         // Give the reply a full fresh silence window — the watcher reads this.
         lastActivityAt = System.currentTimeMillis()
@@ -513,6 +588,12 @@ class VoiceSession @Inject constructor(
         // Drop any reply the engine was still waiting on. No-op on the normal
         // happy path (nothing pending); covers tap-dismiss, the silence-timeout
         // path (which calls dismiss()), and lifecycle stop.
+        // Supersede any in-flight turn so a final that decodes after this
+        // dismiss can't fire a phantom turn (isStaleTurn catches it).
+        turnGeneration += 1
+        speaking = false
+        ttsJob?.cancel()
+        ttsJob = null
         talkMode = false
         bargeInActive = false
         _captureMode.value = CaptureMode.NORMAL
