@@ -111,6 +111,7 @@ data class SettingsState(
     val activeAssistantId: String? = null,
     val assistantEntries: List<AssistantUiEntry> = emptyList(),
     val startOnBoot: Boolean = false,
+    val bargeInEnabled: Boolean = true,
     val ttsVoices: List<TtsVoiceOption> = emptyList(),
     val activeTtsVoice: String? = null,
     /** ISO 639-1 lowercase code of the user's active language. */
@@ -278,6 +279,12 @@ class SettingsViewModel @Inject constructor(
             }
         }
 
+        viewModelScope.launch {
+            settingsRepository.bargeInEnabled.collect { enabled ->
+                _state.update { it.copy(bargeInEnabled = enabled) }
+            }
+        }
+
         // TTS voice selection
         viewModelScope.launch {
             settingsRepository.activeTtsVoice.collect { activeVoiceName ->
@@ -360,6 +367,12 @@ class SettingsViewModel @Inject constructor(
     fun setStartOnBoot(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setStartOnBoot(enabled)
+        }
+    }
+
+    fun setBargeInEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setBargeInEnabled(enabled)
         }
     }
 

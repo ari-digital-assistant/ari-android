@@ -92,6 +92,22 @@ class SettingsRepository @Inject constructor(
     }
 
     /**
+     * Whether the user may interrupt Ari mid-sentence during a "Let's talk"
+     * conversation. Default on — it's the natural feel of a conversation.
+     * Effective barge-in additionally requires a hardware echo canceller
+     * (see VoiceSession); when unavailable, talk mode stays turn-based.
+     */
+    val bargeInEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_BARGE_IN_ENABLED] ?: true
+    }
+
+    suspend fun setBargeInEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_BARGE_IN_ENABLED] = enabled
+        }
+    }
+
+    /**
      * Read/write per-assistant config values. Scoped by skill ID + key.
      * Used for non-secret config (model name, endpoint URL, etc.).
      */
@@ -251,6 +267,7 @@ class SettingsRepository @Inject constructor(
         private val KEY_ACTIVE_TTS_VOICE = stringPreferencesKey("active_tts_voice")
         private val KEY_ACTIVE_LOCALE = stringPreferencesKey("active_locale")
         private val KEY_START_ON_BOOT = booleanPreferencesKey("start_on_boot")
+        private val KEY_BARGE_IN_ENABLED = booleanPreferencesKey("barge_in_enabled")
         private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         private val KEY_ROUTER_ENABLED = booleanPreferencesKey("router_enabled")
         private val KEY_CLOUD_STT_FOR_NON_ENGLISH = booleanPreferencesKey("cloud_stt_for_non_english")
