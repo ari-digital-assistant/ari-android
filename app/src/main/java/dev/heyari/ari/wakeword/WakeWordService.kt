@@ -23,6 +23,7 @@ import dev.heyari.ari.MainActivity
 import dev.heyari.ari.R
 import dev.heyari.ari.audio.CaptureBus
 import dev.heyari.ari.data.SettingsRepository
+import dev.heyari.ari.voice.CaptureMode
 import dev.heyari.ari.voice.VoiceOverlayActivity
 import dev.heyari.ari.voice.VoiceSession
 import dev.heyari.ari.voice.VoiceState
@@ -51,6 +52,17 @@ class WakeWordService : Service() {
     private var audioRecord: AudioRecord? = null
     private var detector: MicroWakeWord? = null
     private var isListening = false
+
+    // Which AudioSource the always-on mic is currently opened on. Flips to
+    // VOICE_COMMUNICATION during a "let's talk" conversation so the phone's
+    // hardware AEC strips Ari's own TTS out of the capture.
+    @Volatile
+    private var currentSource: Int = MediaRecorder.AudioSource.MIC
+
+    // While true the wake detector is skipped (we're mid-conversation), but
+    // audio still flows into the CaptureBus every chunk.
+    @Volatile
+    private var wakePaused: Boolean = false
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -69,6 +81,13 @@ class WakeWordService : Service() {
                     Log.i(TAG, "Voice session ended — resuming wake word listening")
                     startListening()
                 }
+            }
+        }
+        // React to conversation ("let's talk") entering/exiting: swap the mic
+        // source, flip AudioManager mode, and pause/resume wake detection.
+        scope.launch {
+            voiceSession.captureMode.collect { mode ->
+                if (isRunning) applyCaptureMode(mode)
             }
         }
     }
@@ -132,19 +151,7 @@ class WakeWordService : Service() {
             slidingWindowSize = sensitivity.slidingWindowSize,
         )
 
-        val bufferSize = AudioRecord.getMinBufferSize(
-            SAMPLE_RATE,
-            AudioFormat.CHANNEL_IN_MONO,
-            AudioFormat.ENCODING_PCM_16BIT
-        )
-
-        audioRecord = AudioRecord(
-            MediaRecorder.AudioSource.MIC,
-            SAMPLE_RATE,
-            AudioFormat.CHANNEL_IN_MONO,
-            AudioFormat.ENCODING_PCM_16BIT,
-            bufferSize
-        )
+        audioRecord = openAudioRecord(currentSource)
 
         audioRecord?.startRecording()
         isListening = true
@@ -161,6 +168,9 @@ class WakeWordService : Service() {
                     // non-blocking by design — see CaptureBus.write().
                     captureBus.write(buffer, read)
 
+                    // Mid-conversation: audio still feeds the bus (STT/AEC path)
+                    // but we do NOT run wake detection.
+                    if (wakePaused) continue
                     val samples = if (read == buffer.size) buffer else buffer.copyOf(read)
                     if (detector?.processAudio(samples) == true) {
                         // Belt-and-braces: don't fire wake while STT is armed.
@@ -187,6 +197,64 @@ class WakeWordService : Service() {
         }
 
         Log.i(TAG, "Wake word listening started")
+    }
+
+    private fun openAudioRecord(source: Int): AudioRecord {
+        val bufferSize = AudioRecord.getMinBufferSize(
+            SAMPLE_RATE,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT,
+        )
+        return AudioRecord(
+            source,
+            SAMPLE_RATE,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT,
+            bufferSize,
+        )
+    }
+
+    /**
+     * React to a capture-mode transition. CONVERSATION opens the mic on
+     * VOICE_COMMUNICATION and puts AudioManager into comms mode so the hardware
+     * AEC removes Ari's own TTS from the capture; NORMAL restores plain MIC +
+     * MODE_NORMAL. The wake detector is paused for the duration of the chat.
+     */
+    private fun applyCaptureMode(mode: CaptureMode) {
+        val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+        when (mode) {
+            CaptureMode.CONVERSATION -> {
+                switchSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
+                am.mode = android.media.AudioManager.MODE_IN_COMMUNICATION
+                @Suppress("DEPRECATION") run { am.isSpeakerphoneOn = true }
+                wakePaused = true
+            }
+            CaptureMode.NORMAL -> {
+                wakePaused = false
+                am.mode = android.media.AudioManager.MODE_NORMAL
+                @Suppress("DEPRECATION") run { am.isSpeakerphoneOn = false }
+                switchSource(MediaRecorder.AudioSource.MIC)
+            }
+        }
+    }
+
+    /** Stop the loop, release, reopen on [source], restart. No-op if unchanged. */
+    private fun switchSource(source: Int) {
+        if (source == currentSource && audioRecord != null) return
+        val wasListening = isListening
+        // End the read-loop while() first so the old loop exits before we
+        // release the AudioRecord out from under it.
+        isListening = false
+        audioRecord?.let { runCatching { it.stop(); it.release() } }
+        audioRecord = null
+        // startListening() builds a fresh detector; close the current one so we
+        // don't leak the native handle on every source flip.
+        detector?.close()
+        detector = null
+        currentSource = source
+        // Reopens with currentSource and relaunches the loop. Safe because
+        // isListening is now false, so its early-return guard won't trip.
+        if (wasListening) startListening()
     }
 
     /**
@@ -365,6 +433,15 @@ class WakeWordService : Service() {
         audioRecord = null
         detector?.close()
         detector = null
+        // Never leave the always-on path stranded in comms mode: restore normal
+        // audio routing + MIC source so the next start listens cleanly.
+        runCatching {
+            val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+            am.mode = android.media.AudioManager.MODE_NORMAL
+            @Suppress("DEPRECATION") run { am.isSpeakerphoneOn = false }
+        }
+        wakePaused = false
+        currentSource = MediaRecorder.AudioSource.MIC
         Log.i(TAG, "Wake word listening stopped")
         super.onDestroy()
     }
