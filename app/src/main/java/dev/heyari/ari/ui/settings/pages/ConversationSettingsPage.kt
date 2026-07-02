@@ -1,5 +1,6 @@
 package dev.heyari.ari.ui.settings.pages
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -41,6 +42,31 @@ fun ConversationSettingsPage(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings_conversation_memory_title))
+                    Text(
+                        text = stringResource(R.string.settings_conversation_memory_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = state.conversationMemoryEnabled,
+                    onCheckedChange = viewModel::setConversationMemoryEnabled,
+                )
+            }
+            AnimatedVisibility(visible = !state.conversationMemoryEnabled) {
+                Text(
+                    text = stringResource(R.string.settings_conversation_memory_disabled_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,

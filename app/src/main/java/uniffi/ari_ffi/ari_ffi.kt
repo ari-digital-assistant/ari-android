@@ -934,6 +934,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_set_conversation_active(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_set_conversation_memory_enabled(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_settings_action(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_unload_llm_model(
@@ -1107,6 +1109,8 @@ external fun uniffi_ari_ffi_fn_method_ariengine_query_skill_setting(`ptr`: Long,
 external fun uniffi_ari_ffi_fn_method_ariengine_reload_community_skills(`ptr`: Long,`skillStoreDir`: RustBuffer.ByValue,`storageDir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Int
 external fun uniffi_ari_ffi_fn_method_ariengine_set_conversation_active(`ptr`: Long,`active`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ariengine_set_conversation_memory_enabled(`ptr`: Long,`enabled`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_settings_action(`ptr`: Long,`skillId`: RustBuffer.ByValue,`action`: RustBuffer.ByValue,`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1444,6 +1448,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_conversation_active() != 9093.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_conversation_memory_enabled() != 38505.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_settings_action() != 45712.toShort()) {
@@ -2244,6 +2251,15 @@ public interface AriEngineInterface {
     fun `setConversationActive`(`active`: kotlin.Boolean)
     
     /**
+     * Master switch for conversation memory (cross-turn context + "Let's
+     * Talk" mode). Mirrors the Android `conversationMemoryEnabled` setting;
+     * hydrated at engine build and written through when the user toggles it.
+     * When `false` the engine retains no conversation buffer and refuses
+     * "let's talk" entry (guiding the user to the toggle instead).
+     */
+    fun `setConversationMemoryEnabled`(`enabled`: kotlin.Boolean)
+    
+    /**
      * Effectful settings-time skill invocation: run `skill_id`'s `settings_action`
      * for `action`, passing the current `values` (sibling field values the
      * skill reads during the action — e.g. `base_url`/`token` for HA sign-in).
@@ -2557,6 +2573,25 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     UniffiLib.uniffi_ari_ffi_fn_method_ariengine_set_conversation_active(
         it,
         FfiConverterBoolean.lower(`active`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Master switch for conversation memory (cross-turn context + "Let's
+     * Talk" mode). Mirrors the Android `conversationMemoryEnabled` setting;
+     * hydrated at engine build and written through when the user toggles it.
+     * When `false` the engine retains no conversation buffer and refuses
+     * "let's talk" entry (guiding the user to the toggle instead).
+     */override fun `setConversationMemoryEnabled`(`enabled`: kotlin.Boolean)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_set_conversation_memory_enabled(
+        it,
+        FfiConverterBoolean.lower(`enabled`),_status)
 }
     }
     

@@ -29,6 +29,9 @@
     <string name="settings_category_conversation">Conversazione</string>
     <string name="settings_conversation_barge_in_title">Lasciami interrompere mentre Ari parla</string>
     <string name="settings_conversation_barge_in_desc">Durante una conversazione, inizia a parlare per interrompere Ari e prendere la parola. Richiede un dispositivo con cancellazione dell\'eco hardware.</string>
+    <string name="settings_conversation_memory_title">Ricorda le conversazioni</string>
+    <string name="settings_conversation_memory_desc">Consenti ad Ari di ricordare le ultime cose dette per rispondere in modo pertinente alle domande successive. Mantenuto solo in memoria e mai salvato su disco.</string>
+    <string name="settings_conversation_memory_disabled_note">La modalità “Parliamo” non è disponibile mentre questa opzione è disattivata.</string>
 
     <!-- Auto-update settings -->
     <string name="auto_update_master_title">Aggiorna automaticamente i modelli sul dispositivo</string>

@@ -24,6 +24,9 @@
     <!-- Conversation settings -->
     <string name="settings_conversation_barge_in_title">Let me interrupt while Ari is speaking</string>
     <string name="settings_conversation_barge_in_desc">During a conversation, start talking to cut Ari off and take your turn. Needs a device with hardware echo cancellation.</string>
+    <string name="settings_conversation_memory_title">Remember conversations</string>
+    <string name="settings_conversation_memory_desc">Let Ari keep track of the last few things said so it can answer follow-up questions in context. Held only in memory and never saved to disk.</string>
+    <string name="settings_conversation_memory_disabled_note">Let\'s Talk mode is unavailable while this is off.</string>
 
     <!-- Auto-update settings -->
     <string name="auto_update_master_title">Auto-update on-device models</string>
