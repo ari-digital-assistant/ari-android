@@ -108,6 +108,22 @@ class SettingsRepository @Inject constructor(
     }
 
     /**
+     * Whether Ari keeps conversation memory: cross-turn context AND "Let's
+     * talk" mode. Default on — the buffer is ephemeral (in-RAM, short TTL,
+     * never persisted). When off the engine retains nothing and refuses
+     * "let's talk" entry.
+     */
+    val conversationMemoryEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_CONVERSATION_MEMORY_ENABLED] ?: true
+    }
+
+    suspend fun setConversationMemoryEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_CONVERSATION_MEMORY_ENABLED] = enabled
+        }
+    }
+
+    /**
      * Read/write per-assistant config values. Scoped by skill ID + key.
      * Used for non-secret config (model name, endpoint URL, etc.).
      */
@@ -268,6 +284,8 @@ class SettingsRepository @Inject constructor(
         private val KEY_ACTIVE_LOCALE = stringPreferencesKey("active_locale")
         private val KEY_START_ON_BOOT = booleanPreferencesKey("start_on_boot")
         private val KEY_BARGE_IN_ENABLED = booleanPreferencesKey("barge_in_enabled")
+        private val KEY_CONVERSATION_MEMORY_ENABLED =
+            booleanPreferencesKey("conversation_memory_enabled")
         private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         private val KEY_ROUTER_ENABLED = booleanPreferencesKey("router_enabled")
         private val KEY_CLOUD_STT_FOR_NON_ENGLISH = booleanPreferencesKey("cloud_stt_for_non_english")
