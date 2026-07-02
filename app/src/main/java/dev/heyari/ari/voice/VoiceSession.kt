@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.coroutines.coroutineContext
 import dev.heyari.ari.di.EngineHolder
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -479,13 +480,24 @@ class VoiceSession @Inject constructor(
             // utterance onDone, so the Done handler cancels this job to unblock
             // the speaking turn immediately rather than waiting on the
             // speakAndAwait safety timeout.
-            ttsJob = scope.launch {
+            //
+            // processInput is a blocking (non-suspend) FFI call, so on a barge
+            // there's no suspension between the Done handler cutting TTS
+            // (speaking=false) and the next turn's barge branch setting
+            // speaking=true. The cancelled job's `finally` then runs LATER on
+            // Main and would clobber the successor's speaking=true. Guard it:
+            // only the job that is still the current ttsJob may clear the flag —
+            // a superseded/cancelled job must not touch its successor's state.
+            val thisJob = scope.launch {
                 try {
                     speechOutput.speakAndAwait(responseText)
                 } finally {
-                    speaking = false
+                    if (ownsSpeakingFlag(currentJob = ttsJob, thisJob = coroutineContext[Job])) {
+                        speaking = false
+                    }
                 }
             }
+            ttsJob = thisJob
             // No barge during TTS: STT stays armed, the silence watcher covers
             // the 30s window. The collector keeps going (awaitingReply is set).
         } else if (rearm) {
