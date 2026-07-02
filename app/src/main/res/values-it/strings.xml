@@ -26,7 +26,6 @@
     <string name="settings_category_assistant">Assistente</string>
     <string name="settings_category_tts">Voce</string>
     <string name="settings_category_auto_update">Aggiornamenti automatici</string>
-    <!-- DRAFT (barge-in) — needs Keith's native review -->
     <string name="settings_category_conversation">Conversazione</string>
     <string name="settings_conversation_barge_in_title">Lasciami interrompere mentre Ari parla</string>
     <string name="settings_conversation_barge_in_desc">Durante una conversazione, inizia a parlare per interrompere Ari e prendere la parola. Richiede un dispositivo con cancellazione dell\'eco hardware.</string>
