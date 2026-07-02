@@ -37,6 +37,7 @@ import dev.heyari.ari.ui.settings.SettingsScreen
 import dev.heyari.ari.ui.settings.SettingsViewModel
 import dev.heyari.ari.ui.settings.pages.AssistantSettingsPage
 import dev.heyari.ari.ui.settings.pages.AutoUpdateSettingsPage
+import dev.heyari.ari.ui.settings.pages.ConversationSettingsPage
 import dev.heyari.ari.ui.settings.pages.GeneralSettingsPage
 import dev.heyari.ari.ui.settings.pages.PermissionsSettingsPage
 import dev.heyari.ari.ui.settings.pages.SttSettingsPage
@@ -59,6 +60,7 @@ object Routes {
     const val SETTINGS_WAKEWORD = "settings/wakeword"
     const val SETTINGS_STT = "settings/stt"
     const val SETTINGS_TTS = "settings/tts"
+    const val SETTINGS_CONVERSATION = "settings/conversation"
     const val SETTINGS_LLM = "settings/llm"
     const val SETTINGS_AUTO_UPDATE = "settings/auto-update"
     const val SKILLS = "skills?type={type}"
@@ -154,6 +156,7 @@ fun AriNavHost(
                 onOpenWakeWord = { navController.navigate(Routes.SETTINGS_WAKEWORD) },
                 onOpenStt = { navController.navigate(Routes.SETTINGS_STT) },
                 onOpenTts = { navController.navigate(Routes.SETTINGS_TTS) },
+                onOpenConversation = { navController.navigate(Routes.SETTINGS_CONVERSATION) },
                 onOpenLlm = { navController.navigate(Routes.SETTINGS_LLM) },
                 onOpenAutoUpdate = { navController.navigate(Routes.SETTINGS_AUTO_UPDATE) },
             )
@@ -172,6 +175,9 @@ fun AriNavHost(
         }
         composable(Routes.SETTINGS_TTS) {
             TtsSettingsPage(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.SETTINGS_CONVERSATION) {
+            ConversationSettingsPage(onBack = { navController.popBackStack() })
         }
         composable(Routes.SETTINGS_LLM) {
             AssistantSettingsPage(

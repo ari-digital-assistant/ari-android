@@ -18,7 +18,12 @@
     <string name="settings_category_llm">On-device LLM</string>
     <string name="settings_category_assistant">Assistant</string>
     <string name="settings_category_tts">Voice</string>
+    <string name="settings_category_conversation">Conversation</string>
     <string name="settings_category_auto_update">Auto-update</string>
+
+    <!-- Conversation settings -->
+    <string name="settings_conversation_barge_in_title">Let me interrupt while Ari is speaking</string>
+    <string name="settings_conversation_barge_in_desc">During a conversation, start talking to cut Ari off and take your turn. Needs a device with hardware echo cancellation.</string>
 
     <!-- Auto-update settings -->
     <string name="auto_update_master_title">Auto-update on-device models</string>

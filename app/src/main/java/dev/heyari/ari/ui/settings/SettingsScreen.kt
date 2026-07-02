@@ -34,6 +34,7 @@ fun SettingsScreen(
     onOpenWakeWord: () -> Unit,
     onOpenStt: () -> Unit,
     onOpenTts: () -> Unit,
+    onOpenConversation: () -> Unit,
     onOpenLlm: () -> Unit,
     onOpenAutoUpdate: () -> Unit,
 ) {
@@ -83,6 +84,11 @@ fun SettingsScreen(
                 icon = Icons.Default.RecordVoiceOver,
                 title = stringResource(R.string.settings_category_tts),
                 onClick = onOpenTts,
+            )
+            SettingsCategoryRow(
+                icon = Icons.AutoMirrored.Filled.Chat,
+                title = stringResource(R.string.settings_category_conversation),
+                onClick = onOpenConversation,
             )
 
             Spacer(Modifier.height(8.dp))
