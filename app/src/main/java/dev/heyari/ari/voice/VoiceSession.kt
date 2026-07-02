@@ -21,6 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -96,6 +97,7 @@ class VoiceSession @Inject constructor(
     private val actionHandler: ActionHandler,
     private val cardActionVoiceIntercept: dev.heyari.ari.actions.CardActionVoiceIntercept,
     private val cardActionDispatcher: dev.heyari.ari.actions.CardActionDispatcher,
+    private val settingsRepository: dev.heyari.ari.data.SettingsRepository,
 ) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var sessionJob: Job? = null
@@ -121,6 +123,14 @@ class VoiceSession @Inject constructor(
     // (no wake word) until an exit phrase, 30s silence, or an error.
     @Volatile
     private var talkMode: Boolean = false
+
+    private val _captureMode = MutableStateFlow(CaptureMode.NORMAL)
+    val captureMode: StateFlow<CaptureMode> = _captureMode.asStateFlow()
+
+    // Whether barge-in is active for the CURRENT talk session: toggle ON and a
+    // hardware echo canceller present. Computed once on entering talk mode.
+    @Volatile
+    private var bargeInActive: Boolean = false
 
     /**
      * Begin a voice session. If one is already in progress, do nothing —
@@ -391,6 +401,8 @@ class VoiceSession @Inject constructor(
             // Speak the ack, then leave the mode and close the session.
             speechOutput.speakAndAwait(responseText)
             talkMode = false
+            bargeInActive = false
+            _captureMode.value = CaptureMode.NORMAL
             engineHolder.peek()?.setConversationActive(false)
             dismiss()
             return
@@ -399,6 +411,11 @@ class VoiceSession @Inject constructor(
         if (enter) {
             talkMode = true
             engineHolder.peek()?.setConversationActive(true)
+            bargeInActive = bargeInEffective(
+                toggleEnabled = settingsRepository.bargeInEnabled.first(),
+                aecAvailable = android.media.audiofx.AcousticEchoCanceler.isAvailable(),
+            )
+            if (bargeInActive) _captureMode.value = CaptureMode.CONVERSATION
         }
 
         if (rearm) {
@@ -497,6 +514,8 @@ class VoiceSession @Inject constructor(
         // happy path (nothing pending); covers tap-dismiss, the silence-timeout
         // path (which calls dismiss()), and lifecycle stop.
         talkMode = false
+        bargeInActive = false
+        _captureMode.value = CaptureMode.NORMAL
         engineHolder.peek()?.setConversationActive(false)
         engineHolder.peek()?.cancelPendingReply()
         awaitingReply = false

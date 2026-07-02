@@ -27,4 +27,17 @@ class BargeInTest {
     @Test fun captureMode_has_exactly_two_values() {
         assertEquals(2, CaptureMode.values().size)
     }
+
+    @Test fun gate_is_conjunction_only() {
+        // Exhaustive: effective iff BOTH inputs true.
+        val table = listOf(
+            Triple(true, true, true),
+            Triple(true, false, false),
+            Triple(false, true, false),
+            Triple(false, false, false),
+        )
+        for ((toggle, aec, expected) in table) {
+            assertEquals("$toggle,$aec", expected, bargeInEffective(toggle, aec))
+        }
+    }
 }
