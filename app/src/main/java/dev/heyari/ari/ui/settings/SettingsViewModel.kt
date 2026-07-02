@@ -112,6 +112,7 @@ data class SettingsState(
     val assistantEntries: List<AssistantUiEntry> = emptyList(),
     val startOnBoot: Boolean = false,
     val bargeInEnabled: Boolean = true,
+    val conversationMemoryEnabled: Boolean = true,
     val ttsVoices: List<TtsVoiceOption> = emptyList(),
     val activeTtsVoice: String? = null,
     /** ISO 639-1 lowercase code of the user's active language. */
@@ -285,6 +286,12 @@ class SettingsViewModel @Inject constructor(
             }
         }
 
+        viewModelScope.launch {
+            settingsRepository.conversationMemoryEnabled.collect { enabled ->
+                _state.update { it.copy(conversationMemoryEnabled = enabled) }
+            }
+        }
+
         // TTS voice selection
         viewModelScope.launch {
             settingsRepository.activeTtsVoice.collect { activeVoiceName ->
@@ -373,6 +380,16 @@ class SettingsViewModel @Inject constructor(
     fun setBargeInEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setBargeInEnabled(enabled)
+        }
+    }
+
+    fun setConversationMemoryEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setConversationMemoryEnabled(enabled)
+            // Push straight through to the live engine so the change takes
+            // effect without an app restart. `engine()` suspends until the
+            // build completes; a wipe of any existing buffer happens engine-side.
+            engineHolder.engine().setConversationMemoryEnabled(enabled)
         }
     }
 
