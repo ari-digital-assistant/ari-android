@@ -51,6 +51,13 @@ class WakeWordService : Service() {
 
     private var audioRecord: AudioRecord? = null
     private var detector: MicroWakeWord? = null
+
+    // Read/mutated from both StateFlow collectors (state + captureMode) which run
+    // on DIFFERENT threads of the multi-threaded Default dispatcher. @Volatile
+    // gives safe publication; the @Synchronized mic-lifecycle methods below make
+    // the check-then-act (`if (isListening) return`) atomic so two threads can
+    // never both open the mic on a barge-in conversation exit.
+    @Volatile
     private var isListening = false
 
     // Which AudioSource the always-on mic is currently opened on. Flips to
@@ -121,6 +128,12 @@ class WakeWordService : Service() {
         return START_STICKY
     }
 
+    // @Synchronized (monitor = `this`) serialises every mic-lifecycle transition
+    // so the two collector threads can't both pass the `if (isListening) return`
+    // guard and double-open the AudioRecord. Reentrant, so switchSource() calling
+    // this is fine. The monitor is held only for setup: the read loop is launched
+    // and the method returns, so the loop never holds the lock for its lifetime.
+    @Synchronized
     private fun startListening() {
         if (isListening) return
 
@@ -239,6 +252,7 @@ class WakeWordService : Service() {
     }
 
     /** Stop the loop, release, reopen on [source], restart. No-op if unchanged. */
+    @Synchronized
     private fun switchSource(source: Int) {
         if (source == currentSource && audioRecord != null) return
         val wasListening = isListening
@@ -262,6 +276,7 @@ class WakeWordService : Service() {
      * to release the mic to STT during a voice session, then resumed when the
      * session ends.
      */
+    @Synchronized
     private fun pauseListening() {
         isListening = false
         audioRecord?.stop()
