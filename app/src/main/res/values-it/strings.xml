@@ -33,10 +33,9 @@
     <string name="settings_conversation_memory_title">Ricorda le conversazioni</string>
     <string name="settings_conversation_memory_desc">Consenti ad Ari di ricordare le ultime cose dette per rispondere in modo pertinente alle domande successive.</string>
     <string name="settings_conversation_memory_disabled_note">La modalità “Parliamo” non è disponibile mentre questa opzione è disattivata.</string>
-    <!-- DRAFT — pending native review (see plan Global Constraints) -->
     <string name="settings_remembered_facts_title">Cose che ricordo</string>
-    <string name="settings_remembered_facts_desc">Ari ricorda le cose solo quando glielo chiedi — di\' \"ricordati che…\". Restano finché non le elimini.</string>
-    <string name="settings_remembered_facts_empty">Non ricordo ancora nulla.</string>
+    <string name="settings_remembered_facts_desc">Ari ricorda le cose solo quando chiedi - di\' \"ricorda che...\". Restano finché non le elimini.</string>
+    <string name="settings_remembered_facts_empty">Non è stato ancora ricordato nulla.</string>
     <string name="settings_remembered_facts_forget_all">Dimentica tutto</string>
     <string name="settings_remembered_facts_delete">Elimina</string>
 
