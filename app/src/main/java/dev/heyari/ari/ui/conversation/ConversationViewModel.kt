@@ -45,6 +45,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import dev.heyari.ari.di.EngineHolder
+import dev.heyari.ari.voice.shouldPersistFacts
 import uniffi.ari_ffi.FfiLocationStatus
 import uniffi.ari_ffi.FfiResponse
 import java.util.Locale
@@ -228,6 +229,17 @@ class ConversationViewModel @Inject constructor(
                 engineHolder.engine().processInput(text)
             } finally {
                 fillerJob.cancel()
+            }
+
+            // Personal memory: if this turn captured/forgot a fact, mirror the
+            // engine's updated fact list to disk. The text-chat path needs this
+            // just like VoiceSession does — without it, facts typed here live
+            // only in the engine's RAM and never reach the settings screen
+            // (which reads the persisted store). Runs before any early return.
+            if (shouldPersistFacts(response)) {
+                settingsRepository.setRememberedFacts(
+                    engineHolder.peek()?.rememberedFacts() ?: emptyList()
+                )
             }
 
             var attachments: List<Attachment> = emptyList()
