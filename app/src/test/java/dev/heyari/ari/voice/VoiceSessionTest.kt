@@ -17,7 +17,7 @@ class VoiceSessionTest {
 
     @Test
     fun `Text with rearm true re-arms`() {
-        assertTrue(shouldRearm(FfiResponse.Text(body = "Which one?", rearm = true, enterConversation = false, exitConversation = false)))
+        assertTrue(shouldRearm(FfiResponse.Text(body = "Which one?", rearm = true, enterConversation = false, exitConversation = false, factsChanged = false)))
     }
 
     @Test
@@ -30,6 +30,7 @@ class VoiceSessionTest {
                     rearm = true,
                     enterConversation = false,
                     exitConversation = false,
+                    factsChanged = false,
                 )
             )
         )
@@ -37,7 +38,7 @@ class VoiceSessionTest {
 
     @Test
     fun `Text with rearm false does not re-arm`() {
-        assertFalse(shouldRearm(FfiResponse.Text(body = "Playing.", rearm = false, enterConversation = false, exitConversation = false)))
+        assertFalse(shouldRearm(FfiResponse.Text(body = "Playing.", rearm = false, enterConversation = false, exitConversation = false, factsChanged = false)))
     }
 
     @Test
@@ -50,6 +51,7 @@ class VoiceSessionTest {
                     rearm = false,
                     enterConversation = false,
                     exitConversation = false,
+                    factsChanged = false,
                 )
             )
         )
@@ -67,17 +69,17 @@ class VoiceSessionTest {
 
     @Test
     fun shouldEnterConversation_trueOnlyWhenFlagSet() {
-        assertTrue(shouldEnterConversation(FfiResponse.Text("Okay, I'm listening.", false, true, false)))
-        assertTrue(shouldEnterConversation(FfiResponse.Action("{}", "skill", false, true, false)))
-        assertFalse(shouldEnterConversation(FfiResponse.Text("hi", false, false, false)))
+        assertTrue(shouldEnterConversation(FfiResponse.Text("Okay, I'm listening.", false, true, false, false)))
+        assertTrue(shouldEnterConversation(FfiResponse.Action("{}", "skill", false, true, false, false)))
+        assertFalse(shouldEnterConversation(FfiResponse.Text("hi", false, false, false, false)))
         assertFalse(shouldEnterConversation(FfiResponse.NotUnderstood("?")))
     }
 
     @Test
     fun shouldExitConversation_trueOnlyWhenFlagSet() {
-        assertTrue(shouldExitConversation(FfiResponse.Text("Okay.", false, false, true)))
-        assertTrue(shouldExitConversation(FfiResponse.Action("{}", "skill", false, false, true)))
-        assertFalse(shouldExitConversation(FfiResponse.Text("hi", false, false, false)))
+        assertTrue(shouldExitConversation(FfiResponse.Text("Okay.", false, false, true, false)))
+        assertTrue(shouldExitConversation(FfiResponse.Action("{}", "skill", false, false, true, false)))
+        assertFalse(shouldExitConversation(FfiResponse.Text("hi", false, false, false, false)))
         assertFalse(shouldExitConversation(FfiResponse.NotUnderstood("?")))
     }
 }
