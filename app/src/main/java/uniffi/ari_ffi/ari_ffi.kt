@@ -932,9 +932,13 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_reload_community_skills(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_remembered_facts(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_set_conversation_active(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_set_conversation_memory_enabled(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_set_remembered_facts(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_settings_action(
     ): Short
@@ -1108,9 +1112,13 @@ external fun uniffi_ari_ffi_fn_method_ariengine_query_skill_setting(`ptr`: Long,
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ariengine_reload_community_skills(`ptr`: Long,`skillStoreDir`: RustBuffer.ByValue,`storageDir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Int
+external fun uniffi_ari_ffi_fn_method_ariengine_remembered_facts(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ariengine_set_conversation_active(`ptr`: Long,`active`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_set_conversation_memory_enabled(`ptr`: Long,`enabled`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ariengine_set_remembered_facts(`ptr`: Long,`facts`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_settings_action(`ptr`: Long,`skillId`: RustBuffer.ByValue,`action`: RustBuffer.ByValue,`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1447,10 +1455,16 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_reload_community_skills() != 23146.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_remembered_facts() != 62056.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_conversation_active() != 9093.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_conversation_memory_enabled() != 38505.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_remembered_facts() != 53816.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_settings_action() != 45712.toShort()) {
@@ -2241,6 +2255,13 @@ public interface AriEngineInterface {
     fun `reloadCommunitySkills`(`skillStoreDir`: kotlin.String, `storageDir`: kotlin.String): kotlin.UInt
     
     /**
+     * Snapshot of the engine's durable personal facts (oldest first). The
+     * frontend reads this after a turn that signalled `facts_changed` and
+     * persists the result.
+     */
+    fun `rememberedFacts`(): List<kotlin.String>
+    
+    /**
      * Tell the engine whether "let's talk" continuous-conversation mode is
      * currently active. The frontend `VoiceSession` loop calls this — `true`
      * on entry, `false` on every exit route (exit phrase, silence timeout, or
@@ -2258,6 +2279,13 @@ public interface AriEngineInterface {
      * "let's talk" entry (guiding the user to the toggle instead).
      */
     fun `setConversationMemoryEnabled`(`enabled`: kotlin.Boolean)
+    
+    /**
+     * Replace the engine's durable personal facts. Mirrors the Android
+     * persisted store; hydrated at engine build and written through after a
+     * settings-screen edit.
+     */
+    fun `setRememberedFacts`(`facts`: List<kotlin.String>)
     
     /**
      * Effectful settings-time skill invocation: run `skill_id`'s `settings_action`
@@ -2560,6 +2588,24 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
 
     
     /**
+     * Snapshot of the engine's durable personal facts (oldest first). The
+     * frontend reads this after a turn that signalled `facts_changed` and
+     * persists the result.
+     */override fun `rememberedFacts`(): List<kotlin.String> {
+            return FfiConverterSequenceString.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_remembered_facts(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
      * Tell the engine whether "let's talk" continuous-conversation mode is
      * currently active. The frontend `VoiceSession` loop calls this — `true`
      * on entry, `false` on every exit route (exit phrase, silence timeout, or
@@ -2592,6 +2638,23 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     UniffiLib.uniffi_ari_ffi_fn_method_ariengine_set_conversation_memory_enabled(
         it,
         FfiConverterBoolean.lower(`enabled`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Replace the engine's durable personal facts. Mirrors the Android
+     * persisted store; hydrated at engine build and written through after a
+     * settings-screen edit.
+     */override fun `setRememberedFacts`(`facts`: List<kotlin.String>)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_set_remembered_facts(
+        it,
+        FfiConverterSequenceString.lower(`facts`),_status)
 }
     }
     
@@ -9459,12 +9522,16 @@ sealed class FfiResponse {
      * `enter_conversation` true means the engine entered "let's talk"
      * continuous-conversation mode this turn; `exit_conversation` true means
      * it left the mode this turn — the host mirrors that state.
+     * `facts_changed` true means this turn mutated the engine's durable
+     * personal facts (a remember/forget) — the host should re-read
+     * `remembered_facts()` and persist the snapshot.
      */
     data class Text(
         val `body`: kotlin.String, 
         val `rearm`: kotlin.Boolean, 
         val `enterConversation`: kotlin.Boolean, 
-        val `exitConversation`: kotlin.Boolean) : FfiResponse()
+        val `exitConversation`: kotlin.Boolean, 
+        val `factsChanged`: kotlin.Boolean) : FfiResponse()
         
     {
         
@@ -9490,7 +9557,8 @@ sealed class FfiResponse {
         val `skillId`: kotlin.String, 
         val `rearm`: kotlin.Boolean, 
         val `enterConversation`: kotlin.Boolean, 
-        val `exitConversation`: kotlin.Boolean) : FfiResponse()
+        val `exitConversation`: kotlin.Boolean, 
+        val `factsChanged`: kotlin.Boolean) : FfiResponse()
         
     {
         
@@ -9545,10 +9613,12 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
                 FfiConverterBoolean.read(buf),
                 FfiConverterBoolean.read(buf),
                 FfiConverterBoolean.read(buf),
+                FfiConverterBoolean.read(buf),
                 )
             2 -> FfiResponse.Action(
                 FfiConverterString.read(buf),
                 FfiConverterString.read(buf),
+                FfiConverterBoolean.read(buf),
                 FfiConverterBoolean.read(buf),
                 FfiConverterBoolean.read(buf),
                 FfiConverterBoolean.read(buf),
@@ -9573,6 +9643,7 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
                 + FfiConverterBoolean.allocationSize(value.`rearm`)
                 + FfiConverterBoolean.allocationSize(value.`enterConversation`)
                 + FfiConverterBoolean.allocationSize(value.`exitConversation`)
+                + FfiConverterBoolean.allocationSize(value.`factsChanged`)
             )
         }
         is FfiResponse.Action -> {
@@ -9584,6 +9655,7 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
                 + FfiConverterBoolean.allocationSize(value.`rearm`)
                 + FfiConverterBoolean.allocationSize(value.`enterConversation`)
                 + FfiConverterBoolean.allocationSize(value.`exitConversation`)
+                + FfiConverterBoolean.allocationSize(value.`factsChanged`)
             )
         }
         is FfiResponse.Binary -> {
@@ -9611,6 +9683,7 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
                 FfiConverterBoolean.write(value.`rearm`, buf)
                 FfiConverterBoolean.write(value.`enterConversation`, buf)
                 FfiConverterBoolean.write(value.`exitConversation`, buf)
+                FfiConverterBoolean.write(value.`factsChanged`, buf)
                 Unit
             }
             is FfiResponse.Action -> {
@@ -9620,6 +9693,7 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
                 FfiConverterBoolean.write(value.`rearm`, buf)
                 FfiConverterBoolean.write(value.`enterConversation`, buf)
                 FfiConverterBoolean.write(value.`exitConversation`, buf)
+                FfiConverterBoolean.write(value.`factsChanged`, buf)
                 Unit
             }
             is FfiResponse.Binary -> {

@@ -137,6 +137,13 @@ class EngineHolder @Inject constructor(
         engine.setConversationMemoryEnabled(memoryEnabled)
         Log.i(TAG, "conversation memory enabled=$memoryEnabled")
 
+        // Remembered facts persist across restarts (the engine's fact list is
+        // in-memory). Load the durable copy from DataStore before any input is
+        // processed so an assistant reply can recall them on turn one.
+        val facts = settingsRepository.rememberedFactsOnce()
+        engine.setRememberedFacts(facts)
+        Log.i(TAG, "hydrated ${facts.size} remembered fact(s) from DataStore")
+
         val skillsDir = File(context.filesDir, "skills").apply { mkdirs() }
         val storageDir = File(context.filesDir, "skill-storage").apply { mkdirs() }
         val loaded = engine.reloadCommunitySkills(

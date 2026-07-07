@@ -70,6 +70,18 @@ internal fun shouldExitConversation(response: FfiResponse): Boolean = when (resp
 }
 
 /**
+ * Did this turn mutate the engine's remembered-fact list (a remember/forget
+ * command)? Only [FfiResponse.Text] and [FfiResponse.Action] carry the flag;
+ * everything else can never change facts. Top-level and Android-free so it can
+ * be unit-tested without Robolectric, matching [shouldEnterConversation].
+ */
+internal fun shouldPersistFacts(response: FfiResponse): Boolean = when (response) {
+    is FfiResponse.Text -> response.factsChanged
+    is FfiResponse.Action -> response.factsChanged
+    else -> false
+}
+
+/**
  * Singleton state machine + pipeline for one voice interaction. Owned by Hilt
  * at the singleton scope so it can be injected by both [WakeWordService] (which
  * triggers the session) and [VoiceOverlayActivity] (which renders the UI).
@@ -443,6 +455,17 @@ class VoiceSession @Inject constructor(
         // Re-arm if the engine wants a reply (behaviour A) OR we're in
         // continuous mode OR we're entering it.
         val rearm = shouldRearm(response) || talkMode || enter
+
+        if (shouldPersistFacts(response)) {
+            // A remember/forget command mutated the engine's fact list this
+            // turn — mirror it back to disk. Read the canonical list from the
+            // engine so we persist exactly what it holds. Placed BEFORE the
+            // `exit` branch below (which returns early), so the write-back
+            // still runs on a turn that both changes facts and exits talk mode.
+            settingsRepository.setRememberedFacts(
+                engineHolder.peek()?.rememberedFacts() ?: emptyList()
+            )
+        }
 
         _state.value = VoiceState.Responding(responseText)
 

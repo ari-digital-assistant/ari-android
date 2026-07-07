@@ -113,6 +113,7 @@ data class SettingsState(
     val startOnBoot: Boolean = false,
     val bargeInEnabled: Boolean = true,
     val conversationMemoryEnabled: Boolean = true,
+    val rememberedFacts: List<String> = emptyList(),
     val ttsVoices: List<TtsVoiceOption> = emptyList(),
     val activeTtsVoice: String? = null,
     /** ISO 639-1 lowercase code of the user's active language. */
@@ -292,6 +293,12 @@ class SettingsViewModel @Inject constructor(
             }
         }
 
+        viewModelScope.launch {
+            settingsRepository.rememberedFacts.collect { facts ->
+                _state.update { it.copy(rememberedFacts = facts) }
+            }
+        }
+
         // TTS voice selection
         viewModelScope.launch {
             settingsRepository.activeTtsVoice.collect { activeVoiceName ->
@@ -390,6 +397,28 @@ class SettingsViewModel @Inject constructor(
             // effect without an app restart. `engine()` suspends until the
             // build completes; a wipe of any existing buffer happens engine-side.
             engineHolder.engine().setConversationMemoryEnabled(enabled)
+        }
+    }
+
+    /**
+     * Delete a single remembered fact from the settings screen. Persists the
+     * trimmed list to DataStore AND pushes it into the live engine so the fact
+     * is gone from both the durable copy and the in-memory list without an app
+     * restart.
+     */
+    fun forgetFact(fact: String) {
+        viewModelScope.launch {
+            val updated = settingsRepository.rememberedFactsOnce().filterNot { it == fact }
+            settingsRepository.setRememberedFacts(updated)
+            engineHolder.engine().setRememberedFacts(updated)
+        }
+    }
+
+    /** Clear every remembered fact — from DataStore and the live engine. */
+    fun forgetAllFacts() {
+        viewModelScope.launch {
+            settingsRepository.setRememberedFacts(emptyList())
+            engineHolder.engine().setRememberedFacts(emptyList())
         }
     }
 
