@@ -27,6 +27,11 @@
     <string name="settings_conversation_memory_title">Remember conversations</string>
     <string name="settings_conversation_memory_desc">Let Ari keep track of the last few things said so it can answer follow-up questions in context.</string>
     <string name="settings_conversation_memory_disabled_note">Let\'s Talk mode is unavailable while this is off.</string>
+    <string name="settings_remembered_facts_title">Remembered facts</string>
+    <string name="settings_remembered_facts_desc">Ari only remembers things when you ask it to — say \"remember that…\". These are kept until you delete them.</string>
+    <string name="settings_remembered_facts_empty">Nothing remembered yet.</string>
+    <string name="settings_remembered_facts_forget_all">Forget all</string>
+    <string name="settings_remembered_facts_delete">Delete</string>
 
     <!-- Auto-update settings -->
     <string name="auto_update_master_title">Auto-update on-device models</string>
