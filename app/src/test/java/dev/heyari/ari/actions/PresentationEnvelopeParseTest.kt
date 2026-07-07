@@ -288,4 +288,34 @@ class PresentationEnvelopeParseTest {
         assertEquals("dev.heyari.demo", env.notifications[0].skillId)
         assertEquals("dev.heyari.demo", env.alerts[0].skillId)
     }
+
+    @Test
+    fun parses_transport_pause() {
+        val env = PresentationEnvelope.parse(
+            JSONObject("""{"v":1,"media":{"action":"pause"}}"""), "music",
+        )!!
+        assertEquals("pause", env.media!!.action)
+        assertNull(env.media!!.query)
+    }
+
+    @Test
+    fun parses_volume_set_and_mute() {
+        val set = PresentationEnvelope.parse(
+            JSONObject("""{"v":1,"media":{"action":"volume","level":50}}"""), "music",
+        )!!.media!!
+        assertEquals("volume", set.action)
+        assertEquals(50, set.level)
+        assertNull(set.direction)
+
+        val mute = PresentationEnvelope.parse(
+            JSONObject("""{"v":1,"media":{"action":"volume","mute":true}}"""), "music",
+        )!!.media!!
+        assertEquals(true, mute.mute)
+
+        val up = PresentationEnvelope.parse(
+            JSONObject("""{"v":1,"media":{"action":"volume","direction":"up"}}"""), "music",
+        )!!.media!!
+        assertEquals("up", up.direction)
+        assertNull(up.level)
+    }
 }

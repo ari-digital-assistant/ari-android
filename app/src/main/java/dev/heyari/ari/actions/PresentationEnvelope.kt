@@ -16,7 +16,14 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /** A media action from the engine, e.g. play a [query] optionally on a named [service]. */
-data class MediaAction(val action: String, val query: String?, val service: String?)
+data class MediaAction(
+    val action: String,
+    val query: String?,
+    val service: String?,
+    val direction: String? = null,
+    val level: Int? = null,
+    val mute: Boolean? = null,
+)
 
 /**
  * Parsed, typed view of a presentation envelope from a skill.
@@ -87,7 +94,14 @@ data class PresentationEnvelope(
                     launchApp = json.optStringOrNull("launch_app"),
                     media = json.optJSONObject("media")?.let { o ->
                         o.optStringOrNull("action")?.let { act ->
-                            MediaAction(act, o.optStringOrNull("query"), o.optStringOrNull("service"))
+                            MediaAction(
+                                action = act,
+                                query = o.optStringOrNull("query"),
+                                service = o.optStringOrNull("service"),
+                                direction = o.optStringOrNull("direction"),
+                                level = if (o.has("level")) o.optInt("level") else null,
+                                mute = if (o.has("mute")) o.optBoolean("mute") else null,
+                            )
                         }
                     },
                     search = json.optStringOrNull("search"),
