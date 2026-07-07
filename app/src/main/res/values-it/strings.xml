@@ -351,6 +351,8 @@
 
     <string name="voice_no_speech_model">Nessun modello vocale installato</string>
 
+    <string name="media_listener_label">Controlli multimediali Ari</string>
+
     <string-array name="please_wait_phrases">
         <item>Un momento…</item>
         <item>Solo un secondo…</item>

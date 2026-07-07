@@ -198,6 +198,22 @@
             android:exported="false" />
 
         <!--
+          Enables MediaSessionManager.getActiveSessions so the media layer can
+          drive transport (pause/next/…) on the active session. The user must
+          grant "Notification access" in system settings; BIND_… is the
+          system-only bind permission, auto-granted at install.
+        -->
+        <service
+            android:name=".media.AriNotificationListenerService"
+            android:exported="false"
+            android:label="@string/media_listener_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <!--
           Full-takeover lock-screen UI for skill-emitted alerts with
           full_takeover && urgency == critical. Launched via the
           notification's full-screen intent. Single-instance + own task

@@ -345,6 +345,8 @@
 
     <string name="voice_no_speech_model">No speech model installed</string>
 
+    <string name="media_listener_label">Ari media controls</string>
+
     <string-array name="please_wait_phrases">
         <item>One moment…</item>
         <item>Just a sec…</item>
