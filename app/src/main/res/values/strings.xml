@@ -347,6 +347,17 @@
 
     <string name="media_listener_label">Ari media controls</string>
 
+    <string name="media_paused">Paused.</string>
+    <string name="media_resumed">Resumed.</string>
+    <string name="media_next">Skipped.</string>
+    <string name="media_previous">Going back.</string>
+    <string name="media_stopped">Stopped.</string>
+    <string name="media_volume_set">Volume set to %d%%.</string>
+    <string name="media_muted">Muted.</string>
+    <string name="media_unmuted">Unmuted.</string>
+    <string name="media_nothing_playing">Nothing\'s playing right now.</string>
+    <string name="media_needs_permission">To control playback, I need media access. Opening settings.</string>
+
     <string-array name="please_wait_phrases">
         <item>One moment…</item>
         <item>Just a sec…</item>

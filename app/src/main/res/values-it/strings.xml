@@ -353,6 +353,17 @@
 
     <string name="media_listener_label">Controlli multimediali Ari</string>
 
+    <string name="media_paused">In pausa.</string>
+    <string name="media_resumed">Riprendo.</string>
+    <string name="media_next">Vado avanti.</string>
+    <string name="media_previous">Torno indietro.</string>
+    <string name="media_stopped">Ho fermato la musica.</string>
+    <string name="media_volume_set">Volume impostato al %d%%.</string>
+    <string name="media_muted">Audio disattivato.</string>
+    <string name="media_unmuted">Audio riattivato.</string>
+    <string name="media_nothing_playing">Non c\'è niente in riproduzione.</string>
+    <string name="media_needs_permission">Per controllare la riproduzione, mi serve l\'accesso ai media. Apro le impostazioni.</string>
+
     <string-array name="please_wait_phrases">
         <item>Un momento…</item>
         <item>Solo un secondo…</item>

@@ -8,6 +8,8 @@ import android.net.Uri
 import android.util.Log
 import androidx.core.content.getSystemService
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.heyari.ari.R
+import dev.heyari.ari.media.openNotificationListenerSettings
 import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -30,6 +32,7 @@ class ActionHandler @Inject constructor(
     private val appLauncher: AppLauncher,
     private val webSearchLauncher: WebSearchLauncher,
     private val musicLauncher: MusicLauncher,
+    private val mediaTransportController: MediaTransportController,
     private val presentationCoordinator: PresentationCoordinator,
 ) {
 
@@ -83,20 +86,41 @@ class ActionHandler @Inject constructor(
     }
 
     private fun handleMedia(m: MediaAction): String {
-        if (m.action != "play") return "" // transport controls not implemented yet
-        val query = m.query ?: return "What would you like me to play?"
-        return when (val r = musicLauncher.play(query, m.service)) {
-            is MusicLauncher.PlayResult.Playing ->
-                if (r.serviceName != null) "Playing ${r.query} on ${r.serviceName}."
-                else "Playing ${r.query}."
-            is MusicLauncher.PlayResult.OpenedResults ->
-                "Here are results for ${r.query} on ${r.serviceName}."
-            is MusicLauncher.PlayResult.ServiceNotInstalled ->
-                "You don't have ${r.serviceName} installed."
-            is MusicLauncher.PlayResult.NoMusicApp ->
-                "I couldn't find a music app to play that."
-            is MusicLauncher.PlayResult.Failed ->
-                "I couldn't play that: ${r.reason}."
+        if (m.action == "play") {
+            val query = m.query ?: return "What would you like me to play?"
+            return when (val r = musicLauncher.play(query, m.service)) {
+                is MusicLauncher.PlayResult.Playing ->
+                    if (r.serviceName != null) "Playing ${r.query} on ${r.serviceName}."
+                    else "Playing ${r.query}."
+                is MusicLauncher.PlayResult.OpenedResults ->
+                    "Here are results for ${r.query} on ${r.serviceName}."
+                is MusicLauncher.PlayResult.ServiceNotInstalled ->
+                    "You don't have ${r.serviceName} installed."
+                is MusicLauncher.PlayResult.NoMusicApp ->
+                    "I couldn't find a music app to play that."
+                is MusicLauncher.PlayResult.Failed ->
+                    "I couldn't play that: ${r.reason}."
+            }
+        }
+        return when (val o = mediaTransportController.handle(m)) {
+            is MediaTransportController.TransportOutcome.Done -> {
+                val f = doneFeedback(o.action, m.level, m.mute)
+                when {
+                    f.resId == null -> ""
+                    f.arg != null -> context.getString(f.resId, f.arg)
+                    else -> context.getString(f.resId)
+                }
+            }
+            MediaTransportController.TransportOutcome.NothingPlaying ->
+                context.getString(R.string.media_nothing_playing)
+            MediaTransportController.TransportOutcome.NeedsPermission -> {
+                openNotificationListenerSettings(context)
+                context.getString(R.string.media_needs_permission)
+            }
+            is MediaTransportController.TransportOutcome.Failed -> {
+                Log.w(TAG, "media transport failed: ${o.reason}")
+                ""
+            }
         }
     }
 

@@ -105,12 +105,14 @@ object EngineModule {
         appLauncher: AppLauncher,
         webSearchLauncher: WebSearchLauncher,
         musicLauncher: dev.heyari.ari.actions.MusicLauncher,
+        mediaTransportController: dev.heyari.ari.actions.MediaTransportController,
         presentationCoordinator: dev.heyari.ari.actions.PresentationCoordinator,
     ): ActionHandler = ActionHandler(
         context,
         appLauncher,
         webSearchLauncher,
         musicLauncher,
+        mediaTransportController,
         presentationCoordinator,
     )
 }
