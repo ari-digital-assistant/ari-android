@@ -108,6 +108,10 @@
     <string name="skills_fsn_nudge_message">%1$s può mostrare un avviso a schermo intero che prende il controllo della schermata di blocco — come una sveglia che suona. Attiva gli avvisi a schermo intero così può raggiungerti anche quando il telefono è bloccato.</string>
     <string name="skills_fsn_nudge_confirm">Apri impostazioni</string>
     <string name="skills_fsn_nudge_dismiss">Non ora</string>
+    <string name="skills_media_nudge_title">Controlli multimediali</string>
+    <string name="skills_media_nudge_message">%1$s può controllare la riproduzione — pausa, avanti e altro — se consenti l\'accesso ai media.</string>
+    <string name="skills_media_nudge_confirm">Apri impostazioni</string>
+    <string name="skills_media_nudge_dismiss">Non ora</string>
     <string name="skills_browse_in_english_fallback">Descrizione in inglese (nessuna traduzione disponibile)</string>
 
     <!-- Skill install/registry error messages -->

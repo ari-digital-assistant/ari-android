@@ -102,6 +102,10 @@
     <string name="skills_fsn_nudge_message">%1$s can show a full-screen alert that takes over your locked screen — like an alarm going off. Turn on full-screen alerts so it can reach you even when your phone is locked.</string>
     <string name="skills_fsn_nudge_confirm">Open settings</string>
     <string name="skills_fsn_nudge_dismiss">Not now</string>
+    <string name="skills_media_nudge_title">Media controls</string>
+    <string name="skills_media_nudge_message">%1$s can control playback — pause, skip, and more — if you allow media access.</string>
+    <string name="skills_media_nudge_confirm">Open settings</string>
+    <string name="skills_media_nudge_dismiss">Not now</string>
     <string name="skills_browse_in_english_fallback">Description in English (no translation yet)</string>
 
     <!-- Skill install/registry error messages -->

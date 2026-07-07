@@ -61,6 +61,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.halilibo.richtext.commonmark.Markdown
 import com.halilibo.richtext.ui.material3.RichText
 import dev.heyari.ari.R
+import dev.heyari.ari.media.hasNotificationAccess
+import dev.heyari.ari.media.openNotificationListenerSettings
 import dev.heyari.ari.ui.components.AriTopBar
 import dev.heyari.ari.ui.components.SkillSettingsPanel
 import uniffi.ari_ffi.FfiConfigField
@@ -246,6 +248,43 @@ fun SkillDetailScreen(
             dismissButton = {
                 TextButton(onClick = { pendingFsnNudge = false }) {
                     Text(stringResource(R.string.skills_fsn_nudge_dismiss))
+                }
+            },
+        )
+    }
+
+    // Post-install nudge for skills that control media (the `media_control`
+    // capability — music and friends). Transport needs Notification access, a
+    // special-access grant reached only via system settings. Ask once, right
+    // after installing a skill that needs it. Capability-driven, never keyed on
+    // a skill id, fires on the real not-installed -> installed transition only.
+    var pendingMediaNudge by remember(skillId) { mutableStateOf(false) }
+    var mediaNudgeResolved by remember(skillId) { mutableStateOf(false) }
+    LaunchedEffect(isInstalledLocally, view.capabilities) {
+        if (isInstalledLocally && !wasInstalledOnEntry && !mediaNudgeResolved &&
+            view.capabilities.any { it.equals("media_control", ignoreCase = true) }
+        ) {
+            mediaNudgeResolved = true
+            if (!hasNotificationAccess(context)) pendingMediaNudge = true
+        }
+    }
+
+    if (pendingMediaNudge) {
+        AlertDialog(
+            onDismissRequest = { pendingMediaNudge = false },
+            title = { Text(stringResource(R.string.skills_media_nudge_title)) },
+            text = { Text(stringResource(R.string.skills_media_nudge_message, view.title)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingMediaNudge = false
+                    openNotificationListenerSettings(context)
+                }) {
+                    Text(stringResource(R.string.skills_media_nudge_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingMediaNudge = false }) {
+                    Text(stringResource(R.string.skills_media_nudge_dismiss))
                 }
             },
         )
