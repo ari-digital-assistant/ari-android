@@ -25,6 +25,15 @@ data class MediaAction(
     val mute: Boolean? = null,
 )
 
+/** An alarm action from the engine. `op` is "set" or "show". */
+data class AlarmAction(
+    val op: String,
+    val hour: Int?,
+    val minute: Int?,
+    val message: String?,
+    val days: List<String>,
+)
+
 /**
  * Parsed, typed view of a presentation envelope from a skill.
  *
@@ -44,6 +53,7 @@ data class PresentationEnvelope(
     val notifications: List<NotificationPrimitive>,
     val launchApp: String?,
     val media: MediaAction?,
+    val alarm: AlarmAction?,
     val search: String?,
     val openUrl: String?,
     val clipboardText: String?,
@@ -101,6 +111,17 @@ data class PresentationEnvelope(
                                 direction = o.optStringOrNull("direction"),
                                 level = if (o.has("level")) o.optInt("level") else null,
                                 mute = if (o.has("mute")) o.optBoolean("mute") else null,
+                            )
+                        }
+                    },
+                    alarm = json.optJSONObject("alarm")?.let { o ->
+                        o.optStringOrNull("op")?.let { op ->
+                            AlarmAction(
+                                op = op,
+                                hour = if (o.has("hour")) o.optInt("hour") else null,
+                                minute = if (o.has("minute")) o.optInt("minute") else null,
+                                message = o.optStringOrNull("message"),
+                                days = o.optJSONArray("days")?.toStringList().orEmpty(),
                             )
                         }
                     },
