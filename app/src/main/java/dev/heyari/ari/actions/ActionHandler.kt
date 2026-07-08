@@ -32,6 +32,7 @@ class ActionHandler @Inject constructor(
     private val appLauncher: AppLauncher,
     private val webSearchLauncher: WebSearchLauncher,
     private val musicLauncher: MusicLauncher,
+    private val alarmLauncher: AlarmLauncher,
     private val mediaTransportController: MediaTransportController,
     private val presentationCoordinator: PresentationCoordinator,
 ) {
@@ -54,6 +55,15 @@ class ActionHandler @Inject constructor(
         env.openUrl?.let { return ActionResult.Spoken(env.speak ?: handleOpenUrl(it)) }
         env.media?.let { return ActionResult.Spoken(env.speak ?: handleMedia(it)) }
         env.clipboardText?.let { copyToClipboard(it) }
+
+        // Alarm hand-off. On success, fall through to the shared tail below so
+        // the confirm card renders and env.speak is spoken; only override the
+        // spoken line (returning early) when there's no Clock app to handle it.
+        env.alarm?.let { alarm ->
+            if (alarmLauncher.launch(alarm) is AlarmLauncher.LaunchResult.NoClockApp) {
+                return ActionResult.Spoken("I couldn't find a clock app to set that.")
+            }
+        }
 
         val attachments = if (env.hasPresentationPrimitives()) {
             presentationCoordinator.apply(env)

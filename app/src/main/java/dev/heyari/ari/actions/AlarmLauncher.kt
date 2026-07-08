@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.provider.AlarmClock
 import android.util.Log
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -17,7 +18,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class AlarmLauncher @Inject constructor(
-    private val context: Context,
+    @param:ApplicationContext private val context: Context,
 ) {
     sealed interface LaunchResult {
         object Launched : LaunchResult
