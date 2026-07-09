@@ -16,6 +16,7 @@ import dev.heyari.ari.actions.CardActionDispatcher
 import dev.heyari.ari.actions.CardActionVoiceIntercept
 import dev.heyari.ari.actions.CardAlarmScheduler
 import dev.heyari.ari.data.SettingsRepository
+import dev.heyari.ari.data.conversation.ConversationLogRepository
 import dev.heyari.ari.data.card.Card
 import dev.heyari.ari.data.card.CardAction
 import dev.heyari.ari.data.card.CardStateRepository
@@ -63,6 +64,7 @@ class ConversationViewModel @Inject constructor(
     private val actionHandler: ActionHandler,
     val cardRepository: CardStateRepository,
     val assetResolver: dev.heyari.ari.assets.AssetResolver,
+    private val logRepository: ConversationLogRepository,
     private val cardAlarmScheduler: CardAlarmScheduler,
     private val asyncEnvelopeChannel: AsyncEnvelopeChannel,
     private val cardActionVoiceIntercept: CardActionVoiceIntercept,
@@ -73,6 +75,11 @@ class ConversationViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(ConversationState())
     val state: StateFlow<ConversationState> = _state.asStateFlow()
+
+    /** The conversation log, sourced from the app-scoped repo. The screen
+     *  observes this for the message list; the rest of the screen's state
+     *  still comes from [state]. */
+    val messages: StateFlow<List<Message>> = logRepository.messages
 
     private var suppressPollUntil = 0L
 
@@ -190,7 +197,8 @@ class ConversationViewModel @Inject constructor(
         }
 
         val userMessage = Message(text = text, isFromUser = true)
-        _state.update { it.copy(messages = it.messages + userMessage, inputText = "", wakeWordDetected = false) }
+        logRepository.append(userMessage)
+        _state.update { it.copy(inputText = "", wakeWordDetected = false) }
 
         // If the most recent active card has a button whose id or
         // label matches the user's word, dispatch that button as if
@@ -221,7 +229,7 @@ class ConversationViewModel @Inject constructor(
                 // trigger and used for both the bubble and the spoken line.
                 val phrase = pleaseWaitPhrase(application)
                 val filler = Message(text = phrase, isFromUser = false)
-                _state.update { it.copy(messages = it.messages + filler) }
+                logRepository.append(filler)
                 speechOutput.speak(phrase)
             }
 
@@ -268,7 +276,7 @@ class ConversationViewModel @Inject constructor(
                 isFromUser = false,
                 attachments = attachments,
             )
-            _state.update { it.copy(messages = it.messages + ariMessage) }
+            logRepository.append(ariMessage)
 
             // Speak text and action confirmations alike — both are just user-facing strings now
             if (response is FfiResponse.Text || response is FfiResponse.Action || response is FfiResponse.NotUnderstood) {
@@ -301,7 +309,7 @@ class ConversationViewModel @Inject constructor(
             isFromUser = false,
             attachments = result.attachments,
         )
-        _state.update { it.copy(messages = it.messages + message) }
+        logRepository.append(message)
         if (result.text.isNotBlank()) speechOutput.speak(result.text)
     }
 
@@ -381,9 +389,9 @@ class ConversationViewModel @Inject constructor(
             isFromUser = false,
             attachments = listOf(Attachment.Card(cardId)),
         )
-        _state.update {
-            it.copy(messages = it.messages + userMessage + ariMessage, inputText = "")
-        }
+        logRepository.append(userMessage)
+        logRepository.append(ariMessage)
+        _state.update { it.copy(inputText = "") }
     }
 
     /**
@@ -431,9 +439,9 @@ class ConversationViewModel @Inject constructor(
             text = "Demo alert firing: ${name ?: "anonymous"}.",
             isFromUser = false,
         )
-        _state.update {
-            it.copy(messages = it.messages + userMessage + ariMessage, inputText = "")
-        }
+        logRepository.append(userMessage)
+        logRepository.append(ariMessage)
+        _state.update { it.copy(inputText = "") }
     }
 
     /**
@@ -455,7 +463,8 @@ class ConversationViewModel @Inject constructor(
      */
     private fun handleLocationDebug(raw: String) {
         val userMessage = Message(text = raw, isFromUser = true)
-        _state.update { it.copy(messages = it.messages + userMessage, inputText = "") }
+        logRepository.append(userMessage)
+        _state.update { it.copy(inputText = "") }
 
         viewModelScope.launch(Dispatchers.IO) {
             var r = locationProvider.current(maxAgeMs = 0L, timeoutMs = 5_000L)
@@ -489,14 +498,15 @@ class ConversationViewModel @Inject constructor(
                     "Timed out waiting for a location fix (no cached fix either)."
             }
             val ariMessage = Message(text = text, isFromUser = false)
-            _state.update { it.copy(messages = it.messages + ariMessage) }
+            logRepository.append(ariMessage)
         }
     }
 
     private fun handleRouterDebug(raw: String) {
         val query = raw.removePrefix("/router").trim()
         val userMessage = Message(text = raw, isFromUser = true)
-        _state.update { it.copy(messages = it.messages + userMessage, inputText = "") }
+        logRepository.append(userMessage)
+        _state.update { it.copy(inputText = "") }
 
         if (query.isEmpty()) {
             val help = Message(
@@ -504,7 +514,7 @@ class ConversationViewModel @Inject constructor(
                     "router on <query> and shows its pick (skill + confidence, or NoMatch).",
                 isFromUser = false,
             )
-            _state.update { it.copy(messages = it.messages + help) }
+            logRepository.append(help)
             return
         }
 
@@ -513,7 +523,7 @@ class ConversationViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.Default) {
             val result = engineHolder.engine().debugRoute(query)
             val ariMessage = Message(text = "🧭 $result", isFromUser = false)
-            _state.update { it.copy(messages = it.messages + ariMessage) }
+            logRepository.append(ariMessage)
         }
     }
 
@@ -563,7 +573,7 @@ class ConversationViewModel @Inject constructor(
                         isFromUser = false,
                         attachments = outcome.attachments,
                     )
-                    _state.update { it.copy(messages = it.messages + ariMessage) }
+                    logRepository.append(ariMessage)
                     if (outcome.text.isNotBlank()) speechOutput.speak(outcome.text)
                 }
             }

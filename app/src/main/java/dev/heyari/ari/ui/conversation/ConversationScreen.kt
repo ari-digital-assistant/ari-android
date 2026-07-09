@@ -82,6 +82,7 @@ fun ConversationScreen(
     updateBannerViewModel: UpdateBannerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val messages by viewModel.messages.collectAsStateWithLifecycle()
     val bannerState by updateBannerViewModel.state.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val context = LocalContext.current
@@ -110,9 +111,9 @@ fun ConversationScreen(
         }
     }
 
-    LaunchedEffect(state.messages.size) {
-        if (state.messages.isNotEmpty()) {
-            listState.animateScrollToItem(state.messages.size - 1)
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
+            listState.animateScrollToItem(messages.size - 1)
         }
     }
 
@@ -122,8 +123,8 @@ fun ConversationScreen(
     @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
     val imeVisible = WindowInsets.isImeVisible
     LaunchedEffect(imeVisible) {
-        if (imeVisible && state.messages.isNotEmpty()) {
-            listState.animateScrollToItem(state.messages.size - 1)
+        if (imeVisible && messages.isNotEmpty()) {
+            listState.animateScrollToItem(messages.size - 1)
         }
     }
 
@@ -236,7 +237,7 @@ fun ConversationScreen(
                     .padding(horizontal = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(state.messages, key = { it.id }) { message ->
+                items(messages, key = { it.id }) { message ->
                     MessageBubble(
                         message = message,
                         cardRepository = viewModel.cardRepository,

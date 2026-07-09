@@ -5,7 +5,6 @@ import dev.heyari.ari.stt.ModelDownloadState
 import dev.heyari.ari.stt.SttState
 
 data class ConversationState(
-    val messages: List<Message> = emptyList(),
     val inputText: String = "",
     val isListening: Boolean = false,
     val wakeWordDetected: Boolean = false,
