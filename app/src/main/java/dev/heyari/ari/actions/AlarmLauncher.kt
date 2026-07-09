@@ -1,5 +1,6 @@
 package dev.heyari.ari.actions
 
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.provider.AlarmClock
@@ -21,8 +22,8 @@ class AlarmLauncher @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
     sealed interface LaunchResult {
-        object Launched : LaunchResult
-        object NoClockApp : LaunchResult
+        data object Launched : LaunchResult
+        data object NoClockApp : LaunchResult
     }
 
     fun launch(action: AlarmAction): LaunchResult {
@@ -34,7 +35,7 @@ class AlarmLauncher @Inject constructor(
         return try {
             context.startActivity(intent)
             LaunchResult.Launched
-        } catch (e: android.content.ActivityNotFoundException) {
+        } catch (e: ActivityNotFoundException) {
             Log.w(TAG, "no clock app to handle ${action.op}", e)
             LaunchResult.NoClockApp
         }
@@ -42,7 +43,7 @@ class AlarmLauncher @Inject constructor(
 
     private fun buildSetIntent(action: AlarmAction): Intent =
         Intent(AlarmClock.ACTION_SET_ALARM).apply {
-            putExtra(AlarmClock.EXTRA_SKIP_UI, true)
+            putExtra(AlarmClock.EXTRA_SKIP_UI, action.skipUi)
             action.hour?.let { putExtra(AlarmClock.EXTRA_HOUR, it) }
             action.minute?.let { putExtra(AlarmClock.EXTRA_MINUTES, it) }
             action.message?.let { putExtra(AlarmClock.EXTRA_MESSAGE, it) }

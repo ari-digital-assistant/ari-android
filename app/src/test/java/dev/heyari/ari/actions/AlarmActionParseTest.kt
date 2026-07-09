@@ -2,7 +2,9 @@ package dev.heyari.ari.actions
 
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AlarmActionParseTest {
@@ -29,5 +31,16 @@ class AlarmActionParseTest {
         assertEquals("show", a.op)
         assertNull(a.hour)
         assertEquals(emptyList<String>(), a.days)
+    }
+
+    @Test
+    fun skip_ui_parsed_from_wire() {
+        assertTrue(parse("""{"v":1,"alarm":{"op":"set","hour":7,"skip_ui":true}}""")!!.alarm!!.skipUi)
+        assertFalse(parse("""{"v":1,"alarm":{"op":"set","hour":7,"skip_ui":false}}""")!!.alarm!!.skipUi)
+    }
+
+    @Test
+    fun skip_ui_defaults_true_when_absent() {
+        assertTrue(parse("""{"v":1,"alarm":{"op":"set","hour":7}}""")!!.alarm!!.skipUi)
     }
 }

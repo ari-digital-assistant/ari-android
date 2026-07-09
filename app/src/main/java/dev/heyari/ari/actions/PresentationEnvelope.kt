@@ -32,6 +32,10 @@ data class AlarmAction(
     val minute: Int?,
     val message: String?,
     val days: List<String>,
+    /** Whether to create the alarm without showing the Clock UI. Defaults to
+     *  true (the SDK always emits it); a skill may set it false to surface the
+     *  Clock app's own confirm UI. */
+    val skipUi: Boolean = true,
 )
 
 /**
@@ -122,6 +126,7 @@ data class PresentationEnvelope(
                                 minute = if (o.has("minute")) o.optInt("minute") else null,
                                 message = o.optStringOrNull("message"),
                                 days = o.optJSONArray("days")?.toStringList().orEmpty(),
+                                skipUi = if (o.has("skip_ui")) o.optBoolean("skip_ui") else true,
                             )
                         }
                     },

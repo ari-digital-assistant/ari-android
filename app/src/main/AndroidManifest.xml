@@ -34,6 +34,12 @@
     -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!--
+        SET_ALARM is unrelated to the exact-alarm permissions above: it's the
+        normal, auto-granted permission for the public AlarmClock intent family
+        (ACTION_SET_ALARM / ACTION_SHOW_ALARMS) that the alarm skill hands off
+        to the user's Clock app. No runtime prompt.
+    -->
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
     <!--
       SYSTEM_ALERT_WINDOW is held SOLELY to obtain Background Activity Launch
