@@ -7,6 +7,9 @@ import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.R
 import dev.heyari.ari.actions.ActionHandler
+import dev.heyari.ari.data.conversation.ConversationLogRepository
+import dev.heyari.ari.model.Attachment
+import dev.heyari.ari.model.Message
 import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.stt.SttModelLoader
 import dev.heyari.ari.stt.SttState
@@ -111,6 +114,7 @@ class VoiceSession @Inject constructor(
     private val cardActionVoiceIntercept: dev.heyari.ari.actions.CardActionVoiceIntercept,
     private val cardActionDispatcher: dev.heyari.ari.actions.CardActionDispatcher,
     private val settingsRepository: dev.heyari.ari.data.SettingsRepository,
+    private val logRepository: ConversationLogRepository,
 ) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var sessionJob: Job? = null
@@ -353,6 +357,7 @@ class VoiceSession @Inject constructor(
         if (!awaitingReply) {
             val intercept = cardActionVoiceIntercept.resolve(text)
             if (intercept != null) {
+                logRepository.append(Message(text = text, isFromUser = true))
                 val outcome = cardActionDispatcher.dispatch(intercept.cardId, intercept.action)
                 when (outcome) {
                     is dev.heyari.ari.actions.CardActionDispatcher.Outcome.Silent -> {
@@ -360,6 +365,15 @@ class VoiceSession @Inject constructor(
                         return
                     }
                     is dev.heyari.ari.actions.CardActionDispatcher.Outcome.Spoken -> {
+                        if (outcome.text.isNotBlank() || outcome.attachments.isNotEmpty()) {
+                            logRepository.append(
+                                Message(
+                                    text = outcome.text,
+                                    isFromUser = false,
+                                    attachments = outcome.attachments,
+                                )
+                            )
+                        }
                         _state.value = VoiceState.Responding(outcome.text)
                         speechOutput.speak(outcome.text)
                         val readMs = (outcome.text.length * 80L).coerceIn(3000L, 10_000L)
@@ -427,6 +441,7 @@ class VoiceSession @Inject constructor(
             delay(CORRECTION_FLASH_MS)
         }
 
+        var attachments: List<Attachment> = emptyList()
         val responseText = when (response) {
             is FfiResponse.Text -> response.body
             // Voice path doesn't render attachments (the overlay is text-only);
@@ -441,7 +456,9 @@ class VoiceSession @Inject constructor(
             // which mutates StateFlow-backed repos — all thread-safe off Main),
             // so dispatch it to Default exactly like transcribeOffline above.
             is FfiResponse.Action -> kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                actionHandler.handle(response.json, response.skillId).text
+                val result = actionHandler.handle(response.json, response.skillId)
+                attachments = result.attachments
+                result.text
             }
             is FfiResponse.Binary -> "[Binary: ${response.mime}, ${response.data.size} bytes]"
             is FfiResponse.NotUnderstood -> response.body
@@ -464,6 +481,19 @@ class VoiceSession @Inject constructor(
             // still runs on a turn that both changes facts and exits talk mode.
             settingsRepository.setRememberedFacts(
                 engineHolder.peek()?.rememberedFacts() ?: emptyList()
+            )
+        }
+
+        // Log this spoken turn to the shared conversation log so it shows in
+        // the chat window. Use `usedText` — the corrected transcript Ari
+        // actually acted on (after the parallel/offline retry layers), not the
+        // raw `text`. NotUnderstood replies are logged too, matching the text
+        // path. Silent Layer-C phase-1 envelopes produce a blank responseText
+        // with no attachments and are skipped, same as the text path.
+        logRepository.append(Message(text = usedText, isFromUser = true))
+        if (responseText.isNotBlank() || attachments.isNotEmpty()) {
+            logRepository.append(
+                Message(text = responseText, isFromUser = false, attachments = attachments)
             )
         }
 
