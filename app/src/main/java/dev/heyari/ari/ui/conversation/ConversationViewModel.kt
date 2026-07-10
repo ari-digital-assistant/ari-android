@@ -185,7 +185,9 @@ class ConversationViewModel @Inject constructor(
         viewModelScope.launch {
             while (isActive) {
                 if (System.currentTimeMillis() >= suppressPollUntil) {
-                    val running = WakeWordService.isRunning
+                    // A one-shot tap-to-talk run keeps the service alive but is
+                    // NOT always-listening, so it must not light the switch.
+                    val running = WakeWordService.isRunning && !WakeWordService.oneShotActive
                     if (running != _state.value.isListening) {
                         _state.update { it.copy(isListening = running) }
                     }
@@ -637,7 +639,11 @@ class ConversationViewModel @Inject constructor(
     }
 
     fun syncServiceState() {
-        _state.update { it.copy(isListening = WakeWordService.isRunning) }
+        // Exclude a transient one-shot tap-to-talk run — it keeps the service
+        // alive but is not always-listening (mirrors the poll loop above).
+        _state.update {
+            it.copy(isListening = WakeWordService.isRunning && !WakeWordService.oneShotActive)
+        }
         refreshOnboarding()
         // Re-derive the empty state so installing a skill or teaching Ari
         // your name (both possible while we were away) is reflected on return.
@@ -703,6 +709,32 @@ class ConversationViewModel @Inject constructor(
             // Don't flash the card before startup checks have completed
             it.copy(needsSetup = if (it.setupChecked) needs else false)
         }
+    }
+
+    /**
+     * Start a one-off voice turn from a foreground user action (the composer's
+     * mic button) — the tap-to-talk equivalent of saying "Hey Ari". Two cases,
+     * both routed through [WakeWordService] so the overlay-launch path is shared
+     * with the wake detection path:
+     *
+     *  - Always-listening ON ([WakeWordService.isRunning]): the service already
+     *    owns an open mic + CaptureBus, so we just tell it to trigger a turn NOW
+     *    (EXTRA_ONE_SHOT = false). It keeps listening for wake words afterwards.
+     *  - Always-listening OFF: start the service as a transient capture host in
+     *    one-shot mode (EXTRA_ONE_SHOT = true). It opens the mic, triggers the
+     *    turn immediately, and stands itself down once the turn returns to Idle
+     *    so the mic doesn't stay hot.
+     *
+     * Callers MUST have RECORD_AUDIO granted first — the screen routes through
+     * the shared permission launcher, exactly like the wake switch.
+     */
+    fun startVoiceTurn() {
+        val oneShot = !WakeWordService.isRunning
+        val intent = Intent(application, WakeWordService::class.java).apply {
+            action = WakeWordService.ACTION_START_VOICE_TURN
+            putExtra(WakeWordService.EXTRA_ONE_SHOT, oneShot)
+        }
+        ContextCompat.startForegroundService(application, intent)
     }
 
     /**

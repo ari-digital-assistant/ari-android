@@ -77,6 +77,12 @@ class WakeWordService : Service() {
     private var lastDetectionAt = 0L
     private val detectionDebounceMs = 4_000L
 
+    // Set true the moment a one-shot tap-to-talk turn leaves Idle, so the state
+    // collector can tell "turn actually started" from the initial Idle emission
+    // and only stand the capture host down after a real turn completes.
+    @Volatile
+    private var oneShotTurnBegan = false
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()
@@ -84,6 +90,22 @@ class WakeWordService : Service() {
         // overlay has dismissed), resume wake word listening.
         scope.launch {
             voiceSession.state.collect { state ->
+                if (oneShotActive) {
+                    // Tap-to-talk one-shot: this service was started purely as a
+                    // transient capture host (always-listening is OFF). Don't
+                    // resume wake listening — instead stand the whole service
+                    // down once the turn we triggered returns to Idle, so the
+                    // mic doesn't stay hot. The oneShotTurnBegan guard stops the
+                    // collector's INITIAL Idle emission (which arrives before the
+                    // overlay has started the session) from killing us early.
+                    if (state !is VoiceState.Idle) {
+                        oneShotTurnBegan = true
+                    } else if (oneShotTurnBegan) {
+                        Log.i(TAG, "One-shot voice turn ended — standing down capture host")
+                        stopSelf()
+                    }
+                    return@collect
+                }
                 if (state is VoiceState.Idle && !isListening && isRunning) {
                     Log.i(TAG, "Voice session ended — resuming wake word listening")
                     startListening()
@@ -125,6 +147,28 @@ class WakeWordService : Service() {
             return START_NOT_STICKY
         }
         startListening()
+
+        if (intent?.action == ACTION_START_VOICE_TURN) {
+            // Tap-to-talk: the composer's mic button wants a turn NOW, with no
+            // spoken wake word. The mic + CaptureBus are open (startListening
+            // above opened them on a cold start, or they were already running),
+            // so launch the overlay exactly as a wake detection would. This is a
+            // FOREGROUND user tap, so BAL is already granted — no SAW gate here.
+            //
+            // EXTRA_ONE_SHOT is set when always-listening was OFF: it marks this
+            // service run as a transient capture host that stands itself down
+            // after the turn (see the state collector in onCreate). When
+            // always-listening was already ON we pass false and just keep going.
+            oneShotActive = intent.getBooleanExtra(EXTRA_ONE_SHOT, false)
+            oneShotTurnBegan = false
+            val launched = launchVoiceOverlay()
+            if (!launched && oneShotActive) {
+                // One-shot host with no turn to end it — don't leave the mic
+                // hot. (Always-on keeps running: the mic belongs to it anyway.)
+                Log.w(TAG, "One-shot overlay launch failed — standing down capture host")
+                stopSelf()
+            }
+        }
         return START_STICKY
     }
 
@@ -307,6 +351,22 @@ class WakeWordService : Service() {
             return
         }
 
+        launchVoiceOverlay()
+    }
+
+    /**
+     * Launch the transparent [VoiceOverlayActivity], which starts the shared
+     * [VoiceSession] and renders the turn UI. Shared by two callers:
+     *  - the wake-detection path ([onWakeWordDetected]), which gates on SAW
+     *    FIRST because it launches from the background / over the lock screen;
+     *  - the tap-to-talk path ([onStartCommand] handling ACTION_START_VOICE_TURN),
+     *    a foreground user tap that already has BAL, so it needs no SAW gate.
+     *
+     * Returns true if the overlay launch was dispatched. The one-shot tap path
+     * uses this to stand the capture host down if the launch failed — otherwise
+     * the service would sit with the mic hot waiting for a turn that never began.
+     */
+    private fun launchVoiceOverlay(): Boolean {
         val intent = Intent(this, VoiceOverlayActivity::class.java).apply {
             addFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK
@@ -326,14 +386,17 @@ class WakeWordService : Service() {
             }
         }.toBundle()
 
-        try {
+        return try {
             startActivity(intent, options)
             Log.i(TAG, "Voice overlay activity launched")
+            true
         } catch (t: Throwable) {
-            // Should not happen with SAW granted. If it does, surface the same
-            // recovery notification — it's the only path the user can act on.
-            Log.e(TAG, "Failed to launch voice overlay activity despite SAW being granted", t)
+            // Should not happen: the wake path holds SAW and the tap path is
+            // foreground. If it does, surface the recovery notification — it's
+            // the only path the user can act on.
+            Log.e(TAG, "Failed to launch voice overlay activity", t)
             postSawMissingNotification()
+            false
         }
     }
 
@@ -457,6 +520,7 @@ class WakeWordService : Service() {
         }
         wakePaused = false
         currentSource = MediaRecorder.AudioSource.MIC
+        oneShotActive = false
         Log.i(TAG, "Wake word listening stopped")
         super.onDestroy()
     }
@@ -478,12 +542,26 @@ class WakeWordService : Service() {
         const val ACTION_STOP_LISTENING = "dev.heyari.ari.STOP_LISTENING"
         const val EXTRA_WAKE_WORD_DETECTED = "wake_word_detected"
 
+        // Tap-to-talk: start a voice turn immediately, no spoken wake word.
+        // EXTRA_ONE_SHOT true means always-listening was OFF, so the service is
+        // a transient capture host that stands itself down after the turn.
+        const val ACTION_START_VOICE_TURN = "dev.heyari.ari.START_VOICE_TURN"
+        const val EXTRA_ONE_SHOT = "one_shot"
+
         private const val REQUEST_OPEN_APP = 0
         private const val REQUEST_STOP = 1
         private const val REQUEST_WAKE_DETECTED = 2
 
         @Volatile
         var isRunning = false
+            private set
+
+        // True while THIS service run is a transient tap-to-talk capture host
+        // (started with EXTRA_ONE_SHOT because always-listening was OFF). The
+        // UI reads it alongside isRunning so the always-listening switch does
+        // NOT light up during a one-shot turn, and it isn't a wake-word run.
+        @Volatile
+        var oneShotActive = false
             private set
     }
 }

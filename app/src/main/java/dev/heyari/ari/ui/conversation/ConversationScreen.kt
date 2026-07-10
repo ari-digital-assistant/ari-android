@@ -42,6 +42,7 @@ import dev.heyari.ari.ui.components.AriTopBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,12 +82,46 @@ fun ConversationScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
 
 
+    // What to run once RECORD_AUDIO (+ POST_NOTIFICATIONS on 33+) come back
+    // granted. Set right before launching the request and consumed in the
+    // launcher callback, so a SINGLE launcher serves both the wake switch and
+    // the composer's mic button (see [withVoicePermissions]).
+    val onVoicePermissionsGranted = remember { mutableStateOf<() -> Unit>({}) }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { results ->
         val audioGranted = results[Manifest.permission.RECORD_AUDIO] == true
-        if (audioGranted) {
-            viewModel.setWakeWordEnabled(true)
+        if (audioGranted) onVoicePermissionsGranted.value()
+        onVoicePermissionsGranted.value = {}
+    }
+
+    // Runs [onGranted] immediately if the voice permissions are already held,
+    // otherwise stashes it and launches the request; the launcher callback runs
+    // it once RECORD_AUDIO is granted. Shared by the wake switch and the mic tap
+    // so there's exactly one launcher and one permission policy.
+    fun withVoicePermissions(onGranted: () -> Unit) {
+        val hasAudio = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+        val hasNotifications = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+
+        if (hasAudio && hasNotifications) {
+            onGranted()
+        } else {
+            onVoicePermissionsGranted.value = onGranted
+            val needed = mutableListOf<String>()
+            if (!hasAudio) needed.add(Manifest.permission.RECORD_AUDIO)
+            if (!hasNotifications && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                needed.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            permissionLauncher.launch(needed.toTypedArray())
         }
     }
 
@@ -131,28 +166,7 @@ fun ConversationScreen(
                             if (!wantsOn) {
                                 viewModel.setWakeWordEnabled(false)
                             } else {
-                                val hasAudio = ContextCompat.checkSelfPermission(
-                                    context, Manifest.permission.RECORD_AUDIO
-                                ) == PackageManager.PERMISSION_GRANTED
-
-                                val hasNotifications = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    ContextCompat.checkSelfPermission(
-                                        context, Manifest.permission.POST_NOTIFICATIONS
-                                    ) == PackageManager.PERMISSION_GRANTED
-                                } else {
-                                    true
-                                }
-
-                                if (hasAudio && hasNotifications) {
-                                    viewModel.setWakeWordEnabled(true)
-                                } else {
-                                    val needed = mutableListOf<String>()
-                                    if (!hasAudio) needed.add(Manifest.permission.RECORD_AUDIO)
-                                    if (!hasNotifications && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                        needed.add(Manifest.permission.POST_NOTIFICATIONS)
-                                    }
-                                    permissionLauncher.launch(needed.toTypedArray())
-                                }
+                                withVoicePermissions { viewModel.setWakeWordEnabled(true) }
                             }
                         },
                         modifier = Modifier.padding(end = 8.dp),
@@ -275,7 +289,7 @@ fun ConversationScreen(
                     value = state.inputText,
                     onValueChange = viewModel::onInputChanged,
                     onSend = { viewModel.onTextSubmitted(state.inputText) },
-                    onMicTap = { /* TODO: wire tap-to-talk voice turn (no one-shot capture entry exists yet) */ },
+                    onMicTap = { withVoicePermissions { viewModel.startVoiceTurn() } },
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }
