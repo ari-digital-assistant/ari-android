@@ -1,7 +1,11 @@
 package dev.heyari.ari.ui.conversation
 
+// Only reliable name phrasings. The bare "i am" / "i'?m" alternatives were
+// dropped — they false-positive on ordinary sentences ("i am hungry",
+// "i'm tired"). "call me X" is kept (per product decision) even though it can
+// still misfire on "call me later"; the other two are unambiguous.
 private val NAME_PATTERNS = listOf(
-    Regex("""(?:the user'?s name is|my name is|call me|i am|i'?m)\s+([\p{L}][\p{L}\-']{1,30})""", RegexOption.IGNORE_CASE),
+    Regex("""(?:the user'?s name is|my name is|call me)\s+([\p{L}][\p{L}\-']{1,30})""", RegexOption.IGNORE_CASE),
 )
 
 /** Best-effort: scan freeform remembered facts for the user's name. First
