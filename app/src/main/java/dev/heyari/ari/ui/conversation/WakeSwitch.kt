@@ -13,9 +13,11 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import dev.heyari.ari.R
 
 /**
  * Always-listening (wake word) control for the conversation top bar.
@@ -35,11 +37,14 @@ fun WakeSwitch(armed: Boolean, onToggle: (Boolean) -> Unit, modifier: Modifier =
     } else {
         Modifier
     }
+    val description = stringResource(
+        if (armed) R.string.wake_switch_armed_description else R.string.wake_switch_off_description
+    )
     Switch(
         checked = armed,
         onCheckedChange = onToggle,
         modifier = modifier.then(steady).semantics {
-            contentDescription = if (armed) "Always listening for Hey Ari, on" else "Always listening, off"
+            contentDescription = description
         },
         thumbContent = {
             Icon(

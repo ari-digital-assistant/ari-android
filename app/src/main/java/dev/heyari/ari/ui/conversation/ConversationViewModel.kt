@@ -37,6 +37,7 @@ import dev.heyari.ari.tts.SpeechOutput
 import dev.heyari.ari.tts.pleaseWaitPhrase
 import dev.heyari.ari.wakeword.WakeWordService
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -271,7 +272,11 @@ class ConversationViewModel @Inject constructor(
             val response = try {
                 engineHolder.engine().processInput(text)
             } finally {
-                fillerJob.cancel()
+                // cancelAndJoin (legal here — the finally runs inside this
+                // suspend coroutine) so a racing fillerJob can't flip
+                // isThinking=true *after* we clear it below, leaving the
+                // indicator wedged on.
+                fillerJob.cancelAndJoin()
                 _state.update { it.copy(isThinking = false) }
             }
 

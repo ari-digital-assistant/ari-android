@@ -238,8 +238,6 @@
     <!-- Conversation screen -->
     <string name="conversation_input_placeholder">Chiedi qualcosa ad Ari…</string>
     <string name="conversation_open_menu">Apri menu</string>
-    <string name="conversation_listening_status_on">In ascolto</string>
-    <string name="conversation_listening_status_off">Non in ascolto</string>
     <string name="conversation_voice_disabled_body">Le funzioni vocali richiedono il permesso per il microfono e un modello vocale scaricato. Puoi comunque scrivere le richieste qui sotto.</string>
     <string name="conversation_setup_needed_title">Configurazione necessaria</string>
     <string name="conversation_cloud_setup_title">Scegli un assistente cloud</string>

@@ -235,8 +235,10 @@
     <string name="conversation_send">Send</string>
     <string name="conversation_talk">Talk to Ari</string>
     <string name="conversation_open_menu">Open menu</string>
-    <string name="conversation_listening_status_on">Listening</string>
-    <string name="conversation_listening_status_off">Not listening</string>
+    <!-- TODO(i18n): add values-it/ translations -->
+    <string name="wake_switch_armed_description">Always listening for Hey Ari, on</string>
+    <!-- TODO(i18n): add values-it/ translations -->
+    <string name="wake_switch_off_description">Always listening, off</string>
     <string name="conversation_voice_disabled_body">Voice features need a microphone permission and a downloaded speech model. You can still type queries below.</string>
     <string name="conversation_setup_needed_title">Setup needed</string>
     <string name="conversation_cloud_setup_title">Choose a cloud assistant</string>

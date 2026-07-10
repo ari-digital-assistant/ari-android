@@ -17,9 +17,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
 /**
@@ -31,6 +33,11 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 fun ThinkingIndicator(modifier: Modifier = Modifier) {
+    // Reduce-motion gate, same helper the aura/entrance use. Read once at first
+    // composition (stable across recompositions) so the branch structure below
+    // stays consistent — no rememberInfiniteTransition at all when disabled.
+    val context = LocalContext.current
+    val motion = remember { animationsEnabled(context) }
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         AriAvatar(modifier = Modifier.padding(end = 8.dp))
         Surface(
@@ -42,22 +49,32 @@ fun ThinkingIndicator(modifier: Modifier = Modifier) {
                 Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                val t = rememberInfiniteTransition(label = "dots")
-                repeat(3) { i ->
-                    val a by t.animateFloat(
-                        initialValue = 0.3f,
-                        targetValue = 1f,
-                        animationSpec = infiniteRepeatable(tween(500, delayMillis = i * 150), RepeatMode.Reverse),
-                        label = "dot$i",
-                    )
-                    Box(
-                        Modifier
-                            .size(6.dp)
-                            .alpha(a)
-                            .background(MaterialTheme.colorScheme.primary, CircleShape),
-                    )
+                if (motion) {
+                    val t = rememberInfiniteTransition(label = "dots")
+                    repeat(3) { i ->
+                        val a by t.animateFloat(
+                            initialValue = 0.3f,
+                            targetValue = 1f,
+                            animationSpec = infiniteRepeatable(tween(500, delayMillis = i * 150), RepeatMode.Reverse),
+                            label = "dot$i",
+                        )
+                        Dot(alpha = a)
+                    }
+                } else {
+                    // Static fallback: three steady dots, no infinite transition.
+                    repeat(3) { Dot(alpha = 0.6f) }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun Dot(alpha: Float) {
+    Box(
+        Modifier
+            .size(6.dp)
+            .alpha(alpha)
+            .background(MaterialTheme.colorScheme.primary, CircleShape),
+    )
 }
