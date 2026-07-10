@@ -159,6 +159,15 @@ class WakeWordService : Service() {
             // service run as a transient capture host that stands itself down
             // after the turn (see the state collector in onCreate). When
             // always-listening was already ON we pass false and just keep going.
+
+            // startListening() bails via stopSelf() WITHOUT setting isRunning if
+            // the wake model fails to load. Don't launch a doomed overlay onto a
+            // dead capture host — and don't come back sticky.
+            if (!isRunning) {
+                Log.w(TAG, "Capture host failed to start — not launching voice turn")
+                return START_NOT_STICKY
+            }
+
             oneShotActive = intent.getBooleanExtra(EXTRA_ONE_SHOT, false)
             oneShotTurnBegan = false
             val launched = launchVoiceOverlay()
@@ -167,6 +176,14 @@ class WakeWordService : Service() {
                 // hot. (Always-on keeps running: the mic belongs to it anyway.)
                 Log.w(TAG, "One-shot overlay launch failed — standing down capture host")
                 stopSelf()
+            }
+            if (oneShotActive) {
+                // One-shot capture host: if the OS kills us mid-turn, a sticky
+                // restart would redeliver a NULL intent — oneShotActive would
+                // default false and we'd resurrect as a FULL always-listening
+                // host (hot mic + lit switch the user never enabled). Refuse the
+                // sticky restart; always-on below keeps START_STICKY as before.
+                return START_NOT_STICKY
             }
         }
         return START_STICKY

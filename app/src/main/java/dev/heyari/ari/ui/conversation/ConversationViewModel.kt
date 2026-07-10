@@ -729,7 +729,19 @@ class ConversationViewModel @Inject constructor(
      * the shared permission launcher, exactly like the wake switch.
      */
     fun startVoiceTurn() {
-        val oneShot = !WakeWordService.isRunning
+        // Ignore repeat taps once a turn is already running, so a double-tap
+        // can't re-deliver onStartCommand or relaunch the overlay. Covers the
+        // common case where the overlay is already up (isActive) AND the brief
+        // window where a one-shot host is up but its overlay hasn't started the
+        // session yet (oneShotActive).
+        if (voiceSession.isActive || WakeWordService.oneShotActive) return
+
+        // Sticky against an in-progress one-shot: a second tap that lands after
+        // the one-shot host is up (isRunning flips true) must NOT send
+        // EXTRA_ONE_SHOT=false — that would overwrite oneShotActive on the very
+        // run that IS the one-shot host and strand a hot mic. oneShotActive kept
+        // in the OR so the transient host stays flagged one-shot.
+        val oneShot = !WakeWordService.isRunning || WakeWordService.oneShotActive
         val intent = Intent(application, WakeWordService::class.java).apply {
             action = WakeWordService.ACTION_START_VOICE_TURN
             putExtra(WakeWordService.EXTRA_ONE_SHOT, oneShot)
