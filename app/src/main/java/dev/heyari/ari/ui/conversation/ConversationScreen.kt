@@ -9,6 +9,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -72,6 +73,7 @@ fun ConversationScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val messages by viewModel.messages.collectAsStateWithLifecycle()
+    val voicePhase by viewModel.voicePhase.collectAsStateWithLifecycle()
     val bannerState by updateBannerViewModel.state.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val context = LocalContext.current
@@ -224,12 +226,24 @@ fun ConversationScreen(
                 }
             }
 
-            AriComposer(
-                value = state.inputText,
-                onValueChange = viewModel::onInputChanged,
-                onSend = { viewModel.onTextSubmitted(state.inputText) },
-                onMicTap = { /* TODO: wire tap-to-talk voice turn (no one-shot capture entry exists yet) */ },
-            )
+            // Presence aura layered behind the composer. Its rhythm follows the
+            // combined ambient state: voice phase (Listening/Thinking/Speaking)
+            // takes precedence, with the typed-input "still working" flag
+            // folding into Thinking. Reduce-motion is handled inside AmbientField.
+            val ambient = deriveAmbientState(voicePhase, state.isThinking)
+            Box(modifier = Modifier.fillMaxWidth()) {
+                AmbientField(
+                    state = ambient,
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                )
+                AriComposer(
+                    value = state.inputText,
+                    onValueChange = viewModel::onInputChanged,
+                    onSend = { viewModel.onTextSubmitted(state.inputText) },
+                    onMicTap = { /* TODO: wire tap-to-talk voice turn (no one-shot capture entry exists yet) */ },
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                )
+            }
         }
     }
 }

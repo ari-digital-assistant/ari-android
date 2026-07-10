@@ -38,14 +38,19 @@ import dev.heyari.ari.wakeword.WakeWordService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import dev.heyari.ari.di.EngineHolder
+import dev.heyari.ari.voice.VoiceSession
+import dev.heyari.ari.voice.VoiceState
 import dev.heyari.ari.voice.shouldPersistFacts
 import uniffi.ari_ffi.FfiLocationStatus
 import uniffi.ari_ffi.FfiResponse
@@ -70,11 +75,28 @@ class ConversationViewModel @Inject constructor(
     private val cardActionVoiceIntercept: CardActionVoiceIntercept,
     private val cardActionDispatcher: CardActionDispatcher,
     private val locationProvider: LocationProvider,
+    private val voiceSession: VoiceSession,
     private val application: Application,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ConversationState())
     val state: StateFlow<ConversationState> = _state.asStateFlow()
+
+    /**
+     * The voice pipeline's live phase, mapped from [VoiceSession]'s
+     * [VoiceState] onto the presentation-layer [VoicePhase]. Drives the
+     * ambient presence aura on the conversation screen: Listening lights it up
+     * lively, Thinking/Speaking give it their own rhythms. Preparing and Error
+     * fold to Idle — they're transient and shouldn't flicker the aura. The
+     * typed-input "still working" flag is layered on separately in the screen
+     * via [deriveAmbientState] (which also honours [ConversationState.isThinking]).
+     *
+     * [VoiceSession] is a Hilt singleton, so this observes the exact same state
+     * the voice overlay renders — no new plumbing.
+     */
+    val voicePhase: StateFlow<VoicePhase> = voiceSession.state
+        .map { it.toVoicePhase() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), VoicePhase.Idle)
 
     /** The conversation log, sourced from the app-scoped repo. The screen
      *  observes this for the message list; the rest of the screen's state
@@ -294,6 +316,21 @@ class ConversationViewModel @Inject constructor(
     private companion object {
         /** How long processInput can block before we surface a "still working" bubble. */
         const val STILL_WORKING_DELAY_MS: Long = 4000
+    }
+
+    /**
+     * Map the voice pipeline's [VoiceState] onto the presentation [VoicePhase].
+     * Preparing (cold STT warm-up) and Error are transient and fold to Idle so
+     * the ambient aura doesn't twitch on them; Responding is the phase where
+     * Ari is speaking back.
+     */
+    private fun VoiceState.toVoicePhase(): VoicePhase = when (this) {
+        is VoiceState.Idle -> VoicePhase.Idle
+        is VoiceState.Preparing -> VoicePhase.Idle
+        is VoiceState.Listening -> VoicePhase.Listening
+        is VoiceState.Thinking -> VoicePhase.Thinking
+        is VoiceState.Responding -> VoicePhase.Speaking
+        is VoiceState.Error -> VoicePhase.Idle
     }
 
     /**
