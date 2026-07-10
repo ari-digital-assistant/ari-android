@@ -23,4 +23,12 @@ data class ConversationState(
      * a non-cloud option.
      */
     val needsCloudAssistantSetup: Boolean = false,
+    /**
+     * Transient "still working" signal. Flipped true when processInput
+     * blocks past [dev.heyari.ari.ui.conversation.ConversationViewModel]'s
+     * still-working threshold, driving the animated [ThinkingIndicator]
+     * bubble; cleared the moment the response lands. Never persisted to
+     * the conversation log — it must not survive into the record.
+     */
+    val isThinking: Boolean = false,
 )

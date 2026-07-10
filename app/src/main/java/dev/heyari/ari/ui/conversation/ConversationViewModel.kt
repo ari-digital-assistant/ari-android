@@ -212,24 +212,29 @@ class ConversationViewModel @Inject constructor(
         }
 
         viewModelScope.launch(Dispatchers.Default) {
-            // Generic "still working" filler. If processInput hasn't
-            // returned within STILL_WORKING_DELAY_MS, push a
-            // placeholder bubble so the user knows Ari is still on
-            // it instead of staring at silence. Same UX shape as
-            // Layer C's delay phrase but applies to ANY slow path —
-            // built-in LLM QA, cloud assistant, slow skill, anything
-            // that makes processInput block past the threshold.
-            // Cancelled when processInput returns; if the bubble was
-            // already emitted, the response renders as a fresh
-            // assistant message below it.
+            // Generic "still working" signal, dual-channel. If processInput
+            // hasn't returned within STILL_WORKING_DELAY_MS, we let the user
+            // know Ari is still on it instead of staring at silence. Same UX
+            // shape as Layer C's delay phrase but applies to ANY slow path —
+            // built-in LLM QA, cloud assistant, slow skill, anything that
+            // makes processInput block past the threshold.
+            //
+            // Two channels fire together:
+            //  - Visual: a transient `isThinking` flag driving the animated
+            //    ThinkingIndicator bubble. It is UI-only — NEVER appended to
+            //    the conversation log, so it can't survive into the record.
+            //  - Spoken: the shared "please wait" phrase, still spoken aloud.
+            //    This is the only eyes-free cue in a background/voice-only
+            //    session, so it stays regardless of the visual channel.
+            //
+            // Both are torn down in the finally: the indicator flag clears and
+            // the response renders as a fresh assistant message.
             val fillerJob = launch {
                 delay(STILL_WORKING_DELAY_MS)
                 // Same shared "please wait" vocabulary the STT warm-up uses, so
-                // the two slow paths feel like one feature. Picked once per
-                // trigger and used for both the bubble and the spoken line.
+                // the two slow paths feel like one feature.
                 val phrase = pleaseWaitPhrase(application)
-                val filler = Message(text = phrase, isFromUser = false)
-                logRepository.append(filler)
+                _state.update { it.copy(isThinking = true) }
                 speechOutput.speak(phrase)
             }
 
@@ -237,6 +242,7 @@ class ConversationViewModel @Inject constructor(
                 engineHolder.engine().processInput(text)
             } finally {
                 fillerJob.cancel()
+                _state.update { it.copy(isThinking = false) }
             }
 
             // Personal memory: if this turn captured/forgot a fact, mirror the

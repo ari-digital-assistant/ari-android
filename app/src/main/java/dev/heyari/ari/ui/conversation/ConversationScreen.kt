@@ -100,7 +100,7 @@ fun ConversationScreen(
         }
     }
 
-    LaunchedEffect(messages.size) {
+    LaunchedEffect(messages.size, state.isThinking) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
         }
@@ -216,6 +216,11 @@ fun ConversationScreen(
                         assetResolver = viewModel.assetResolver,
                         onCardAction = viewModel::onCardAction,
                     )
+                }
+                if (state.isThinking) {
+                    item(key = "thinking-indicator") {
+                        ThinkingIndicator(Modifier.padding(vertical = 4.dp))
+                    }
                 }
             }
 
