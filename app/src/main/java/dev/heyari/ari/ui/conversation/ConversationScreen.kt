@@ -24,19 +24,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -55,7 +50,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.input.ImeAction
 import dev.heyari.ari.R
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -250,30 +244,12 @@ fun ConversationScreen(
                 }
             }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = state.inputText,
-                    onValueChange = viewModel::onInputChanged,
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text(stringResource(R.string.conversation_input_placeholder)) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(
-                        onSend = { viewModel.onTextSubmitted(state.inputText) }
-                    ),
-                )
-                IconButton(onClick = { viewModel.onTextSubmitted(state.inputText) }) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Send"
-                    )
-                }
-            }
+            AriComposer(
+                value = state.inputText,
+                onValueChange = viewModel::onInputChanged,
+                onSend = { viewModel.onTextSubmitted(state.inputText) },
+                onMicTap = { /* TODO: wire tap-to-talk voice turn (no one-shot capture entry exists yet) */ },
+            )
         }
     }
 }

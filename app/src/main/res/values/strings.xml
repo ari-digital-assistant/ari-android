@@ -231,6 +231,9 @@
 
     <!-- Conversation screen -->
     <string name="conversation_input_placeholder">Ask Ari something…</string>
+    <!-- TODO(i18n): add values-it/ translations -->
+    <string name="conversation_send">Send</string>
+    <string name="conversation_talk">Talk to Ari</string>
     <string name="conversation_open_menu">Open menu</string>
     <string name="conversation_listening_status_on">Listening</string>
     <string name="conversation_listening_status_off">Not listening</string>
