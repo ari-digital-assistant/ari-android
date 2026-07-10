@@ -10,6 +10,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.heyari.ari.R
 import dev.heyari.ari.actions.ActionHandler
 import dev.heyari.ari.actions.AsyncEnvelopeChannel
 import dev.heyari.ari.actions.CardActionDispatcher
@@ -54,6 +55,7 @@ import dev.heyari.ari.voice.VoiceState
 import dev.heyari.ari.voice.shouldPersistFacts
 import uniffi.ari_ffi.FfiLocationStatus
 import uniffi.ari_ffi.FfiResponse
+import uniffi.ari_ffi.SkillRegistry
 import java.util.Locale
 import javax.inject.Inject
 
@@ -76,6 +78,7 @@ class ConversationViewModel @Inject constructor(
     private val cardActionDispatcher: CardActionDispatcher,
     private val locationProvider: LocationProvider,
     private val voiceSession: VoiceSession,
+    private val skillRegistry: SkillRegistry,
     private val application: Application,
 ) : ViewModel() {
 
@@ -114,6 +117,11 @@ class ConversationViewModel @Inject constructor(
             _state.update { it.copy(setupChecked = true) }
             refreshOnboarding()
         }
+
+        // Compute the adaptive empty-state model (installed skills → chips,
+        // remembered facts → greeting). Its own IO coroutine, so it can't
+        // gate the STT warm-up above.
+        refreshEmptyState()
 
         // Then keep watching for subsequent active-model changes (e.g. user
         // picks a different model in Settings). Skip the first emission so we
@@ -626,6 +634,44 @@ class ConversationViewModel @Inject constructor(
     fun syncServiceState() {
         _state.update { it.copy(isListening = WakeWordService.isRunning) }
         refreshOnboarding()
+        // Re-derive the empty state so installing a skill or teaching Ari
+        // your name (both possible while we were away) is reflected on return.
+        refreshEmptyState()
+    }
+
+    /**
+     * Recompute the adaptive empty-state model off the main thread and
+     * push it into [ConversationState]. Reads the installed skills and each
+     * one's declared example utterances (generically — no skill is named or
+     * special-cased here), plus the remembered facts to detect the user's
+     * name. Every registry read is wrapped so a single bad manifest can't
+     * crash the home screen. Maps through the pure functions in
+     * [EmptyStateLogic] and updates [ConversationState.emptyMode] /
+     * [ConversationState.greeting] / [ConversationState.suggestionChips].
+     */
+    private fun refreshEmptyState() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val installed = runCatching { skillRegistry.listInstalled() }.getOrDefault(emptyList())
+            val locale = Locale.getDefault().language
+            val examples = installed.map { s ->
+                runCatching {
+                    skillRegistry.readInstalledManifest(s.id, locale).examples
+                }.getOrDefault(emptyList())
+            }
+            val facts = settingsRepository.rememberedFactsOnce()
+            val name = detectUserName(facts)
+            val rememberChip =
+                if (name == null) application.getString(R.string.empty_chip_remember_name) else null
+            val chips = assembleChips(examples, rememberChip, max = 4)
+            val hour = java.time.LocalTime.now().hour
+            _state.update {
+                it.copy(
+                    emptyMode = emptyStateMode(installed.size),
+                    greeting = greetingModel(name, hour),
+                    suggestionChips = chips,
+                )
+            }
+        }
     }
 
     private fun refreshOnboarding() {

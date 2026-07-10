@@ -201,27 +201,42 @@ fun ConversationScreen(
                 DownloadProgressCard(state)
             }
 
-            val rows = remember(messages) { MessageGrouping.rows(messages) }
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 8.dp),
-                // Grouping now controls intra/inter-group spacing via corner
-                // radii, so the column spacing drops from 8.dp to 2.dp.
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                items(rows, key = { it.message.id }) { row ->
-                    MessageBubble(
-                        row = row,
-                        cardRepository = viewModel.cardRepository,
-                        assetResolver = viewModel.assetResolver,
-                        onCardAction = viewModel::onCardAction,
-                    )
-                }
-                if (state.isThinking) {
-                    item(key = "thinking-indicator") {
-                        ThinkingIndicator(Modifier.padding(vertical = 4.dp))
+            // Empty conversation → adaptive empty state (first-run CTA or
+            // greeting + suggestion chips). Once a turn is in flight
+            // (isThinking) or any message exists, fall through to the list so
+            // the thinking indicator and history render as before.
+            if (messages.isEmpty() && !state.isThinking) {
+                EmptyState(
+                    mode = state.emptyMode,
+                    greeting = state.greeting,
+                    chips = state.suggestionChips,
+                    onChip = { viewModel.onTextSubmitted(it) },
+                    onBrowseSkills = onOpenSkills,
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                val rows = remember(messages) { MessageGrouping.rows(messages) }
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 8.dp),
+                    // Grouping now controls intra/inter-group spacing via corner
+                    // radii, so the column spacing drops from 8.dp to 2.dp.
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    items(rows, key = { it.message.id }) { row ->
+                        MessageBubble(
+                            row = row,
+                            cardRepository = viewModel.cardRepository,
+                            assetResolver = viewModel.assetResolver,
+                            onCardAction = viewModel::onCardAction,
+                        )
+                    }
+                    if (state.isThinking) {
+                        item(key = "thinking-indicator") {
+                            ThinkingIndicator(Modifier.padding(vertical = 4.dp))
+                        }
                     }
                 }
             }

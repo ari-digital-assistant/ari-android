@@ -3,6 +3,8 @@ package dev.heyari.ari.model
 import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.stt.ModelDownloadState
 import dev.heyari.ari.stt.SttState
+import dev.heyari.ari.ui.conversation.EmptyMode
+import dev.heyari.ari.ui.conversation.GreetingModel
 
 data class ConversationState(
     val inputText: String = "",
@@ -31,4 +33,24 @@ data class ConversationState(
      * the conversation log — it must not survive into the record.
      */
     val isThinking: Boolean = false,
+    /**
+     * Which face the adaptive empty state shows when the conversation is
+     * empty: [EmptyMode.FirstRun] (0 skills — browse-skills CTA) vs
+     * [EmptyMode.SetUp] (greeting + suggestion chips). Computed off-thread
+     * in [dev.heyari.ari.ui.conversation.ConversationViewModel].
+     */
+    val emptyMode: EmptyMode = EmptyMode.FirstRun,
+    /**
+     * The greeting model for the SetUp empty state — anonymous, or a
+     * time-of-day-aware named greeting once the user's name is known from
+     * remembered facts. Mapped to a translatable string in the composable,
+     * never assembled as text here.
+     */
+    val greeting: GreetingModel = GreetingModel.Anonymous,
+    /**
+     * Suggestion chips for the SetUp empty state, sourced generically from
+     * each installed skill's declared `.examples` (plus an optional
+     * "Remember my name" chip). Tapping one submits it as a turn.
+     */
+    val suggestionChips: List<String> = emptyList(),
 )

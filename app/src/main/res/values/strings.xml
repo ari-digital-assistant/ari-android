@@ -378,4 +378,17 @@
         <item>Sorry, I didn\'t catch that — say it again?</item>
         <item>One more time?</item>
     </string-array>
+
+    <!-- Adaptive empty state (conversation home screen). -->
+    <!-- TODO(i18n): add values-it/ translations -->
+    <string name="empty_chip_remember_name">Remember my name</string>
+    <string name="empty_firstrun_title">Hi, I\'m Ari 👋</string>
+    <string name="empty_firstrun_body">I\'m pretty bare-bones right now. Add a few skills and I\'ll actually be useful.</string>
+    <string name="empty_firstrun_cta">Browse skills</string>
+    <string name="empty_firstrun_or">…or just type below — I can chat and answer questions right away.</string>
+    <string name="empty_greeting_anon">Hi, I\'m Ari</string>
+    <string name="empty_greeting_morning">Good morning, %1$s</string>
+    <string name="empty_greeting_afternoon">Good afternoon, %1$s</string>
+    <string name="empty_greeting_evening">Good evening, %1$s</string>
+    <string name="empty_setup_sub">Ask me anything, or try…</string>
 </resources>
