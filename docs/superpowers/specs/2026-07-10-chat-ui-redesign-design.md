@@ -29,12 +29,23 @@ chrome — is intentionally designed so the result reads as crafted rather than
 defaulted, the way Google's own apps are obviously dynamic-coloured yet obviously
 designed.
 
-This is a **frontend-only** redesign of `ari-android`. No engine changes; no
-skill-specific code enters the frontend (chips and cards stay generic host
-surfaces). It composes with the approved **Voice-in-Chat** spec
+This is a **near-frontend-only** redesign of `ari-android`. The **only** engine
+touch is a single _additive_ FFI field — surfacing the already-parsed, already-
+validated skill `examples` on `FfiSkillManifest` so the empty-state chips can use
+real skill-declared utterances generically (decision 5). No behavioural engine
+change; no skill-specific code enters the frontend (chips and cards stay generic
+host surfaces). It composes with the approved **Voice-in-Chat** spec
 (`2026-07-09-voice-in-chat-design.md`) — both touch `ConversationScreen` and
 `MessageBubble`; this redesign assumes the `ConversationLogRepository` singleton
 from that spec is (or will be) the message source.
+
+> **Amended 2026-07-10 (during planning):** three items were resolved against the
+> real code — (a) chips are sourced from **skill-declared examples** exposed via a
+> new additive FFI field (skills declare ≥5 each, validated in
+> `ari-skill-loader`), not invented per-skill; (b) the name greeting uses a
+> **heuristic scan** of the freeform `List<String>` remembered facts (there is no
+> structured name field); (c) the "still working" change is confirmed **text-path
+> local** — `VoiceSession` has no in-flight filler, so the spoken path is untouched.
 
 ## Design decisions
 
@@ -100,12 +111,19 @@ store).
   I'm pretty bare-bones right now"), a **prioritised "Browse skills" card**, and a
   quiet "…or just type below" (the builtin assistant answers immediately without
   any skills installed).
-- **Set up (enough skills):** greeting + **suggestion chips generated from the
-  installed skills**.
-- **Greeting personalisation:** on startup, scan remembered facts for the user's
-  name. Known → time-aware "Good morning, Keith". Unknown → neutral "Hi, I'm
-  Ari" **and inject a "Remember my name" chip** into the suggestion set. The
-  personalisation thereby teaches its own feature.
+- **Set up (enough skills):** greeting + **suggestion chips built from the
+  installed skills' declared `examples`** (surfaced via the new additive FFI
+  field). A handful are sampled across installed skills; deterministic ordering
+  (no `Math.random` reliance in tests). Chips are skill-agnostic — the frontend
+  never names a skill.
+- **Greeting personalisation:** on startup, **heuristically scan** the freeform
+  `List<String>` remembered facts for the user's name (patterns: "my name is X",
+  "i'm X", "call me X", "the user's name is X" — case-insensitive, first match
+  wins, else none). Known → time-aware "Good morning, Keith". Unknown → neutral
+  "Hi, I'm Ari" **and inject a "Remember my name" chip** into the suggestion set.
+  The personalisation thereby teaches its own feature. The heuristic is
+  best-effort: it reliably catches the canonical fact the "Remember my name"
+  round-trip produces, and falls back to the neutral greeting otherwise.
 - **Chip tap = submit immediately.** Tapping a chip sends that exact utterance as
   though typed (a user bubble appears; Ari runs its full pipeline, including
   multi-turn clarification — e.g. "Set a reminder" → "Course, what & when?").
@@ -209,15 +227,30 @@ Entrances respect the system reduce-motion setting (see Accessibility).
   chip labels, content descriptions). Source language only; no invented
   translations.
 
-### Verify-then-wire (exact symbols to confirm during planning)
+### Engine (the one additive change)
 
-- The **remembered-facts store** used for the name lookup (personal-memory
-  feature).
-- The **installed-skills** source for chip generation and the empty-state
-  branch threshold, and the **"Browse skills"** navigation target (skill registry
-  UI).
-- The **spoken-filler emission point** for the background/voice path, to confirm
-  it is genuinely decoupled from the visual placeholder before removing the latter.
+- **`ari-ffi` — `FfiSkillManifest.examples`** — add `examples: Vec<String>`
+  (the `SkillExample.text` values) to the FFI manifest struct, populated from the
+  already-parsed `Manifest.examples`; regenerate the Kotlin bindings (manual regen
+  per project convention). Additive only — no behavioural change. Must be pushed
+  to `ari-engine` main before any skill-side work (per project CI rule), though
+  this feature adds no skill-side work.
+
+### Resolved during planning (was "verify-then-wire")
+
+- **Remembered facts** = `SettingsRepository.rememberedFacts: Flow<List<String>>`
+  (freeform strings; DataStore-backed) → name via heuristic scan (decision 5).
+- **Installed skills** = `uniffi.ari_ffi.SkillRegistry.listInstalled()` →
+  `readInstalledManifest(id, locale)` for name + the new `examples`. The
+  **"Browse skills"** target is the existing `onOpenSkills` → `Routes.skills()`.
+- **Spoken filler** — confirmed: only `ConversationViewModel.onTextSubmitted`
+  emits the 4s filler; `VoiceSession` has none. The visual change is text-path
+  local; the spoken path is untouched.
+- **Test infra** = JVM `app/src/test/` with plain **JUnit4** + `org.junit.Assert`
+  + `kotlinx.coroutines.runBlocking` (no Robolectric/MockK/Truth/Turbine). All
+  new testable logic must therefore be **pure Kotlin** (no Android deps) so it
+  runs under `:app:testDebugUnitTest`. Compose visuals are verified on the
+  emulator, not via (absent) Compose UI tests.
 
 ## Behaviour details
 
@@ -264,7 +297,8 @@ Per the project rule that tests assert exact values and real behaviour:
 
 ## Out of scope
 
-- Any change to `ari-engine` or to skills (frontend-only).
+- Any `ari-engine` change beyond the single additive `FfiSkillManifest.examples`
+  field; no skill changes at all.
 - A fixed/brand `ColorScheme` — dynamic Material You is kept.
 - Durable/persistent chat history (owned by the Voice-in-Chat spec's decisions).
 - ari-linux (not yet implemented).
