@@ -9084,6 +9084,14 @@ data class FfiSkillManifest (
      * Full SKILL.md body after the frontmatter — markdown, verbatim.
      */
     var `body`: kotlin.String
+    , 
+    /**
+     * Example utterances the skill declares in `metadata.ari.examples`
+     * (the `text` of each entry, declaration order). Skills declare >=5.
+     * Surfaced so the frontend can offer real, skill-agnostic suggestion
+     * chips without inventing per-skill copy.
+     */
+    var `examples`: List<kotlin.String>
     
 ){
     
@@ -9110,6 +9118,7 @@ public object FfiConverterTypeFfiSkillManifest: FfiConverterRustBuffer<FfiSkillM
             FfiConverterSequenceString.read(buf),
             FfiConverterSequenceString.read(buf),
             FfiConverterString.read(buf),
+            FfiConverterSequenceString.read(buf),
         )
     }
 
@@ -9123,7 +9132,8 @@ public object FfiConverterTypeFfiSkillManifest: FfiConverterRustBuffer<FfiSkillM
             FfiConverterOptionalString.allocationSize(value.`license`) +
             FfiConverterSequenceString.allocationSize(value.`capabilities`) +
             FfiConverterSequenceString.allocationSize(value.`languages`) +
-            FfiConverterString.allocationSize(value.`body`)
+            FfiConverterString.allocationSize(value.`body`) +
+            FfiConverterSequenceString.allocationSize(value.`examples`)
     )
 
     override fun write(value: FfiSkillManifest, buf: ByteBuffer) {
@@ -9137,6 +9147,7 @@ public object FfiConverterTypeFfiSkillManifest: FfiConverterRustBuffer<FfiSkillM
             FfiConverterSequenceString.write(value.`capabilities`, buf)
             FfiConverterSequenceString.write(value.`languages`, buf)
             FfiConverterString.write(value.`body`, buf)
+            FfiConverterSequenceString.write(value.`examples`, buf)
     }
 }
 
