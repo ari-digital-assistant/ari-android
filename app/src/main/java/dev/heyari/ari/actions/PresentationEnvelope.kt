@@ -25,6 +25,12 @@ data class MediaAction(
     val mute: Boolean? = null,
 )
 
+/** A navigation action from the engine. `mode` is "default_app" (or null) / "turn_by_turn". */
+data class NavigateAction(
+    val destination: String,
+    val mode: String?,
+)
+
 /** An alarm action from the engine. `op` is "set" or "show". */
 data class AlarmAction(
     val op: String,
@@ -58,6 +64,7 @@ data class PresentationEnvelope(
     val launchApp: String?,
     val media: MediaAction?,
     val alarm: AlarmAction?,
+    val navigate: NavigateAction?,
     val search: String?,
     val openUrl: String?,
     val clipboardText: String?,
@@ -127,6 +134,14 @@ data class PresentationEnvelope(
                                 message = o.optStringOrNull("message"),
                                 days = o.optJSONArray("days")?.toStringList().orEmpty(),
                                 skipUi = if (o.has("skip_ui")) o.optBoolean("skip_ui") else true,
+                            )
+                        }
+                    },
+                    navigate = json.optJSONObject("navigate")?.let { o ->
+                        o.optStringOrNull("destination")?.let { dest ->
+                            NavigateAction(
+                                destination = dest,
+                                mode = o.optStringOrNull("mode"),
                             )
                         }
                     },
