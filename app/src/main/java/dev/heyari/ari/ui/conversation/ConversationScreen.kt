@@ -18,15 +18,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -35,8 +32,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import dev.heyari.ari.model.ConversationState
@@ -128,26 +123,12 @@ fun ConversationScreen(
             AriTopBar(
                 onOpenMenu = onOpenMenu,
                 actions = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(end = 4.dp),
-                    ) {
-                        Text(
-                            text = stringResource(
-                                if (state.isListening) R.string.conversation_listening_status_on
-                                else R.string.conversation_listening_status_off
-                            ),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (state.isListening) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(end = 8.dp),
-                        )
-                        Switch(
-                            checked = state.isListening,
-                            onCheckedChange = { wantsOn ->
-                                if (!wantsOn) {
-                                    viewModel.setWakeWordEnabled(false)
-                                    return@Switch
-                                }
+                    WakeSwitch(
+                        armed = state.isListening,
+                        onToggle = { wantsOn ->
+                            if (!wantsOn) {
+                                viewModel.setWakeWordEnabled(false)
+                            } else {
                                 val hasAudio = ContextCompat.checkSelfPermission(
                                     context, Manifest.permission.RECORD_AUDIO
                                 ) == PackageManager.PERMISSION_GRANTED
@@ -170,16 +151,10 @@ fun ConversationScreen(
                                     }
                                     permissionLauncher.launch(needed.toTypedArray())
                                 }
-                            },
-                            thumbContent = {
-                                Icon(
-                                    imageVector = if (state.isListening) Icons.Default.Mic else Icons.Default.MicOff,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize),
-                                )
-                            },
-                        )
-                    }
+                            }
+                        },
+                        modifier = Modifier.padding(end = 8.dp),
+                    )
                 }
             )
         },
