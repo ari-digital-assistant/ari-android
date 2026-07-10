@@ -33,6 +33,7 @@ class ActionHandler @Inject constructor(
     private val webSearchLauncher: WebSearchLauncher,
     private val musicLauncher: MusicLauncher,
     private val alarmLauncher: AlarmLauncher,
+    private val navigationLauncher: NavigationLauncher,
     private val mediaTransportController: MediaTransportController,
     private val presentationCoordinator: PresentationCoordinator,
 ) {
@@ -54,6 +55,14 @@ class ActionHandler @Inject constructor(
         env.search?.let { return ActionResult.Spoken(env.speak ?: handleSearch(it)) }
         env.openUrl?.let { return ActionResult.Spoken(env.speak ?: handleOpenUrl(it)) }
         env.media?.let { return ActionResult.Spoken(env.speak ?: handleMedia(it)) }
+        env.navigate?.let { nav ->
+            return when (navigationLauncher.launch(nav)) {
+                NavigationLauncher.LaunchResult.Launched ->
+                    ActionResult.Spoken(env.speak ?: "")
+                NavigationLauncher.LaunchResult.NoMapsApp ->
+                    ActionResult.Spoken("I couldn't find a maps app to do that.")
+            }
+        }
         env.clipboardText?.let { copyToClipboard(it) }
 
         // Alarm hand-off. On success, fall through to the shared tail below so
