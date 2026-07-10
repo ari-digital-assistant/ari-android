@@ -230,16 +230,19 @@ fun ConversationScreen(
                 DownloadProgressCard(state)
             }
 
+            val rows = remember(messages) { MessageGrouping.rows(messages) }
             LazyColumn(
                 state = listState,
                 modifier = Modifier
                     .weight(1f)
                     .padding(horizontal = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                // Grouping now controls intra/inter-group spacing via corner
+                // radii, so the column spacing drops from 8.dp to 2.dp.
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                items(messages, key = { it.id }) { message ->
+                items(rows, key = { it.message.id }) { row ->
                     MessageBubble(
-                        message = message,
+                        row = row,
                         cardRepository = viewModel.cardRepository,
                         assetResolver = viewModel.assetResolver,
                         onCardAction = viewModel::onCardAction,

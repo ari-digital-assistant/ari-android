@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.heyari.ari.R
@@ -30,7 +31,7 @@ fun AriAvatar(modifier: Modifier = Modifier, size: Dp = 24.dp) {
     ) {
         Icon(
             painter = painterResource(R.drawable.ic_ari_symbolic),
-            contentDescription = "Ari",
+            contentDescription = stringResource(R.string.top_bar_app_icon_description),
             tint = MaterialTheme.colorScheme.onPrimaryContainer,
             modifier = Modifier.size(size).padding(size * 0.18f),
         )
