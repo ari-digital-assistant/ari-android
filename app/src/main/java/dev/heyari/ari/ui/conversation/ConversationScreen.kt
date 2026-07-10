@@ -6,8 +6,10 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -216,6 +218,7 @@ fun ConversationScreen(
                 )
             } else {
                 val rows = remember(messages) { MessageGrouping.rows(messages) }
+                val motion = remember { animationsEnabled(context) }
                 LazyColumn(
                     state = listState,
                     modifier = Modifier
@@ -226,12 +229,31 @@ fun ConversationScreen(
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     items(rows, key = { it.message.id }) { row ->
-                        MessageBubble(
-                            row = row,
-                            cardRepository = viewModel.cardRepository,
-                            assetResolver = viewModel.assetResolver,
-                            onCardAction = viewModel::onCardAction,
-                        )
+                        if (motion) {
+                            AnimatedVisibility(
+                                visible = true,
+                                enter = fadeIn(animationSpec = tween(180)) +
+                                    slideInVertically(
+                                        animationSpec = spring(dampingRatio = 0.72f, stiffness = 380f),
+                                        initialOffsetY = { it / 3 },
+                                    ),
+                                modifier = Modifier.animateItem(),
+                            ) {
+                                MessageBubble(
+                                    row = row,
+                                    cardRepository = viewModel.cardRepository,
+                                    assetResolver = viewModel.assetResolver,
+                                    onCardAction = viewModel::onCardAction,
+                                )
+                            }
+                        } else {
+                            MessageBubble(
+                                row = row,
+                                cardRepository = viewModel.cardRepository,
+                                assetResolver = viewModel.assetResolver,
+                                onCardAction = viewModel::onCardAction,
+                            )
+                        }
                     }
                     if (state.isThinking) {
                         item(key = "thinking-indicator") {
