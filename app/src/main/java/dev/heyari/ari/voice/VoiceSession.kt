@@ -23,6 +23,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
@@ -121,6 +122,13 @@ class VoiceSession @Inject constructor(
 
     private val _state = MutableStateFlow<VoiceState>(VoiceState.Idle)
     val state: StateFlow<VoiceState> = _state.asStateFlow()
+
+    // Final transcript from an in-place dictation session (STT-only, no engine).
+    // extraBufferCapacity=1 so the emit never suspends/drops even if the
+    // collector is momentarily busy.
+    private val _dictatedText = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val dictatedText: kotlinx.coroutines.flow.SharedFlow<String> =
+        _dictatedText.asSharedFlow()
 
     val isActive: Boolean get() = sessionJob?.isActive == true
 
@@ -671,6 +679,61 @@ class VoiceSession @Inject constructor(
         sessionJob?.cancel()
         sessionJob = null
         _state.value = VoiceState.Idle
+    }
+
+    /**
+     * Foreground in-place dictation — STT only. No engine, no TTS, no re-arm,
+     * no barge-in. Streams partials through [state] as VoiceState.Listening and
+     * emits the final transcript on [dictatedText]; the caller (ConversationViewModel)
+     * routes those into the composer. Reaching Idle (via [dismiss]) drives the
+     * WakeWordService one-shot stand-down, exactly like a voice turn.
+     */
+    fun startDictation() {
+        if (sessionJob?.isActive == true) {
+            Log.w(TAG, "startDictation() called while a session is active — ignoring")
+            return
+        }
+        // Non-Idle synchronously so the WakeWordService one-shot collector sees a
+        // begun turn before any Idle (same reason start() does this).
+        _state.value = VoiceState.Listening("")
+        sessionJob = scope.launch {
+            try {
+                speechRecognizer.startListening()
+                speechRecognizer.state.collect { stt ->
+                    when (stt) {
+                        is SttState.Listening ->
+                            _state.update { VoiceState.Listening(stt.partial) }
+                        SttState.Transcribing ->
+                            // Offline whisper decode window — reflect it so the
+                            // border shows Thinking rather than still-Listening.
+                            _state.update { VoiceState.Thinking }
+                        is SttState.Done -> {
+                            _dictatedText.emit(stt.text)
+                            dismiss()            // stops STT, cancels this job, → Idle
+                            return@collect
+                        }
+                        is SttState.Error -> {
+                            Log.w(TAG, "Dictation STT error: ${stt.message}")
+                            dismiss()            // caller keeps the last partial
+                            return@collect
+                        }
+                        SttState.Idle -> { /* ignore */ }
+                    }
+                }
+            } catch (t: Throwable) {
+                if (t is kotlinx.coroutines.CancellationException) throw t
+                Log.e(TAG, "Dictation failed", t)
+                dismiss()
+            }
+        }
+    }
+
+    /** Cancel an in-progress dictation (Stop button / lifecycle). Produces no
+     *  final transcript, so nothing is submitted; the caller keeps the last
+     *  partial already streamed into the field. */
+    fun stopDictation() {
+        if (sessionJob?.isActive != true) return
+        dismiss()
     }
 
     companion object {
