@@ -57,7 +57,9 @@ fun AriComposer(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
             keyboardActions = KeyboardActions(onSend = { onSend() }),
         )
-        val action = composerAction(value)
+        // isDictating hardcoded false pending Task 6, which wires real dictation state
+        // and the Stop button's appearance/behaviour into this composer.
+        val action = composerAction(value, isDictating = false)
         IconButton(onClick = { if (action == ComposerAction.Send) onSend() else onMicTap() }) {
             when (action) {
                 ComposerAction.Send -> Icon(
@@ -68,6 +70,7 @@ fun AriComposer(
                     Icons.Default.Mic,
                     contentDescription = stringResource(R.string.conversation_talk),
                 )
+                ComposerAction.Stop -> {} // Placeholder; Task 6 renders the Stop icon.
             }
         }
     }
