@@ -22,8 +22,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import dev.heyari.ari.R
 import dev.heyari.ari.assets.AssetResolver
 import dev.heyari.ari.data.card.CardAction
 import dev.heyari.ari.data.card.CardStateRepository
@@ -140,12 +142,20 @@ fun MessageBubble(
 }
 
 /**
- * Quiet relative-time label ("5 minutes ago") for the group divider.
- * [android.text.format.DateUtils] handles localisation for us.
+ * Quiet relative-time label for the group divider. Under a minute reads as a
+ * plain "now" (DateUtils would say the clunky "0 minutes ago"); beyond that
+ * [android.text.format.DateUtils] gives a localised "5 minutes ago" etc.
  */
-private fun formatTimestamp(ts: Long): String =
-    android.text.format.DateUtils.getRelativeTimeSpanString(
-        ts,
-        System.currentTimeMillis(),
-        android.text.format.DateUtils.MINUTE_IN_MILLIS,
-    ).toString()
+@Composable
+private fun formatTimestamp(ts: Long): String {
+    val now = System.currentTimeMillis()
+    return if (now - ts < android.text.format.DateUtils.MINUTE_IN_MILLIS) {
+        stringResource(R.string.conversation_timestamp_now)
+    } else {
+        android.text.format.DateUtils.getRelativeTimeSpanString(
+            ts,
+            now,
+            android.text.format.DateUtils.MINUTE_IN_MILLIS,
+        ).toString()
+    }
+}
