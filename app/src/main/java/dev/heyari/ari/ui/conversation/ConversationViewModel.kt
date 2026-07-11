@@ -49,6 +49,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import dev.heyari.ari.di.EngineHolder
 import dev.heyari.ari.voice.VoiceSession
@@ -108,6 +109,11 @@ class ConversationViewModel @Inject constructor(
     val messages: StateFlow<List<Message>> = logRepository.messages
 
     private var suppressPollUntil = 0L
+
+    /** The in-flight typed-turn coroutine, if any. Tracked so `/reset` can
+     *  cancel it — "terminate the current conversation" means stopping work
+     *  in progress, not just wiping the log. */
+    private var activeTurn: Job? = null
 
     init {
         // Load active model + mark setup checked once. ensureLoaded() resolves
@@ -201,6 +207,19 @@ class ConversationViewModel @Inject constructor(
         _state.update { it.copy(inputText = text) }
     }
 
+    /**
+     * `/reset` — terminate the current conversation and return the screen to
+     * the state a user sees on opening Ari: cancel any in-flight typed turn,
+     * clear the conversation log (so the adaptive empty state renders again),
+     * and clear the input + transient thinking indicator. Live cards/alarms
+     * are background state and deliberately left running.
+     */
+    private fun handleReset() {
+        activeTurn?.cancel()
+        logRepository.clear()
+        _state.update { it.copy(inputText = "", isThinking = false, wakeWordDetected = false) }
+    }
+
     fun onTextSubmitted(text: String) {
         if (text.isBlank()) return
 
@@ -228,6 +247,11 @@ class ConversationViewModel @Inject constructor(
             handleRouterDebug(text)
             return
         }
+        // `/reset` — clear the conversation and return to the opening screen.
+        if (text.startsWith("/reset")) {
+            handleReset()
+            return
+        }
 
         val userMessage = Message(text = text, isFromUser = true)
         logRepository.append(userMessage)
@@ -244,7 +268,7 @@ class ConversationViewModel @Inject constructor(
             return
         }
 
-        viewModelScope.launch(Dispatchers.Default) {
+        activeTurn = viewModelScope.launch(Dispatchers.Default) {
             // Generic "still working" signal, dual-channel. If processInput
             // hasn't returned within STILL_WORKING_DELAY_MS, we let the user
             // know Ari is still on it instead of staring at silence. Same UX
