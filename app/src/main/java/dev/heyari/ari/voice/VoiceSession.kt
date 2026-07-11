@@ -696,25 +696,39 @@ class VoiceSession @Inject constructor(
         // Non-Idle synchronously so the WakeWordService one-shot collector sees a
         // begun turn before any Idle (same reason start() does this).
         _state.value = VoiceState.Listening("")
+        lastActivityAt = System.currentTimeMillis()
         sessionJob = scope.launch {
+            // Bound the mic: the online/English recogniser emits Done only on a
+            // stable NON-empty partial, so pure silence never endpoints. Without
+            // this watcher a "tapped but never spoke" dictation would keep the
+            // one-shot capture host hot forever. Mirrors start()'s silence guard.
+            val silenceWatcher = launch {
+                while (isActive) {
+                    delay(500)
+                    if (System.currentTimeMillis() - lastActivityAt > SILENCE_TIMEOUT_MS) {
+                        Log.i(TAG, "Dictation: no speech within ${SILENCE_TIMEOUT_MS}ms — dismissing")
+                        dismiss()
+                        return@launch
+                    }
+                }
+            }
             try {
                 speechRecognizer.startListening()
                 speechRecognizer.state.collect { stt ->
                     when (stt) {
-                        is SttState.Listening ->
+                        is SttState.Listening -> {
+                            if (stt.partial.isNotBlank()) lastActivityAt = System.currentTimeMillis()
                             _state.update { VoiceState.Listening(stt.partial) }
-                        SttState.Transcribing ->
-                            // Offline whisper decode window — reflect it so the
-                            // border shows Thinking rather than still-Listening.
-                            _state.update { VoiceState.Thinking }
+                        }
+                        SttState.Transcribing -> _state.update { VoiceState.Thinking }
                         is SttState.Done -> {
                             _dictatedText.emit(stt.text)
-                            dismiss()            // stops STT, cancels this job, → Idle
+                            dismiss()
                             return@collect
                         }
                         is SttState.Error -> {
                             Log.w(TAG, "Dictation STT error: ${stt.message}")
-                            dismiss()            // caller keeps the last partial
+                            dismiss()
                             return@collect
                         }
                         SttState.Idle -> { /* ignore */ }
@@ -724,6 +738,8 @@ class VoiceSession @Inject constructor(
                 if (t is kotlinx.coroutines.CancellationException) throw t
                 Log.e(TAG, "Dictation failed", t)
                 dismiss()
+            } finally {
+                silenceWatcher.cancel()
             }
         }
     }

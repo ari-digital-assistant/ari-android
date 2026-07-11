@@ -197,6 +197,13 @@ class WakeWordService : Service() {
                 Log.w(TAG, "Capture host failed to start — not starting dictation")
                 return START_NOT_STICKY
             }
+            if (voiceSession.isActive) {
+                // Redundant start (double-tap race): a dictation session is
+                // already running — don't reset the one-shot flags out from
+                // under it.
+                Log.w(TAG, "Dictation already active — ignoring redundant start")
+                return if (oneShotActive) START_NOT_STICKY else START_STICKY
+            }
             oneShotActive = intent.getBooleanExtra(EXTRA_ONE_SHOT, false)
             oneShotTurnBegan = false
             voiceSession.startDictation()

@@ -806,6 +806,18 @@ class ConversationViewModel @Inject constructor(
             putExtra(WakeWordService.EXTRA_ONE_SHOT, oneShot)
         }
         ContextCompat.startForegroundService(application, intent)
+
+        // Safety net: if the host never brings the session up (FGS blocked,
+        // model unloaded), no Idle transition arrives to clear the flag. Clear
+        // it if the dictation session hasn't become active shortly. A running
+        // session keeps voiceSession.isActive true, so this never fires on a
+        // valid (even slow-to-start) dictation.
+        viewModelScope.launch {
+            delay(4000)
+            if (_state.value.isDictating && !voiceSession.isActive) {
+                _state.update { it.copy(isDictating = false) }
+            }
+        }
     }
 
     /** Stop button: cancel dictation, keep the partial already in the field. */
