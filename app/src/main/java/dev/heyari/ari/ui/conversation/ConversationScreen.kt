@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -235,6 +236,10 @@ fun ConversationScreen(
             } else {
                 val rows = remember(messages) { MessageGrouping.rows(messages) }
                 val motion = remember { animationsEnabled(context) }
+                // Remember which bubbles have already played their entrance, so
+                // each animates once (on first appearance) and not again when it
+                // scrolls back into view.
+                val animatedIds = remember { mutableSetOf<String>() }
                 LazyColumn(
                     state = listState,
                     modifier = Modifier
@@ -245,9 +250,20 @@ fun ConversationScreen(
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     items(rows, key = { it.message.id }) { row ->
-                        if (motion) {
+                        val id = row.message.id
+                        // Captured at first composition: has this bubble already
+                        // appeared (and thus already animated) before now?
+                        val firstAppearance = remember(id) { id !in animatedIds }
+                        LaunchedEffect(id) { animatedIds.add(id) }
+                        if (motion && firstAppearance) {
+                            // Start hidden, then flip to visible so the enter
+                            // transition actually runs. AnimatedVisibility(visible =
+                            // true) would snap in with no animation.
+                            val enterState = remember(id) {
+                                MutableTransitionState(false).apply { targetState = true }
+                            }
                             AnimatedVisibility(
-                                visible = true,
+                                visibleState = enterState,
                                 enter = fadeIn(animationSpec = tween(180)) +
                                     slideInVertically(
                                         animationSpec = spring(dampingRatio = 0.72f, stiffness = 380f),
@@ -265,6 +281,7 @@ fun ConversationScreen(
                         } else {
                             MessageBubble(
                                 row = row,
+                                modifier = Modifier.animateItem(),
                                 cardRepository = viewModel.cardRepository,
                                 assetResolver = viewModel.assetResolver,
                                 onCardAction = viewModel::onCardAction,
