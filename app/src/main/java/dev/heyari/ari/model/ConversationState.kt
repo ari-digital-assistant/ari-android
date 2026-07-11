@@ -33,6 +33,10 @@ data class ConversationState(
      * the conversation log — it must not survive into the record.
      */
     val isThinking: Boolean = false,
+    /** True while an in-place dictation session is streaming into the composer. */
+    val isDictating: Boolean = false,
+    /** True once the STT model is loaded — gates the composer mic button. */
+    val sttReady: Boolean = false,
     /**
      * Which face the adaptive empty state shows when the conversation is
      * empty: [EmptyMode.FirstRun] (0 skills — browse-skills CTA) vs
