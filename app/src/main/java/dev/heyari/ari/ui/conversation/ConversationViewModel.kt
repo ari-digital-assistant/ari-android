@@ -269,40 +269,33 @@ class ConversationViewModel @Inject constructor(
         }
 
         activeTurn = viewModelScope.launch(Dispatchers.Default) {
-            // Generic "still working" signal, dual-channel. If processInput
-            // hasn't returned within STILL_WORKING_DELAY_MS, we let the user
-            // know Ari is still on it instead of staring at silence. Same UX
-            // shape as Layer C's delay phrase but applies to ANY slow path —
-            // built-in LLM QA, cloud assistant, slow skill, anything that
-            // makes processInput block past the threshold.
+            // "Thinking" is signalled on two INDEPENDENT channels:
             //
-            // Two channels fire together:
-            //  - Visual: a transient `isThinking` flag driving the animated
-            //    ThinkingIndicator bubble. It is UI-only — NEVER appended to
-            //    the conversation log, so it can't survive into the record.
-            //  - Spoken: the shared "please wait" phrase, still spoken aloud.
-            //    This is the only eyes-free cue in a background/voice-only
-            //    session, so it stays regardless of the visual channel.
+            //  - Visual (IMMEDIATE): `isThinking` drives the ambient
+            //    border/aura + the transient ThinkingIndicator dots from the
+            //    moment the turn starts, so every query gets instant feedback —
+            //    not only ones slower than the 4s threshold. UI-only; NEVER
+            //    appended to the conversation log, so it can't survive into
+            //    the record.
+            //  - Spoken (GATED at STILL_WORKING_DELAY_MS): the "please wait"
+            //    phrase is only spoken if processInput blocks past the
+            //    threshold — we mustn't talk over a fast answer, but this is
+            //    the only eyes-free cue in a background/voice-only session, so
+            //    it must survive for slow turns.
             //
-            // Both are torn down in the finally: the indicator flag clears and
-            // the response renders as a fresh assistant message.
+            // Both are torn down in the finally.
+            _state.update { it.copy(isThinking = true) }
             val fillerJob = launch {
                 delay(STILL_WORKING_DELAY_MS)
                 // Same shared "please wait" vocabulary the STT warm-up uses, so
                 // the two slow paths feel like one feature.
-                val phrase = pleaseWaitPhrase(application)
-                _state.update { it.copy(isThinking = true) }
-                speechOutput.speak(phrase)
+                speechOutput.speak(pleaseWaitPhrase(application))
             }
 
             val response = try {
                 engineHolder.engine().processInput(text)
             } finally {
-                // cancelAndJoin (legal here — the finally runs inside this
-                // suspend coroutine) so a racing fillerJob can't flip
-                // isThinking=true *after* we clear it below, leaving the
-                // indicator wedged on.
-                fillerJob.cancelAndJoin()
+                fillerJob.cancel()
                 _state.update { it.copy(isThinking = false) }
             }
 
