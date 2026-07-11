@@ -300,7 +300,11 @@ fun ConversationScreen(
             // combined ambient state: voice phase (Listening/Thinking/Speaking)
             // takes precedence, with the typed-input "still working" flag
             // folding into Thinking. Reduce-motion is handled inside AmbientField.
-            val ambient = deriveAmbientState(voicePhase, state.isThinking)
+            val ambient = deriveAmbientState(
+                voicePhase = voicePhase,
+                textThinking = state.isThinking,
+                wakeArmed = state.isListening,
+            )
             Box(modifier = Modifier.fillMaxWidth()) {
                 AmbientField(
                     state = ambient,
