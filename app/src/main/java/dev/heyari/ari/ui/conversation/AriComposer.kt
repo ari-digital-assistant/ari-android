@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -34,6 +35,9 @@ fun AriComposer(
     onValueChange: (String) -> Unit,
     onSend: () -> Unit,
     onMicTap: () -> Unit,
+    onStop: () -> Unit,
+    isDictating: Boolean,
+    micEnabled: Boolean,
     ambientState: AmbientState,
     modifier: Modifier = Modifier,
 ) {
@@ -57,20 +61,30 @@ fun AriComposer(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
             keyboardActions = KeyboardActions(onSend = { onSend() }),
         )
-        // isDictating hardcoded false pending Task 6, which wires real dictation state
-        // and the Stop button's appearance/behaviour into this composer.
-        val action = composerAction(value, isDictating = false)
-        IconButton(onClick = { if (action == ComposerAction.Send) onSend() else onMicTap() }) {
+        val action = composerAction(value, isDictating)
+        IconButton(
+            onClick = {
+                when (action) {
+                    ComposerAction.Send -> onSend()
+                    ComposerAction.Stop -> onStop()
+                    ComposerAction.Mic -> onMicTap()
+                }
+            },
+            enabled = action != ComposerAction.Mic || micEnabled,
+        ) {
             when (action) {
                 ComposerAction.Send -> Icon(
                     Icons.AutoMirrored.Filled.Send,
                     contentDescription = stringResource(R.string.conversation_send),
                 )
+                ComposerAction.Stop -> Icon(
+                    Icons.Default.Stop,
+                    contentDescription = stringResource(R.string.conversation_stop_dictation),
+                )
                 ComposerAction.Mic -> Icon(
                     Icons.Default.Mic,
                     contentDescription = stringResource(R.string.conversation_talk),
                 )
-                ComposerAction.Stop -> {} // Placeholder; Task 6 renders the Stop icon.
             }
         }
     }

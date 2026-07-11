@@ -235,6 +235,8 @@
     <string name="conversation_send">Send</string>
     <string name="conversation_talk">Talk to Ari</string>
     <!-- TODO(i18n): add values-it/ translation -->
+    <string name="conversation_stop_dictation">Stop dictation</string>
+    <!-- TODO(i18n): add values-it/ translation -->
     <string name="conversation_timestamp_now">now</string>
     <string name="conversation_open_menu">Open menu</string>
     <!-- TODO(i18n): add values-it/ translations -->

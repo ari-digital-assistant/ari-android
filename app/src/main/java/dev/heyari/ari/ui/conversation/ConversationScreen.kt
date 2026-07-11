@@ -314,7 +314,10 @@ fun ConversationScreen(
                     value = state.inputText,
                     onValueChange = viewModel::onInputChanged,
                     onSend = { viewModel.onTextSubmitted(state.inputText) },
-                    onMicTap = { withVoicePermissions { viewModel.startVoiceTurn() } },
+                    onMicTap = { withVoicePermissions { viewModel.startDictation() } },
+                    onStop = { viewModel.stopDictation() },
+                    isDictating = state.isDictating,
+                    micEnabled = state.sttReady,
                     ambientState = ambient,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
