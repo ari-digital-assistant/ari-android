@@ -246,8 +246,7 @@
     <string name="conversation_downloading_header">Scaricamento in background</string>
     <string name="conversation_downloading_stt_model">Modello di riconoscimento vocale</string>
     <string name="conversation_downloading_llm_model">Modello assistente</string>
-    <!-- DRAFT — pending native review -->
-    <string name="conversation_listening_placeholder">Ti ascolto…</string>
+    <string name="conversation_listening_placeholder">Sto ascoltando…</string>
     <string name="conversation_send">Invia</string>
     <string name="conversation_talk">Parla con Ari</string>
     <string name="conversation_stop_dictation">Ferma la dettatura</string>
@@ -375,10 +374,9 @@
     <string name="media_needs_permission">Per controllare la riproduzione, mi serve l\'accesso ai media. Apro le impostazioni.</string>
 
     <!-- Adaptive empty state (conversation home screen). -->
-    <!-- DRAFT — pending native review -->
     <string name="empty_chip_remember_name">Ricorda il mio nome</string>
     <string name="empty_firstrun_title">Ciao, sono Ari 👋</string>
-    <string name="empty_firstrun_body">Per ora sono piuttosto essenziale. Aggiungi qualche skill e diventerò davvero utile.</string>
+    <string name="empty_firstrun_body">Al momento sono piuttosto basilare: aggiungimi qualche skill per rendermi utile!</string>
     <string name="empty_firstrun_cta">Sfoglia le skill</string>
     <string name="empty_firstrun_or">…oppure scrivi qui sotto — posso chiacchierare e rispondere subito alle tue domande.</string>
     <string name="empty_greeting_anon">Ciao, sono Ari</string>
