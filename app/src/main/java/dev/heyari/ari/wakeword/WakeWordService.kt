@@ -186,6 +186,26 @@ class WakeWordService : Service() {
                 return START_NOT_STICKY
             }
         }
+
+        if (intent?.action == ACTION_START_DICTATION) {
+            // Foreground in-place dictation: same transient capture host as
+            // tap-to-talk, but STT-only — no overlay. VoiceSession.startDictation()
+            // streams partials to the composer and emits the final transcript;
+            // reaching Idle stands this host down via the same one-shot collector
+            // in onCreate.
+            if (!isRunning) {
+                Log.w(TAG, "Capture host failed to start — not starting dictation")
+                return START_NOT_STICKY
+            }
+            oneShotActive = intent.getBooleanExtra(EXTRA_ONE_SHOT, false)
+            oneShotTurnBegan = false
+            voiceSession.startDictation()
+            if (oneShotActive) {
+                // Same START_NOT_STICKY reasoning as the voice-turn branch: a
+                // sticky NULL-intent restart must not resurrect a full host.
+                return START_NOT_STICKY
+            }
+        }
         return START_STICKY
     }
 
@@ -563,6 +583,7 @@ class WakeWordService : Service() {
         // EXTRA_ONE_SHOT true means always-listening was OFF, so the service is
         // a transient capture host that stands itself down after the turn.
         const val ACTION_START_VOICE_TURN = "dev.heyari.ari.START_VOICE_TURN"
+        const val ACTION_START_DICTATION = "dev.heyari.ari.START_DICTATION"
         const val EXTRA_ONE_SHOT = "one_shot"
 
         private const val REQUEST_OPEN_APP = 0
