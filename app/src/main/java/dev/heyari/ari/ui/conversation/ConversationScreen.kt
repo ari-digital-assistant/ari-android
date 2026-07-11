@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -179,7 +180,10 @@ fun ConversationScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                // Only the top (app-bar) inset pads the column; the bottom
+                // navigation-bar inset is handled by the composer itself so the
+                // presence aura can paint edge-to-edge behind the gesture bar.
+                .padding(top = padding.calculateTopPadding())
                 .imePadding()
         ) {
             if (state.needsSetup) {
@@ -290,7 +294,9 @@ fun ConversationScreen(
                     onValueChange = viewModel::onInputChanged,
                     onSend = { viewModel.onTextSubmitted(state.inputText) },
                     onMicTap = { withVoicePermissions { viewModel.startVoiceTurn() } },
-                    modifier = Modifier.align(Alignment.BottomCenter),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding(),
                 )
             }
         }
