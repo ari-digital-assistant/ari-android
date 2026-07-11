@@ -311,6 +311,7 @@ fun ConversationScreen(
                     onValueChange = viewModel::onInputChanged,
                     onSend = { viewModel.onTextSubmitted(state.inputText) },
                     onMicTap = { withVoicePermissions { viewModel.startVoiceTurn() } },
+                    ambientState = ambient,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .navigationBarsPadding(),
