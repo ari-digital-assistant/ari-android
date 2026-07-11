@@ -121,7 +121,7 @@ class ConversationViewModel @Inject constructor(
         // AriApplication's eager load and any wake-triggered VoiceSession load).
         viewModelScope.launch(Dispatchers.IO) {
             sttModelLoader.ensureLoaded()
-            _state.update { it.copy(setupChecked = true) }
+            _state.update { it.copy(setupChecked = true, sttReady = speechRecognizer.isModelLoaded) }
             refreshOnboarding()
         }
 
@@ -136,6 +136,7 @@ class ConversationViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             settingsRepository.activeSttModelId.drop(1).collect {
                 sttModelLoader.ensureLoaded()
+                _state.update { it.copy(sttReady = speechRecognizer.isModelLoaded) }
                 refreshOnboarding()
             }
         }
@@ -149,6 +150,29 @@ class ConversationViewModel @Inject constructor(
         viewModelScope.launch {
             llmDownloadManager.state.collect { dlState ->
                 _state.update { it.copy(llmDownload = dlState) }
+            }
+        }
+
+        // Dictation: stream live partials into the input field; clear the flag
+        // when the session ends (Idle/Error) — the last partial stays in the
+        // field so a cancelled dictation isn't lost.
+        viewModelScope.launch {
+            voiceSession.state.collect { vs ->
+                if (!_state.value.isDictating) return@collect
+                when (vs) {
+                    is VoiceState.Listening -> _state.update { it.copy(inputText = vs.partial) }
+                    VoiceState.Idle -> _state.update { it.copy(isDictating = false) }
+                    is VoiceState.Error -> _state.update { it.copy(isDictating = false) }
+                    else -> { /* Preparing/Thinking/Responding: leave the field */ }
+                }
+            }
+        }
+        // Dictation final transcript → submit as if typed. onTextSubmitted's own
+        // blank guard makes an empty utterance a no-op.
+        viewModelScope.launch {
+            voiceSession.dictatedText.collect { text ->
+                _state.update { it.copy(isDictating = false, inputText = text) }
+                onTextSubmitted(text)
             }
         }
 
@@ -764,6 +788,30 @@ class ConversationViewModel @Inject constructor(
             putExtra(WakeWordService.EXTRA_ONE_SHOT, oneShot)
         }
         ContextCompat.startForegroundService(application, intent)
+    }
+
+    /**
+     * Foreground composer dictation. Mirrors [startVoiceTurn]'s hardened guard +
+     * one-shot computation, but routes to ACTION_START_DICTATION (STT-only, no
+     * overlay). Gated by the caller on sttReady; guarded here against an active
+     * wake turn (the CaptureBus is single-consumer).
+     */
+    fun startDictation() {
+        if (voiceSession.isActive || WakeWordService.oneShotActive) return
+        if (!speechRecognizer.isModelLoaded) return
+        _state.update { it.copy(isDictating = true) }
+        val oneShot = !WakeWordService.isRunning || WakeWordService.oneShotActive
+        val intent = Intent(application, WakeWordService::class.java).apply {
+            action = WakeWordService.ACTION_START_DICTATION
+            putExtra(WakeWordService.EXTRA_ONE_SHOT, oneShot)
+        }
+        ContextCompat.startForegroundService(application, intent)
+    }
+
+    /** Stop button: cancel dictation, keep the partial already in the field. */
+    fun stopDictation() {
+        voiceSession.stopDictation()
+        _state.update { it.copy(isDictating = false) }
     }
 
     /**
