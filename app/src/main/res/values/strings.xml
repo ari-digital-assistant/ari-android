@@ -399,4 +399,8 @@
     <string name="empty_greeting_afternoon">Good afternoon, %1$s</string>
     <string name="empty_greeting_evening">Good evening, %1$s</string>
     <string name="empty_setup_sub">Ask me anything, or try…</string>
+
+    <!-- Accessibility labels for the per-message input-modality glyph -->
+    <string name="msg_source_typed">Typed message</string>
+    <string name="msg_source_voice">Voice message</string>
 </resources>

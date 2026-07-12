@@ -11,9 +11,14 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -44,6 +49,7 @@ fun MessageBubble(
 ) {
     val message = row.message
     val isUser = message.isFromUser
+    val glyph = modalityGlyph(message)   // null for Ari rows; drives the trailing gutter
 
     Column(modifier = modifier.fillMaxWidth()) {
         if (row.showTimestamp) {
@@ -112,6 +118,15 @@ fun MessageBubble(
                     )
                 }
             }
+
+            // Trailing modality gutter — mirror of Ari's leading avatar gutter.
+            // Present only on user rows (glyph != null), on every row.
+            if (glyph != null) {
+                MessageModalityGlyph(
+                    glyph = glyph,
+                    modifier = Modifier.padding(start = 8.dp, top = 6.dp),
+                )
+            }
         }
 
         for (attachment in message.attachments) {
@@ -158,4 +173,25 @@ private fun formatTimestamp(ts: Long): String {
             android.text.format.DateUtils.MINUTE_IN_MILLIS,
         ).toString()
     }
+}
+
+/**
+ * The subtle keyboard/mic glyph shown in a user message's trailing gutter,
+ * indicating whether the turn was typed or spoken.
+ */
+@Composable
+private fun MessageModalityGlyph(
+    glyph: ModalityGlyph,
+    modifier: Modifier = Modifier,
+) {
+    val (icon, descRes) = when (glyph) {
+        ModalityGlyph.Typed -> Icons.Default.Keyboard to R.string.msg_source_typed
+        ModalityGlyph.Voice -> Icons.Default.Mic to R.string.msg_source_voice
+    }
+    Icon(
+        imageVector = icon,
+        contentDescription = stringResource(descRes),
+        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+        modifier = modifier.size(16.dp),
+    )
 }
