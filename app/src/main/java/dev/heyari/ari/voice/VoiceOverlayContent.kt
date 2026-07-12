@@ -37,17 +37,26 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.heyari.ari.ui.conversation.ambientCardHalo
+import dev.heyari.ari.ui.conversation.ambientComposerBorder
+import dev.heyari.ari.ui.conversation.toOverlayAmbientState
 
 @Composable
 fun VoiceOverlayContent(
     state: VoiceState,
     onDismiss: () -> Unit,
 ) {
+    val ambient = state.toOverlayAmbientState()
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(12.dp),
+            // Halo draws in the 12dp margin (before padding, so its node includes
+            // the margin); the card sits 12dp inside and the glow feathers outward.
+            .ambientCardHalo(ambient, cornerRadius = 20.dp, inset = 12.dp)
+            .padding(12.dp)
+            // Border hugs the card edge (after padding, so its node == the card).
+            .ambientComposerBorder(ambient, cornerRadius = 20.dp),
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.primaryContainer,
         tonalElevation = 8.dp,
