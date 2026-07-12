@@ -14,8 +14,10 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
@@ -94,7 +96,7 @@ private val COMPOSER_CORNER = 24.dp
  * so this is the only border the field shows.
  */
 @Composable
-fun Modifier.ambientComposerBorder(state: AmbientState): Modifier {
+fun Modifier.ambientComposerBorder(state: AmbientState, cornerRadius: Dp = COMPOSER_CORNER): Modifier {
     val ctx = LocalContext.current
     val motion = remember { animationsEnabled(ctx) }
     val accent = MaterialTheme.colorScheme.primary
@@ -107,7 +109,7 @@ fun Modifier.ambientComposerBorder(state: AmbientState): Modifier {
             drawRoundRect(
                 color = color,
                 style = Stroke(width = 1.5.dp.toPx()),
-                cornerRadius = CornerRadius(COMPOSER_CORNER.toPx()),
+                cornerRadius = CornerRadius(cornerRadius.toPx()),
             )
         }
     }
@@ -127,7 +129,7 @@ fun Modifier.ambientComposerBorder(state: AmbientState): Modifier {
     )
 
     return this.drawBehind {
-        val corner = CornerRadius(COMPOSER_CORNER.toPx())
+        val corner = CornerRadius(cornerRadius.toPx())
         if (state == AmbientState.Speaking) {
             val t = 1f - kotlin.math.abs(phase - 0.5f) * 2f // 0..1..0
             drawRoundRect(
@@ -149,6 +151,65 @@ fun Modifier.ambientComposerBorder(state: AmbientState): Modifier {
                 ),
                 style = stroke,
                 cornerRadius = corner,
+            )
+        }
+    }
+}
+
+/**
+ * A bounded, card-hugging halo for the voice overlay card — the overlay's
+ * counterpart to [AmbientField]'s bottom aura, but feathered to stay within the
+ * card's [inset] margin so it never spills onto the translucent window's
+ * background. Drawn behind an opaque card whose edge sits [inset] inside this
+ * node; the glow feathers outward up to [maxBleed] via layered decaying-alpha
+ * strokes, breathing its peak alpha per [state]. Reduce-motion aware.
+ */
+@Composable
+fun Modifier.ambientCardHalo(
+    state: AmbientState,
+    cornerRadius: Dp = 20.dp,
+    inset: Dp = 12.dp,
+    maxBleed: Dp = 8.dp,
+): Modifier {
+    val ctx = LocalContext.current
+    val motion = remember { animationsEnabled(ctx) }
+    val accent = MaterialTheme.colorScheme.primary
+
+    val (baseAlpha, period) = when (state) {
+        AmbientState.Idle -> 0.06f to 5500
+        AmbientState.Listening -> 0.22f to 1600
+        AmbientState.Thinking -> 0.14f to 2200
+        AmbientState.Speaking -> 0.20f to 1100
+    }
+    val alpha = if (!motion) baseAlpha else {
+        val t = rememberInfiniteTransition(label = "halo")
+        val v by t.animateFloat(
+            initialValue = baseAlpha * 0.5f, targetValue = baseAlpha,
+            animationSpec = infiniteRepeatable(tween(period, easing = LinearEasing), RepeatMode.Reverse),
+            label = "haloAlpha",
+        )
+        v
+    }
+
+    return this.drawBehind {
+        val insetPx = inset.toPx()
+        val bleedPx = maxBleed.toPx()
+        val cornerPx = cornerRadius.toPx()
+        val left = insetPx
+        val top = insetPx
+        val cardW = size.width - insetPx * 2
+        val cardH = size.height - insetPx * 2
+        val layers = 8
+        for (i in 1..layers) {
+            val f = i / layers.toFloat()       // 0..1 outward
+            val grow = bleedPx * f
+            val a = alpha * (1f - f)            // decay to 0 → feathered edge
+            drawRoundRect(
+                color = accent.copy(alpha = a),
+                topLeft = Offset(left - grow, top - grow),
+                size = Size(cardW + grow * 2, cardH + grow * 2),
+                cornerRadius = CornerRadius(cornerPx + grow),
+                style = Stroke(width = 2.dp.toPx()),
             )
         }
     }
