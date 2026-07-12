@@ -9,6 +9,7 @@ import dev.heyari.ari.R
 import dev.heyari.ari.actions.ActionHandler
 import dev.heyari.ari.data.conversation.ConversationLogRepository
 import dev.heyari.ari.model.Attachment
+import dev.heyari.ari.model.InputSource
 import dev.heyari.ari.model.Message
 import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.stt.SttModelLoader
@@ -365,7 +366,7 @@ class VoiceSession @Inject constructor(
         if (!awaitingReply) {
             val intercept = cardActionVoiceIntercept.resolve(text)
             if (intercept != null) {
-                logRepository.append(Message(text = text, isFromUser = true))
+                logRepository.append(Message(text = text, isFromUser = true, source = InputSource.Voice))
                 val outcome = cardActionDispatcher.dispatch(intercept.cardId, intercept.action)
                 when (outcome) {
                     is dev.heyari.ari.actions.CardActionDispatcher.Outcome.Silent -> {
@@ -498,7 +499,7 @@ class VoiceSession @Inject constructor(
         // raw `text`. NotUnderstood replies are logged too, matching the text
         // path. Silent Layer-C phase-1 envelopes produce a blank responseText
         // with no attachments and are skipped, same as the text path.
-        logRepository.append(Message(text = usedText, isFromUser = true))
+        logRepository.append(Message(text = usedText, isFromUser = true, source = InputSource.Voice))
         if (responseText.isNotBlank() || attachments.isNotEmpty()) {
             logRepository.append(
                 Message(text = responseText, isFromUser = false, attachments = attachments)

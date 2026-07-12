@@ -25,6 +25,7 @@ import dev.heyari.ari.data.card.OnComplete
 import dev.heyari.ari.llm.LlmDownloadManager
 import dev.heyari.ari.model.Attachment
 import dev.heyari.ari.model.ConversationState
+import dev.heyari.ari.model.InputSource
 import dev.heyari.ari.model.Message
 import dev.heyari.ari.location.LocationProvider
 import dev.heyari.ari.notifications.AlertAction
@@ -167,12 +168,14 @@ class ConversationViewModel @Inject constructor(
                 }
             }
         }
-        // Dictation final transcript → submit as if typed. onTextSubmitted's own
-        // blank guard makes an empty utterance a no-op.
+        // Dictation final transcript → submit as a Voice-sourced turn. The user
+        // spoke it, so it carries the mic glyph even though it flows through the
+        // typed path. onTextSubmitted's own blank guard makes an empty utterance
+        // a no-op.
         viewModelScope.launch {
             voiceSession.dictatedText.collect { text ->
                 _state.update { it.copy(isDictating = false, inputText = text) }
-                onTextSubmitted(text)
+                onTextSubmitted(text, InputSource.Voice)
             }
         }
 
@@ -244,7 +247,7 @@ class ConversationViewModel @Inject constructor(
         _state.update { it.copy(inputText = "", isThinking = false, wakeWordDetected = false) }
     }
 
-    fun onTextSubmitted(text: String) {
+    fun onTextSubmitted(text: String, source: InputSource = InputSource.Text) {
         if (text.isBlank()) return
 
         // Debug hook: `/card-demo <secs> [name]` synthesises a fake card +
@@ -277,7 +280,7 @@ class ConversationViewModel @Inject constructor(
             return
         }
 
-        val userMessage = Message(text = text, isFromUser = true)
+        val userMessage = Message(text = text, isFromUser = true, source = source)
         logRepository.append(userMessage)
         _state.update { it.copy(inputText = "", wakeWordDetected = false) }
 
