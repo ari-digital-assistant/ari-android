@@ -335,6 +335,10 @@ class ConversationViewModel @Inject constructor(
                 settingsRepository.setRememberedFacts(
                     engineHolder.peek()?.rememberedFacts() ?: emptyList()
                 )
+                // A captured name (or any new fact) should light up the greeting
+                // the instant the user returns to an empty view, not only on the
+                // next resume.
+                refreshEmptyState()
             }
 
             var attachments: List<Attachment> = emptyList()

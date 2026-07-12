@@ -6,6 +6,7 @@ package dev.heyari.ari.ui.conversation
 // still misfire on "call me later"; the other two are unambiguous.
 private val NAME_PATTERNS = listOf(
     Regex("""(?:the user'?s name is|my name is|call me)\s+([\p{L}][\p{L}\-']{1,30})""", RegexOption.IGNORE_CASE),
+    Regex("""(?:mi chiamo|il mio nome è|chiamami)\s+([\p{L}][\p{L}\-']{1,30})""", RegexOption.IGNORE_CASE),
 )
 
 /** Best-effort: scan freeform remembered facts for the user's name. First

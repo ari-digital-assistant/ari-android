@@ -17,6 +17,13 @@ class EmptyStateLogicTest {
     @Test fun handles_call_me() {
         assertEquals("Kez", detectUserName(listOf("call me Kez")))
     }
+    @Test fun reads_italian_phrasings() {
+        assertEquals("Giovanni", detectUserName(listOf("mi chiamo Giovanni")))
+        assertEquals("Anna", detectUserName(listOf("il mio nome è Anna")))
+        assertEquals("Luca", detectUserName(listOf("chiamami Luca")))
+        assertEquals("Keith", detectUserName(listOf("my name is Keith")))
+        assertNull(detectUserName(listOf("mi piace la pizza")))
+    }
     // "i'm Keith" no longer resolves — the "i'?m" branch was removed because it
     // false-positives far more often than it correctly detects a name.
     // The bare "i am" / "i'm" branches were removed: they false-positive on
