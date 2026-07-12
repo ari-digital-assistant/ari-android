@@ -399,7 +399,7 @@
         <item>Ancora una volta?</item>
     </string-array>
 
-    <!-- DRAFT (auto, please confirm): accessibility labels for the input-modality glyph -->
+    <!-- Accessibility labels for the per-message input-modality glyph -->
     <string name="msg_source_typed">Messaggio digitato</string>
     <string name="msg_source_voice">Messaggio vocale</string>
 </resources>
