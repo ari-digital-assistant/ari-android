@@ -378,21 +378,6 @@ class ConversationViewModel @Inject constructor(
     }
 
     /**
-     * Map the voice pipeline's [VoiceState] onto the presentation [VoicePhase].
-     * Preparing (cold STT warm-up) and Error are transient and fold to Idle so
-     * the ambient aura doesn't twitch on them; Responding is the phase where
-     * Ari is speaking back.
-     */
-    private fun VoiceState.toVoicePhase(): VoicePhase = when (this) {
-        is VoiceState.Idle -> VoicePhase.Idle
-        is VoiceState.Preparing -> VoicePhase.Idle
-        is VoiceState.Listening -> VoicePhase.Listening
-        is VoiceState.Thinking -> VoicePhase.Thinking
-        is VoiceState.Responding -> VoicePhase.Speaking
-        is VoiceState.Error -> VoicePhase.Idle
-    }
-
-    /**
      * Handle an envelope pushed to [AsyncEnvelopeChannel] from the
      * engine's background thread (currently only Layer C phase-2
      * continuation envelopes). Parse via [ActionHandler] identically
