@@ -11,6 +11,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -32,8 +33,15 @@ class RouterDownloadManager @Inject constructor(
     private val context: Context,
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    // Guarded by this instance's monitor. Callers arrive from several
+    // dispatchers, and the job/locale pair drifting apart would hand a caller
+    // the wrong locale's download. [currentToken] is the ownership token: it is
+    // bumped on every start and every cancel, so a job whose token is stale has
+    // provably been superseded and must keep its hands off [_state].
     private var currentJob: Job? = null
     private var currentLocale: String? = null
+    private var currentToken = 0L
 
     private val _state = MutableStateFlow<RouterDownloadState>(RouterDownloadState.Idle)
     val state: StateFlow<RouterDownloadState> = _state.asStateFlow()
@@ -51,7 +59,9 @@ class RouterDownloadManager @Inject constructor(
     /** Read the installed sidecar version. Missing/corrupt → `unknown`. */
     fun installedVersion(locale: String): String = InstalledModelMetadata.readVersion(routerDir(locale))
 
+    @Synchronized
     fun cancel() {
+        currentToken++
         currentJob?.cancel()
         currentJob = null
         currentLocale = null
@@ -80,6 +90,7 @@ class RouterDownloadManager @Inject constructor(
         job.join()
     }
 
+    @Synchronized
     private fun startDownload(locale: String, providedManifest: ModelManifest?): Job {
         // Only join an in-flight download if it's fetching the same locale.
         // A language switch mid-download must abandon the old one, or we'd
@@ -88,23 +99,41 @@ class RouterDownloadManager @Inject constructor(
             currentJob?.takeIf { it.isActive }?.let { return it }
         }
         currentJob?.cancel()
-        val job = scope.launch { runDownload(locale, providedManifest) }
+        val token = ++currentToken
+        val job = scope.launch { runDownload(locale, providedManifest, token) }
         currentJob = job
         currentLocale = locale
         return job
     }
 
-    private suspend fun runDownload(locale: String, providedManifest: ModelManifest?) {
+    /**
+     * Publish only while [token] still owns the download. Cancellation is
+     * cooperative but `input.read` is not, so a cancelled job can sit in a
+     * blocking socket read for up to the read timeout — by which time its
+     * successor is already reporting progress on this same flow. Taking the
+     * monitor makes the check-and-write atomic against [cancel] and
+     * [startDownload], so a stale job's write can never land afterwards.
+     */
+    @Synchronized
+    private fun publish(token: Long, newState: RouterDownloadState) {
+        if (token == currentToken) _state.value = newState
+    }
+
+    private suspend fun runDownload(locale: String, providedManifest: ModelManifest?, token: Long) {
         val initialTotal = providedManifest?.totalSizeBytes ?: EngineModule.ROUTER_MODEL_BYTES
-        _state.value = RouterDownloadState.Downloading(0, initialTotal)
+        publish(token, RouterDownloadState.Downloading(0, initialTotal))
 
         try {
             val manifest = providedManifest ?: fetchManifestOrNull(locale)
             if (manifest == null) {
-                _state.value = RouterDownloadState.Failed("Router manifest unavailable")
+                publish(token, RouterDownloadState.Failed("Router manifest unavailable"))
                 return
             }
-            val sourceFile = manifest.files.first()
+            val sourceFile = manifest.files.firstOrNull()
+            if (sourceFile == null) {
+                publish(token, RouterDownloadState.Failed("Router manifest lists no files"))
+                return
+            }
             val expectedSha = sourceFile.sha256
             val version = manifest.version
 
@@ -123,23 +152,25 @@ class RouterDownloadManager @Inject constructor(
                     val buf = ByteArray(8192)
                     var downloaded = 0L
                     var lastReport = System.currentTimeMillis()
-                    while (kotlinx.coroutines.currentCoroutineContext().isActive) {
+                    while (currentCoroutineContext().isActive) {
                         val n = input.read(buf)
                         if (n < 0) break
                         output.write(buf, 0, n)
                         downloaded += n
                         val now = System.currentTimeMillis()
                         if (now - lastReport > 100) {
-                            _state.value = RouterDownloadState.Downloading(downloaded, total)
+                            publish(token, RouterDownloadState.Downloading(downloaded, total))
                             lastReport = now
                         }
                     }
                 }
             }
 
-            if (!kotlinx.coroutines.currentCoroutineContext().isActive) {
+            // Whoever cancelled us has already published on our behalf — Idle
+            // from cancel(), Downloading from the incoming locale's job — so
+            // bail quietly rather than racing them for the flow.
+            if (!currentCoroutineContext().isActive) {
                 partFile.delete()
-                _state.value = RouterDownloadState.Idle
                 return
             }
 
@@ -147,14 +178,23 @@ class RouterDownloadManager @Inject constructor(
             if (!actualSha.equals(expectedSha, ignoreCase = true)) {
                 partFile.delete()
                 Log.e(TAG, "SHA-256 mismatch: expected $expectedSha, got $actualSha")
-                _state.value = RouterDownloadState.Failed("Checksum mismatch — file may be corrupted")
+                publish(token, RouterDownloadState.Failed("Checksum mismatch — file may be corrupted"))
+                return
+            }
+
+            // Hashing a quarter-gigabyte file takes seconds, so re-check before
+            // committing: installing a cancelled locale here would recreate the
+            // outgoing locale's directory after reconcile had already swept it,
+            // leaving two router models on disk.
+            if (!currentCoroutineContext().isActive) {
+                partFile.delete()
                 return
             }
 
             modelFile(locale).delete()
             if (!partFile.renameTo(modelFile(locale))) {
                 partFile.delete()
-                _state.value = RouterDownloadState.Failed("Failed to install downloaded file")
+                publish(token, RouterDownloadState.Failed("Failed to install downloaded file"))
                 return
             }
             InstalledModelMetadata.writeSingle(
@@ -164,7 +204,7 @@ class RouterDownloadManager @Inject constructor(
                 sha256 = actualSha,
             )
 
-            _state.value = RouterDownloadState.Completed
+            publish(token, RouterDownloadState.Completed)
             Log.i(TAG, "Router model installed: locale=$locale version=$version size=${modelFile(locale).length()}")
         } catch (e: Exception) {
             val msg = when (e) {
@@ -173,7 +213,7 @@ class RouterDownloadManager @Inject constructor(
                 else -> e.message ?: "Unknown error"
             }
             Log.e(TAG, "Router download failed", e)
-            _state.value = RouterDownloadState.Failed(msg)
+            publish(token, RouterDownloadState.Failed(msg))
         }
     }
 
