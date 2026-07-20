@@ -75,7 +75,11 @@ class OnboardingViewModel @Inject constructor(
         // their seeded locale has to be fired here instead.
         viewModelScope.launch {
             val available = routerAvailability.isAvailable(persistedLocale)
-            _state.update { it.copy(routerAvailable = available) }
+            // Drop a late response for a locale the user has since changed
+            // away from — this probe can still be in flight when the user
+            // picks a different language on screen 1, and must not clobber
+            // that screen's own (guarded) verdict.
+            _state.update { if (it.selectedLocale == persistedLocale) it.copy(routerAvailable = available) else it }
         }
     }
 
