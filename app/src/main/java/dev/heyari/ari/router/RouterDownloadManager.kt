@@ -33,41 +33,41 @@ class RouterDownloadManager @Inject constructor(
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var currentJob: Job? = null
+    private var currentLocale: String? = null
 
     private val _state = MutableStateFlow<RouterDownloadState>(RouterDownloadState.Idle)
     val state: StateFlow<RouterDownloadState> = _state.asStateFlow()
 
-    val routerDir: File
+    /** Parent of every per-locale directory. Migration and cleanup walk this. */
+    val routerRootDir: File
         get() = File(context.filesDir, "models/router").apply { mkdirs() }
 
-    fun modelFile(): File = File(routerDir, EngineModule.ROUTER_MODEL_FILENAME)
+    fun routerDir(locale: String): File = File(routerRootDir, locale).apply { mkdirs() }
 
-    fun isDownloaded(): Boolean = modelFile().isFile
+    fun modelFile(locale: String): File = File(routerDir(locale), RouterModel.fileName(locale))
+
+    fun isDownloaded(locale: String): Boolean = modelFile(locale).isFile
 
     /** Read the installed sidecar version. Missing/corrupt → `unknown`. */
-    fun installedVersion(): String = InstalledModelMetadata.readVersion(routerDir)
-
-    fun delete(): Boolean {
-        File(routerDir, InstalledModelMetadata.SIDECAR_FILENAME).delete()
-        return modelFile().delete()
-    }
+    fun installedVersion(locale: String): String = InstalledModelMetadata.readVersion(routerDir(locale))
 
     fun cancel() {
         currentJob?.cancel()
         currentJob = null
+        currentLocale = null
         _state.value = RouterDownloadState.Idle
     }
 
     /**
-     * First-install / refresh path. Fetches the published manifest, then
-     * downloads + verifies + writes the sidecar. If the manifest can't be
-     * reached (CDN hiccup, typo'd URL), falls back to the hard-coded
-     * legacy URL with SHA verification skipped and a `version=unknown`
-     * sidecar — the next auto-update check will offer to repair this
-     * once the manifest is back online.
+     * First-install / refresh path. Fetches the published manifest for
+     * [locale], then downloads + verifies + writes the sidecar. If the
+     * manifest can't be reached the download fails and is retried on the
+     * next reconcile — there is no fallback URL, because the only artifact
+     * we could fall back to is English and serving it to another locale is
+     * never correct.
      */
-    fun download() {
-        startDownload(providedManifest = null)
+    fun download(locale: String) {
+        startDownload(locale, providedManifest = null)
     }
 
     /**
@@ -75,39 +75,48 @@ class RouterDownloadManager @Inject constructor(
      * expected to inspect [state] afterwards to see whether it landed on
      * [RouterDownloadState.Completed] or [RouterDownloadState.Failed].
      */
-    suspend fun downloadWithManifest(manifest: ModelManifest) {
-        val job = startDownload(providedManifest = manifest)
+    suspend fun downloadWithManifest(locale: String, manifest: ModelManifest) {
+        val job = startDownload(locale, providedManifest = manifest)
         job.join()
     }
 
-    private fun startDownload(providedManifest: ModelManifest?): Job {
-        currentJob?.takeIf { it.isActive }?.let { return it }
-        val job = scope.launch { runDownload(providedManifest) }
+    private fun startDownload(locale: String, providedManifest: ModelManifest?): Job {
+        // Only join an in-flight download if it's fetching the same locale.
+        // A language switch mid-download must abandon the old one, or we'd
+        // return a job that installs the outgoing locale's model.
+        if (currentLocale == locale) {
+            currentJob?.takeIf { it.isActive }?.let { return it }
+        }
+        currentJob?.cancel()
+        val job = scope.launch { runDownload(locale, providedManifest) }
         currentJob = job
+        currentLocale = locale
         return job
     }
 
-    private suspend fun runDownload(providedManifest: ModelManifest?) {
+    private suspend fun runDownload(locale: String, providedManifest: ModelManifest?) {
         val initialTotal = providedManifest?.totalSizeBytes ?: EngineModule.ROUTER_MODEL_BYTES
         _state.value = RouterDownloadState.Downloading(0, initialTotal)
 
         try {
-            val manifest = providedManifest ?: fetchManifestOrNull()
-            val sourceFile = manifest?.files?.firstOrNull()
-            val url = sourceFile?.url ?: EngineModule.ROUTER_MODEL_URL
-            val expectedTotal = sourceFile?.sizeBytes ?: EngineModule.ROUTER_MODEL_BYTES
-            val expectedSha = sourceFile?.sha256
-            val version = manifest?.version ?: InstalledModelMetadata.UNKNOWN_VERSION
+            val manifest = providedManifest ?: fetchManifestOrNull(locale)
+            if (manifest == null) {
+                _state.value = RouterDownloadState.Failed("Router manifest unavailable")
+                return
+            }
+            val sourceFile = manifest.files.first()
+            val expectedSha = sourceFile.sha256
+            val version = manifest.version
 
-            val conn = (URL(url).openConnection() as HttpURLConnection).apply {
+            val conn = (URL(sourceFile.url).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 30_000
                 readTimeout = 60_000
                 instanceFollowRedirects = true
                 connect()
             }
 
-            val total = conn.contentLengthLong.takeIf { it > 0 } ?: expectedTotal
-            val partFile = File(routerDir, "${EngineModule.ROUTER_MODEL_FILENAME}.part")
+            val total = conn.contentLengthLong.takeIf { it > 0 } ?: sourceFile.sizeBytes
+            val partFile = File(routerDir(locale), "${RouterModel.fileName(locale)}.part")
 
             conn.inputStream.use { input ->
                 partFile.outputStream().use { output ->
@@ -135,28 +144,28 @@ class RouterDownloadManager @Inject constructor(
             }
 
             val actualSha = InstalledModelMetadata.sha256Hex(partFile)
-            if (expectedSha != null && !actualSha.equals(expectedSha, ignoreCase = true)) {
+            if (!actualSha.equals(expectedSha, ignoreCase = true)) {
                 partFile.delete()
                 Log.e(TAG, "SHA-256 mismatch: expected $expectedSha, got $actualSha")
                 _state.value = RouterDownloadState.Failed("Checksum mismatch — file may be corrupted")
                 return
             }
 
-            modelFile().delete()
-            if (!partFile.renameTo(modelFile())) {
+            modelFile(locale).delete()
+            if (!partFile.renameTo(modelFile(locale))) {
                 partFile.delete()
                 _state.value = RouterDownloadState.Failed("Failed to install downloaded file")
                 return
             }
             InstalledModelMetadata.writeSingle(
-                routerDir,
+                routerDir(locale),
                 version = version,
-                fileName = EngineModule.ROUTER_MODEL_FILENAME,
+                fileName = RouterModel.fileName(locale),
                 sha256 = actualSha,
             )
 
             _state.value = RouterDownloadState.Completed
-            Log.i(TAG, "Router model installed: version=$version size=${modelFile().length()}")
+            Log.i(TAG, "Router model installed: locale=$locale version=$version size=${modelFile(locale).length()}")
         } catch (e: Exception) {
             val msg = when (e) {
                 is java.net.SocketTimeoutException -> "Download timed out"
@@ -168,8 +177,8 @@ class RouterDownloadManager @Inject constructor(
         }
     }
 
-    private fun fetchManifestOrNull(): ModelManifest? = try {
-        val url = URL(EngineModule.ROUTER_MODEL_MANIFEST_URL)
+    private fun fetchManifestOrNull(locale: String): ModelManifest? = try {
+        val url = URL(RouterModel.manifestUrl(locale))
         val conn = (url.openConnection() as HttpURLConnection).apply {
             connectTimeout = 15_000
             readTimeout = 30_000
@@ -178,10 +187,10 @@ class RouterDownloadManager @Inject constructor(
         }
         val text = conn.inputStream.bufferedReader().use { it.readText() }
         ModelManifest.parse(text).also {
-            Log.i(TAG, "Fetched router manifest: version=${it.version}")
+            Log.i(TAG, "Fetched router manifest for $locale: version=${it.version}")
         }
     } catch (e: Exception) {
-        Log.w(TAG, "Router manifest fetch failed, will use legacy URL: ${e.message}")
+        Log.w(TAG, "Router manifest fetch failed for $locale: ${e.message}")
         null
     }
 
