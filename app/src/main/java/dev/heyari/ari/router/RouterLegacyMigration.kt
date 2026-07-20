@@ -34,10 +34,16 @@ enum class LegacyMigrationResult {
  * The carried-over sidecar version matters. Keeping `r100` is what makes the
  * update checker see the adopted file as stale and offer the real `-en-`
  * model; inventing a current-looking version would strand the user on the
- * frozen artifact forever. An install with no sidecar to carry gets none:
- * a missing sidecar already reads back as `unknown`, which the checker
- * treats as always-stale, so writing one would cost a 253 MB hash on the
- * startup path to reach the state we're already in.
+ * frozen artifact forever. An install with nothing to carry gets an explicit
+ * `unknown` sidecar instead — same always-stale verdict from the checker, but
+ * stated rather than inferred from the file's absence, and crucially it
+ * *overwrites* anything already sitting in `en/`. A failed rename in
+ * [RouterDownloadManager] deletes the model before it writes, so an
+ * `en/version.json` with no GGUF beside it is reachable; inheriting one of
+ * those would tell the checker the adopted bytes are current and strand the
+ * user on the frozen model permanently. Writing unconditionally makes
+ * "adopted ⇒ stale" a local invariant instead of an ordering argument, and
+ * costs nothing — the sha is carried, never recomputed.
  */
 object RouterLegacyMigration {
 
@@ -82,19 +88,20 @@ object RouterLegacyMigration {
 
         // Past the move the adoption has happened, so nothing below may turn
         // it into a FAILED. A sidecar we couldn't write costs a version
-        // string, not the model: it reads back as `unknown`, which is stale
-        // to the update checker — the same place a carried-over `r100` puts
-        // us, just less specific.
+        // string, not the model: with none there it reads back as `unknown`,
+        // which is stale to the update checker — the same place a carried-over
+        // `r100` puts us, just less specific.
         try {
             val carried = legacyVersion?.files?.firstOrNull()
-            if (legacyVersion != null && carried != null) {
-                InstalledModelMetadata.writeSingle(
-                    targetDir,
-                    version = legacyVersion.version,
-                    fileName = targetFile.name,
-                    sha256 = carried.sha256,
-                )
-            }
+            InstalledModelMetadata.writeSingle(
+                targetDir,
+                version = legacyVersion?.version ?: InstalledModelMetadata.UNKNOWN_VERSION,
+                fileName = targetFile.name,
+                // Nothing verifies a router GGUF against its sidecar sha after
+                // install — only the manifest sha at download time — so an
+                // empty one when there's nothing to carry costs nothing.
+                sha256 = carried?.sha256 ?: "",
+            )
             legacySidecar.delete()
         } catch (e: Exception) {
             Log.w(TAG, "legacy sidecar carry-over failed; adopted model reads as unknown version", e)

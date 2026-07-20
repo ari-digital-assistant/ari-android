@@ -66,7 +66,7 @@ class RouterLegacyMigrationTest {
     }
 
     @Test
-    fun missingSidecarAdoptsWithNoSidecarAndReadsAsUnknown() {
+    fun missingSidecarAdoptsWithAnExplicitUnknownSidecar() {
         val root = temp.newFolder("router")
         seedLegacyInstall(root, withSidecar = false)
 
@@ -75,10 +75,27 @@ class RouterLegacyMigrationTest {
         assertEquals(LegacyMigrationResult.ADOPTED, result)
         val enDir = File(root, "en")
         assertEquals("gguf-bytes", File(enDir, "ari-functiongemma-en-q4_k_m.gguf").readText())
-        // Nothing to carry, so nothing is written. `unknown` is already the
-        // always-stale state the update checker acts on, and manufacturing a
-        // sidecar to say it would mean hashing 253 MB during startup.
-        assertFalse(File(enDir, InstalledModelMetadata.SIDECAR_FILENAME).exists())
+        // Written, not omitted: `unknown` is the always-stale verdict the
+        // update checker acts on, and stating it costs a few bytes rather
+        // than a 253 MB hash. The sha is empty because nothing verifies an
+        // installed router against its sidecar.
+        assertEquals(InstalledModelMetadata.UNKNOWN_VERSION, InstalledModelMetadata.readVersion(enDir))
+        assertEquals("", InstalledModelMetadata.read(enDir)!!.files.single().sha256)
+    }
+
+    @Test
+    fun adoptionOverwritesAnOrphanedSidecarLeftWithoutItsModel() {
+        val root = temp.newFolder("router")
+        seedLegacyInstall(root, withSidecar = false)
+        // Reachable state: RouterDownloadManager deletes the model file before
+        // renaming the .part over it, so a failed rename leaves en/version.json
+        // behind with no GGUF. Inheriting that version would make the checker
+        // call the adopted r100 bytes current and strand the user on them.
+        val enDir = File(root, "en").apply { mkdirs() }
+        InstalledModelMetadata.writeSingle(enDir, "r250", "ari-functiongemma-en-q4_k_m.gguf", "def456")
+
+        assertEquals(LegacyMigrationResult.ADOPTED, RouterLegacyMigration.migrate(root, "en"))
+
         assertEquals(InstalledModelMetadata.UNKNOWN_VERSION, InstalledModelMetadata.readVersion(enDir))
     }
 

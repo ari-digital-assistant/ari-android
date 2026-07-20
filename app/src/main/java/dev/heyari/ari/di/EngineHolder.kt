@@ -253,14 +253,28 @@ class EngineHolder @Inject constructor(
         // picked an assistant; the wizard drives router setup during
         // onboarding.
         if (settingsRepository.onboardingCompleted.first()) {
-            val locale = settingsRepository.activeLocale.first()
-            val migration = withContext(Dispatchers.IO) {
-                RouterLegacyMigration.migrate(routerDownloadManager.routerRootDir, locale)
+            // RouterLegacyMigration.migrate is total, but the DataStore calls
+            // bracketing it are not: a corrupt or unwritable prefs file throws
+            // IOException from either, and disk-full is exactly the condition
+            // that also breaks a 253 MB move. An escape here fails build(),
+            // which is awaited once and cached, so every later engine() call
+            // would rethrow for the life of the process — the user loses the
+            // whole assistant over a preferences write. Dropping the marker
+            // instead costs only the silent forced upgrade: the adopted model
+            // still reads as stale, so the ordinary tap-to-update path offers
+            // the real -en- model on the next check.
+            try {
+                val locale = settingsRepository.activeLocale.first()
+                val migration = withContext(Dispatchers.IO) {
+                    RouterLegacyMigration.migrate(routerDownloadManager.routerRootDir, locale)
+                }
+                if (migration == LegacyMigrationResult.ADOPTED) {
+                    autoUpdatePreferences.setLegacyRouterAdopted(true)
+                }
+                Log.i(TAG, "Router legacy migration at startup: $migration")
+            } catch (e: Exception) {
+                Log.e(TAG, "Router legacy migration step failed; retrying next start", e)
             }
-            if (migration == LegacyMigrationResult.ADOPTED) {
-                autoUpdatePreferences.setLegacyRouterAdopted(true)
-            }
-            Log.i(TAG, "Router legacy migration at startup: $migration")
 
             // Reconcile probes the network for locale availability and can kick
             // a 253 MB download, so it must not gate engine readiness — every
