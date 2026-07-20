@@ -370,8 +370,11 @@ class SettingsViewModel @Inject constructor(
                 if (dlState is RouterDownloadState.Completed
                     && settingsRepository.routerEnabled.first()
                 ) {
+                    val locale = settingsRepository.activeLocale.first()
                     withContext(Dispatchers.IO) {
-                        engineHolder.engine().loadRouterModel(routerDownloadManager.modelFile().absolutePath)
+                        engineHolder.engine().loadRouterModel(
+                            routerDownloadManager.modelFile(locale).absolutePath,
+                        )
                     }
                 }
             }

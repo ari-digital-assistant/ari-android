@@ -8,6 +8,7 @@ import dev.heyari.ari.llm.LlmDownloadManager
 import dev.heyari.ari.llm.LlmModel
 import dev.heyari.ari.llm.LlmModelRegistry
 import dev.heyari.ari.router.RouterDownloadManager
+import dev.heyari.ari.router.RouterModel
 import dev.heyari.ari.stt.ModelDownloadManager
 import dev.heyari.ari.stt.SttModel
 import dev.heyari.ari.stt.SttModelRegistry
@@ -30,7 +31,7 @@ sealed interface ModelTarget {
     val category: String
     val displayName: String
 
-    data object Router : ModelTarget {
+    data class Router(val locale: String) : ModelTarget {
         override val key = EngineModule.ROUTER_MODEL_KEY
         override val category = AutoUpdatePreferences.CATEGORY_ROUTER
         override val displayName = "FunctionGemma router"
@@ -86,11 +87,12 @@ class ModelUpdateChecker @Inject constructor(
     suspend fun checkForUpdates(): List<ModelUpdate> = withContext(Dispatchers.IO) {
         val updates = mutableListOf<ModelUpdate>()
 
-        if (routerDownloadManager.isDownloaded()) {
+        val locale = settingsRepository.activeLocale.first()
+        if (routerDownloadManager.isDownloaded(locale)) {
             checkOne(
-                target = ModelTarget.Router,
-                manifestUrl = EngineModule.ROUTER_MODEL_MANIFEST_URL,
-                installedVersion = routerDownloadManager.installedVersion(),
+                target = ModelTarget.Router(locale),
+                manifestUrl = RouterModel.manifestUrl(locale),
+                installedVersion = routerDownloadManager.installedVersion(locale),
             )?.let(updates::add)
         }
 

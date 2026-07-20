@@ -6,7 +6,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.heyari.ari.data.AutoUpdatePreferences
-import dev.heyari.ari.di.EngineModule
 import dev.heyari.ari.llm.LlmDownloadManager
 import dev.heyari.ari.llm.LlmModelRegistry
 import dev.heyari.ari.stt.ModelDownloadManager
@@ -217,10 +216,11 @@ class AutoUpdateViewModel @Inject constructor(
     private fun refreshInstalledModels() {
         viewModelScope.launch(Dispatchers.IO) {
             val rows = mutableListOf<InstalledModelRow>()
-            if (routerDownloadManager.isDownloaded()) {
+            val routerLocale = settingsRepository.activeLocale.first()
+            if (routerDownloadManager.isDownloaded(routerLocale)) {
                 rows += InstalledModelRow(
-                    target = ModelTarget.Router,
-                    installedVersion = routerDownloadManager.installedVersion(),
+                    target = ModelTarget.Router(routerLocale),
+                    installedVersion = routerDownloadManager.installedVersion(routerLocale),
                 )
             }
             val activeLlmId = settingsRepository.activeLlmModelId.first()
@@ -245,7 +245,5 @@ class AutoUpdateViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "AutoUpdateViewModel"
-        // Suppress unused warning until stage 10 lights up the LLM mirror.
-        @Suppress("unused") private const val ROUTER_KEY = EngineModule.ROUTER_MODEL_KEY
     }
 }

@@ -52,13 +52,13 @@ class ModelUpdateApplier @Inject constructor(
     fun apply(update: ModelUpdate): Flow<ApplyEvent> = channelFlow {
         send(ApplyEvent.Started(update.target.displayName))
         when (val target = update.target) {
-            is ModelTarget.Router -> applyRouter(update)
+            is ModelTarget.Router -> applyRouter(update, target.locale)
             is ModelTarget.Llm -> applyLlm(update, target)
             is ModelTarget.Stt -> applyStt(update, target)
         }
     }
 
-    private suspend fun ProducerScope<ApplyEvent>.applyRouter(update: ModelUpdate) {
+    private suspend fun ProducerScope<ApplyEvent>.applyRouter(update: ModelUpdate, locale: String) {
         val engine = engineHolder.engine()
         // 1. Release the engine's mmap on the old GGUF before overwriting.
         withContext(Dispatchers.IO) { engine.unloadRouterModel() }
@@ -74,7 +74,7 @@ class ModelUpdateApplier @Inject constructor(
             }
         }
         try {
-            routerDownloadManager.downloadWithManifest(update.manifest)
+            routerDownloadManager.downloadWithManifest(locale, update.manifest)
         } finally {
             progressJob.cancel()
         }
@@ -82,7 +82,7 @@ class ModelUpdateApplier @Inject constructor(
         when (val finalState = routerDownloadManager.state.value) {
             is RouterDownloadState.Completed -> {
                 val ok = withContext(Dispatchers.IO) {
-                    engine.loadRouterModel(routerDownloadManager.modelFile().absolutePath)
+                    engine.loadRouterModel(routerDownloadManager.modelFile(locale).absolutePath)
                 }
                 if (!ok) {
                     send(ApplyEvent.Failed(update.target.displayName, "engine refused new model"))
@@ -95,9 +95,9 @@ class ModelUpdateApplier @Inject constructor(
                 // Best-effort restore: the existing on-disk file may be
                 // intact (rename never happened). Re-loading saves routing
                 // for the rest of the session.
-                if (routerDownloadManager.isDownloaded()) {
+                if (routerDownloadManager.isDownloaded(locale)) {
                     withContext(Dispatchers.IO) {
-                        engine.loadRouterModel(routerDownloadManager.modelFile().absolutePath)
+                        engine.loadRouterModel(routerDownloadManager.modelFile(locale).absolutePath)
                     }
                 }
                 send(ApplyEvent.Failed(update.target.displayName, finalState.error))
