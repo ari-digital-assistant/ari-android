@@ -228,18 +228,15 @@ class EngineHolder @Inject constructor(
         // touched assistant Settings.
         assistantRegistry.applyToEngine(engine)
 
-        // Bring the FunctionGemma router in line with the active assistant:
-        // on-device / none (English) need it, cloud / non-English don't —
-        // loading, downloading or deleting as required. Skipped until
-        // onboarding is done so a fresh install doesn't kick a 253 MB
-        // download before the user has even picked an assistant; the wizard
-        // drives router setup during onboarding.
+        // Bring the FunctionGemma router in line with the active assistant
+        // and locale: on-device / none need it, cloud doesn't, and the
+        // locale must have a published model — loading, downloading or
+        // deleting as required. Skipped until onboarding is done so a fresh
+        // install doesn't kick a 253 MB download before the user has even
+        // picked an assistant; the wizard drives router setup during
+        // onboarding.
         if (settingsRepository.onboardingCompleted.first()) {
-            val routerRequired = dev.heyari.ari.router.RouterPolicy.required(
-                activeAssistantId,
-                settingsRepository.pendingCloudAssistantSetup.first(),
-                settingsRepository.activeLocale.first(),
-            )
+            val routerRequired = routerPolicy.requiredFromState()
             routerPolicy.reconcile(engine, routerRequired)
             Log.i(TAG, "Router reconciled at startup: required=$routerRequired")
         }

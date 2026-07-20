@@ -11,6 +11,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
@@ -25,7 +26,7 @@ sealed interface RouterDownloadState {
     data object Idle : RouterDownloadState
     data class Downloading(val bytesSoFar: Long, val totalBytes: Long) : RouterDownloadState
     data class Failed(val error: String) : RouterDownloadState
-    data object Completed : RouterDownloadState
+    data class Completed(val locale: String) : RouterDownloadState
 }
 
 @Singleton
@@ -65,6 +66,26 @@ class RouterDownloadManager @Inject constructor(
         currentJob?.cancel()
         currentJob = null
         currentLocale = null
+        _state.value = RouterDownloadState.Idle
+    }
+
+    /**
+     * Cancel any in-flight download whose locale isn't [keep] and wait for it
+     * to stop. Callers about to delete locale directories must use this rather
+     * than [cancel]: cancellation is cooperative, and a cancelled job has a
+     * narrow window in which it can still rename its `.part` into place —
+     * recreating the outgoing locale's directory after the sweep removed it.
+     */
+    suspend fun cancelAndJoinExcept(keep: String?) {
+        val job = synchronized(this) {
+            if (currentLocale == keep) return
+            currentToken++
+            val doomed = currentJob
+            currentJob = null
+            currentLocale = null
+            doomed
+        }
+        job?.cancelAndJoin()
         _state.value = RouterDownloadState.Idle
     }
 
@@ -204,7 +225,7 @@ class RouterDownloadManager @Inject constructor(
                 sha256 = actualSha,
             )
 
-            publish(token, RouterDownloadState.Completed)
+            publish(token, RouterDownloadState.Completed(locale))
             Log.i(TAG, "Router model installed: locale=$locale version=$version size=${modelFile(locale).length()}")
         } catch (e: Exception) {
             val msg = when (e) {

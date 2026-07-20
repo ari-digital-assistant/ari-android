@@ -16,61 +16,76 @@ import javax.inject.Singleton
  * The router is no longer a user-facing toggle. It's essential when Ari
  * has to understand commands on its own — the built-in on-device assistant
  * or no assistant at all — but redundant when a cloud assistant does the
- * NLU. It's also English-only (the one language FunctionGemma was trained
- * for), so non-English installs never use it.
+ * NLU. It also needs a model published for the active locale, which
+ * [RouterAvailability] answers over the network.
  */
 @Singleton
 class RouterPolicy @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val downloadManager: RouterDownloadManager,
+    private val availability: RouterAvailability,
 ) {
-    suspend fun requiredFromState(): Boolean = required(
-        settingsRepository.activeAssistantId.first(),
-        settingsRepository.pendingCloudAssistantSetup.first(),
-        settingsRepository.activeLocale.first(),
-    )
+    suspend fun requiredFromState(): Boolean {
+        // Cheap local decision first — no point spending a network probe to
+        // discover a model we wouldn't use anyway.
+        val wanted = required(
+            settingsRepository.activeAssistantId.first(),
+            settingsRepository.pendingCloudAssistantSetup.first(),
+        )
+        if (!wanted) return false
+        return availability.isAvailable(settingsRepository.activeLocale.first())
+    }
 
     /**
      * Idempotent — safe to call from every site that can change the
      * assistant or locale (app start, onboarding, settings). When required,
-     * enables the router and either loads it or kicks the download. When
-     * not, disables it, unloads it from the engine and deletes the 253 MB
-     * file to reclaim space.
+     * enables the router and either loads the active locale's model or kicks
+     * its download. When not, disables it and unloads it from the engine.
+     *
+     * Either way, every locale directory that isn't the active one is
+     * deleted. That's what keeps exactly one 253 MB model on disk across a
+     * language switch.
      */
     suspend fun reconcile(engine: AriEngine, required: Boolean) {
+        val locale = settingsRepository.activeLocale.first()
         if (required) {
             if (!settingsRepository.routerEnabled.first()) {
                 settingsRepository.setRouterEnabled(true)
             }
-            if (downloadManager.isDownloaded()) {
+            downloadManager.cancelAndJoinExcept(locale)
+            withContext(Dispatchers.IO) { deleteLocalesExcept(locale) }
+            if (downloadManager.isDownloaded(locale)) {
                 withContext(Dispatchers.IO) {
-                    engine.loadRouterModel(downloadManager.modelFile().absolutePath)
+                    engine.loadRouterModel(downloadManager.modelFile(locale).absolutePath)
                 }
             } else {
-                downloadManager.download()
+                downloadManager.download(locale)
             }
         } else {
             if (settingsRepository.routerEnabled.first()) {
                 settingsRepository.setRouterEnabled(false)
             }
-            downloadManager.cancel()
+            downloadManager.cancelAndJoinExcept(null)
             withContext(Dispatchers.IO) {
                 engine.unloadRouterModel()
-                downloadManager.delete()
+                deleteLocalesExcept(null)
             }
         }
     }
 
-    companion object {
-        private const val EN = "en"
+    private fun deleteLocalesExcept(keep: String?) {
+        for (dir in downloadManager.routerRootDir.listFiles().orEmpty()) {
+            if (dir.isDirectory && dir.name != keep) dir.deleteRecursively()
+        }
+    }
 
+    companion object {
         /**
          * Pure decision — see [reconcile] for the side effects it drives.
          * Static so it can be unit tested without an Android-backed
          * repository. See `RouterPolicyTest`.
          */
-        fun required(activeAssistantId: String?, pendingCloudSetup: Boolean, locale: String): Boolean {
-            if (locale != EN) return false
+        fun required(activeAssistantId: String?, pendingCloudSetup: Boolean): Boolean {
             if (pendingCloudSetup) return false
             return activeAssistantId == null || activeAssistantId == EngineModule.BUILTIN_ASSISTANT_ID
         }

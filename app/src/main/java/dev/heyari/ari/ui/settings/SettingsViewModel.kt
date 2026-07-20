@@ -369,11 +369,11 @@ class SettingsViewModel @Inject constructor(
             routerDownloadManager.state.collect { dlState ->
                 if (dlState is RouterDownloadState.Completed
                     && settingsRepository.routerEnabled.first()
+                    && dlState.locale == settingsRepository.activeLocale.first()
                 ) {
-                    val locale = settingsRepository.activeLocale.first()
                     withContext(Dispatchers.IO) {
                         engineHolder.engine().loadRouterModel(
-                            routerDownloadManager.modelFile(locale).absolutePath,
+                            routerDownloadManager.modelFile(dlState.locale).absolutePath,
                         )
                     }
                 }
