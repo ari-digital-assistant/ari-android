@@ -60,21 +60,12 @@ class RouterDownloadManager @Inject constructor(
     /** Read the installed sidecar version. Missing/corrupt → `unknown`. */
     fun installedVersion(locale: String): String = InstalledModelMetadata.readVersion(routerDir(locale))
 
-    @Synchronized
-    fun cancel() {
-        currentToken++
-        currentJob?.cancel()
-        currentJob = null
-        currentLocale = null
-        _state.value = RouterDownloadState.Idle
-    }
-
     /**
      * Cancel any in-flight download whose locale isn't [keep] and wait for it
-     * to stop. Callers about to delete locale directories must use this rather
-     * than [cancel]: cancellation is cooperative, and a cancelled job has a
-     * narrow window in which it can still rename its `.part` into place —
-     * recreating the outgoing locale's directory after the sweep removed it.
+     * to stop. Callers about to delete locale directories depend on that wait:
+     * cancellation is cooperative, and a cancelled job has a narrow window in
+     * which it can still rename its `.part` into place — recreating the
+     * outgoing locale's directory after the sweep removed it.
      *
      * The job/locale bookkeeping deliberately survives until the join returns.
      * Clearing it up front would let a second caller arriving mid-join read
@@ -150,8 +141,8 @@ class RouterDownloadManager @Inject constructor(
      * cooperative but `input.read` is not, so a cancelled job can sit in a
      * blocking socket read for up to the read timeout — by which time its
      * successor is already reporting progress on this same flow. Taking the
-     * monitor makes the check-and-write atomic against [cancel] and
-     * [startDownload], so a stale job's write can never land afterwards.
+     * monitor makes the check-and-write atomic against [cancelAndJoinExcept]
+     * and [startDownload], so a stale job's write can never land afterwards.
      */
     @Synchronized
     private fun publish(token: Long, newState: RouterDownloadState) {
@@ -205,9 +196,10 @@ class RouterDownloadManager @Inject constructor(
                 }
             }
 
-            // Whoever cancelled us has already published on our behalf — Idle
-            // from cancel(), Downloading from the incoming locale's job — so
-            // bail quietly rather than racing them for the flow.
+            // Someone else owns the flow from here — cancelAndJoinExcept
+            // publishes Idle once its join on this job unblocks, or a
+            // successor startDownload is already reporting its own
+            // Downloading — so bail quietly rather than racing them for it.
             if (!currentCoroutineContext().isActive) {
                 partFile.delete()
                 return
