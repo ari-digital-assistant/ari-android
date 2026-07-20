@@ -11,7 +11,10 @@ enum class LegacyMigrationResult {
     /** The legacy file was deleted without being adopted. */
     DISCARDED,
 
-    /** The move failed; nothing was changed, so the next start retries. */
+    /**
+     * The move failed. The legacy file is untouched so the next start
+     * retries, though an empty `en/` may be left behind.
+     */
     FAILED,
 
     /** No legacy install present. */
@@ -31,11 +34,30 @@ enum class LegacyMigrationResult {
  * The carried-over sidecar version matters. Keeping `r100` is what makes the
  * update checker see the adopted file as stale and offer the real `-en-`
  * model; inventing a current-looking version would strand the user on the
- * frozen artifact forever.
+ * frozen artifact forever. An install with no sidecar to carry gets none:
+ * a missing sidecar already reads back as `unknown`, which the checker
+ * treats as always-stale, so writing one would cost a 253 MB hash on the
+ * startup path to reach the state we're already in.
  */
 object RouterLegacyMigration {
 
-    fun migrate(routerRoot: File, locale: String): LegacyMigrationResult {
+    /**
+     * Never throws. This runs inline in the engine build, so an escaping
+     * exception fails that build — and the build is awaited once and cached,
+     * meaning every later `engine()` call rethrows it for the life of the
+     * process. The user would lose the whole assistant over a file rename.
+     * Trouble degrades to [LegacyMigrationResult.FAILED]; the next start
+     * retries from unchanged disk state.
+     */
+    fun migrate(routerRoot: File, locale: String): LegacyMigrationResult =
+        try {
+            migrateOrThrow(routerRoot, locale)
+        } catch (e: Exception) {
+            Log.w(TAG, "legacy router migration failed, will retry next start", e)
+            LegacyMigrationResult.FAILED
+        }
+
+    private fun migrateOrThrow(routerRoot: File, locale: String): LegacyMigrationResult {
         val legacyFile = File(routerRoot, RouterModel.LEGACY_FILENAME)
         if (!legacyFile.isFile) return LegacyMigrationResult.NOTHING_TO_DO
 
@@ -58,14 +80,25 @@ object RouterLegacyMigration {
             return LegacyMigrationResult.FAILED
         }
 
-        InstalledModelMetadata.writeSingle(
-            targetDir,
-            version = legacyVersion?.version ?: InstalledModelMetadata.UNKNOWN_VERSION,
-            fileName = targetFile.name,
-            sha256 = legacyVersion?.files?.firstOrNull()?.sha256
-                ?: InstalledModelMetadata.sha256Hex(targetFile),
-        )
-        legacySidecar.delete()
+        // Past the move the adoption has happened, so nothing below may turn
+        // it into a FAILED. A sidecar we couldn't write costs a version
+        // string, not the model: it reads back as `unknown`, which is stale
+        // to the update checker — the same place a carried-over `r100` puts
+        // us, just less specific.
+        try {
+            val carried = legacyVersion?.files?.firstOrNull()
+            if (legacyVersion != null && carried != null) {
+                InstalledModelMetadata.writeSingle(
+                    targetDir,
+                    version = legacyVersion.version,
+                    fileName = targetFile.name,
+                    sha256 = carried.sha256,
+                )
+            }
+            legacySidecar.delete()
+        } catch (e: Exception) {
+            Log.w(TAG, "legacy sidecar carry-over failed; adopted model reads as unknown version", e)
+        }
         Log.i(TAG, "adopted legacy router model as en, version=${legacyVersion?.version}")
         return LegacyMigrationResult.ADOPTED
     }

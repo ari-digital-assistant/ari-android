@@ -19,6 +19,7 @@ import dev.heyari.ari.router.RouterDownloadManager
 import dev.heyari.ari.router.RouterLegacyMigration
 import dev.heyari.ari.skills.AndroidSkillLogSink
 import dev.heyari.ari.tasks.AriFfiTasksProvider
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
@@ -76,7 +77,16 @@ class EngineHolder @Inject constructor(
     private val ariFfiAuthorizeProvider: dev.heyari.ari.oauth.AriFfiAuthorizeProvider,
     private val ariFfiMediaServicesProvider: AriFfiMediaServicesProvider,
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    // SupervisorJob isolates siblings but does not swallow: an exception from
+    // anything launched here otherwise reaches the default uncaught handler
+    // and takes the app down. Nothing launched in this scope is worth a
+    // crash — a failed build already surfaces at each `engine()` call site,
+    // which is where a caller can actually do something about it.
+    private val scope = CoroutineScope(
+        SupervisorJob() + Dispatchers.Default + CoroutineExceptionHandler { _, e ->
+            Log.e(TAG, "engine holder coroutine failed", e)
+        },
+    )
 
     @Volatile
     private var built: AriEngine? = null
@@ -259,9 +269,18 @@ class EngineHolder @Inject constructor(
             // The migration above stays inline because it is local file I/O and
             // must finish before anything can load the router.
             scope.launch {
-                val routerRequired = routerPolicy.requiredFromState()
-                routerPolicy.reconcile(engine, routerRequired)
-                Log.i(TAG, "Router reconciled: required=$routerRequired")
+                try {
+                    val routerRequired = routerPolicy.requiredFromState()
+                    routerPolicy.reconcile(engine, routerRequired)
+                    Log.i(TAG, "Router reconciled: required=$routerRequired")
+                } catch (e: Exception) {
+                    // A truncated GGUF crossing FFI, a dead network, a failed
+                    // DataStore write — none of it is worth the app. Leaving
+                    // the router unloaded costs a fallback tier that keyword
+                    // scoring and the LLM arbiter cover, and the next start
+                    // (or the next assistant/locale change) reconciles again.
+                    Log.e(TAG, "Router reconcile failed; router left unloaded", e)
+                }
             }
         }
 
