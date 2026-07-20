@@ -7,12 +7,16 @@ import dev.heyari.ari.actions.AriFfiEnvelopeSink
 import dev.heyari.ari.calendar.AriFfiCalendarProvider
 import dev.heyari.ari.media.AriFfiMediaServicesProvider
 import dev.heyari.ari.clock.AriFfiLocalClock
+import dev.heyari.ari.data.AutoUpdatePreferences
 import dev.heyari.ari.data.SecretStore
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.llm.LlmDownloadManager
 import dev.heyari.ari.llm.LlmModelRegistry
 import dev.heyari.ari.locale.AriFfiLocaleProvider
 import dev.heyari.ari.location.AriFfiLocationProvider
+import dev.heyari.ari.router.LegacyMigrationResult
+import dev.heyari.ari.router.RouterDownloadManager
+import dev.heyari.ari.router.RouterLegacyMigration
 import dev.heyari.ari.skills.AndroidSkillLogSink
 import dev.heyari.ari.tasks.AriFfiTasksProvider
 import kotlinx.coroutines.CoroutineScope
@@ -23,6 +27,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import uniffi.ari_ffi.AriEngine
 import uniffi.ari_ffi.AriEngineBuilder
 import uniffi.ari_ffi.AssistantRegistry
@@ -57,6 +62,8 @@ class EngineHolder @Inject constructor(
     private val secretStore: SecretStore,
     private val llmDownloadManager: LlmDownloadManager,
     private val routerPolicy: dev.heyari.ari.router.RouterPolicy,
+    private val routerDownloadManager: RouterDownloadManager,
+    private val autoUpdatePreferences: AutoUpdatePreferences,
     private val assistantRegistry: AssistantRegistry,
     private val skillSettingsStore: SkillSettingsStore,
     private val ariFfiTasksProvider: AriFfiTasksProvider,
@@ -236,9 +243,26 @@ class EngineHolder @Inject constructor(
         // picked an assistant; the wizard drives router setup during
         // onboarding.
         if (settingsRepository.onboardingCompleted.first()) {
-            val routerRequired = routerPolicy.requiredFromState()
-            routerPolicy.reconcile(engine, routerRequired)
-            Log.i(TAG, "Router reconciled at startup: required=$routerRequired")
+            val locale = settingsRepository.activeLocale.first()
+            val migration = withContext(Dispatchers.IO) {
+                RouterLegacyMigration.migrate(routerDownloadManager.routerRootDir, locale)
+            }
+            if (migration == LegacyMigrationResult.ADOPTED) {
+                autoUpdatePreferences.setLegacyRouterAdopted(true)
+            }
+            Log.i(TAG, "Router legacy migration at startup: $migration")
+
+            // Reconcile probes the network for locale availability and can kick
+            // a 253 MB download, so it must not gate engine readiness — every
+            // consumer awaits this same build. The router is a fallback tier:
+            // keyword scoring and the LLM arbiter answer fine until it loads.
+            // The migration above stays inline because it is local file I/O and
+            // must finish before anything can load the router.
+            scope.launch {
+                val routerRequired = routerPolicy.requiredFromState()
+                routerPolicy.reconcile(engine, routerRequired)
+                Log.i(TAG, "Router reconciled: required=$routerRequired")
+            }
         }
 
         return engine
