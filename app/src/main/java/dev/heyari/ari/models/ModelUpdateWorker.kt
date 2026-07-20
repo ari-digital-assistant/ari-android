@@ -33,16 +33,19 @@ import java.util.concurrent.TimeUnit
  * - Network-gated; the constraint is reconstructed when the user toggles
  *   "Use mobile data" ([reschedule])
  *
- * Crucially, the worker never installs updates itself. It just notifies.
- * The user opens Settings → Auto-update and decides whether to apply,
- * skip, or postpone. Anything else would be a hostile surprise on
- * multi-GB downloads.
+ * The worker doesn't install updates — it notifies, and the user decides in
+ * Settings → Auto-update whether to apply, skip, or postpone. Anything else
+ * would be a hostile surprise on multi-GB downloads. The single exception is
+ * [forceLegacyRouterUpgrade], which takes pre-per-locale installs off the
+ * frozen router artifact once; see that function for why it earns the
+ * exception.
  */
 @HiltWorker
 class ModelUpdateWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
     private val checker: ModelUpdateChecker,
+    private val applier: ModelUpdateApplier,
     private val prefs: AutoUpdatePreferences,
     private val updatesRepository: UpdatesRepository,
 ) : CoroutineWorker(context, params) {
@@ -55,6 +58,7 @@ class ModelUpdateWorker @AssistedInject constructor(
         }
         try {
             val updates = checker.checkForUpdates()
+            forceLegacyRouterUpgrade(updates)
             // Only stamp last-checked when we actually got a verdict from
             // the network. A retry-because-offline shouldn't pretend we
             // checked.
@@ -75,6 +79,30 @@ class ModelUpdateWorker @AssistedInject constructor(
             Log.w(TAG, "model update check failed: ${e.message}")
             Result.retry()
         }
+    }
+
+    /**
+     * The one exception to "this worker never installs anything". A user
+     * whose legacy router was adopted in place is running a frozen artifact
+     * under a confidence threshold calibrated for a different model, so we
+     * take them off it once without waiting for a tap. It rides the same
+     * network constraint as the check itself, so a user who hasn't opted
+     * into metered downloads still won't get one.
+     */
+    private suspend fun forceLegacyRouterUpgrade(updates: List<ModelUpdate>) {
+        if (!prefs.legacyRouterAdopted.first()) return
+        val update = updates.firstOrNull { it.target is ModelTarget.Router } ?: return
+
+        var failure: String? = null
+        applier.apply(update).collect { event ->
+            if (event is ApplyEvent.Failed) failure = event.reason
+        }
+        if (failure != null) {
+            Log.w(TAG, "forced router upgrade failed, will retry: $failure")
+            return
+        }
+        prefs.setLegacyRouterAdopted(false)
+        Log.i(TAG, "forced router upgrade complete: ${update.availableVersion}")
     }
 
     companion object {
