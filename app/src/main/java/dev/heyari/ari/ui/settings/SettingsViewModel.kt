@@ -429,10 +429,10 @@ class SettingsViewModel @Inject constructor(
      * Onboarding commit point. During the wizard the assistant choice is
      * the source of truth before it's been persisted (Cloud in particular
      * is only a deferred "pending" flag), so the assistant screen passes
-     * the decision in directly: on-device / none in English → router
-     * required; cloud or non-English → not. Outside onboarding the router
-     * is reconciled automatically from persisted state — see
-     * [reconcileRouter].
+     * the decision in directly: on-device / none with a model published for
+     * the chosen language → router required; cloud, or a language with no
+     * model → not. Outside onboarding the router is reconciled automatically
+     * from persisted state — see [reconcileRouter].
      */
     fun setRouterRequired(required: Boolean) {
         viewModelScope.launch {
@@ -459,8 +459,9 @@ class SettingsViewModel @Inject constructor(
             runCatching {
                 settingsRepository.setActiveLocale(code)
                 applyAppLocale(code)
-                // FunctionGemma is English-only, so a language change can
-                // flip whether the router is wanted.
+                // Each language has its own router model, and some have none
+                // at all, so a language change can flip whether the router is
+                // wanted and always changes which file it wants.
                 reconcileRouter()
             }.onFailure { Log.w(TAG, "setActiveLocale($code) failed", it) }
         }

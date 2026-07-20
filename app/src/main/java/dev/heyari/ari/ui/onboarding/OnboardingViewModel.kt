@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.heyari.ari.data.SettingsRepository
+import dev.heyari.ari.router.RouterAvailability
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,6 +38,13 @@ data class OnboardingState(
      * skipping the STT model picker for non-English users).
      */
     val selectedLocale: String? = null,
+    /**
+     * Whether CI publishes a router model for [selectedLocale]. Defaults to
+     * `true` so an unlanded probe still shows the download note and attempts
+     * the download (which 404s harmlessly) rather than wrongly telling a
+     * user they get no router.
+     */
+    val routerAvailable: Boolean = true,
 )
 
 enum class AssistantChoice { NONE, ON_DEVICE, CLOUD }
@@ -44,6 +52,7 @@ enum class AssistantChoice { NONE, ON_DEVICE, CLOUD }
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
+    private val routerAvailability: RouterAvailability,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(OnboardingState())
@@ -61,6 +70,12 @@ class OnboardingViewModel @Inject constructor(
                 isRevisit = alreadyCompleted,
                 selectedLocale = persistedLocale,
             )
+        }
+        // A returning user never calls setSelectedLocale, so the probe for
+        // their seeded locale has to be fired here instead.
+        viewModelScope.launch {
+            val available = routerAvailability.isAvailable(persistedLocale)
+            _state.update { it.copy(routerAvailable = available) }
         }
     }
 
@@ -91,6 +106,14 @@ class OnboardingViewModel @Inject constructor(
         _state.update { it.copy(selectedLocale = code) }
         viewModelScope.launch {
             settingsRepository.setActiveLocale(code)
+        }
+        // Language is step 1 and the assistant screen is step 6, so this
+        // round-trip has five screens to land before anyone needs the answer.
+        viewModelScope.launch {
+            val available = routerAvailability.isAvailable(code)
+            // Drop a late response for a language the user has since changed
+            // away from — a slow probe for English must not clobber Italian.
+            _state.update { if (it.selectedLocale == code) it.copy(routerAvailable = available) else it }
         }
     }
 
