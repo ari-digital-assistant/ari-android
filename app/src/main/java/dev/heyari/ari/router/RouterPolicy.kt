@@ -17,7 +17,8 @@ import javax.inject.Singleton
  * has to understand commands on its own — the built-in on-device assistant
  * or no assistant at all — but redundant when a cloud assistant does the
  * NLU. It also needs a model published for the active locale, which
- * [RouterAvailability] answers over the network.
+ * [RouterAvailability] answers over the network — though an install already
+ * on disk for that locale outranks anything the probe has to say.
  */
 @Singleton
 class RouterPolicy @Inject constructor(
@@ -33,7 +34,16 @@ class RouterPolicy @Inject constructor(
             settingsRepository.pendingCloudAssistantSetup.first(),
         )
         if (!wanted) return false
-        return availability.isAvailable(settingsRepository.activeLocale.first())
+        val locale = settingsRepository.activeLocale.first()
+        // A model already installed for this locale settles the question the
+        // probe asks, so don't ask it. The probe answers "should I download?",
+        // never "should I delete?" — and the floating release it reads 404s for
+        // a few seconds on every republish, so treating that as "delete" would
+        // cost the user a day of routing and a 253 MB re-download on a nightly
+        // schedule. Keeping the file costs nothing and is still their own
+        // locale's model, so no cross-locale rule is in play.
+        if (downloadManager.isDownloaded(locale)) return true
+        return availability.isAvailable(locale)
     }
 
     /**
