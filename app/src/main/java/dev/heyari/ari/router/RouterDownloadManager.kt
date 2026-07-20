@@ -75,18 +75,36 @@ class RouterDownloadManager @Inject constructor(
      * than [cancel]: cancellation is cooperative, and a cancelled job has a
      * narrow window in which it can still rename its `.part` into place —
      * recreating the outgoing locale's directory after the sweep removed it.
+     *
+     * The job/locale bookkeeping deliberately survives until the join returns.
+     * Clearing it up front would let a second caller arriving mid-join read
+     * "nothing in flight", early-return, and start deleting directories out
+     * from under a job that is still winding down — the exact guarantee this
+     * method exists to give. Leaving it in place makes that caller join the
+     * same doomed job instead.
      */
     suspend fun cancelAndJoinExcept(keep: String?) {
-        val job = synchronized(this) {
+        val myToken: Long
+        val job: Job?
+        synchronized(this) {
             if (currentLocale == keep) return
-            currentToken++
-            val doomed = currentJob
+            myToken = ++currentToken
+            job = currentJob
+        }
+        // Released the monitor before suspending on purpose: the doomed job
+        // takes it in [publish], so holding it across the join would deadlock.
+        job?.cancelAndJoin()
+        synchronized(this) {
+            // A start or another cancel may have overtaken us while we were
+            // suspended — a join can outlast the read timeout, which is ample
+            // time for a successor to run to completion. Clearing its job or
+            // stomping its Completed with Idle would lose a download that
+            // genuinely landed.
+            if (currentToken != myToken) return
             currentJob = null
             currentLocale = null
-            doomed
+            _state.value = RouterDownloadState.Idle
         }
-        job?.cancelAndJoin()
-        _state.value = RouterDownloadState.Idle
     }
 
     /**

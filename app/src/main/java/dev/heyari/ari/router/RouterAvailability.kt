@@ -56,24 +56,22 @@ class RouterAvailability @Inject constructor(
     }
 
     private suspend fun probe(locale: String): Boolean? = withContext(Dispatchers.IO) {
-        val conn = try {
-            (URL(RouterModel.manifestUrl(locale)).openConnection() as HttpURLConnection).apply {
+        // Assigned before connect() so a throwing connect() still reaches the
+        // finally — the connection object exists by then either way.
+        var conn: HttpURLConnection? = null
+        try {
+            conn = (URL(RouterModel.manifestUrl(locale)).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 15_000
                 readTimeout = 30_000
                 instanceFollowRedirects = true
-                connect()
             }
-        } catch (e: Exception) {
-            Log.w(TAG, "router availability probe failed for $locale: ${e.message}")
-            return@withContext null
-        }
-        try {
+            conn.connect()
             verdictFor(conn.responseCode)
         } catch (e: Exception) {
             Log.w(TAG, "router availability probe failed for $locale: ${e.message}")
             null
         } finally {
-            conn.disconnect()
+            conn?.disconnect()
         }
     }
 
