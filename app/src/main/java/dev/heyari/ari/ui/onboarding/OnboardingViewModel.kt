@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.heyari.ari.data.SettingsRepository
-import dev.heyari.ari.router.RouterAvailability
+import dev.heyari.ari.router.RouterPolicy
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,10 +39,11 @@ data class OnboardingState(
      */
     val selectedLocale: String? = null,
     /**
-     * Whether CI publishes a router model for [selectedLocale]. Defaults to
-     * `true` so an unlanded probe still shows the download note and attempts
-     * the download (which 404s harmlessly) rather than wrongly telling a
-     * user they get no router.
+     * Whether [selectedLocale] should have a router model — already installed,
+     * or published by CI. See [dev.heyari.ari.router.RouterPolicy.shouldHaveModel].
+     * Defaults to `true` so an unlanded probe still shows the download note and
+     * attempts the download (which 404s harmlessly) rather than wrongly telling
+     * a user they get no router.
      */
     val routerAvailable: Boolean = true,
 )
@@ -52,7 +53,7 @@ enum class AssistantChoice { NONE, ON_DEVICE, CLOUD }
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
-    private val routerAvailability: RouterAvailability,
+    private val routerPolicy: RouterPolicy,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(OnboardingState())
@@ -74,7 +75,7 @@ class OnboardingViewModel @Inject constructor(
         // A returning user never calls setSelectedLocale, so the probe for
         // their seeded locale has to be fired here instead.
         viewModelScope.launch {
-            val available = routerAvailability.isAvailable(persistedLocale)
+            val available = routerPolicy.shouldHaveModel(persistedLocale)
             // Drop a late response for a locale the user has since changed
             // away from — this probe can still be in flight when the user
             // picks a different language on screen 1, and must not clobber
@@ -114,7 +115,7 @@ class OnboardingViewModel @Inject constructor(
         // Language is step 1 and the assistant screen is step 6, so this
         // round-trip has five screens to land before anyone needs the answer.
         viewModelScope.launch {
-            val available = routerAvailability.isAvailable(code)
+            val available = routerPolicy.shouldHaveModel(code)
             // Drop a late response for a language the user has since changed
             // away from — a slow probe for English must not clobber Italian.
             _state.update { if (it.selectedLocale == code) it.copy(routerAvailable = available) else it }

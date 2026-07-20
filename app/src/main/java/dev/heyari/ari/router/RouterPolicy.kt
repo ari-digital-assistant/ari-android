@@ -16,9 +16,8 @@ import javax.inject.Singleton
  * The router is no longer a user-facing toggle. It's essential when Ari
  * has to understand commands on its own — the built-in on-device assistant
  * or no assistant at all — but redundant when a cloud assistant does the
- * NLU. It also needs a model published for the active locale, which
- * [RouterAvailability] answers over the network — though an install already
- * on disk for that locale outranks anything the probe has to say.
+ * NLU. It also needs a model for the locale in question — see
+ * [shouldHaveModel].
  */
 @Singleton
 class RouterPolicy @Inject constructor(
@@ -34,17 +33,27 @@ class RouterPolicy @Inject constructor(
             settingsRepository.pendingCloudAssistantSetup.first(),
         )
         if (!wanted) return false
-        val locale = settingsRepository.activeLocale.first()
-        // A model already installed for this locale settles the question the
-        // probe asks, so don't ask it. The probe answers "should I download?",
-        // never "should I delete?" — and the floating release it reads 404s for
-        // a few seconds on every republish, so treating that as "delete" would
-        // cost the user a day of routing and a 253 MB re-download on a nightly
-        // schedule. Keeping the file costs nothing and is still their own
-        // locale's model, so no cross-locale rule is in play.
-        if (downloadManager.isDownloaded(locale)) return true
-        return availability.isAvailable(locale)
+        return shouldHaveModel(settingsRepository.activeLocale.first())
     }
+
+    /**
+     * Whether [locale] should have a router model on disk — an install
+     * already there, or one [RouterAvailability] says is published.
+     *
+     * Takes the locale rather than reading the active one so the onboarding
+     * wizard can ask about the language being picked, which isn't active yet.
+     *
+     * On-disk outranks the probe outright. The probe answers "should I
+     * download?", never "should I delete?": the floating release it reads
+     * deletes and re-uploads its manifest on every republish, so that URL
+     * genuinely 404s for a few seconds every night, forever. A device that
+     * probes in that window caches "absent" for a day, and acting on it would
+     * cost the user their routing tier plus a 253 MB re-download — on a
+     * nightly schedule. Keeping a file that's already there costs nothing and
+     * it is still this locale's own model, so no cross-locale rule is in play.
+     */
+    suspend fun shouldHaveModel(locale: String): Boolean =
+        downloadManager.isDownloaded(locale) || availability.isAvailable(locale)
 
     /**
      * Idempotent — safe to call from every site that can change the
