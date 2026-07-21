@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.heyari.ari.data.SettingsRepository
+import dev.heyari.ari.router.RouterPolicy
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,6 +38,14 @@ data class OnboardingState(
      * skipping the STT model picker for non-English users).
      */
     val selectedLocale: String? = null,
+    /**
+     * Whether [selectedLocale] should have a router model — already installed,
+     * or published by CI. See [dev.heyari.ari.router.RouterPolicy.shouldHaveModel].
+     * Defaults to `true` so an unlanded probe still shows the download note and
+     * attempts the download (which 404s harmlessly) rather than wrongly telling
+     * a user they get no router.
+     */
+    val routerAvailable: Boolean = true,
 )
 
 enum class AssistantChoice { NONE, ON_DEVICE, CLOUD }
@@ -44,6 +53,8 @@ enum class AssistantChoice { NONE, ON_DEVICE, CLOUD }
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
+    private val routerPolicy: RouterPolicy,
+    private val engineHolder: dev.heyari.ari.di.EngineHolder,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(OnboardingState())
@@ -61,6 +72,16 @@ class OnboardingViewModel @Inject constructor(
                 isRevisit = alreadyCompleted,
                 selectedLocale = persistedLocale,
             )
+        }
+        // A returning user never calls setSelectedLocale, so the probe for
+        // their seeded locale has to be fired here instead.
+        viewModelScope.launch {
+            val available = routerPolicy.shouldHaveModel(persistedLocale)
+            // Drop a late response for a locale the user has since changed
+            // away from — this probe can still be in flight when the user
+            // picks a different language on screen 1, and must not clobber
+            // that screen's own (guarded) verdict.
+            _state.update { if (it.selectedLocale == persistedLocale) it.copy(routerAvailable = available) else it }
         }
     }
 
@@ -92,6 +113,14 @@ class OnboardingViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.setActiveLocale(code)
         }
+        // Language is step 1 and the assistant screen is step 6, so this
+        // round-trip has five screens to land before anyone needs the answer.
+        viewModelScope.launch {
+            val available = routerPolicy.shouldHaveModel(code)
+            // Drop a late response for a language the user has since changed
+            // away from — a slow probe for English must not clobber Italian.
+            _state.update { if (it.selectedLocale == code) it.copy(routerAvailable = available) else it }
+        }
     }
 
     fun completeOnboarding() {
@@ -106,5 +135,11 @@ class OnboardingViewModel @Inject constructor(
             val pendingCloud = _state.value.assistantChoice == AssistantChoice.CLOUD
             settingsRepository.setPendingCloudAssistantSetup(pendingCloud)
         }
+        // Engine build ran mid-wizard with onboardingCompleted=false, so its
+        // startup reconcile skipped and cached — without this, a router model
+        // the wizard downloaded sits on disk unloaded until the next app
+        // start (Task 9 finding). Runs on the holder's own scope: this
+        // ViewModel dies at the navigation this call precedes.
+        engineHolder.reconcileRouterAsync()
     }
 }

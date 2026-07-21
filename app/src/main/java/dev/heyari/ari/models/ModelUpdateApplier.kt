@@ -1,6 +1,7 @@
 package dev.heyari.ari.models
 
 import dev.heyari.ari.data.AutoUpdatePreferences
+import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.llm.LlmDownloadManager
 import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.router.RouterDownloadManager
@@ -13,6 +14,7 @@ import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import dev.heyari.ari.di.EngineHolder
@@ -48,17 +50,18 @@ class ModelUpdateApplier @Inject constructor(
     private val sttDownloadManager: ModelDownloadManager,
     private val speechRecognizer: SpeechRecognizer,
     private val autoUpdatePreferences: AutoUpdatePreferences,
+    private val settingsRepository: SettingsRepository,
 ) {
     fun apply(update: ModelUpdate): Flow<ApplyEvent> = channelFlow {
         send(ApplyEvent.Started(update.target.displayName))
         when (val target = update.target) {
-            is ModelTarget.Router -> applyRouter(update)
+            is ModelTarget.Router -> applyRouter(update, target.locale)
             is ModelTarget.Llm -> applyLlm(update, target)
             is ModelTarget.Stt -> applyStt(update, target)
         }
     }
 
-    private suspend fun ProducerScope<ApplyEvent>.applyRouter(update: ModelUpdate) {
+    private suspend fun ProducerScope<ApplyEvent>.applyRouter(update: ModelUpdate, locale: String) {
         val engine = engineHolder.engine()
         // 1. Release the engine's mmap on the old GGUF before overwriting.
         withContext(Dispatchers.IO) { engine.unloadRouterModel() }
@@ -74,15 +77,34 @@ class ModelUpdateApplier @Inject constructor(
             }
         }
         try {
-            routerDownloadManager.downloadWithManifest(update.manifest)
+            routerDownloadManager.downloadWithManifest(locale, update.manifest)
         } finally {
             progressJob.cancel()
         }
 
+        // [locale] was the active language when the update was *checked*, which
+        // can be minutes ago — the join above outlasts a language switch easily.
+        // Every path below ends in loading a file that is a router for [locale]
+        // and nothing else, so re-establish that it is still the user's language
+        // before any of them get the chance.
+        val stillActive = locale == settingsRepository.activeLocale.first()
+
         when (val finalState = routerDownloadManager.state.value) {
             is RouterDownloadState.Completed -> {
+                // One shared flow carries every locale's download, so a
+                // Completed sitting here is not proof it was ours: a cancelled
+                // job can block in `input.read` for the full read timeout, long
+                // enough for a successor on another locale to finish first.
+                if (finalState.locale != locale) {
+                    send(ApplyEvent.Failed(update.target.displayName, "superseded by another download"))
+                    return
+                }
+                if (!stillActive) {
+                    send(ApplyEvent.Failed(update.target.displayName, "language changed during update"))
+                    return
+                }
                 val ok = withContext(Dispatchers.IO) {
-                    engine.loadRouterModel(routerDownloadManager.modelFile().absolutePath)
+                    engine.loadRouterModel(routerDownloadManager.modelFile(locale).absolutePath)
                 }
                 if (!ok) {
                     send(ApplyEvent.Failed(update.target.displayName, "engine refused new model"))
@@ -94,10 +116,12 @@ class ModelUpdateApplier @Inject constructor(
             is RouterDownloadState.Failed -> {
                 // Best-effort restore: the existing on-disk file may be
                 // intact (rename never happened). Re-loading saves routing
-                // for the rest of the session.
-                if (routerDownloadManager.isDownloaded()) {
+                // for the rest of the session — but a stale locale here would
+                // hand the engine the previous language's router, which is the
+                // one thing we never do.
+                if (stillActive && routerDownloadManager.isDownloaded(locale)) {
                     withContext(Dispatchers.IO) {
-                        engine.loadRouterModel(routerDownloadManager.modelFile().absolutePath)
+                        engine.loadRouterModel(routerDownloadManager.modelFile(locale).absolutePath)
                     }
                 }
                 send(ApplyEvent.Failed(update.target.displayName, finalState.error))

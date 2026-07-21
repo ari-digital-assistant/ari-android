@@ -42,6 +42,17 @@ class AutoUpdatePreferences @Inject constructor(
         prefs[KEY_ALLOW_METERED] ?: false
     }
 
+    /**
+     * Set when a pre-per-locale router install was adopted in place. Drives
+     * exactly one forced background upgrade onto the real `-en-` model —
+     * the adopted artifact is frozen and was never evaluated at the current
+     * confidence threshold, so leaving users on it indefinitely isn't a
+     * neutral default.
+     */
+    val legacyRouterAdopted: Flow<Boolean> = context.autoUpdateDataStore.data.map { prefs ->
+        prefs[KEY_LEGACY_ROUTER_ADOPTED] ?: false
+    }
+
     fun lastChecked(category: String): Flow<Instant?> = context.autoUpdateDataStore.data.map { prefs ->
         prefs[lastCheckedKey(category)]?.let(Instant::ofEpochMilli)
     }
@@ -56,6 +67,10 @@ class AutoUpdatePreferences @Inject constructor(
 
     suspend fun setAllowMetered(value: Boolean) {
         context.autoUpdateDataStore.edit { it[KEY_ALLOW_METERED] = value }
+    }
+
+    suspend fun setLegacyRouterAdopted(value: Boolean) {
+        context.autoUpdateDataStore.edit { it[KEY_LEGACY_ROUTER_ADOPTED] = value }
     }
 
     suspend fun setLastChecked(category: String, instant: Instant) {
@@ -84,6 +99,7 @@ class AutoUpdatePreferences @Inject constructor(
 
         private val KEY_ENABLED = booleanPreferencesKey("auto_update_enabled")
         private val KEY_ALLOW_METERED = booleanPreferencesKey("auto_update_metered")
+        private val KEY_LEGACY_ROUTER_ADOPTED = booleanPreferencesKey("legacy_router_adopted")
         private const val SKIPPED_PREFIX = "skipped_version_"
 
         private fun lastCheckedKey(category: String) = longPreferencesKey("last_checked_$category")
