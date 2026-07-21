@@ -6,6 +6,8 @@ import dev.heyari.ari.llm.LlmDownloadManager
 import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.router.RouterDownloadManager
 import dev.heyari.ari.router.RouterDownloadState
+import dev.heyari.ari.router.loadRouterWithFloor
+import dev.heyari.ari.router.unloadRouterAndFloor
 import dev.heyari.ari.stt.ModelDownloadManager
 import dev.heyari.ari.stt.ModelDownloadState
 import dev.heyari.ari.stt.SpeechRecognizer
@@ -64,7 +66,7 @@ class ModelUpdateApplier @Inject constructor(
     private suspend fun ProducerScope<ApplyEvent>.applyRouter(update: ModelUpdate, locale: String) {
         val engine = engineHolder.engine()
         // 1. Release the engine's mmap on the old GGUF before overwriting.
-        withContext(Dispatchers.IO) { engine.unloadRouterModel() }
+        withContext(Dispatchers.IO) { engine.unloadRouterAndFloor() }
 
         // 2. Stream byte-level progress concurrently with the suspending
         //    download call. The progress collector is cancelled in the
@@ -104,7 +106,7 @@ class ModelUpdateApplier @Inject constructor(
                     return
                 }
                 val ok = withContext(Dispatchers.IO) {
-                    engine.loadRouterModel(routerDownloadManager.modelFile(locale).absolutePath)
+                    engine.loadRouterWithFloor(routerDownloadManager, locale)
                 }
                 if (!ok) {
                     send(ApplyEvent.Failed(update.target.displayName, "engine refused new model"))
@@ -121,7 +123,7 @@ class ModelUpdateApplier @Inject constructor(
                 // one thing we never do.
                 if (stillActive && routerDownloadManager.isDownloaded(locale)) {
                     withContext(Dispatchers.IO) {
-                        engine.loadRouterModel(routerDownloadManager.modelFile(locale).absolutePath)
+                        engine.loadRouterWithFloor(routerDownloadManager, locale)
                     }
                 }
                 send(ApplyEvent.Failed(update.target.displayName, finalState.error))

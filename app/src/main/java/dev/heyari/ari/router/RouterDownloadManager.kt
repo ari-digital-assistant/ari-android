@@ -61,6 +61,14 @@ class RouterDownloadManager @Inject constructor(
     fun installedVersion(locale: String): String = InstalledModelMetadata.readVersion(routerDir(locale))
 
     /**
+     * The installed model's own confidence floor (`min_confidence` from the
+     * manifest that installed it), or null — meaning the engine's compiled
+     * default. Null for pre-Gate-v4 installs and adopted legacy models.
+     */
+    fun installedMinConfidence(locale: String): Float? =
+        InstalledModelMetadata.read(routerDir(locale))?.minConfidence
+
+    /**
      * Cancel any in-flight download whose locale isn't [keep] and wait for it
      * to stop. Callers about to delete locale directories depend on that wait:
      * cancellation is cooperative, and a cancelled job has a narrow window in
@@ -233,6 +241,7 @@ class RouterDownloadManager @Inject constructor(
                 version = version,
                 fileName = RouterModel.fileName(locale),
                 sha256 = actualSha,
+                minConfidence = manifest.minConfidence,
             )
 
             publish(token, RouterDownloadState.Completed(locale))

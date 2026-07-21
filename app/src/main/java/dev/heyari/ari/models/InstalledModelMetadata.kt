@@ -42,7 +42,9 @@ object InstalledModelMetadata {
             } else {
                 listOf(InstalledFile(name = obj.optString("name", ""), sha256 = obj.getString("sha256")))
             }
-            InstalledVersion(version, files)
+            val minConfidence =
+                if (obj.has("min_confidence")) obj.getDouble("min_confidence").toFloat() else null
+            InstalledVersion(version, files, minConfidence)
         } catch (e: Exception) {
             Log.w(TAG, "failed to parse sidecar at ${sidecar.absolutePath}", e)
             null
@@ -52,12 +54,25 @@ object InstalledModelMetadata {
     /** Read just the version string; treats missing/corrupt as [UNKNOWN_VERSION]. */
     fun readVersion(modelDir: File): String = read(modelDir)?.version ?: UNKNOWN_VERSION
 
-    /** Write a single-file sidecar (router, LLM tier). */
-    fun writeSingle(modelDir: File, version: String, fileName: String, sha256: String) {
+    /**
+     * Write a single-file sidecar (router, LLM tier). [minConfidence] is the
+     * router manifest's per-model confidence floor; it travels in the sidecar
+     * because the floor belongs to the FILE on disk — reading it from
+     * whatever manifest is current at engine-load time would apply a newer
+     * model's floor to an older model.
+     */
+    fun writeSingle(
+        modelDir: File,
+        version: String,
+        fileName: String,
+        sha256: String,
+        minConfidence: Float? = null,
+    ) {
         val obj = JSONObject().apply {
             put("version", version)
             put("name", fileName)
             put("sha256", sha256)
+            if (minConfidence != null) put("min_confidence", minConfidence.toDouble())
         }
         File(modelDir, SIDECAR_FILENAME).writeText(obj.toString())
     }
@@ -94,6 +109,11 @@ object InstalledModelMetadata {
     }
 }
 
-data class InstalledVersion(val version: String, val files: List<InstalledFile>)
+data class InstalledVersion(
+    val version: String,
+    val files: List<InstalledFile>,
+    /** Per-model router floor from the manifest that installed this model; null = compiled default. */
+    val minConfidence: Float? = null,
+)
 
 data class InstalledFile(val name: String, val sha256: String)

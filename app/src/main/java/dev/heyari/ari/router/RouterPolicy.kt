@@ -75,7 +75,7 @@ class RouterPolicy @Inject constructor(
             withContext(Dispatchers.IO) { deleteLocalesExcept(locale) }
             if (downloadManager.isDownloaded(locale)) {
                 withContext(Dispatchers.IO) {
-                    engine.loadRouterModel(downloadManager.modelFile(locale).absolutePath)
+                    engine.loadRouterWithFloor(downloadManager, locale)
                 }
             } else {
                 downloadManager.download(locale)
@@ -86,7 +86,7 @@ class RouterPolicy @Inject constructor(
             }
             downloadManager.cancelAndJoinExcept(null)
             withContext(Dispatchers.IO) {
-                engine.unloadRouterModel()
+                engine.unloadRouterAndFloor()
                 deleteLocalesExcept(null)
             }
         }

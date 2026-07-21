@@ -940,6 +940,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_set_remembered_facts(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_set_router_confidence_floor(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_settings_action(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_unload_llm_model(
@@ -1119,6 +1121,8 @@ external fun uniffi_ari_ffi_fn_method_ariengine_set_conversation_active(`ptr`: L
 external fun uniffi_ari_ffi_fn_method_ariengine_set_conversation_memory_enabled(`ptr`: Long,`enabled`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_set_remembered_facts(`ptr`: Long,`facts`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ariengine_set_router_confidence_floor(`ptr`: Long,`floor`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_settings_action(`ptr`: Long,`skillId`: RustBuffer.ByValue,`action`: RustBuffer.ByValue,`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1465,6 +1469,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_remembered_facts() != 53816.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_router_confidence_floor() != 18562.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_settings_action() != 45712.toShort()) {
@@ -1953,6 +1960,29 @@ public object FfiConverterLong: FfiConverter<Long, Long> {
 /**
  * @suppress
  */
+public object FfiConverterFloat: FfiConverter<Float, Float> {
+    override fun lift(value: Float): Float {
+        return value
+    }
+
+    override fun read(buf: ByteBuffer): Float {
+        return buf.getFloat()
+    }
+
+    override fun lower(value: Float): Float {
+        return value
+    }
+
+    override fun allocationSize(value: Float) = 4UL
+
+    override fun write(value: Float, buf: ByteBuffer) {
+        buf.putFloat(value)
+    }
+}
+
+/**
+ * @suppress
+ */
 public object FfiConverterDouble: FfiConverter<Double, Double> {
     override fun lift(value: Double): Double {
         return value
@@ -2286,6 +2316,18 @@ public interface AriEngineInterface {
      * settings-screen edit.
      */
     fun `setRememberedFacts`(`facts`: List<kotlin.String>)
+    
+    /**
+     * Set the confidence floor router picks must clear, from the INSTALLED
+     * MODEL's manifest (`min_confidence` — derived per-model by CI's floor
+     * sweep). `None` reverts to the compiled default, which is also the
+     * right call for models whose manifest lacks the field. The floor
+     * belongs to the model, not the device: call it whenever
+     * `load_router_model` is called, with whatever the sidecar recorded.
+     * Not `llm`-gated on purpose — the gate lives in engine core, and a
+     * floor set with no router loaded is simply inert.
+     */
+    fun `setRouterConfidenceFloor`(`floor`: kotlin.Float?)
     
     /**
      * Effectful settings-time skill invocation: run `skill_id`'s `settings_action`
@@ -2655,6 +2697,28 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     UniffiLib.uniffi_ari_ffi_fn_method_ariengine_set_remembered_facts(
         it,
         FfiConverterSequenceString.lower(`facts`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Set the confidence floor router picks must clear, from the INSTALLED
+     * MODEL's manifest (`min_confidence` — derived per-model by CI's floor
+     * sweep). `None` reverts to the compiled default, which is also the
+     * right call for models whose manifest lacks the field. The floor
+     * belongs to the model, not the device: call it whenever
+     * `load_router_model` is called, with whatever the sidecar recorded.
+     * Not `llm`-gated on purpose — the gate lives in engine core, and a
+     * floor set with no router loaded is simply inert.
+     */override fun `setRouterConfidenceFloor`(`floor`: kotlin.Float?)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_set_router_confidence_floor(
+        it,
+        FfiConverterOptionalFloat.lower(`floor`),_status)
 }
     }
     
@@ -9816,6 +9880,38 @@ public object FfiConverterOptionalLong: FfiConverterRustBuffer<kotlin.Long?> {
         } else {
             buf.put(1)
             FfiConverterLong.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalFloat: FfiConverterRustBuffer<kotlin.Float?> {
+    override fun read(buf: ByteBuffer): kotlin.Float? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterFloat.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.Float?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterFloat.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.Float?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterFloat.write(value, buf)
         }
     }
 }

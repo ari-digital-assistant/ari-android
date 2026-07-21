@@ -25,6 +25,7 @@ import dev.heyari.ari.llm.LlmModelRegistry
 import dev.heyari.ari.router.RouterDownloadManager
 import dev.heyari.ari.router.RouterDownloadState
 import dev.heyari.ari.router.RouterPolicy
+import dev.heyari.ari.router.loadRouterWithFloor
 import dev.heyari.ari.stt.ModelDownloadManager
 import dev.heyari.ari.stt.ModelDownloadState
 import dev.heyari.ari.stt.SpeechRecognizer
@@ -372,9 +373,7 @@ class SettingsViewModel @Inject constructor(
                     && dlState.locale == settingsRepository.activeLocale.first()
                 ) {
                     withContext(Dispatchers.IO) {
-                        engineHolder.engine().loadRouterModel(
-                            routerDownloadManager.modelFile(dlState.locale).absolutePath,
-                        )
+                        engineHolder.engine().loadRouterWithFloor(routerDownloadManager, dlState.locale)
                     }
                 }
             }
