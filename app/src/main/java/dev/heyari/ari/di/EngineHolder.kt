@@ -16,6 +16,7 @@ import dev.heyari.ari.locale.AriFfiLocaleProvider
 import dev.heyari.ari.location.AriFfiLocationProvider
 import dev.heyari.ari.router.LegacyMigrationResult
 import dev.heyari.ari.router.RouterDownloadManager
+import dev.heyari.ari.router.RouterDownloadState
 import dev.heyari.ari.router.RouterLegacyMigration
 import dev.heyari.ari.skills.AndroidSkillLogSink
 import dev.heyari.ari.tasks.AriFfiTasksProvider
@@ -282,23 +283,52 @@ class EngineHolder @Inject constructor(
             // keyword scoring and the LLM arbiter answer fine until it loads.
             // The migration above stays inline because it is local file I/O and
             // must finish before anything can load the router.
-            scope.launch {
-                try {
-                    val routerRequired = routerPolicy.requiredFromState()
-                    routerPolicy.reconcile(engine, routerRequired)
-                    Log.i(TAG, "Router reconciled: required=$routerRequired")
-                } catch (e: Exception) {
-                    // A truncated GGUF crossing FFI, a dead network, a failed
-                    // DataStore write — none of it is worth the app. Leaving
-                    // the router unloaded costs a fallback tier that keyword
-                    // scoring and the LLM arbiter cover, and the next start
-                    // (or the next assistant/locale change) reconciles again.
-                    Log.e(TAG, "Router reconcile failed; router left unloaded", e)
-                }
+            reconcileRouterAsync()
+        }
+
+        // Armed unconditionally (the onboarding gate lives inside
+        // reconcileRouterAsync): an install that completes while the wizard
+        // is still up is skipped here and picked up by the wizard's own
+        // completion call; one that completes after gets hot-loaded now.
+        // Without this, a model installed mid-session sat on disk unloaded
+        // until the next app start — Task 9 found the router dead on a
+        // fresh install until restarted.
+        scope.launch {
+            routerDownloadManager.state.collect { st ->
+                if (st is RouterDownloadState.Completed) reconcileRouterAsync()
             }
         }
 
         return engine
+    }
+
+    /**
+     * Reconcile the router against current settings on the holder's own
+     * scope, which outlives any one screen — safe to call from a ViewModel
+     * that is about to be destroyed (onboarding completion) or from a
+     * lifetime collector (install completion above).
+     *
+     * Gated on onboarding: mid-wizard, `requiredFromState` reflects choices
+     * the user hasn't finished making, and reconcile's not-required branch
+     * deletes model directories — it must never race a wizard download.
+     */
+    fun reconcileRouterAsync() {
+        scope.launch {
+            if (!settingsRepository.onboardingCompleted.first()) return@launch
+            try {
+                val engine = engine()
+                val routerRequired = routerPolicy.requiredFromState()
+                routerPolicy.reconcile(engine, routerRequired)
+                Log.i(TAG, "Router reconciled: required=$routerRequired")
+            } catch (e: Exception) {
+                // A truncated GGUF crossing FFI, a dead network, a failed
+                // DataStore write — none of it is worth the app. Leaving
+                // the router unloaded costs a fallback tier that keyword
+                // scoring and the LLM arbiter cover, and the next start
+                // (or the next assistant/locale change) reconciles again.
+                Log.e(TAG, "Router reconcile failed; router left unloaded", e)
+            }
+        }
     }
 
     private companion object {

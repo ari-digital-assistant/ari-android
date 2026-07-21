@@ -54,6 +54,7 @@ enum class AssistantChoice { NONE, ON_DEVICE, CLOUD }
 class OnboardingViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val routerPolicy: RouterPolicy,
+    private val engineHolder: dev.heyari.ari.di.EngineHolder,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(OnboardingState())
@@ -134,5 +135,11 @@ class OnboardingViewModel @Inject constructor(
             val pendingCloud = _state.value.assistantChoice == AssistantChoice.CLOUD
             settingsRepository.setPendingCloudAssistantSetup(pendingCloud)
         }
+        // Engine build ran mid-wizard with onboardingCompleted=false, so its
+        // startup reconcile skipped and cached — without this, a router model
+        // the wizard downloaded sits on disk unloaded until the next app
+        // start (Task 9 finding). Runs on the holder's own scope: this
+        // ViewModel dies at the navigation this call precedes.
+        engineHolder.reconcileRouterAsync()
     }
 }
