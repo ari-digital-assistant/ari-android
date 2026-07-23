@@ -1,7 +1,6 @@
 package dev.heyari.ari.router
 
 import dev.heyari.ari.data.SettingsRepository
-import dev.heyari.ari.di.EngineModule
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
@@ -15,11 +14,15 @@ import javax.inject.Singleton
  * Decides whether the FunctionGemma skill router should be active and
  * brings its download + engine state in line with that decision.
  *
- * The router is no longer a user-facing toggle. It's essential when Ari
- * has to understand commands on its own — the built-in on-device assistant
- * or no assistant at all — but redundant when a cloud assistant does the
- * NLU. It also needs a model for the locale in question — see
- * [shouldHaveModel].
+ * The router is not a user-facing toggle, and it is wanted by everyone: it
+ * is the fast tier that answers offline, instantly and for free, and
+ * whatever it isn't confident about falls through to the assistant. That
+ * holds whether the assistant behind it is the on-device LLM or a cloud
+ * one — a cloud assistant is the thing the router saves you a round-trip
+ * to, not a reason to go without it.
+ *
+ * So the only question left is whether a model exists for the language in
+ * question — see [shouldHaveModel].
  */
 @Singleton
 class RouterPolicy @Inject constructor(
@@ -37,16 +40,8 @@ class RouterPolicy @Inject constructor(
      */
     private val reconcileMutex = Mutex()
 
-    suspend fun requiredFromState(): Boolean {
-        // Cheap local decision first — no point spending a network probe to
-        // discover a model we wouldn't use anyway.
-        val wanted = required(
-            settingsRepository.activeAssistantId.first(),
-            settingsRepository.pendingCloudAssistantSetup.first(),
-        )
-        if (!wanted) return false
-        return shouldHaveModel(settingsRepository.activeLocale.first())
-    }
+    suspend fun requiredFromState(): Boolean =
+        shouldHaveModel(settingsRepository.activeLocale.first())
 
     /**
      * Whether [locale] should have a router model on disk — an install
@@ -125,18 +120,6 @@ class RouterPolicy @Inject constructor(
     private fun deleteLocalesExcept(keep: String?) {
         for (dir in downloadManager.routerRootDir.listFiles().orEmpty()) {
             if (dir.isDirectory && dir.name != keep) dir.deleteRecursively()
-        }
-    }
-
-    companion object {
-        /**
-         * Pure decision — see [reconcile] for the side effects it drives.
-         * Static so it can be unit tested without an Android-backed
-         * repository. See `RouterPolicyTest`.
-         */
-        fun required(activeAssistantId: String?, pendingCloudSetup: Boolean): Boolean {
-            if (pendingCloudSetup) return false
-            return activeAssistantId == null || activeAssistantId == EngineModule.BUILTIN_ASSISTANT_ID
         }
     }
 }

@@ -73,15 +73,12 @@ fun AssistantScreen(
                     }
                 }
             }
-            // FunctionGemma is essential when Ari has to understand commands
-            // itself (on-device or no assistant) but redundant with a cloud
-            // assistant, and it needs a model published for the chosen
-            // language. The wizard choice is the source of truth here — Cloud
-            // is only a deferred flag at this point — so commit the router
-            // decision explicitly.
-            settingsViewModel.setRouterRequired(
-                wizardState.assistantChoice != AssistantChoice.CLOUD && wizardState.routerAvailable,
-            )
+            // FunctionGemma is wanted whatever assistant sits behind it — it
+            // answers offline and hands anything it isn't sure about to that
+            // assistant. All it needs is a model published for the chosen
+            // language, which isn't persisted yet at this point in the wizard,
+            // so commit the decision explicitly.
+            settingsViewModel.setRouterRequired(wizardState.routerAvailable)
             onNext()
         },
     ) {
@@ -205,12 +202,10 @@ fun AssistantScreen(
             }
         }
 
-        // On-device / none pull in the ~253 MB FunctionGemma routing model in
-        // the background, where the chosen language has one — give the user a
+        // Every choice pulls in the ~253 MB FunctionGemma routing model in the
+        // background, where the chosen language has one — give the user a
         // heads-up so the silent download isn't a surprise.
-        AnimatedVisibility(
-            visible = wizardState.routerAvailable && wizardState.assistantChoice != AssistantChoice.CLOUD,
-        ) {
+        AnimatedVisibility(visible = wizardState.routerAvailable) {
             Text(
                 text = stringResource(R.string.onboarding_assistant_router_note),
                 style = MaterialTheme.typography.bodySmall,

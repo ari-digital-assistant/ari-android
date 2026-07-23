@@ -425,13 +425,12 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
-     * Onboarding commit point. During the wizard the assistant choice is
-     * the source of truth before it's been persisted (Cloud in particular
-     * is only a deferred "pending" flag), so the assistant screen passes
-     * the decision in directly: on-device / none with a model published for
-     * the chosen language → router required; cloud, or a language with no
-     * model → not. Outside onboarding the router is reconciled automatically
-     * from persisted state — see [reconcileRouter].
+     * Onboarding commit point. The chosen language isn't persisted yet at
+     * this point in the wizard, so the assistant screen passes the decision
+     * in directly: a model published for that language → router required.
+     * The assistant choice doesn't enter into it — see [RouterPolicy].
+     * Outside onboarding the router is reconciled automatically from
+     * persisted state — see [reconcileRouter].
      */
     fun setRouterRequired(required: Boolean) {
         viewModelScope.launch {
