@@ -9,9 +9,14 @@ import uniffi.ari_ffi.AriEngine
  * loaded without its floor runs at the compiled constant, which is exactly
  * the mis-calibration T5 exists to end. Every call site (startup reconcile,
  * settings, update apply) goes through here; loading directly is a bug.
+ *
+ * [locale] goes to the engine too, not just to the file lookup: the engine
+ * refuses to route with a model whose language doesn't match the active one,
+ * which closes the window during a language switch where the outgoing
+ * model is still resident.
  */
 fun AriEngine.loadRouterWithFloor(downloadManager: RouterDownloadManager, locale: String): Boolean {
-    val ok = loadRouterModel(downloadManager.modelFile(locale).absolutePath)
+    val ok = loadRouterModel(downloadManager.modelFile(locale).absolutePath, locale)
     if (ok) setRouterConfidenceFloor(downloadManager.installedMinConfidence(locale))
     return ok
 }

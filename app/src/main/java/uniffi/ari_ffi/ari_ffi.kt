@@ -1106,7 +1106,7 @@ external fun uniffi_ari_ffi_fn_method_ariengine_debug_route(`ptr`: Long,`input`:
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ariengine_load_llm_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
-external fun uniffi_ari_ffi_fn_method_ariengine_load_router_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+external fun uniffi_ari_ffi_fn_method_ariengine_load_router_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
 external fun uniffi_ari_ffi_fn_method_ariengine_process_input(`ptr`: Long,`input`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1447,7 +1447,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_llm_model() != 22848.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_router_model() != 35388.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_router_model() != 5512.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_process_input() != 44833.toShort()) {
@@ -2247,9 +2247,12 @@ public interface AriEngineInterface {
     /**
      * Set the FunctionGemma router model path. Like the LLM fallback,
      * the model loads lazily on first use and unloads after 60s idle.
-     * Returns `true` if the path exists, `false` otherwise.
+     * `locale` is the language this model was trained for — the engine
+     * only routes with it while that matches the active locale, so a
+     * model left over from a language switch can't route the wrong
+     * language. Returns `true` if the path exists, `false` otherwise.
      */
-    fun `loadRouterModel`(`modelPath`: kotlin.String): kotlin.Boolean
+    fun `loadRouterModel`(`modelPath`: kotlin.String, `locale`: kotlin.String): kotlin.Boolean
     
     fun `processInput`(`input`: kotlin.String): FfiResponse
     
@@ -2548,14 +2551,17 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     /**
      * Set the FunctionGemma router model path. Like the LLM fallback,
      * the model loads lazily on first use and unloads after 60s idle.
-     * Returns `true` if the path exists, `false` otherwise.
-     */override fun `loadRouterModel`(`modelPath`: kotlin.String): kotlin.Boolean {
+     * `locale` is the language this model was trained for — the engine
+     * only routes with it while that matches the active locale, so a
+     * model left over from a language switch can't route the wrong
+     * language. Returns `true` if the path exists, `false` otherwise.
+     */override fun `loadRouterModel`(`modelPath`: kotlin.String, `locale`: kotlin.String): kotlin.Boolean {
             return FfiConverterBoolean.lift(
     callWithHandle {
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_ari_ffi_fn_method_ariengine_load_router_model(
         it,
-        FfiConverterString.lower(`modelPath`),_status)
+        FfiConverterString.lower(`modelPath`),FfiConverterString.lower(`locale`),_status)
 }
     }
     )
