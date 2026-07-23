@@ -4,7 +4,7 @@ import dev.heyari.ari.notifications.AlertSpec
 
 /**
  * The Android-side mirror of a presentation `card` primitive
- * (see ari-skills/docs/action-responses.md).
+ * (see ari-skills/docs/reference-actions.md).
  *
  * Skill-shaped data; renderer-driven (presence/absence of fields decides
  * which composable variant lights up — countdown, progress, or plain).

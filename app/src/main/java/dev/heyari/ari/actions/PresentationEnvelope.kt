@@ -48,7 +48,7 @@ data class AlarmAction(
  * Parsed, typed view of a presentation envelope from a skill.
  *
  * The wire format is documented in
- * [docs/action-responses.md](https://github.com/ari-digital-assistant/ari-skills/blob/main/docs/action-responses.md).
+ * [docs/reference-actions.md](https://github.com/ari-digital-assistant/ari-skills/blob/main/docs/reference-actions.md).
  * `skillId` is supplied by the FFI layer (it's not in the envelope itself);
  * the parser stamps it onto every primitive that needs to resolve assets.
  *

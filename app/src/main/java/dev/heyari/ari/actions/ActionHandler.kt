@@ -19,7 +19,7 @@ import javax.inject.Singleton
 
 /**
  * Parses skill envelopes (one schema for every skill — see
- * `ari-skills/docs/action-responses.md`) and dispatches each primitive to
+ * `ari-skills/docs/reference-actions.md`) and dispatches each primitive to
  * the right Android-side handler. Returns an [ActionResult.Spoken] with the
  * envelope's `speak` text plus any attachments the bubble should render
  * underneath.

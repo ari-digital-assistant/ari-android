@@ -2,7 +2,7 @@ package dev.heyari.ari.notifications
 
 /**
  * Skill-declared persistent notification — the `notification` primitive
- * from ari-skills/docs/action-responses.md. Distinct from [AlertSpec]:
+ * from ari-skills/docs/reference-actions.md. Distinct from [AlertSpec]:
  * an alert grabs attention NOW; a notification sits in the shade.
  */
 data class NotificationPrimitive(

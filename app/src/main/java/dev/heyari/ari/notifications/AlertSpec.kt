@@ -5,7 +5,7 @@ import org.json.JSONObject
 
 /**
  * Skill-declared alert spec — exactly the alert primitive from
- * ari-skills/docs/action-responses.md.
+ * ari-skills/docs/reference-actions.md.
  *
  * Travels between processes / receivers as a JSON string in intent extras
  * via [AlertSpecCodec] (rather than Parcelable, which would require pulling
