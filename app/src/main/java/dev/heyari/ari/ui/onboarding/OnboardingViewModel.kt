@@ -1,8 +1,13 @@
 package dev.heyari.ari.ui.onboarding
 
+import android.app.LocaleManager
+import android.content.Context
+import android.os.Build
+import android.os.LocaleList
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.router.RouterPolicy
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,6 +57,7 @@ enum class AssistantChoice { NONE, ON_DEVICE, CLOUD }
 
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
+    @param:ApplicationContext private val appContext: Context,
     private val settingsRepository: SettingsRepository,
     private val routerPolicy: RouterPolicy,
     private val engineHolder: dev.heyari.ari.di.EngineHolder,
@@ -113,6 +119,14 @@ class OnboardingViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.setActiveLocale(code)
         }
+        // Mirror into Android's per-app locale NOW, not at next app start:
+        // AriApplication/SettingsViewModel already do this on their paths,
+        // and the wizard was the documented motivation — yet picking
+        // Italiano here left the rest of the wizard in the system language
+        // until a restart. Triggers one Activity recreate; the wizard's
+        // state lives in this ViewModel and survives it. Same-locale
+        // re-taps are no-ops so re-selection doesn't recreate-loop.
+        applyAppLocale(code)
         // Language is step 1 and the assistant screen is step 6, so this
         // round-trip has five screens to land before anyone needs the answer.
         viewModelScope.launch {
@@ -121,6 +135,15 @@ class OnboardingViewModel @Inject constructor(
             // away from — a slow probe for English must not clobber Italian.
             _state.update { if (it.selectedLocale == code) it.copy(routerAvailable = available) else it }
         }
+    }
+
+    private fun applyAppLocale(code: String) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val localeManager = appContext.getSystemService(LocaleManager::class.java)
+        val current = localeManager.applicationLocales
+        val currentTag = if (current.isEmpty) "" else current[0].toLanguageTag()
+        if (currentTag.startsWith(code)) return
+        localeManager.applicationLocales = LocaleList.forLanguageTags(code)
     }
 
     fun completeOnboarding() {

@@ -4,12 +4,15 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.net.Uri
 import android.util.Log
 import androidx.core.content.getSystemService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.R
+import dev.heyari.ari.locale.AriFfiLocaleProvider
 import dev.heyari.ari.media.openNotificationListenerSettings
+import java.util.Locale
 import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,6 +28,11 @@ import javax.inject.Singleton
  * effect immediately; rich primitives (`cards`, `alerts`, `notifications`,
  * `dismiss.*`) flow through [PresentationCoordinator]. Both can coexist
  * in one envelope (e.g. a clipboard copy + a confirmation card).
+ *
+ * Frontend-authored conversation replies (the strings the frontend produces
+ * when a skill omitted `speak`) follow Ari's *conversation* locale — the
+ * in-app language exposed by [AriFfiLocaleProvider.currentLocale] — not the
+ * app/system UI locale. See [say].
  */
 @Singleton
 class ActionHandler @Inject constructor(
@@ -36,6 +44,7 @@ class ActionHandler @Inject constructor(
     private val navigationLauncher: NavigationLauncher,
     private val mediaTransportController: MediaTransportController,
     private val presentationCoordinator: PresentationCoordinator,
+    private val localeProvider: AriFfiLocaleProvider,
 ) {
 
     fun handle(json: String, skillId: String): ActionResult.Spoken {
@@ -43,10 +52,10 @@ class ActionHandler @Inject constructor(
             JSONObject(json)
         } catch (t: Throwable) {
             Log.e(TAG, "invalid envelope JSON: $json", t)
-            return ActionResult.Spoken("I couldn't understand that action.")
+            return ActionResult.Spoken(say(R.string.action_reply_not_understood))
         }
         val env = PresentationEnvelope.parse(obj, skillId)
-            ?: return ActionResult.Spoken("I couldn't understand that action.")
+            ?: return ActionResult.Spoken(say(R.string.action_reply_not_understood))
 
         // Single-shot slots first. The skill may have omitted `speak` for
         // these (so the frontend can produce platform-appropriate phrasing
@@ -60,7 +69,7 @@ class ActionHandler @Inject constructor(
                 NavigationLauncher.LaunchResult.Launched ->
                     ActionResult.Spoken(env.speak ?: "")
                 NavigationLauncher.LaunchResult.NoMapsApp ->
-                    ActionResult.Spoken("I couldn't find a maps app to do that.")
+                    ActionResult.Spoken(say(R.string.action_reply_navigate_no_maps))
             }
         }
         env.clipboardText?.let { copyToClipboard(it) }
@@ -70,7 +79,7 @@ class ActionHandler @Inject constructor(
         // spoken line (returning early) when there's no Clock app to handle it.
         env.alarm?.let { alarm ->
             if (alarmLauncher.launch(alarm) is AlarmLauncher.LaunchResult.NoClockApp) {
-                return ActionResult.Spoken("I couldn't find a clock app to set that.")
+                return ActionResult.Spoken(say(R.string.action_reply_alarm_no_clock))
             }
         }
 
@@ -83,42 +92,44 @@ class ActionHandler @Inject constructor(
     }
 
     private fun handleOpen(target: String): String {
-        if (target.isBlank()) return "What would you like me to open?"
+        if (target.isBlank()) return say(R.string.action_reply_open_what)
         return when (val result = appLauncher.launch(target)) {
             is AppLauncher.LaunchResult.Launched ->
-                "Opening ${result.app.label}."
+                say(R.string.action_reply_open_opening, result.app.label)
             is AppLauncher.LaunchResult.NotFound ->
-                "I couldn't find an app called ${result.target}."
+                say(R.string.action_reply_open_not_found, result.target)
             is AppLauncher.LaunchResult.Failed ->
-                "I couldn't open ${result.app.label}: ${result.reason}."
+                say(R.string.action_reply_open_failed, result.app.label, result.reason)
         }
     }
 
     private fun handleSearch(query: String): String {
-        if (query.isBlank()) return "What would you like me to search for?"
+        if (query.isBlank()) return say(R.string.action_reply_search_what)
         return when (val result = webSearchLauncher.search(query)) {
             is WebSearchLauncher.SearchResult.Launched ->
-                "Searching for ${result.query}."
+                say(R.string.action_reply_search_searching, result.query)
             is WebSearchLauncher.SearchResult.Failed ->
-                "I couldn't search: ${result.reason}."
+                say(R.string.action_reply_search_failed, result.reason)
         }
     }
 
     private fun handleMedia(m: MediaAction): String {
         if (m.action == "play") {
-            val query = m.query ?: return "What would you like me to play?"
+            val query = m.query ?: return say(R.string.action_reply_play_what)
             return when (val r = musicLauncher.play(query, m.service)) {
                 is MusicLauncher.PlayResult.Playing ->
-                    if (r.serviceName != null) "Playing ${r.query} on ${r.serviceName}."
-                    else "Playing ${r.query}."
+                    if (r.serviceName != null)
+                        say(R.string.action_reply_play_playing_on, r.query, r.serviceName)
+                    else
+                        say(R.string.action_reply_play_playing, r.query)
                 is MusicLauncher.PlayResult.OpenedResults ->
-                    "Here are results for ${r.query} on ${r.serviceName}."
+                    say(R.string.action_reply_play_results, r.query, r.serviceName)
                 is MusicLauncher.PlayResult.ServiceNotInstalled ->
-                    "You don't have ${r.serviceName} installed."
+                    say(R.string.action_reply_play_not_installed, r.serviceName)
                 is MusicLauncher.PlayResult.NoMusicApp ->
-                    "I couldn't find a music app to play that."
+                    say(R.string.action_reply_play_no_music_app)
                 is MusicLauncher.PlayResult.Failed ->
-                    "I couldn't play that: ${r.reason}."
+                    say(R.string.action_reply_play_failed, r.reason)
             }
         }
         return when (val o = mediaTransportController.handle(m)) {
@@ -126,15 +137,15 @@ class ActionHandler @Inject constructor(
                 val f = doneFeedback(o.action, m.level, m.mute)
                 when {
                     f.resId == null -> ""
-                    f.arg != null -> context.getString(f.resId, f.arg)
-                    else -> context.getString(f.resId)
+                    f.arg != null -> say(f.resId, f.arg)
+                    else -> say(f.resId)
                 }
             }
             MediaTransportController.TransportOutcome.NothingPlaying ->
-                context.getString(R.string.media_nothing_playing)
+                say(R.string.media_nothing_playing)
             MediaTransportController.TransportOutcome.NeedsPermission -> {
                 openNotificationListenerSettings(context)
-                context.getString(R.string.media_needs_permission)
+                say(R.string.media_needs_permission)
             }
             is MediaTransportController.TransportOutcome.Failed -> {
                 Log.w(TAG, "media transport failed: ${o.reason}")
@@ -149,16 +160,32 @@ class ActionHandler @Inject constructor(
                 Intent(Intent.ACTION_VIEW, Uri.parse(url))
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             )
-            "Opening that link."
+            say(R.string.action_reply_open_url_opening)
         }.getOrElse { t ->
             Log.w(TAG, "open_url failed for $url", t)
-            "I couldn't open that link."
+            say(R.string.action_reply_open_url_failed)
         }
     }
 
     private fun copyToClipboard(text: String) {
         val cm = context.getSystemService<ClipboardManager>() ?: return
         cm.setPrimaryClip(ClipData.newPlainText("Ari", text))
+    }
+
+    /**
+     * Resolves [resId] against Ari's *conversation* locale rather than the
+     * app/system UI locale. The conversation language (`activeLocale`, e.g.
+     * "en"/"it") is exposed synchronously by [AriFfiLocaleProvider]; a fresh
+     * configuration context is built per call so a mid-session language change
+     * is honoured immediately. Positional args are formatted the same way a
+     * plain `getString` would.
+     */
+    private fun say(resId: Int, vararg args: Any): String {
+        val locale = Locale.forLanguageTag(localeProvider.currentLocale())
+        val config = Configuration(context.resources.configuration).apply { setLocale(locale) }
+        val localized = context.createConfigurationContext(config)
+        return if (args.isEmpty()) localized.getString(resId)
+        else localized.getString(resId, *args)
     }
 
     companion object {

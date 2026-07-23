@@ -373,6 +373,28 @@
     <string name="media_nothing_playing">Nothing\'s playing right now.</string>
     <string name="media_needs_permission">To control playback, I need media access. Opening settings.</string>
 
+    <!-- Frontend-authored conversation replies (spoken when a skill omits its own `speak`).
+         These follow Ari's CONVERSATION locale, not the app/system UI locale. -->
+    <string name="action_reply_not_understood">I couldn\'t understand that action.</string>
+    <string name="action_reply_navigate_no_maps">I couldn\'t find a maps app to do that.</string>
+    <string name="action_reply_alarm_no_clock">I couldn\'t find a clock app to set that.</string>
+    <string name="action_reply_open_what">What would you like me to open?</string>
+    <string name="action_reply_open_opening">Opening %1$s.</string>
+    <string name="action_reply_open_not_found">I couldn\'t find an app called %1$s.</string>
+    <string name="action_reply_open_failed">I couldn\'t open %1$s: %2$s.</string>
+    <string name="action_reply_search_what">What would you like me to search for?</string>
+    <string name="action_reply_search_searching">Searching for %1$s.</string>
+    <string name="action_reply_search_failed">I couldn\'t search: %1$s.</string>
+    <string name="action_reply_play_what">What would you like me to play?</string>
+    <string name="action_reply_play_playing_on">Playing %1$s on %2$s.</string>
+    <string name="action_reply_play_playing">Playing %1$s.</string>
+    <string name="action_reply_play_results">Here are results for %1$s on %2$s.</string>
+    <string name="action_reply_play_not_installed">You don\'t have %1$s installed.</string>
+    <string name="action_reply_play_no_music_app">I couldn\'t find a music app to play that.</string>
+    <string name="action_reply_play_failed">I couldn\'t play that: %1$s.</string>
+    <string name="action_reply_open_url_opening">Opening that link.</string>
+    <string name="action_reply_open_url_failed">I couldn\'t open that link.</string>
+
     <string-array name="please_wait_phrases">
         <item>One moment…</item>
         <item>Just a sec…</item>

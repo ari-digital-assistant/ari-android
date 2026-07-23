@@ -4,6 +4,8 @@ import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.di.EngineModule
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import uniffi.ari_ffi.AriEngine
 import javax.inject.Inject
@@ -25,6 +27,16 @@ class RouterPolicy @Inject constructor(
     private val downloadManager: RouterDownloadManager,
     private val availability: RouterAvailability,
 ) {
+    /**
+     * Serialises reconciles. When reconcile lived inside the engine's
+     * one-shot build() it had an implicit mutex; once startup, Settings,
+     * Skills and install-completion could all call it, two interleaved
+     * reconciles could delete a directory the other had just decided to
+     * load. Held across the read-decide-act pair in [reconcileFromState]
+     * so the state read and the action stay one unit.
+     */
+    private val reconcileMutex = Mutex()
+
     suspend fun requiredFromState(): Boolean {
         // Cheap local decision first — no point spending a network probe to
         // discover a model we wouldn't use anyway.
@@ -56,6 +68,16 @@ class RouterPolicy @Inject constructor(
         downloadManager.isDownloaded(locale) || availability.isAvailable(locale)
 
     /**
+     * The standard entry point: read required-state and reconcile as one
+     * mutex-held unit. Prefer this over calling [requiredFromState] +
+     * [reconcile] separately — a decision computed outside the lock can be
+     * stale by the time the reconcile acts on it.
+     */
+    suspend fun reconcileFromState(engine: AriEngine) {
+        reconcileMutex.withLock { reconcileLocked(engine, requiredFromState()) }
+    }
+
+    /**
      * Idempotent — safe to call from every site that can change the
      * assistant or locale (app start, onboarding, settings). When required,
      * enables the router and either loads the active locale's model or kicks
@@ -64,8 +86,16 @@ class RouterPolicy @Inject constructor(
      * Either way, every locale directory that isn't the active one is
      * deleted. That's what keeps exactly one 253 MB model on disk across a
      * language switch.
+     *
+     * [required] is accepted precomputed for the one caller that genuinely
+     * knows better than persisted state (the onboarding commit point, where
+     * the wizard's choice hasn't been persisted yet).
      */
     suspend fun reconcile(engine: AriEngine, required: Boolean) {
+        reconcileMutex.withLock { reconcileLocked(engine, required) }
+    }
+
+    private suspend fun reconcileLocked(engine: AriEngine, required: Boolean) {
         val locale = settingsRepository.activeLocale.first()
         if (required) {
             if (!settingsRepository.routerEnabled.first()) {

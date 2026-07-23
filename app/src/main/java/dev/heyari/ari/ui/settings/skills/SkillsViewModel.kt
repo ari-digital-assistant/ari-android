@@ -319,7 +319,7 @@ class SkillsViewModel @Inject constructor(
             }
             // A cloud assistant now does the NLU, so FunctionGemma is
             // redundant — unload + delete it (a built-in pick keeps it).
-            routerPolicy.reconcile(engineHolder.engine(), routerPolicy.requiredFromState())
+            routerPolicy.reconcileFromState(engineHolder.engine())
             _state.update {
                 it.copy(pendingAssistantPromptId = null, pendingAssistantPromptName = "")
             }

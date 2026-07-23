@@ -43,14 +43,20 @@ class AutoUpdatePreferences @Inject constructor(
     }
 
     /**
-     * Set when a pre-per-locale router install was adopted in place. Drives
-     * exactly one forced background upgrade onto the real `-en-` model —
-     * the adopted artifact is frozen and was never evaluated at the current
-     * confidence threshold, so leaving users on it indefinitely isn't a
-     * neutral default.
+     * The VERSION of a pre-per-locale router install adopted in place, or
+     * null when no forced upgrade is armed. Drives exactly one forced
+     * background upgrade onto the real `-en-` model — the adopted artifact
+     * is frozen and was never evaluated at the current confidence floor, so
+     * leaving users on it indefinitely isn't a neutral default.
+     *
+     * A version string, not a boolean, on purpose: the marker names the
+     * exact artifact it is allowed to replace. If the installed version
+     * stops matching — the user updated by hand, a settings-path download
+     * replaced it — the marker has outlived its subject and disarms instead
+     * of silently force-installing over a model the migration never touched.
      */
-    val legacyRouterAdopted: Flow<Boolean> = context.autoUpdateDataStore.data.map { prefs ->
-        prefs[KEY_LEGACY_ROUTER_ADOPTED] ?: false
+    val adoptedRouterVersion: Flow<String?> = context.autoUpdateDataStore.data.map { prefs ->
+        prefs[KEY_ADOPTED_ROUTER_VERSION]
     }
 
     fun lastChecked(category: String): Flow<Instant?> = context.autoUpdateDataStore.data.map { prefs ->
@@ -69,8 +75,11 @@ class AutoUpdatePreferences @Inject constructor(
         context.autoUpdateDataStore.edit { it[KEY_ALLOW_METERED] = value }
     }
 
-    suspend fun setLegacyRouterAdopted(value: Boolean) {
-        context.autoUpdateDataStore.edit { it[KEY_LEGACY_ROUTER_ADOPTED] = value }
+    suspend fun setAdoptedRouterVersion(version: String?) {
+        context.autoUpdateDataStore.edit {
+            if (version == null) it.remove(KEY_ADOPTED_ROUTER_VERSION)
+            else it[KEY_ADOPTED_ROUTER_VERSION] = version
+        }
     }
 
     suspend fun setLastChecked(category: String, instant: Instant) {
@@ -99,7 +108,10 @@ class AutoUpdatePreferences @Inject constructor(
 
         private val KEY_ENABLED = booleanPreferencesKey("auto_update_enabled")
         private val KEY_ALLOW_METERED = booleanPreferencesKey("auto_update_metered")
-        private val KEY_LEGACY_ROUTER_ADOPTED = booleanPreferencesKey("legacy_router_adopted")
+        // Replaces booleanPreferencesKey("legacy_router_adopted") (pre-v1,
+        // no fleet to migrate): a stranded old boolean simply never fires
+        // and the ordinary notify-and-tap path still offers the real model.
+        private val KEY_ADOPTED_ROUTER_VERSION = stringPreferencesKey("adopted_router_version")
         private const val SKIPPED_PREFIX = "skipped_version_"
 
         private fun lastCheckedKey(category: String) = longPreferencesKey("last_checked_$category")

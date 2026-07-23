@@ -101,6 +101,7 @@ object EngineModule {
         navigationLauncher: dev.heyari.ari.actions.NavigationLauncher,
         mediaTransportController: dev.heyari.ari.actions.MediaTransportController,
         presentationCoordinator: dev.heyari.ari.actions.PresentationCoordinator,
+        localeProvider: dev.heyari.ari.locale.AriFfiLocaleProvider,
     ): ActionHandler = ActionHandler(
         context,
         appLauncher,
@@ -110,5 +111,6 @@ object EngineModule {
         navigationLauncher,
         mediaTransportController,
         presentationCoordinator,
+        localeProvider,
     )
 }

@@ -18,6 +18,7 @@ import dev.heyari.ari.router.LegacyMigrationResult
 import dev.heyari.ari.router.RouterDownloadManager
 import dev.heyari.ari.router.RouterDownloadState
 import dev.heyari.ari.router.RouterLegacyMigration
+import dev.heyari.ari.router.RouterModel
 import dev.heyari.ari.skills.AndroidSkillLogSink
 import dev.heyari.ari.tasks.AriFfiTasksProvider
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -270,7 +271,12 @@ class EngineHolder @Inject constructor(
                     RouterLegacyMigration.migrate(routerDownloadManager.routerRootDir, locale)
                 }
                 if (migration == LegacyMigrationResult.ADOPTED) {
-                    autoUpdatePreferences.setLegacyRouterAdopted(true)
+                    // Arm the one-shot forced upgrade against the EXACT
+                    // artifact adopted — the marker disarms if anything
+                    // else replaces this version first.
+                    autoUpdatePreferences.setAdoptedRouterVersion(
+                        routerDownloadManager.installedVersion(RouterModel.LEGACY_LOCALE),
+                    )
                 }
                 Log.i(TAG, "Router legacy migration at startup: $migration")
             } catch (e: Exception) {
@@ -316,10 +322,8 @@ class EngineHolder @Inject constructor(
         scope.launch {
             if (!settingsRepository.onboardingCompleted.first()) return@launch
             try {
-                val engine = engine()
-                val routerRequired = routerPolicy.requiredFromState()
-                routerPolicy.reconcile(engine, routerRequired)
-                Log.i(TAG, "Router reconciled: required=$routerRequired")
+                routerPolicy.reconcileFromState(engine())
+                Log.i(TAG, "Router reconciled from state")
             } catch (e: Exception) {
                 // A truncated GGUF crossing FFI, a dead network, a failed
                 // DataStore write — none of it is worth the app. Leaving

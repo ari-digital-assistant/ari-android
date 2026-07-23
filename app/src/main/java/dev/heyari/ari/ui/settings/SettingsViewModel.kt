@@ -440,7 +440,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     private suspend fun reconcileRouter() {
-        routerPolicy.reconcile(engineHolder.engine(), routerPolicy.requiredFromState())
+        routerPolicy.reconcileFromState(engineHolder.engine())
     }
 
     /**

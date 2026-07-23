@@ -50,7 +50,7 @@ class ModelUpdateWorker @AssistedInject constructor(
     private val applier: ModelUpdateApplier,
     private val prefs: AutoUpdatePreferences,
     private val updatesRepository: UpdatesRepository,
-    private val settingsRepository: SettingsRepository,
+    private val routerDownloadManager: dev.heyari.ari.router.RouterDownloadManager,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
@@ -111,39 +111,32 @@ class ModelUpdateWorker @AssistedInject constructor(
      * already-applied entry out of the pending list; null if it did nothing.
      */
     private suspend fun forceLegacyRouterUpgrade(updates: List<ModelUpdate>): ModelUpdate? {
-        if (!prefs.legacyRouterAdopted.first()) return null
+        val adoptedVersion = prefs.adoptedRouterVersion.first() ?: return null
+
+        // The marker names the exact artifact it may replace. Anything else
+        // on disk — the user applied an update from Settings, a
+        // settings-path download replaced it, the model was deleted — means
+        // the marker has outlived its subject: disarm rather than silently
+        // force-installing over a model the migration never touched. This
+        // check is also what lets the marker stay safely armed across
+        // manifest-fetch failures and locale switches: it can never fire
+        // against anything but the frozen adopted artifact.
+        if (routerDownloadManager.installedVersion(RouterModel.LEGACY_LOCALE) != adoptedVersion) {
+            prefs.setAdoptedRouterVersion(null)
+            Log.i(TAG, "legacy router marker disarmed: installed en version no longer $adoptedVersion")
+            return null
+        }
 
         // Never anything but the locale the legacy artifact was trained for.
         // The checker builds its Router target from the *active* locale, so an
         // adopted user who has since switched to Italian would otherwise have
-        // their `it` router silently force-installed, and the marker cleared
-        // against a model the migration never touched.
+        // their `it` router silently force-installed.
+        // No update pending for `en` this run (other locale active, fetch
+        // failure, or user explicitly skipped the version): stay armed and
+        // return — the version pin above makes a stale marker harmless.
         val update = updates.firstOrNull {
             (it.target as? ModelTarget.Router)?.locale == RouterModel.LEGACY_LOCALE
-        }
-        if (update == null) {
-            // Nothing pending for `en` — but only disarm if the checker
-            // actually looked at `en` this run. On any other locale it didn't,
-            // so the absence says nothing about the adopted model and the
-            // marker stays armed for a switch back.
-            //
-            // When it did look, "no update" means either the manifest said we
-            // are current (the user applied it themselves from Settings first)
-            // or they explicitly skipped that version — in both cases a forced
-            // install has no business firing. It can also mean the manifest
-            // fetch failed, which the checker reports identically, and that is
-            // the one case this clears too early. Worth it: the cost is losing
-            // the *silent* upgrade, after which the adopted model still reads
-            // as stale and the ordinary notify-and-tap path keeps offering the
-            // real -en- model daily. Never clearing instead arms an unbounded
-            // silent installer that force-applies every future router release
-            // without a tap, which is the promise in this class's KDoc.
-            if (settingsRepository.activeLocale.first() == RouterModel.LEGACY_LOCALE) {
-                prefs.setLegacyRouterAdopted(false)
-                Log.i(TAG, "legacy router marker disarmed: no en router update pending")
-            }
-            return null
-        }
+        } ?: return null
 
         var failure: String? = null
         applier.apply(update).collect { event ->
@@ -153,7 +146,7 @@ class ModelUpdateWorker @AssistedInject constructor(
             Log.w(TAG, "forced router upgrade failed, will retry: $failure")
             return null
         }
-        prefs.setLegacyRouterAdopted(false)
+        prefs.setAdoptedRouterVersion(null)
         Log.i(TAG, "forced router upgrade complete: ${update.availableVersion}")
         return update
     }
