@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -108,6 +109,16 @@ fun SkillSettingsPanel(
     // fields without any extra wiring here.
     val byKey = remember(fields) { fields.associateBy { it.key } }
 
+    // What's on screen right now, keyed by field key — including edits
+    // the user hasn't committed. Writes land on focus loss / dispose and
+    // the refreshed `currentValue` arrives asynchronously after that, so
+    // a payload built from `currentValue` alone lags behind the form.
+    // Keyed on the field *keys* rather than `fields` so a post-write
+    // refresh (same keys, new values) doesn't wipe drafts mid-edit,
+    // while switching to a different skill's schema starts clean.
+    val drafts = remember(fields.map { it.key }) { mutableStateMapOf<String, String>() }
+    val onDraft: (String, String) -> Unit = { key, value -> drafts[key] = value }
+
     // Bumped by an action whose result asks for a refresh (`refresh ==
     // true`) — e.g. signing in via the OAuth action button, after which
     // the `agent_id` dynamic_select should re-fetch now that a token
@@ -130,14 +141,20 @@ fun SkillSettingsPanel(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         for (field in topLevel) {
-            renderField(field, byKey, onValueChange, querySkillSetting, settingsAction, refreshNonce) {
+            renderField(
+                field, byKey, drafts, onDraft, onValueChange,
+                querySkillSetting, settingsAction, refreshNonce,
+            ) {
                 refreshNonce++
             }
         }
         for ((label, groupFields) in groups) {
             CollapsedGroup(label = label) {
                 for (field in groupFields) {
-                    renderField(field, byKey, onValueChange, querySkillSetting, settingsAction, refreshNonce) {
+                    renderField(
+                        field, byKey, drafts, onDraft, onValueChange,
+                        querySkillSetting, settingsAction, refreshNonce,
+                    ) {
                         refreshNonce++
                     }
                 }
@@ -157,6 +174,8 @@ fun SkillSettingsPanel(
 private fun renderField(
     field: FfiConfigField,
     byKey: Map<String, FfiConfigField>,
+    drafts: Map<String, String>,
+    onDraft: (key: String, value: String) -> Unit,
     onValueChange: (key: String, value: String, isSecret: Boolean) -> Unit,
     querySkillSetting: suspend (field: String, values: Map<String, String>) -> FfiSettingsQueryResult,
     settingsAction: suspend (action: String, values: Map<String, String>) -> FfiSettingsQueryResult,
@@ -165,13 +184,13 @@ private fun renderField(
 ) {
     if (!isVisible(field, byKey)) return
     when (field.fieldType) {
-        "text" -> TextField(field, onValueChange)
-        "secret" -> SecretField(field, onValueChange)
+        "text" -> TextField(field, onDraft, onValueChange)
+        "secret" -> SecretField(field, onDraft, onValueChange)
         "select" -> SelectField(field, onValueChange)
         "device_calendar" -> DeviceCalendarField(field, onValueChange)
         "device_task_list" -> DeviceTaskListField(field, onValueChange)
-        "dynamic_select" -> DynamicSelectField(field, byKey, onValueChange, querySkillSetting, refreshNonce)
-        "action" -> ActionField(field, settingsAction, byKey, onRefresh)
+        "dynamic_select" -> DynamicSelectField(field, byKey, drafts, onValueChange, querySkillSetting, refreshNonce)
+        "action" -> ActionField(field, settingsAction, byKey, drafts, onRefresh)
         // Unknown type → skip silently. Lets the manifest schema
         // grow new field types without older client builds
         // crashing on encounter.
@@ -193,7 +212,7 @@ private fun renderField(
     // `dynamic_select` is excluded — it already surfaces its own
     // query status, so a second one would double up.
     if (field.validate && field.fieldType != "dynamic_select") {
-        ValidateStatus(field, byKey, querySkillSetting, refreshNonce)
+        ValidateStatus(field, byKey, drafts, querySkillSetting, refreshNonce)
     }
 }
 
@@ -233,6 +252,7 @@ private fun ActionField(
     field: FfiConfigField,
     settingsAction: suspend (String, Map<String, String>) -> FfiSettingsQueryResult,
     byKey: Map<String, FfiConfigField>,
+    drafts: Map<String, String>,
     onRefresh: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -246,9 +266,10 @@ private fun ActionField(
             onClick = {
                 status = DynState.Loading
                 scope.launch {
-                    val values = field.dependsOn.associateWith { k ->
-                        byKey[k]?.let { it.currentValue ?: it.defaultValue ?: "" } ?: ""
-                    }
+                    // Read through drafts: the user typically taps this
+                    // button straight after typing the field it depends
+                    // on, before that edit has been written back.
+                    val values = dependencyValues(field.dependsOn, byKey, drafts)
                     val res = runCatching { settingsAction(field.key, values) }.getOrNull()
                     status = when {
                         res == null -> DynState.Failed(actionFailed)
@@ -313,9 +334,45 @@ private fun isVisible(
     return effective in field.showWhenEquals
 }
 
+/**
+ * The value a field currently holds *from the user's point of view*.
+ *
+ * Precedence is draft → stored → declared default → empty. `drafts`
+ * carries what's on screen right now, including edits the user hasn't
+ * committed yet: writes only happen on focus loss / dispose (see
+ * [TextField]), and the re-fetch that refreshes `currentValue` is async
+ * on top of that, so anything reading only `currentValue` is reading the
+ * past. A key present in `drafts` wins even when blank — the user having
+ * emptied a field is a real state, not a missing one.
+ *
+ * Used for the payloads we hand to a skill. Visibility gating
+ * ([isVisible]) deliberately still reads committed values only, so
+ * fields don't flicker in and out mid-keystroke.
+ */
+internal fun effectiveFieldValue(
+    key: String,
+    byKey: Map<String, FfiConfigField>,
+    drafts: Map<String, String>,
+): String {
+    drafts[key]?.let { return it }
+    val field = byKey[key] ?: return ""
+    return field.currentValue ?: field.defaultValue ?: ""
+}
+
+/**
+ * Build the `depends_on` payload a `settings_query` or `settings_action`
+ * is sent, resolving every dependency through [effectiveFieldValue].
+ */
+internal fun dependencyValues(
+    dependsOn: List<String>,
+    byKey: Map<String, FfiConfigField>,
+    drafts: Map<String, String>,
+): Map<String, String> = dependsOn.associateWith { effectiveFieldValue(it, byKey, drafts) }
+
 @Composable
 private fun TextField(
     field: FfiConfigField,
+    onDraft: (String, String) -> Unit,
     onValueChange: (String, String, Boolean) -> Unit,
 ) {
     var localValue by remember(field.key) {
@@ -325,7 +382,11 @@ private fun TextField(
     val callback = rememberUpdatedState(onValueChange)
     OutlinedTextField(
         value = localValue,
-        onValueChange = { localValue = it },
+        // Publish on every keystroke — cheap in-memory bookkeeping, no
+        // FFI traffic. Persistence still waits for focus loss / dispose;
+        // this only makes the typed text visible to a sibling action or
+        // query that fires before the user has committed anything.
+        onValueChange = { localValue = it; onDraft(field.key, it) },
         label = { Text(field.label) },
         modifier = Modifier
             .fillMaxWidth()
@@ -353,6 +414,7 @@ private fun TextField(
 @Composable
 private fun SecretField(
     field: FfiConfigField,
+    onDraft: (String, String) -> Unit,
     onValueChange: (String, String, Boolean) -> Unit,
 ) {
     val hasExisting = field.currentValue == "••••••••"
@@ -385,6 +447,10 @@ private fun SecretField(
             } else {
                 localValue = it
             }
+            // Publish the real typed secret, never the bullet sentinel —
+            // a sibling `validate` query needs something it can actually
+            // authenticate with.
+            onDraft(field.key, localValue)
         },
         label = { Text(field.label) },
         modifier = Modifier
@@ -395,6 +461,7 @@ private fun SecretField(
                 // delete eight bullets first.
                 if (state.isFocused && !dirty && hasExisting) {
                     localValue = ""
+                    onDraft(field.key, "")
                 }
             },
         singleLine = true,
@@ -485,13 +552,12 @@ private sealed interface DynState {
 private fun rememberSettingsQuery(
     field: FfiConfigField,
     byKey: Map<String, FfiConfigField>,
+    drafts: Map<String, String>,
     querySkillSetting: suspend (String, Map<String, String>) -> FfiSettingsQueryResult,
     attempt: Int,
     refreshNonce: Int,
 ): DynState {
-    val depValues: Map<String, String> = field.dependsOn.associateWith { k ->
-        byKey[k]?.let { it.currentValue ?: it.defaultValue ?: "" } ?: ""
-    }
+    val depValues: Map<String, String> = dependencyValues(field.dependsOn, byKey, drafts)
     val allPresent = field.dependsOn.isNotEmpty() && depValues.values.all { it.isNotBlank() }
     val depKey = depValues.entries.sortedBy { it.key }.joinToString("|") { "${it.key}=${it.value}" }
     var state by remember(field.key) { mutableStateOf<DynState>(DynState.Idle) }
@@ -534,10 +600,11 @@ private fun rememberSettingsQuery(
 private fun ValidateStatus(
     field: FfiConfigField,
     byKey: Map<String, FfiConfigField>,
+    drafts: Map<String, String>,
     querySkillSetting: suspend (String, Map<String, String>) -> FfiSettingsQueryResult,
     refreshNonce: Int,
 ) {
-    when (val s = rememberSettingsQuery(field, byKey, querySkillSetting, attempt = 0, refreshNonce = refreshNonce)) {
+    when (val s = rememberSettingsQuery(field, byKey, drafts, querySkillSetting, attempt = 0, refreshNonce = refreshNonce)) {
         DynState.Idle -> {} // Deps not present yet — nothing to validate.
         DynState.Loading -> Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -581,16 +648,17 @@ private fun ValidateStatus(
  * fill the upstream fields first. A failed fetch surfaces the skill's
  * error message plus a Retry button.
  *
- * Sibling values are read the same way visibility gating reads them:
- * effective value = currentValue, falling back to defaultValue. We key
- * the [LaunchedEffect] on a stable serialisation of those values so a
- * recompose that doesn't actually change a dependency won't re-fire the
- * query, but an edit to any dependency will.
+ * Sibling values are resolved by [effectiveFieldValue], so an uncommitted
+ * edit upstream still drives the fetch. We key the [LaunchedEffect] on a
+ * stable serialisation of those values so a recompose that doesn't
+ * actually change a dependency won't re-fire the query, but an edit to
+ * any dependency will.
  */
 @Composable
 private fun DynamicSelectField(
     field: FfiConfigField,
     byKey: Map<String, FfiConfigField>,
+    drafts: Map<String, String>,
     onValueChange: (String, String, Boolean) -> Unit,
     querySkillSetting: suspend (String, Map<String, String>) -> FfiSettingsQueryResult,
     refreshNonce: Int,
@@ -600,7 +668,7 @@ private fun DynamicSelectField(
     // refresh (`refreshNonce`) also re-runs the query — both are wired
     // into the shared query's LaunchedEffect key list.
     var attempt by remember(field.key) { mutableStateOf(0) }
-    val state = rememberSettingsQuery(field, byKey, querySkillSetting, attempt, refreshNonce)
+    val state = rememberSettingsQuery(field, byKey, drafts, querySkillSetting, attempt, refreshNonce)
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
