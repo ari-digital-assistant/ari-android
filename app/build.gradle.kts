@@ -20,7 +20,11 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+            // Must match the Rust targets built by `androidRust` below
+            // (arm64 + x86_64). Advertising an ABI we don't build a Rust
+            // `ari-ffi` .so for ships a slice that crashes on load — so no
+            // armeabi-v7a until the Rust build produces one.
+            abiFilters += listOf("arm64-v8a", "x86_64")
         }
 
         externalNativeBuild {
