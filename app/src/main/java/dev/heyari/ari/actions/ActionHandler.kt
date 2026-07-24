@@ -24,10 +24,13 @@ import javax.inject.Singleton
  * envelope's `speak` text plus any attachments the bubble should render
  * underneath.
  *
- * Single-shot slots (`launch_app`, `search`, `open_url`, `clipboard`) take
- * effect immediately; rich primitives (`cards`, `alerts`, `notifications`,
- * `dismiss.*`) flow through [PresentationCoordinator]. Both can coexist
- * in one envelope (e.g. a clipboard copy + a confirmation card).
+ * Single-shot slots (`launch_app`, `search`, `open_url`, `media`, `navigate`,
+ * `clipboard`, `alarm`) take effect immediately; rich primitives (`cards`,
+ * `alerts`, `notifications`, `dismiss.*`) flow through [PresentationCoordinator].
+ * Both coexist in one envelope (e.g. a media action plus a now-playing card):
+ * every slot falls through to the shared presentation tail. The only early
+ * returns are hard failures where the action never happened (no Maps app, no
+ * Clock app), which skip presentation and just speak the failure.
  *
  * Frontend-authored conversation replies (the strings the frontend produces
  * when a skill omitted `speak`) follow Ari's *conversation* locale — the
@@ -57,26 +60,32 @@ class ActionHandler @Inject constructor(
         val env = PresentationEnvelope.parse(obj, skillId)
             ?: return ActionResult.Spoken(say(R.string.action_reply_not_understood))
 
-        // Single-shot slots first. The skill may have omitted `speak` for
-        // these (so the frontend can produce platform-appropriate phrasing
-        // like "Opening Spotify"). If the skill DID set `speak`, it wins.
-        env.launchApp?.let { return ActionResult.Spoken(env.speak ?: handleOpen(it)) }
-        env.search?.let { return ActionResult.Spoken(env.speak ?: handleSearch(it)) }
-        env.openUrl?.let { return ActionResult.Spoken(env.speak ?: handleOpenUrl(it)) }
-        env.media?.let { return ActionResult.Spoken(env.speak ?: handleMedia(it)) }
+        // Single-shot slots. Each performs its side effect and contributes the
+        // spoken line, then FALLS THROUGH to the shared presentation tail so any
+        // cards / alerts / notifications in the same envelope still render
+        // (previously these returned early and silently dropped them). The skill
+        // may omit `speak` so the frontend can supply platform-appropriate
+        // phrasing like "Opening Spotify"; if the skill DID set `speak`, it wins.
+        var spoken: String? = null
+        env.launchApp?.let { spoken = env.speak ?: handleOpen(it) }
+        env.search?.let { spoken = env.speak ?: handleSearch(it) }
+        env.openUrl?.let { spoken = env.speak ?: handleOpenUrl(it) }
+        env.media?.let { spoken = env.speak ?: handleMedia(it) }
         env.navigate?.let { nav ->
-            return when (navigationLauncher.launch(nav)) {
-                NavigationLauncher.LaunchResult.Launched ->
-                    ActionResult.Spoken(env.speak ?: "")
+            when (navigationLauncher.launch(nav)) {
+                NavigationLauncher.LaunchResult.Launched -> spoken = env.speak ?: ""
+                // No Maps app: navigation never happened, so speak the failure
+                // and skip presentation (mirrors the alarm no-Clock-app path).
                 NavigationLauncher.LaunchResult.NoMapsApp ->
-                    ActionResult.Spoken(say(R.string.action_reply_navigate_no_maps))
+                    return ActionResult.Spoken(say(R.string.action_reply_navigate_no_maps))
             }
         }
         env.clipboardText?.let { copyToClipboard(it) }
 
         // Alarm hand-off. On success, fall through to the shared tail below so
         // the confirm card renders and env.speak is spoken; only override the
-        // spoken line (returning early) when there's no Clock app to handle it.
+        // spoken line (returning early, skipping presentation) when there's no
+        // Clock app to handle it.
         env.alarm?.let { alarm ->
             if (alarmLauncher.launch(alarm) is AlarmLauncher.LaunchResult.NoClockApp) {
                 return ActionResult.Spoken(say(R.string.action_reply_alarm_no_clock))
@@ -88,7 +97,7 @@ class ActionHandler @Inject constructor(
         } else {
             emptyList()
         }
-        return ActionResult.Spoken(env.speak ?: "", attachments, env.runUtterance)
+        return ActionResult.Spoken(spoken ?: env.speak ?: "", attachments, env.runUtterance)
     }
 
     private fun handleOpen(target: String): String {
