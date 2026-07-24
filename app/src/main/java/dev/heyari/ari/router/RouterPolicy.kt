@@ -47,6 +47,11 @@ class RouterPolicy @Inject constructor(
      * Whether [locale] should have a router model on disk — an install
      * already there, or one [RouterAvailability] says is published.
      *
+     * The router is English-only ([routerSupportsLocale]): non-English
+     * short-circuits to `false` here without a download or availability
+     * check, which is what makes `reconcile` tear down any stale model left
+     * from before this became English-only.
+     *
      * Takes the locale rather than reading the active one so the onboarding
      * wizard can ask about the language being picked, which isn't active yet.
      *
@@ -60,7 +65,8 @@ class RouterPolicy @Inject constructor(
      * it is still this locale's own model, so no cross-locale rule is in play.
      */
     suspend fun shouldHaveModel(locale: String): Boolean =
-        downloadManager.isDownloaded(locale) || availability.isAvailable(locale)
+        routerSupportsLocale(locale) &&
+            (downloadManager.isDownloaded(locale) || availability.isAvailable(locale))
 
     /**
      * The standard entry point: read required-state and reconcile as one
@@ -121,5 +127,17 @@ class RouterPolicy @Inject constructor(
         for (dir in downloadManager.routerRootDir.listFiles().orEmpty()) {
             if (dir.isDirectory && dir.name != keep) dir.deleteRecursively()
         }
+    }
+
+    companion object {
+        /**
+         * Whether the FunctionGemma router covers [locale] at all. It is
+         * English-only — at 270M it routes other languages confidently but
+         * wrongly — so this is the gate every model decision passes through
+         * before any download or availability check. Non-English languages
+         * route via the cloud LLM instead (handled in the engine), so they
+         * never need a model on disk.
+         */
+        fun routerSupportsLocale(locale: String): Boolean = locale == "en"
     }
 }
