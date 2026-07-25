@@ -3,6 +3,7 @@ package dev.heyari.ari
 import android.app.Application
 import android.app.LocaleManager
 import android.content.ComponentCallbacks2
+import android.content.Intent
 import android.os.Build
 import android.os.LocaleList
 import android.util.Log
@@ -20,6 +21,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import dev.heyari.ari.actions.InstalledAppsReceiver
 import dev.heyari.ari.di.EngineHolder
 import javax.inject.Inject
 
@@ -30,6 +32,7 @@ class AriApplication : Application(), Configuration.Provider {
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var sttModelLoader: SttModelLoader
     @Inject lateinit var autoUpdatePreferences: AutoUpdatePreferences
+    @Inject lateinit var appLauncher: dev.heyari.ari.actions.AppLauncher
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -45,6 +48,18 @@ class AriApplication : Application(), Configuration.Provider {
         // Building it on the main thread (the old @Inject AriEngine field
         // did exactly that) is what tripped the startup ANR.
         engineHolder.warmUp()
+        // Keep the engine's app inventory fresh when apps are added/removed.
+        val installedAppsFilter = android.content.IntentFilter().apply {
+            addAction(Intent.ACTION_PACKAGE_ADDED)
+            addAction(Intent.ACTION_PACKAGE_REMOVED)
+            addDataScheme("package")
+        }
+        androidx.core.content.ContextCompat.registerReceiver(
+            this,
+            InstalledAppsReceiver(appLauncher) { engineHolder.peek() },
+            installedAppsFilter,
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
         // Idempotent — KEEP policy means reinstalls don't reset the schedule.
         SkillUpdateWorker.schedule(this)
         scheduleModelUpdateWorker()

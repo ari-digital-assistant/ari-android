@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.actions.AriFfiEnvelopeSink
+import dev.heyari.ari.actions.pushInstalledApps
 import dev.heyari.ari.calendar.AriFfiCalendarProvider
 import dev.heyari.ari.media.AriFfiMediaServicesProvider
 import dev.heyari.ari.clock.AriFfiLocalClock
@@ -78,6 +79,7 @@ class EngineHolder @Inject constructor(
     private val ariFfiSettingWriter: dev.heyari.ari.settings.AriFfiSettingWriter,
     private val ariFfiAuthorizeProvider: dev.heyari.ari.oauth.AriFfiAuthorizeProvider,
     private val ariFfiMediaServicesProvider: AriFfiMediaServicesProvider,
+    private val appLauncher: dev.heyari.ari.actions.AppLauncher,
 ) {
     // SupervisorJob isolates siblings but does not swallow: an exception from
     // anything launched here otherwise reaches the default uncaught handler
@@ -162,6 +164,12 @@ class EngineHolder @Inject constructor(
         val facts = settingsRepository.rememberedFactsOnce()
         engine.setRememberedFacts(facts)
         Log.i(TAG, "hydrated ${facts.size} remembered fact(s) from DataStore")
+
+        // Installed-app inventory: lets the `open` skill tell "open spotify"
+        // (an app) from "open the blinds" (a smart-home device). An empty/absent
+        // inventory keeps the legacy "any target is an app" behaviour.
+        engine.pushInstalledApps(appLauncher)
+        Log.i(TAG, "pushed installed-app inventory to engine")
 
         val skillsDir = File(context.filesDir, "skills").apply { mkdirs() }
         val storageDir = File(context.filesDir, "skill-storage").apply { mkdirs() }
