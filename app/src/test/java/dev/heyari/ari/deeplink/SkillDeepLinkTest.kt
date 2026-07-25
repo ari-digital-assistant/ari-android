@@ -44,4 +44,17 @@ class SkillDeepLinkTest {
         assertNull(skillDeepLinkRoute(null))
         assertNull(skillDeepLinkRoute("not a url"))
     }
+
+    @Test fun `subdomain spoof is rejected (exact host match, not suffix)`() {
+        assertNull(skillDeepLinkRoute("https://heyari.dev.evil.com/skills/dev.heyari.weather"))
+    }
+
+    @Test fun `extra path segments fall back to the skills list, no route injection`() {
+        assertEquals(Routes.skills(), skillDeepLinkRoute("https://heyari.dev/skills/dev.heyari.weather/extra"))
+    }
+
+    @Test fun `non-https scheme is rejected`() {
+        assertNull(skillDeepLinkRoute("file://heyari.dev/skills/dev.heyari.weather"))
+        assertNull(skillDeepLinkRoute("http://heyari.dev/skills/dev.heyari.weather"))
+    }
 }

@@ -15,6 +15,7 @@ import java.net.URI
  */
 fun skillDeepLinkRoute(url: String?): String? {
     val uri = try { URI(url ?: return null) } catch (e: Exception) { return null }
+    if (uri.scheme?.equals("https", ignoreCase = true) != true) return null
     if (!uri.host.equals("heyari.dev", ignoreCase = true)) return null
     val path = uri.path ?: return null
     if (path != "/skills" && !path.startsWith("/skills/")) return null
