@@ -938,6 +938,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_set_conversation_memory_enabled(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_set_installed_apps(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_set_remembered_facts(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_set_router_confidence_floor(
@@ -1119,6 +1121,8 @@ external fun uniffi_ari_ffi_fn_method_ariengine_remembered_facts(`ptr`: Long,uni
 external fun uniffi_ari_ffi_fn_method_ariengine_set_conversation_active(`ptr`: Long,`active`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_set_conversation_memory_enabled(`ptr`: Long,`enabled`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ariengine_set_installed_apps(`ptr`: Long,`apps`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_set_remembered_facts(`ptr`: Long,`facts`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
@@ -1466,6 +1470,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_conversation_memory_enabled() != 38505.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_installed_apps() != 58081.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_remembered_facts() != 53816.toShort()) {
@@ -2314,6 +2321,12 @@ public interface AriEngineInterface {
     fun `setConversationMemoryEnabled`(`enabled`: kotlin.Boolean)
     
     /**
+     * Replace the engine's snapshot of installed launchable apps. The frontend
+     * pushes this at build time and refreshes it on app install/uninstall.
+     */
+    fun `setInstalledApps`(`apps`: List<FfiAppEntry>)
+    
+    /**
      * Replace the engine's durable personal facts. Mirrors the Android
      * persisted store; hydrated at engine build and written through after a
      * settings-screen edit.
@@ -2686,6 +2699,22 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     UniffiLib.uniffi_ari_ffi_fn_method_ariengine_set_conversation_memory_enabled(
         it,
         FfiConverterBoolean.lower(`enabled`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Replace the engine's snapshot of installed launchable apps. The frontend
+     * pushes this at build time and refreshes it on app install/uninstall.
+     */override fun `setInstalledApps`(`apps`: List<FfiAppEntry>)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_set_installed_apps(
+        it,
+        FfiConverterSequenceTypeFfiAppEntry.lower(`apps`),_status)
 }
     }
     
@@ -8145,6 +8174,49 @@ public object FfiConverterTypeSkillSettingsStore: FfiConverter<SkillSettingsStor
 
 
 
+/**
+ * One installed launchable app, pushed into the engine so scoring can tell
+ * "open <app>" from "open <smart-home device>". Mirrors
+ * [`ari_core::AppEntry`] across the UniFFI boundary.
+ */
+data class FfiAppEntry (
+    var `label`: kotlin.String
+    , 
+    var `package`: kotlin.String
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiAppEntry: FfiConverterRustBuffer<FfiAppEntry> {
+    override fun read(buf: ByteBuffer): FfiAppEntry {
+        return FfiAppEntry(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiAppEntry) = (
+            FfiConverterString.allocationSize(value.`label`) +
+            FfiConverterString.allocationSize(value.`package`)
+    )
+
+    override fun write(value: FfiAppEntry, buf: ByteBuffer) {
+            FfiConverterString.write(value.`label`, buf)
+            FfiConverterString.write(value.`package`, buf)
+    }
+}
+
+
+
 data class FfiAssistantEntry (
     var `id`: kotlin.String
     , 
@@ -9978,6 +10050,34 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterString.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiAppEntry: FfiConverterRustBuffer<List<FfiAppEntry>> {
+    override fun read(buf: ByteBuffer): List<FfiAppEntry> {
+        val len = buf.getInt()
+        return List<FfiAppEntry>(len) {
+            FfiConverterTypeFfiAppEntry.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiAppEntry>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiAppEntry.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiAppEntry>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiAppEntry.write(it, buf)
         }
     }
 }
