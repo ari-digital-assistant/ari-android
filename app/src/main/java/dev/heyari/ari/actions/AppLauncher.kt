@@ -59,33 +59,7 @@ class AppLauncher @Inject constructor(
      * 3. Label contains all words of target (in any order)
      * 4. Package name contains target (last resort, e.g. "chrome" → com.android.chrome)
      */
-    fun findApp(target: String): LaunchableApp? {
-        val needle = target.trim().lowercase()
-        if (needle.isEmpty()) return null
-
-        val apps = listLaunchable()
-        val needleWords = needle.split(Regex("\\s+")).filter { it.isNotBlank() }
-
-        // 1. Exact match
-        apps.firstOrNull { it.label.equals(needle, ignoreCase = true) }?.let { return it }
-
-        // 2. Prefix match
-        apps.firstOrNull { it.label.lowercase().startsWith(needle) }?.let { return it }
-
-        // 3. All words contained
-        apps.firstOrNull { app ->
-            val labelLower = app.label.lowercase()
-            needleWords.all { labelLower.contains(it) }
-        }?.let { return it }
-
-        // 4. Package name fallback
-        apps.firstOrNull { app ->
-            val pkgLower = app.packageName.lowercase()
-            needleWords.all { pkgLower.contains(it) }
-        }?.let { return it }
-
-        return null
-    }
+    fun findApp(target: String): LaunchableApp? = resolve(target, listLaunchable())
 
     fun launch(target: String): LaunchResult {
         val app = findApp(target) ?: return LaunchResult.NotFound(target)
@@ -106,5 +80,30 @@ class AppLauncher @Inject constructor(
 
     companion object {
         private const val TAG = "AppLauncher"
+
+        /**
+         * Pure resolver over a supplied app list — the four-step ladder used by
+         * [findApp], extracted so it can be unit-tested and kept in lockstep with
+         * the engine's Rust `target_matches_app` (ari-skills/src/open.rs).
+         * 1. exact case-insensitive label  2. label starts-with target
+         * 3. label contains every target word  4. package contains every target word
+         */
+        internal fun resolve(target: String, apps: List<LaunchableApp>): LaunchableApp? {
+            val needle = target.trim().lowercase()
+            if (needle.isEmpty()) return null
+            val needleWords = needle.split(Regex("\\s+")).filter { it.isNotBlank() }
+
+            apps.firstOrNull { it.label.equals(needle, ignoreCase = true) }?.let { return it }
+            apps.firstOrNull { it.label.lowercase().startsWith(needle) }?.let { return it }
+            apps.firstOrNull { app ->
+                val labelLower = app.label.lowercase()
+                needleWords.all { labelLower.contains(it) }
+            }?.let { return it }
+            apps.firstOrNull { app ->
+                val pkgLower = app.packageName.lowercase()
+                needleWords.all { pkgLower.contains(it) }
+            }?.let { return it }
+            return null
+        }
     }
 }
