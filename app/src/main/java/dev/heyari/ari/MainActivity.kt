@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
 import dev.heyari.ari.data.SettingsRepository
+import dev.heyari.ari.deeplink.skillDeepLinkRoute
 import dev.heyari.ari.models.ModelUpdateNotifier
 import dev.heyari.ari.skills.SkillUpdateNotifier
 import dev.heyari.ari.ui.AriNavHost
@@ -65,6 +66,7 @@ class MainActivity : ComponentActivity() {
 
         handleWakeWordIntent(intent)
         handleSkillUpdatesIntent(intent)
+        handleSkillDeepLinkIntent(intent)
         handleModelUpdatesIntent(intent)
         setContent {
             AriTheme {
@@ -83,6 +85,7 @@ class MainActivity : ComponentActivity() {
         }
         handleWakeWordIntent(intent)
         handleSkillUpdatesIntent(intent)
+        handleSkillDeepLinkIntent(intent)
         handleModelUpdatesIntent(intent)
     }
 
@@ -102,6 +105,13 @@ class MainActivity : ComponentActivity() {
             deepLinkCommands.trySend(Routes.skills())
             intent.removeExtra(SkillUpdateNotifier.EXTRA_OPEN_SKILLS)
         }
+    }
+
+    private fun handleSkillDeepLinkIntent(intent: Intent?) {
+        val route = skillDeepLinkRoute(intent?.data?.toString()) ?: return
+        deepLinkCommands.trySend(route)
+        // Clear so a config change / rotation doesn't re-fire the same deep link.
+        intent?.data = null
     }
 
     private fun handleModelUpdatesIntent(intent: Intent?) {
