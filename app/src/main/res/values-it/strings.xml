@@ -286,6 +286,11 @@
     <string name="wakeword_sensitivity_medium_description">Consigliata per la maggior parte degli ambienti.</string>
     <string name="wakeword_sensitivity_low_label">Bassa</string>
     <string name="wakeword_sensitivity_low_description">Più rigorosa. Usa se Ari si attiva quando non dovrebbe.</string>
+    <string name="settings_wake_capture_title">Conserva l\'audio delle attivazioni errate</string>
+    <string name="settings_wake_capture_blurb">Quando Ari si attiva per qualcosa che non hai detto, conserva la registrazione per migliorare la parola di attivazione. L\'audio resta su questo dispositivo, nella memoria privata di Ari, non viene mai caricato online ed è limitato a 50 clip. Disattivato per impostazione predefinita.</string>
+    <string name="settings_wake_capture_stats">%1$d clip · %2$s</string>
+    <string name="settings_wake_capture_empty">Nessuna clip salvata.</string>
+    <string name="settings_wake_capture_delete">Elimina tutte le clip</string>
     <string name="settings_stt_models_blurb">Scegli un modello di riconoscimento vocale. I modelli più grandi sono più accurati ma occupano più spazio e RAM.</string>
     <string name="settings_language_blurb">La lingua in cui Ari ascolta e parla. Cambiarla aggiorna le risposte dell\'assistente e i testi dell\'app — potresti dover sostituire il modello di riconoscimento vocale qui sotto se non supporta la nuova lingua.</string>
     <string name="settings_cloud_stt_for_non_english_title">Usa STT cloud per le lingue non inglesi</string>

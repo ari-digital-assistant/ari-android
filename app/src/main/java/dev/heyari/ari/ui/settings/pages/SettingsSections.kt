@@ -1,5 +1,6 @@
 package dev.heyari.ari.ui.settings.pages
 
+import android.text.format.Formatter
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -40,6 +42,7 @@ import dev.heyari.ari.ui.settings.LlmModelStatus
 import dev.heyari.ari.ui.settings.ModelStatus
 import dev.heyari.ari.ui.settings.PermissionStatus
 import dev.heyari.ari.ui.settings.WakeWordOption
+import dev.heyari.ari.wakeword.WakeCaptureStats
 import dev.heyari.ari.wakeword.WakeWordModel
 import dev.heyari.ari.wakeword.WakeWordSensitivity
 import java.util.Locale
@@ -281,6 +284,52 @@ internal fun WakeWordSensitivitySection(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun WakeCaptureSection(
+    enabled: Boolean,
+    stats: WakeCaptureStats,
+    onToggle: (Boolean) -> Unit,
+    onClear: () -> Unit,
+) {
+    val context = LocalContext.current
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = stringResource(R.string.settings_wake_capture_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Switch(checked = enabled, onCheckedChange = onToggle)
+        }
+        Text(
+            text = stringResource(R.string.settings_wake_capture_blurb),
+            style = MaterialTheme.typography.bodySmall,
+        )
+        Text(
+            text = if (stats.count == 0) {
+                stringResource(R.string.settings_wake_capture_empty)
+            } else {
+                stringResource(
+                    R.string.settings_wake_capture_stats,
+                    stats.count,
+                    Formatter.formatShortFileSize(context, stats.totalBytes),
+                )
+            },
+            style = MaterialTheme.typography.bodySmall,
+        )
+        if (stats.count > 0) {
+            OutlinedButton(onClick = onClear) {
+                Icon(Icons.Default.Delete, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.settings_wake_capture_delete))
             }
         }
     }

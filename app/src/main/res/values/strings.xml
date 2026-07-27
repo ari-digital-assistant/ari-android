@@ -286,6 +286,11 @@
     <string name="wakeword_sensitivity_medium_description">Recommended for most environments.</string>
     <string name="wakeword_sensitivity_low_label">Low</string>
     <string name="wakeword_sensitivity_low_description">Stricter. Use if Ari wakes when it shouldn\'t.</string>
+    <string name="settings_wake_capture_title">Keep false-trigger audio</string>
+    <string name="settings_wake_capture_blurb">When Ari wakes for something you didn\'t say, keep the recording so the wake word can be improved. Audio stays on this device in Ari\'s private storage, is never uploaded, and is capped at 50 clips. Off by default.</string>
+    <string name="settings_wake_capture_stats">%1$d clips · %2$s</string>
+    <string name="settings_wake_capture_empty">No clips saved yet.</string>
+    <string name="settings_wake_capture_delete">Delete all clips</string>
     <string name="settings_stt_models_blurb">Choose a voice recognition model. Larger models are more accurate but use more storage and RAM.</string>
     <string name="settings_language_blurb">The language Ari listens and speaks in. Changing this updates the assistant\'s replies and the app\'s chrome — you may need to swap your speech-to-text model below if it doesn\'t support the new language.</string>
     <string name="settings_cloud_stt_for_non_english_title">Use cloud STT for non-English</string>

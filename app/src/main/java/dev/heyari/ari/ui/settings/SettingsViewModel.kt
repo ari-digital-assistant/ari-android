@@ -32,6 +32,8 @@ import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.stt.SttModel
 import dev.heyari.ari.stt.SttModelRegistry
 import dev.heyari.ari.tts.SpeechOutput
+import dev.heyari.ari.wakeword.WakeCaptureStats
+import dev.heyari.ari.wakeword.WakeCaptureStore
 import dev.heyari.ari.wakeword.WakeWordModel
 import dev.heyari.ari.wakeword.WakeWordRegistry
 import dev.heyari.ari.wakeword.WakeWordSensitivity
@@ -112,6 +114,8 @@ data class SettingsState(
     val activeAssistantId: String? = null,
     val assistantEntries: List<AssistantUiEntry> = emptyList(),
     val startOnBoot: Boolean = false,
+    val keepFalseTriggerAudio: Boolean = false,
+    val wakeCaptureStats: WakeCaptureStats = WakeCaptureStats(0, 0L),
     val bargeInEnabled: Boolean = true,
     val conversationMemoryEnabled: Boolean = true,
     val rememberedFacts: List<String> = emptyList(),
@@ -140,6 +144,7 @@ class SettingsViewModel @Inject constructor(
     private val routerDownloadManager: RouterDownloadManager,
     private val routerPolicy: RouterPolicy,
     private val speechOutput: SpeechOutput,
+    private val wakeCaptureStore: WakeCaptureStore,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
@@ -283,6 +288,17 @@ class SettingsViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
+            settingsRepository.keepFalseTriggerAudio.collect { enabled ->
+                _state.update {
+                    it.copy(
+                        keepFalseTriggerAudio = enabled,
+                        wakeCaptureStats = wakeCaptureStore.stats(),
+                    )
+                }
+            }
+        }
+
+        viewModelScope.launch {
             settingsRepository.bargeInEnabled.collect { enabled ->
                 _state.update { it.copy(bargeInEnabled = enabled) }
             }
@@ -384,6 +400,17 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.setStartOnBoot(enabled)
         }
+    }
+
+    fun setKeepFalseTriggerAudio(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setKeepFalseTriggerAudio(enabled)
+        }
+    }
+
+    fun clearWakeCaptures() {
+        wakeCaptureStore.clear()
+        _state.update { it.copy(wakeCaptureStats = wakeCaptureStore.stats()) }
     }
 
     fun setBargeInEnabled(enabled: Boolean) {

@@ -92,6 +92,21 @@ class SettingsRepository @Inject constructor(
     }
 
     /**
+     * Whether to keep audio that falsely triggered the wake word, for a future
+     * model retrain. Default off — this writes microphone audio to app-private
+     * storage and must never be on unless the user asked for it.
+     */
+    val keepFalseTriggerAudio: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_KEEP_FALSE_TRIGGER_AUDIO] ?: false
+    }
+
+    suspend fun setKeepFalseTriggerAudio(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_KEEP_FALSE_TRIGGER_AUDIO] = enabled
+        }
+    }
+
+    /**
      * Whether the user may interrupt Ari mid-sentence during a "Let's talk"
      * conversation. Default on — it's the natural feel of a conversation.
      * Effective barge-in additionally requires a hardware echo canceller
@@ -316,6 +331,8 @@ class SettingsRepository @Inject constructor(
         private val KEY_ACTIVE_TTS_VOICE = stringPreferencesKey("active_tts_voice")
         private val KEY_ACTIVE_LOCALE = stringPreferencesKey("active_locale")
         private val KEY_START_ON_BOOT = booleanPreferencesKey("start_on_boot")
+        private val KEY_KEEP_FALSE_TRIGGER_AUDIO =
+            booleanPreferencesKey("keep_false_trigger_audio")
         private val KEY_BARGE_IN_ENABLED = booleanPreferencesKey("barge_in_enabled")
         private val KEY_CONVERSATION_MEMORY_ENABLED =
             booleanPreferencesKey("conversation_memory_enabled")

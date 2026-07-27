@@ -44,6 +44,12 @@ fun WakeWordSettingsPage(
                 current = state.wakeWordSensitivity,
                 onSelect = viewModel::selectWakeWordSensitivity,
             )
+            WakeCaptureSection(
+                enabled = state.keepFalseTriggerAudio,
+                stats = state.wakeCaptureStats,
+                onToggle = viewModel::setKeepFalseTriggerAudio,
+                onClear = viewModel::clearWakeCaptures,
+            )
         }
     }
 }
