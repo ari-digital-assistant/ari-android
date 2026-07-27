@@ -16,6 +16,7 @@ import com.k2fsa.sherpa.onnx.OnlineStream
 import com.k2fsa.sherpa.onnx.OnlineTransducerModelConfig
 import dev.heyari.ari.audio.CaptureBus
 import dev.heyari.ari.locale.AriFfiLocaleProvider
+import dev.heyari.ari.voice.WakeMatch
 import dev.heyari.ari.voice.matchWakePhrase
 import dev.heyari.ari.voice.stripWakePhrase
 import kotlinx.coroutines.CoroutineScope
@@ -442,7 +443,8 @@ class SpeechRecognizer @Inject constructor(
                     }
 
                     val rawPartial = rec.getResult(currentStream).text.trim()
-                    val partialMatch = matchWakePhrase(rawPartial, localeProvider.currentLocale())
+                    val locale = localeProvider.currentLocale()
+                    val partialMatch = matchWakePhrase(rawPartial, locale)
                     val cleanedPartial = partialMatch.text
                     Log.d(TAG, "decode: fed=${merged.size} raw='$rawPartial' cleaned='$cleanedPartial'")
                     if (cleanedPartial.isNotEmpty()) {
@@ -500,7 +502,7 @@ class SpeechRecognizer @Inject constructor(
                             parallelText,
                             mergedAudio,
                             rawPartial,
-                            partialMatch.nameMatched,
+                            wakeVerdict(partialMatch, locale),
                         )
                         stopRecording()
                         return@launch
@@ -626,7 +628,8 @@ class SpeechRecognizer @Inject constructor(
             }
         }
 
-        val match = matchWakePhrase(transcript, localeProvider.currentLocale())
+        val locale = localeProvider.currentLocale()
+        val match = matchWakePhrase(transcript, locale)
         Log.i(TAG, "Whisper transcript: raw='$transcript' cleaned='${match.text}'")
 
         // No parallel stream, no audio-for-retry: whisper is the final
@@ -636,10 +639,32 @@ class SpeechRecognizer @Inject constructor(
             parallel = null,
             audio = null,
             raw = transcript,
-            nameMatched = match.nameMatched,
+            nameMatched = wakeVerdict(match, locale),
         )
         stopRecording()
     }
+
+    /**
+     * The wake-verification verdict carried by [SttState.Done.nameMatched] —
+     * [match]'s verdict for English, null for every other locale.
+     *
+     * The wake-word model is English-only whatever Ari's active locale is, but
+     * sherpa is not: a non-English recogniser transcribes the English phrase
+     * through its own phonotactics. The name list `matchWakePhrase` checks was
+     * built empirically from ENGLISH sherpa mishears and `WakeMishearTable` is
+     * still empty for every other language, so outside English we have no
+     * evidence about what "hey ari" actually comes out as. Acting on a verdict
+     * we can't trust would turn a benign failure (wake phrase left in the
+     * query, engine says "not understood") into a hard one (turn silently
+     * dismissed) — so we don't form one, and `shouldAcceptWake` fails open on
+     * null. Same call the router already makes in `routerSupportsLocale`.
+     *
+     * [SttState.Done.raw] is still populated for every locale: the Italian
+     * transcripts accruing in the logs are how `WakeMishearTable` eventually
+     * gets filled in.
+     */
+    private fun wakeVerdict(match: WakeMatch, locale: String): Boolean? =
+        if (locale == "en") match.nameMatched else null
 
     private fun computeRms(samples: ShortArray): Float {
         if (samples.isEmpty()) return 0f
