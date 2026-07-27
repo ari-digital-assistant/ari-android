@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
 import dev.heyari.ari.ui.theme.AriTheme
+import dev.heyari.ari.wakeword.WakeWordService
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -44,7 +45,9 @@ class VoiceOverlayActivity : ComponentActivity() {
         Log.i(TAG, "VoiceOverlayActivity created")
 
         // Start the session and observe state to auto-finish on Idle.
-        voiceSession.start()
+        voiceSession.start(
+            verifyWake = intent.getBooleanExtra(WakeWordService.EXTRA_VERIFY_WAKE, false)
+        )
 
         lifecycleScope.launch {
             voiceSession.state.collect { state ->

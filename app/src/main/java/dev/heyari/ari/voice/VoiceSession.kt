@@ -166,6 +166,13 @@ class VoiceSession @Inject constructor(
     @Volatile
     private var awaitingReply: Boolean = false
 
+    // True from a wake-initiated start() until that session's first final
+    // transcript is accepted. Only the opening turn of a wake session carries
+    // the wake phrase in its pre-roll; re-armed reply turns arm with
+    // rewindSeconds = 0f and have nothing to verify against.
+    @Volatile
+    private var verifyWake: Boolean = false
+
     // "Let's talk" continuous mode: while true, every turn re-arms the mic
     // (no wake word) until an exit phrase, 30s silence, or an error.
     @Volatile
@@ -199,12 +206,17 @@ class VoiceSession @Inject constructor(
     /**
      * Begin a voice session. If one is already in progress, do nothing —
      * we don't want re-entrant sessions stomping on each other.
+     *
+     * [verifyWake] must be true ONLY for a wake-word detection: it subjects the
+     * first final transcript to [shouldAcceptWake], which relies on the wake
+     * phrase being present in the pre-roll.
      */
-    fun start() {
+    fun start(verifyWake: Boolean) {
         if (sessionJob?.isActive == true) {
             Log.w(TAG, "VoiceSession.start() called while already active — ignoring")
             return
         }
+        this.verifyWake = verifyWake
         // A fresh wake cancels any reply the engine was still waiting on from a
         // previous turn — the user has clearly moved on. No-op when nothing is
         // pending.
@@ -239,6 +251,12 @@ class VoiceSession @Inject constructor(
                     }
                     speechOutput.speakAndAwait(pleaseRepeatPhrase(context))
                     _state.value = VoiceState.Listening("")
+                    // Nothing left to verify against: the wake phrase aged out
+                    // of the ring buffer with the rest of the original
+                    // utterance, and the user is repeating a bare command. Same
+                    // reasoning as rearmForReply — verify only what actually
+                    // carries a wake phrase in its pre-roll.
+                    this@VoiceSession.verifyWake = false
                     // Zero rewind: the repeat prompt + ready cue must not be
                     // ingested as the user's answer (same guard as rearmForReply).
                     speechRecognizer.startListening(rewindSeconds = 0f)
@@ -322,6 +340,17 @@ class VoiceSession @Inject constructor(
                                     }
                                     return@collect
                                 }
+                                // this@ qualified throughout: the start()
+                                // parameter shadows the field, and only the
+                                // field is cleared once the opening turn is
+                                // accepted or the mic re-arms.
+                                val verify = this@VoiceSession.verifyWake
+                                if (!shouldAcceptWake(verify, sttState.raw, sttState.nameMatched)) {
+                                    Log.w(TAG, "Wake rejected: raw='${sttState.raw}'")
+                                    dismiss()
+                                    return@collect
+                                }
+                                this@VoiceSession.verifyWake = false
                                 handleFinalText(
                                     sttState.text,
                                     sttState.parallel,
@@ -695,6 +724,7 @@ class VoiceSession @Inject constructor(
         engineHolder.peek()?.setConversationActive(false)
         engineHolder.peek()?.cancelPendingReply()
         awaitingReply = false
+        verifyWake = false
         speechRecognizer.stopListening()
         speechRecognizer.reset()
         speechOutput.stop()

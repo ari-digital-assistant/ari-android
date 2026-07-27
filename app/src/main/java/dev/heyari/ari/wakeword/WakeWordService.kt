@@ -170,7 +170,7 @@ class WakeWordService : Service() {
 
             oneShotActive = intent.getBooleanExtra(EXTRA_ONE_SHOT, false)
             oneShotTurnBegan = false
-            val launched = launchVoiceOverlay()
+            val launched = launchVoiceOverlay(verifyWake = false)
             if (!launched && oneShotActive) {
                 // One-shot host with no turn to end it — don't leave the mic
                 // hot. (Always-on keeps running: the mic belongs to it anyway.)
@@ -395,7 +395,7 @@ class WakeWordService : Service() {
             return
         }
 
-        launchVoiceOverlay()
+        launchVoiceOverlay(verifyWake = true)
     }
 
     /**
@@ -410,8 +410,9 @@ class WakeWordService : Service() {
      * uses this to stand the capture host down if the launch failed — otherwise
      * the service would sit with the mic hot waiting for a turn that never began.
      */
-    private fun launchVoiceOverlay(): Boolean {
+    private fun launchVoiceOverlay(verifyWake: Boolean): Boolean {
         val intent = Intent(this, VoiceOverlayActivity::class.java).apply {
+            putExtra(EXTRA_VERIFY_WAKE, verifyWake)
             addFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK
                     or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -592,6 +593,11 @@ class WakeWordService : Service() {
         const val ACTION_START_VOICE_TURN = "dev.heyari.ari.START_VOICE_TURN"
         const val ACTION_START_DICTATION = "dev.heyari.ari.START_DICTATION"
         const val EXTRA_ONE_SHOT = "one_shot"
+
+        // True only for turns started by an actual wake-word detection. The
+        // tap-to-talk path shares launchVoiceOverlay() but has no wake phrase
+        // in its pre-roll, so verifying it would bin every tap-to-talk turn.
+        const val EXTRA_VERIFY_WAKE = "verify_wake"
 
         private const val REQUEST_OPEN_APP = 0
         private const val REQUEST_STOP = 1

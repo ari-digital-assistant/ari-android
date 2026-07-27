@@ -16,6 +16,7 @@ import com.k2fsa.sherpa.onnx.OnlineStream
 import com.k2fsa.sherpa.onnx.OnlineTransducerModelConfig
 import dev.heyari.ari.audio.CaptureBus
 import dev.heyari.ari.locale.AriFfiLocaleProvider
+import dev.heyari.ari.voice.matchWakePhrase
 import dev.heyari.ari.voice.stripWakePhrase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -441,7 +442,8 @@ class SpeechRecognizer @Inject constructor(
                     }
 
                     val rawPartial = rec.getResult(currentStream).text.trim()
-                    val cleanedPartial = stripWakePhrase(rawPartial, localeProvider.currentLocale())
+                    val partialMatch = matchWakePhrase(rawPartial, localeProvider.currentLocale())
+                    val cleanedPartial = partialMatch.text
                     Log.d(TAG, "decode: fed=${merged.size} raw='$rawPartial' cleaned='$cleanedPartial'")
                     if (cleanedPartial.isNotEmpty()) {
                         _state.value = SttState.Listening(cleanedPartial)
@@ -493,7 +495,13 @@ class SpeechRecognizer @Inject constructor(
                             System.arraycopy(a, 0, mergedAudio, apos, a.size)
                             apos += a.size
                         }
-                        _state.value = SttState.Done(cleanedPartial, parallelText, mergedAudio)
+                        _state.value = SttState.Done(
+                            cleanedPartial,
+                            parallelText,
+                            mergedAudio,
+                            rawPartial,
+                            partialMatch.nameMatched,
+                        )
                         stopRecording()
                         return@launch
                     }
@@ -618,12 +626,18 @@ class SpeechRecognizer @Inject constructor(
             }
         }
 
-        val cleaned = stripWakePhrase(transcript, localeProvider.currentLocale())
-        Log.i(TAG, "Whisper transcript: raw='$transcript' cleaned='$cleaned'")
+        val match = matchWakePhrase(transcript, localeProvider.currentLocale())
+        Log.i(TAG, "Whisper transcript: raw='$transcript' cleaned='${match.text}'")
 
         // No parallel stream, no audio-for-retry: whisper is the final
         // word. The retry layers in VoiceSession skip on null.
-        _state.value = SttState.Done(text = cleaned, parallel = null, audio = null)
+        _state.value = SttState.Done(
+            text = match.text,
+            parallel = null,
+            audio = null,
+            raw = transcript,
+            nameMatched = match.nameMatched,
+        )
         stopRecording()
     }
 
@@ -789,11 +803,20 @@ sealed interface SttState {
      *   retrying with a model that already saw the full utterance). The
      *   host can feed non-null audio into [SpeechRecognizer.transcribeOffline]
      *   for a third-layer retry if both [text] and [parallel] fail.
+     * @param raw The transcript before wake-phrase stripping, or null where
+     *   only a cleaned partial survived (the manual [stopListening] path).
+     *   Used for the wake-rejection log and the false-trigger capture sidecar.
+     * @param nameMatched Whether [raw] contained a real wake-phrase name token.
+     *   Null when no verdict could be formed — treated as "accept" downstream.
+     *   Computed here rather than in the host because this class already holds
+     *   the active locale that [matchWakePhrase] needs.
      */
     data class Done(
         val text: String,
         val parallel: String? = null,
         val audio: ShortArray? = null,
+        val raw: String? = null,
+        val nameMatched: Boolean? = null,
     ) : SttState
     data class Error(val message: String) : SttState
 }
