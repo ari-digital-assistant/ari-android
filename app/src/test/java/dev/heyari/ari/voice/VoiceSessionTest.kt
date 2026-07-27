@@ -82,4 +82,31 @@ class VoiceSessionTest {
         assertFalse(shouldExitConversation(FfiResponse.Text("hi", false, false, false, false)))
         assertFalse(shouldExitConversation(FfiResponse.NotUnderstood("?")))
     }
+
+    @Test
+    fun `non-wake turns are never verified`() {
+        assertTrue(shouldAcceptWake(verifyWake = false, raw = "hey there mate", nameMatched = false))
+    }
+
+    @Test
+    fun `missing verdict fails open`() {
+        assertTrue(shouldAcceptWake(verifyWake = true, raw = "hey there mate", nameMatched = null))
+    }
+
+    @Test
+    fun `blank transcript fails open`() {
+        assertTrue(shouldAcceptWake(verifyWake = true, raw = "", nameMatched = false))
+        assertTrue(shouldAcceptWake(verifyWake = true, raw = "   ", nameMatched = false))
+        assertTrue(shouldAcceptWake(verifyWake = true, raw = null, nameMatched = false))
+    }
+
+    @Test
+    fun `wake turn with a name token is accepted`() {
+        assertTrue(shouldAcceptWake(verifyWake = true, raw = "hey ari whats the weather", nameMatched = true))
+    }
+
+    @Test
+    fun `wake turn with speech but no name token is rejected`() {
+        assertFalse(shouldAcceptWake(verifyWake = true, raw = "hey there mate", nameMatched = false))
+    }
 }

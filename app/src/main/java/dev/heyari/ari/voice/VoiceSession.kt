@@ -62,6 +62,27 @@ internal fun shouldRearm(response: FfiResponse): Boolean = when (response) {
     else -> false
 }
 
+/**
+ * Post-hoc wake verification. The 64 KB detector fires on phonetic shape and
+ * saturates its confidence even when it's wrong, so the threshold has no
+ * headroom left; sherpa — which is already transcribing the same audio via the
+ * CaptureBus rewind — is the second opinion. A wake turn whose transcript
+ * contains speech but no "ari"-ish name token was not addressed to Ari.
+ *
+ * Fails open on every ambiguity: a wrongly-rejected genuine command reads as
+ * "Ari ignored me", which is a worse experience than a spurious chime.
+ */
+internal fun shouldAcceptWake(
+    verifyWake: Boolean,
+    raw: String?,
+    nameMatched: Boolean?,
+): Boolean = when {
+    !verifyWake -> true
+    nameMatched == null -> true
+    raw.isNullOrBlank() -> true
+    else -> nameMatched
+}
+
 internal fun shouldEnterConversation(response: FfiResponse): Boolean = when (response) {
     is FfiResponse.Text -> response.enterConversation
     is FfiResponse.Action -> response.enterConversation
