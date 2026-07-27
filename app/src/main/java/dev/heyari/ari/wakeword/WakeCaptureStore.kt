@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
-import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import javax.inject.Inject
@@ -73,7 +72,8 @@ internal fun evictOldest(dir: File, maxFiles: Int, maxBytes: Long) {
  * `hey_ari.tflite` with real hard negatives.
  *
  * App-private storage only, hard-bounded, and gated behind a debug setting that
- * is off by default — the caller checks the setting, this class does not.
+ * is off by default — the caller checks the setting, this class does not. See
+ * `docs/superpowers/specs/2026-07-27-wake-word-false-accept-design.md` §5.
  */
 @Singleton
 class WakeCaptureStore @Inject constructor(
@@ -94,15 +94,8 @@ class WakeCaptureStore @Inject constructor(
             return
         }
         val stem = "wake-%017d-%s".format(timestampMs, hook.slug)
-        val wavFile = File(target, "$stem.wav")
-        try {
-            wavFile.writeBytes(wavBytes(pcm))
-            File(target, "$stem.txt").writeText(rawTranscript)
-        } catch (e: IOException) {
-            Log.w(TAG, "Could not write capture $stem", e)
-            wavFile.delete()
-            return
-        }
+        File(target, "$stem.wav").writeBytes(wavBytes(pcm))
+        File(target, "$stem.txt").writeText(rawTranscript)
         evictOldest(target, MAX_FILES, MAX_BYTES)
         Log.i(TAG, "Captured false trigger: $stem.wav (${pcm.size} samples)")
     }
