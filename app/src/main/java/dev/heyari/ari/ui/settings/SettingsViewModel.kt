@@ -287,12 +287,13 @@ class SettingsViewModel @Inject constructor(
             }
         }
 
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             settingsRepository.keepFalseTriggerAudio.collect { enabled ->
+                val stats = wakeCaptureStore.stats()
                 _state.update {
                     it.copy(
                         keepFalseTriggerAudio = enabled,
-                        wakeCaptureStats = wakeCaptureStore.stats(),
+                        wakeCaptureStats = stats,
                     )
                 }
             }
@@ -409,8 +410,11 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun clearWakeCaptures() {
-        wakeCaptureStore.clear()
-        _state.update { it.copy(wakeCaptureStats = wakeCaptureStore.stats()) }
+        viewModelScope.launch(Dispatchers.IO) {
+            wakeCaptureStore.clear()
+            val stats = wakeCaptureStore.stats()
+            _state.update { it.copy(wakeCaptureStats = stats) }
+        }
     }
 
     fun setBargeInEnabled(enabled: Boolean) {
