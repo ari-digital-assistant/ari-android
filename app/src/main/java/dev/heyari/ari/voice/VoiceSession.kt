@@ -280,12 +280,12 @@ class VoiceSession @Inject constructor(
                 // Dismiss after a silence timeout if the user never speaks.
                 // Hoisted into a local fun so it can be relaunched for a
                 // re-armed reply turn (the previous one self-cancels at Done).
-                fun launchSilenceWatcher(): Job = launch {
+                fun launchSilenceWatcher(timeoutMs: Long): Job = launch {
                     while (isActive) {
                         delay(1000)
                         val idle = System.currentTimeMillis() - lastActivityAt
-                        if (idle > SILENCE_TIMEOUT_MS) {
-                            Log.i(TAG, "No speech detected within $SILENCE_TIMEOUT_MS ms — dismissing")
+                        if (idle > timeoutMs) {
+                            Log.i(TAG, "No speech detected within $timeoutMs ms — dismissing")
                             dismiss()
                             return@launch
                         }
@@ -293,7 +293,13 @@ class VoiceSession @Inject constructor(
                 }
                 // The silence watcher is held in a var so we can relaunch it for
                 // a re-armed reply turn (the previous one self-cancels at Done).
-                var silenceWatcher = launchSilenceWatcher()
+                // A wake turn gets a much shorter window: you just said the wake
+                // phrase, so silence means it wasn't you — and every second the
+                // mic stays armed after a false accept is a second ambient
+                // speech could be mistaken for a command.
+                var silenceWatcher = launchSilenceWatcher(
+                    if (verifyWake) WAKE_TURN_SILENCE_TIMEOUT_MS else SILENCE_TIMEOUT_MS
+                )
 
                 try {
                     speechRecognizer.state.collect { sttState ->
@@ -336,7 +342,7 @@ class VoiceSession @Inject constructor(
                                     // Keep listening if the session is still
                                     // armed for a reply; otherwise stop collecting.
                                     if (awaitingReply && isActive) {
-                                        silenceWatcher = launchSilenceWatcher()
+                                        silenceWatcher = launchSilenceWatcher(SILENCE_TIMEOUT_MS)
                                     }
                                     return@collect
                                 }
@@ -362,7 +368,7 @@ class VoiceSession @Inject constructor(
                                 // silence watcher for the reply turn. Otherwise
                                 // the session is done.
                                 if (awaitingReply && isActive) {
-                                    silenceWatcher = launchSilenceWatcher()
+                                    silenceWatcher = launchSilenceWatcher(SILENCE_TIMEOUT_MS)
                                 } else {
                                     return@collect
                                 }
@@ -816,6 +822,14 @@ class VoiceSession @Inject constructor(
         // (whisper-turbo int8 takes 5-10 s on emulator x86_64) trip
         // the watcher before Done lands.
         private const val SILENCE_TIMEOUT_MS = 30_000L
+        // The opening turn of a wake session gets a much tighter window: the
+        // user just said the wake phrase, so 8 s of dead air means it wasn't
+        // addressed to Ari, and every extra second the mic stays armed is a
+        // second in which unrelated ambient speech can be taken as a command.
+        // Re-armed reply turns and dictation keep the full 30 s above — those
+        // are cases where Ari asked a question or the user deliberately opened
+        // the mic, so waiting is legitimate.
+        private const val WAKE_TURN_SILENCE_TIMEOUT_MS = 8_000L
         // How long to flash the corrected transcript in the overlay before
         // transitioning to the response. Long enough for the user to notice
         // the text changed, short enough not to feel like a stall.
