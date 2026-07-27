@@ -96,19 +96,32 @@ private fun regexesFor(locale: String): Pair<Regex, Regex> {
 }
 
 /**
- * Strip the wake phrase from [text], using locale-specific mishears
- * stacked on top of the baseline English patterns. [locale] should be
- * an ISO 639-1 lowercase code (`"en"`, `"it"`, …); unknown locales fall
- * back to baseline-only behaviour.
+ * The outcome of a wake-phrase strip: the remaining query text, and whether a
+ * real name token was found (stage 1) rather than just a bare leading opener
+ * (stage 2). The flag is the signal used to verify that a wake-word detection
+ * was genuinely addressed to Ari — the 64 KB detector fires on phonetic shape
+ * alone, sherpa knows what words are.
  */
-fun stripWakePhrase(text: String, locale: String = "en"): String {
+data class WakeMatch(val text: String, val nameMatched: Boolean)
+
+/**
+ * Strip the wake phrase from [text], using locale-specific mishears stacked on
+ * top of the baseline English patterns. [locale] should be an ISO 639-1
+ * lowercase code (`"en"`, `"it"`, …); unknown locales fall back to
+ * baseline-only behaviour.
+ */
+fun matchWakePhrase(text: String, locale: String = "en"): WakeMatch {
     val trimmed = text.trim()
-    if (trimmed.isEmpty()) return ""
+    if (trimmed.isEmpty()) return WakeMatch("", false)
     val (full, leading) = regexesFor(locale)
     val afterFull = full.replaceFirst(trimmed, "")
-    if (afterFull != trimmed) return afterFull.trim()
+    if (afterFull != trimmed) return WakeMatch(afterFull.trim(), true)
     // Strict regex didn't match. Fall back to stripping a bare leading
     // opener — sherpa sometimes elides the wake-word name entirely, leaving
     // just "okay what time is it" with no recognisable "ari" token.
-    return leading.replaceFirst(trimmed, "").trim()
+    return WakeMatch(leading.replaceFirst(trimmed, "").trim(), false)
 }
+
+/** [matchWakePhrase] for the call sites that only care about the query text. */
+fun stripWakePhrase(text: String, locale: String = "en"): String =
+    matchWakePhrase(text, locale).text
