@@ -347,8 +347,17 @@ class VoiceSession @Inject constructor(
                 // be a hard cap on the whole utterance and would cut Italian
                 // speakers off mid-sentence. They keep the 30 s window, which
                 // is what MAX_OFFLINE_UTTERANCE_SAMPLES already assumes.
+                //
+                // Reads the `verifyWake` PARAMETER, not the verifyWakePending
+                // field, and that is deliberate: the timeout asks "did a wake
+                // word open this mic?", which never changes for the turn. The
+                // field asks "is verification still pending?", which the
+                // cold-start branch clears — and cold start is the one path
+                // where shouldAcceptWake never gates the transcript at all, so
+                // reading the field would hand the least-defended path the
+                // longest open mic.
                 var silenceWatcher = launchSilenceWatcher(
-                    if (verifyWakePending && speechRecognizer.isStreaming) {
+                    if (verifyWake && speechRecognizer.isStreaming) {
                         WAKE_TURN_SILENCE_TIMEOUT_MS
                     } else {
                         SILENCE_TIMEOUT_MS
