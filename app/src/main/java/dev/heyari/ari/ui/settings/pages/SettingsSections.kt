@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -320,8 +321,9 @@ internal fun WakeCaptureSection(
             text = if (stats.count == 0) {
                 stringResource(R.string.settings_wake_capture_empty)
             } else {
-                stringResource(
-                    R.string.settings_wake_capture_stats,
+                pluralStringResource(
+                    R.plurals.settings_wake_capture_stats,
+                    stats.count,
                     stats.count,
                     Formatter.formatShortFileSize(context, stats.totalBytes),
                 )

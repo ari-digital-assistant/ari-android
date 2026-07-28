@@ -288,7 +288,10 @@
     <string name="wakeword_sensitivity_low_description">Stricter. Use if Ari wakes when it shouldn\'t.</string>
     <string name="settings_wake_capture_title">Keep false-trigger audio</string>
     <string name="settings_wake_capture_blurb">When Ari wakes for something you didn\'t say, keep the recording so the wake word can be improved. Audio stays on this device in Ari\'s private storage, is never uploaded, and is capped at 50 clips. Off by default.</string>
-    <string name="settings_wake_capture_stats">%1$d clips · %2$s</string>
+    <plurals name="settings_wake_capture_stats">
+        <item quantity="one">%1$d clip · %2$s</item>
+        <item quantity="other">%1$d clips · %2$s</item>
+    </plurals>
     <string name="settings_wake_capture_empty">No clips saved yet.</string>
     <string name="settings_wake_capture_delete">Delete all clips</string>
     <string name="settings_wake_capture_export">Export clips</string>
