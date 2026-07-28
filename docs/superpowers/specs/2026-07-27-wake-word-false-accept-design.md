@@ -115,16 +115,19 @@ plus a real name token from `BASE_NAMES`. The stage-2 bare-opener fallback
 (`WakePhrase.kt:110-113`) sets it `false`, because "sherpa heard an opener and
 no name" is precisely the false-accept signature.
 
-`stripWakePhrase()` remains as a wrapper returning `.text`, so all six existing
-call sites are unchanged.
+`stripWakePhrase()` remains as a wrapper returning `.text`. There are four
+existing call sites, all in `SpeechRecognizer.kt`; the two that need the
+verdict (the streaming partial and the whisper decode) switch to
+`matchWakePhrase`, and the two that only want query text (the parallel-stream
+finalisation and `transcribeOffline`) are unchanged.
 
 **`stt/SttState.Done`** gains two fields — `raw: String?` (the unstripped
 transcript) and `nameMatched: Boolean?` (the verdict):
 
 | Construction site | `raw` | `nameMatched` |
 |---|---|---|
-| `SpeechRecognizer.kt:496` (streaming/online — the common path) | `rawPartial`, already in scope | from `matchWakePhrase(rawPartial, locale)` |
-| `SpeechRecognizer.kt:626` (whisper/offline) | `transcript`, already in scope | from `matchWakePhrase(transcript, locale)` |
+| `SpeechRecognizer.kt:496` (streaming/online — the common path) | `rawPartial`, already in scope | `wakeVerdict(matchWakePhrase(rawPartial, locale), locale)` |
+| `SpeechRecognizer.kt:626` (whisper/offline) | `transcript`, already in scope | `wakeVerdict(matchWakePhrase(transcript, locale), locale)` |
 | `SpeechRecognizer.kt:644` (`stopListening()`) | `null` | `null` — only the cleaned partial survives here; fails open |
 
 **Why the verdict is computed in `SpeechRecognizer`, not `VoiceSession`:**
@@ -133,6 +136,36 @@ transcript) and `nameMatched: Boolean?` (the verdict):
 injecting `LocaleProvider` into `VoiceSession` for one boolean. `raw` is carried
 alongside regardless, because the rejection log (§6) and the capture sidecar
 (§5) both need the actual text.
+
+#### The gate is English-only
+
+Owner decision taken mid-implementation, after this design was approved. A
+verdict is formed **only when the active locale is `en`**; every other locale
+gets `null`, which `shouldAcceptWake` treats as "accept". The rule lives in
+`voice/WakePhrase.kt`:
+
+```kotlin
+internal fun wakeVerdict(match: WakeMatch, locale: String): Boolean? =
+    if (locale == "en") match.nameMatched else null
+```
+
+The reason is that `BASE_NAMES` is an **empirical list of English sherpa
+mishears** — `harry`, `airy`, `ray`, `re` are there because English sherpa
+produced them — and `WakeMishearTable` is still empty for every non-English
+locale. A non-English recogniser renders the (always English) wake phrase
+through its own phonotactics, and we have no evidence about what comes out. On
+that evidence a verdict would be a guess, and a wrong `false` is the expensive
+direction: it converts a benign failure (wake phrase left in the query, engine
+answers "not understood") into a hard one (turn silently dismissed, reads as
+"Ari ignored me"). Same call the skill router already makes with
+`routerSupportsLocale`.
+
+`raw` is still populated for every locale — the non-English transcripts
+accumulating in the rejection log (§6) are how `WakeMishearTable` eventually
+gets filled in and the gate extended.
+
+Tested in `WakePhraseTest`; the `assertNull(wakeVerdict(…, "it"))` case exists
+specifically to fail if someone deletes the locale check.
 
 ### 2. The decision rule
 
@@ -200,12 +233,21 @@ speech reached the engine.
 
 | Situation | Timeout | Rationale |
 |---|---|---|
-| Initial wake turn | **8 s** | You just said "Hey Ari". Nothing in 8 s means it was not you. |
+| Initial wake turn, streaming recogniser | **8 s** | You just said "Hey Ari". Nothing in 8 s means it was not you. |
+| Initial wake turn, offline recogniser | 30 s (unchanged) | No partials to refresh on, so 8 s would cap the utterance rather than the silence. |
 | Re-armed reply turn | 30 s (unchanged) | A skill asked a question; thinking time is legitimate. |
 | Dictation (`VoiceSession.kt:709`) | 30 s (unchanged) | Deliberate user tap. |
 
-This is 8 s of *total silence*, not 8 s of turn: `lastActivityAt` refreshes on
-every non-blank partial, so a slow speaker is never cut off mid-sentence.
+**The short window applies to the streaming recogniser only.** On that path it
+really is 8 s of *total silence*, not 8 s of turn: `lastActivityAt` refreshes on
+every non-blank partial, so a slow speaker is never cut off mid-sentence. The
+offline whisper path has no such refresh — it emits `Listening("")` once at arm
+and then nothing until `Transcribing`, so `lastActivityAt` never moves between
+arm and endpoint, and 8 s there would be a hard cap on the whole utterance
+against a recogniser that supports 30 s ones. Since every non-English locale is
+on the offline path, that would be a straight regression for exactly the users
+the English-only verifier gate exists to leave alone. Offline wake turns
+therefore keep the 30 s window (`SpeechRecognizer.isStreaming` gates it).
 
 This change is valuable **independently** of the verifier — it still shrinks the
 window when the verifier's token list lets something through.
@@ -295,6 +337,14 @@ assert exact values against real behaviour.
 | `i was talking to dave about it` | `false` | `i was talking to dave about it` |
 | `` (empty) | `false` | `` |
 
+**`wakeVerdict`:**
+
+| Input | `locale` | Verdict |
+|---|---|---|
+| `hey ari whats the weather` | `en` | `true` |
+| `hey there mate` | `en` | `false` |
+| `hey there mate` | `it` | `null` — no verdict outside English |
+
 **`shouldAcceptWake`:**
 
 | `verifyWake` | `raw` | `nameMatched` | Result |
@@ -318,7 +368,7 @@ valid 16-bit/16 kHz/mono; capture is a no-op when the setting is off.
    changes is that a false accept can no longer *do* anything. Eliminating the
    chime would require holding the ready cue until verification completes,
    adding latency to every genuine wake — explicitly rejected during design.
-2. **A novel mishear of "ari" kills a real command.** If sherpa renders it as
+2. **A novel mishear of "ari" kills a real command — in English.** If sherpa renders it as
    something outside the fourteen-entry `BASE_NAMES` list, a legitimate turn is
    binned and it looks to the user like Ari ignored them. Mitigated by failing
    open on blank/null and by the rejection logs surfacing new mishears quickly.

@@ -158,7 +158,7 @@ fun stripWakePhrase(text: String, locale: String = "en"): String =
     matchWakePhrase(text, locale).text
 ```
 
-`stripWakePhrase` is kept as a wrapper rather than deleted (which would otherwise trip `antislop.md` #28) because four call sites on the partial-transcript hot path genuinely only want the text, and churning them adds noise for no gain.
+`stripWakePhrase` is kept as a wrapper rather than deleted (which would otherwise trip `antislop.md` #28). It has four call sites today, all in `SpeechRecognizer.kt`. Task 3 converts two of them (the streaming partial and the whisper decode) to `matchWakePhrase` because they need the verdict; the other two — the parallel-stream finalisation and `transcribeOffline` — genuinely only want the text, and churning them adds noise for no gain.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
@@ -385,6 +385,8 @@ with:
 
 Leave the `stopListening()` construction at line 644 alone — it has no raw transcript, so its defaults (`null`, `null`) correctly fail open.
 
+**As implemented, both sites pass the match through `wakeVerdict(match, locale)` rather than reading `match.nameMatched` directly.** That helper is the English-only gate — an owner decision taken after this plan was written, described in spec §1 ("The gate is English-only"). It returns `null` outside `en`, which `shouldAcceptWake` accepts. Do not "simplify" it back to `match.nameMatched`; `WakePhraseTest` will fail if you do, which is the point.
+
 - [ ] **Step 4: Plumb `verifyWake` from the service**
 
 In `app/src/main/java/dev/heyari/ari/wakeword/WakeWordService.kt`:
@@ -570,6 +572,8 @@ with:
                 )
 ```
 
+**Correction (post-implementation):** the shipped condition is `if (verifyWakePending && speechRecognizer.isStreaming)`. The field was renamed away from the `start()` parameter it shadowed, and the short window is restricted to the streaming recogniser — see Step 5 check 2 for why. The snippet above is left as written for the record.
+
 - [ ] **Step 2: Update the two re-arm call sites**
 
 Still in the `SttState.Done` collector, change both remaining invocations (lines 300 and 315, inside the `if (awaitingReply && isActive)` blocks) from `launchSilenceWatcher()` to:
@@ -612,14 +616,16 @@ adb -s emulator-5554 logcat | grep VoiceSession
    ```
    Expect `No speech detected within 8000 ms — dismissing` roughly eight seconds later.
 
-2. **Slow speakers are not cut off.** Say the wake phrase, wait ~6 seconds, then speak:
+2. **Slow speakers are not cut off — on the streaming recogniser.** With an English streaming model active, say the wake phrase, wait ~6 seconds, then speak:
    ```
    Hey Ari
    ```
    ```
    what's the weather
    ```
-   Expect a normal answer — `lastActivityAt` refreshes on partials, so the 8 s is silence, not turn length.
+   Expect a normal answer — `lastActivityAt` refreshes on non-blank partials, so the 8 s is silence, not turn length.
+
+   The offline whisper path emits no partials between arm and endpoint, so it never refreshes `lastActivityAt` and the short window would cap the utterance instead of the silence. It is therefore excluded: the wake turn only gets 8 s when `speechRecognizer.isStreaming` is true. Check that too — switch the locale to Italian (whisper), wake, pause ~10 s, then speak, and expect a normal answer plus `within 30000 ms` if you let it die.
 
 3. **Reply turns keep 30 s.** Trigger a skill follow-up question and leave it hanging; expect `within 30000 ms`.
 
