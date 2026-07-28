@@ -2,6 +2,7 @@ package dev.heyari.ari.voice
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -60,5 +61,22 @@ class WakePhraseTest {
     fun `stripWakePhrase still returns just the text`() {
         assertEquals("whats the weather", stripWakePhrase("hey ari whats the weather"))
         assertEquals("so whats the weather", stripWakePhrase("okay so whats the weather"))
+    }
+
+    @Test
+    fun `english forms a verdict from the name match`() {
+        assertEquals(true, wakeVerdict(matchWakePhrase("hey ari whats the weather"), "en"))
+        assertEquals(false, wakeVerdict(matchWakePhrase("hey there mate"), "en"))
+    }
+
+    @Test
+    fun `non-english forms no verdict at all`() {
+        // The name list was built from English sherpa mishears and
+        // WakeMishearTable is still empty everywhere else, so outside English
+        // we have no evidence to reject on. Null makes shouldAcceptWake fail
+        // open. Deleting the locale check here would silently start dismissing
+        // Italian turns — that is what this test exists to stop.
+        assertNull(wakeVerdict(matchWakePhrase("hey there mate"), "it"))
+        assertNull(wakeVerdict(matchWakePhrase("hey ari che tempo fa"), "it"))
     }
 }

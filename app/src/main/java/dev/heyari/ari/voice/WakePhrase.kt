@@ -125,3 +125,29 @@ fun matchWakePhrase(text: String, locale: String = "en"): WakeMatch {
 /** [matchWakePhrase] for the call sites that only care about the query text. */
 fun stripWakePhrase(text: String, locale: String = "en"): String =
     matchWakePhrase(text, locale).text
+
+/**
+ * The wake-verification verdict carried by `SttState.Done.nameMatched` —
+ * [match]'s verdict for English, null for every other locale.
+ *
+ * The wake-word model is English-only whatever Ari's active locale is, but
+ * sherpa is not: a non-English recogniser transcribes the English phrase
+ * through its own phonotactics. The name list [matchWakePhrase] checks was
+ * built empirically from ENGLISH sherpa mishears and [WakeMishearTable] is
+ * still empty for every other language, so outside English we have no evidence
+ * about what "hey ari" actually comes out as. Acting on a verdict we can't
+ * trust would turn a benign failure (wake phrase left in the query, engine says
+ * "not understood") into a hard one (turn silently dismissed) — so we don't
+ * form one, and `shouldAcceptWake` fails open on null. Same call the router
+ * already makes in `routerSupportsLocale`.
+ *
+ * `SttState.Done.raw` is still populated for every locale: the Italian
+ * transcripts accruing in the logs are how [WakeMishearTable] eventually gets
+ * filled in.
+ *
+ * Lives here, next to the matcher and top-level like [matchWakePhrase] and
+ * `shouldAcceptWake`, because this one line carries the entire non-English
+ * safety guarantee and needs a test holding it in place.
+ */
+internal fun wakeVerdict(match: WakeMatch, locale: String): Boolean? =
+    if (locale == "en") match.nameMatched else null
