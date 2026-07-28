@@ -172,8 +172,19 @@ class VoiceSession @Inject constructor(
     // transcript is accepted. Only the opening turn of a wake session carries
     // the wake phrase in its pre-roll; re-armed reply turns arm with
     // rewindSeconds = 0f and have nothing to verify against.
+    //
+    // Cleared in exactly three places, all load-bearing: the cold-start branch
+    // in start(), the gate's accept path, and dismiss(). rearmForReply() does
+    // NOT clear it — it doesn't need to, because the accept path always runs
+    // first, but that also means deleting any one of the three re-verifies a
+    // turn that has no wake phrase to find.
+    //
+    // Named apart from start()'s `verifyWake` parameter on purpose: the two
+    // diverge (the cold-start branch clears the field while the parameter is
+    // still true), and a shadowed read is silently wrong rather than a
+    // compile error.
     @Volatile
-    private var verifyWake: Boolean = false
+    private var verifyWakePending: Boolean = false
 
     // Pre-detection audio held for the duration of an unverified wake turn.
     // Dropped the moment the turn is accepted; persisted if it dies silently.
@@ -223,7 +234,7 @@ class VoiceSession @Inject constructor(
             Log.w(TAG, "VoiceSession.start() called while already active — ignoring")
             return
         }
-        this.verifyWake = verifyWake
+        verifyWakePending = verifyWake
         // Snapshot now rather than at detection time: the overlay launch costs
         // a few hundred ms, but the ring holds 2 s and "Hey Ari" is ~0.7 s, so
         // the phrase is still comfortably inside the window.
@@ -267,7 +278,7 @@ class VoiceSession @Inject constructor(
                     // utterance, and the user is repeating a bare command. Same
                     // reasoning as rearmForReply — verify only what actually
                     // carries a wake phrase in its pre-roll.
-                    this@VoiceSession.verifyWake = false
+                    verifyWakePending = false
                     // Zero rewind: the repeat prompt + ready cue must not be
                     // ingested as the user's answer (same guard as rearmForReply).
                     speechRecognizer.startListening(rewindSeconds = 0f)
@@ -364,12 +375,12 @@ class VoiceSession @Inject constructor(
                                     }
                                     return@collect
                                 }
-                                // this@ qualified throughout: the start()
-                                // parameter shadows the field, and only the
-                                // field is cleared once the opening turn is
-                                // accepted or the mic re-arms.
-                                val verify = this@VoiceSession.verifyWake
-                                if (!shouldAcceptWake(verify, sttState.raw, sttState.nameMatched)) {
+                                if (!shouldAcceptWake(
+                                        verifyWakePending,
+                                        sttState.raw,
+                                        sttState.nameMatched,
+                                    )
+                                ) {
                                     Log.w(TAG, "Wake rejected: raw='${sttState.raw}'")
                                     captureFalseTrigger(
                                         sttState.audio,
@@ -379,7 +390,7 @@ class VoiceSession @Inject constructor(
                                     dismiss()
                                     return@collect
                                 }
-                                this@VoiceSession.verifyWake = false
+                                verifyWakePending = false
                                 wakePreroll = null
                                 handleFinalText(
                                     sttState.text,
@@ -754,7 +765,7 @@ class VoiceSession @Inject constructor(
         engineHolder.peek()?.setConversationActive(false)
         engineHolder.peek()?.cancelPendingReply()
         awaitingReply = false
-        verifyWake = false
+        verifyWakePending = false
         wakePreroll = null
         speechRecognizer.stopListening()
         speechRecognizer.reset()
