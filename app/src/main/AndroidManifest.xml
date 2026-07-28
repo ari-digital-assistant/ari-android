@@ -144,6 +144,17 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Ari">
+
+        <!--
+          Lets simpleperf attach to release builds, so the always-on listening
+          cost can be profiled on the build people actually run. Profiling a
+          debug build measures the wrong thing by a wide margin: the native
+          wake word code is compiled without -DNDEBUG there, leaving every
+          assert() in tflite-micro live on the hottest path in the app.
+          Does not make the app debuggable.
+        -->
+        <profileable android:shell="true" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
