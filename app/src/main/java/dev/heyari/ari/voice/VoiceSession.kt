@@ -137,6 +137,7 @@ class VoiceSession @Inject constructor(
     private val cardActionVoiceIntercept: dev.heyari.ari.actions.CardActionVoiceIntercept,
     private val cardActionDispatcher: dev.heyari.ari.actions.CardActionDispatcher,
     private val settingsRepository: dev.heyari.ari.data.SettingsRepository,
+    private val wakeCaptureStore: dev.heyari.ari.wakeword.WakeCaptureStore,
     private val logRepository: ConversationLogRepository,
 ) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -353,6 +354,11 @@ class VoiceSession @Inject constructor(
                                 val verify = this@VoiceSession.verifyWake
                                 if (!shouldAcceptWake(verify, sttState.raw, sttState.nameMatched)) {
                                     Log.w(TAG, "Wake rejected: raw='${sttState.raw}'")
+                                    captureFalseTrigger(
+                                        sttState.audio,
+                                        sttState.raw.orEmpty(),
+                                        dev.heyari.ari.wakeword.WakeCaptureHook.REJECTED,
+                                    )
                                     dismiss()
                                     return@collect
                                 }
@@ -737,6 +743,34 @@ class VoiceSession @Inject constructor(
         sessionJob?.cancel()
         sessionJob = null
         _state.value = VoiceState.Idle
+    }
+
+    /**
+     * Persist audio that falsely triggered the wake word, if the user opted
+     * in. Reads the flag at call time rather than caching it — the setting is
+     * rare, this path is rarer, and a stale cached value would silently
+     * capture (or silently not) after a toggle. Runs on its own IO-dispatched
+     * job so a slow settings read or disk write never blocks the STT
+     * collector; failures are contained here (not left to propagate out of
+     * the launch) because both the settings read and the store write can
+     * throw IOException, and this is an opt-in debug feature — it must never
+     * take the app down.
+     */
+    private fun captureFalseTrigger(
+        pcm: ShortArray?,
+        rawTranscript: String,
+        hook: dev.heyari.ari.wakeword.WakeCaptureHook,
+    ) {
+        if (pcm == null || pcm.isEmpty()) return
+        scope.launch(Dispatchers.IO) {
+            try {
+                if (!settingsRepository.keepFalseTriggerAudio.first()) return@launch
+                wakeCaptureStore.save(pcm, rawTranscript, hook, System.currentTimeMillis())
+            } catch (t: Throwable) {
+                if (t is kotlinx.coroutines.CancellationException) throw t
+                Log.e(TAG, "Failed to capture false-trigger audio", t)
+            }
+        }
     }
 
     /**
