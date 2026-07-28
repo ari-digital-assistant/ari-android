@@ -1,7 +1,9 @@
 package dev.heyari.ari.wakeword
 
 import android.content.Context
+import android.content.Intent
 import android.util.Log
+import androidx.core.content.FileProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.nio.ByteBuffer
@@ -107,6 +109,24 @@ class WakeCaptureStore @Inject constructor(
 
     fun clear() {
         dir.listFiles()?.forEach { it.delete() }
+    }
+
+    /**
+     * An `ACTION_SEND_MULTIPLE` intent carrying every captured clip and its
+     * sidecar, or null when there is nothing to share. The caller adds
+     * `FLAG_ACTIVITY_NEW_TASK` if launching from a non-activity context.
+     */
+    fun shareIntent(): Intent? {
+        val files = dir.listFiles()?.sortedBy { it.name } ?: return null
+        if (files.isEmpty()) return null
+        val uris = ArrayList(
+            files.map { FileProvider.getUriForFile(context, "${context.packageName}.wakecaptures", it) }
+        )
+        return Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+            type = "*/*"
+            putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
     }
 
     private companion object {

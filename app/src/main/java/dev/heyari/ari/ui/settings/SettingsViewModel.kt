@@ -417,6 +417,8 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun wakeCaptureShareIntent(): Intent? = wakeCaptureStore.shareIntent()
+
     fun setBargeInEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setBargeInEnabled(enabled)

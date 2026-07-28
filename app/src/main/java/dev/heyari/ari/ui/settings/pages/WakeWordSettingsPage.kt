@@ -1,5 +1,6 @@
 package dev.heyari.ari.ui.settings.pages
 
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -23,6 +25,7 @@ fun WakeWordSettingsPage(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     SettingsScaffold(
         title = stringResource(R.string.settings_category_wakeword),
@@ -48,6 +51,16 @@ fun WakeWordSettingsPage(
                 enabled = state.keepFalseTriggerAudio,
                 stats = state.wakeCaptureStats,
                 onToggle = viewModel::setKeepFalseTriggerAudio,
+                onExport = {
+                    viewModel.wakeCaptureShareIntent()?.let { intent ->
+                        context.startActivity(
+                            Intent.createChooser(
+                                intent,
+                                context.getString(R.string.settings_wake_capture_export_chooser),
+                            )
+                        )
+                    }
+                },
                 onClear = viewModel::clearWakeCaptures,
             )
         }

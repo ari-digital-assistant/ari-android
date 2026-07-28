@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -294,6 +295,7 @@ internal fun WakeCaptureSection(
     enabled: Boolean,
     stats: WakeCaptureStats,
     onToggle: (Boolean) -> Unit,
+    onExport: () -> Unit,
     onClear: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -327,6 +329,11 @@ internal fun WakeCaptureSection(
             style = MaterialTheme.typography.bodySmall,
         )
         if (stats.count > 0) {
+            OutlinedButton(onClick = onExport) {
+                Icon(Icons.Default.Share, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.settings_wake_capture_export))
+            }
             OutlinedButton(onClick = onClear) {
                 Icon(Icons.Default.Delete, contentDescription = null)
                 Spacer(Modifier.width(8.dp))

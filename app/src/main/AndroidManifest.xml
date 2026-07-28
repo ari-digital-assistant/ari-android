@@ -340,6 +340,22 @@
                 tools:node="remove" />
         </provider>
 
+        <!--
+          Grants read access to captured false-trigger clips for the share
+          sheet only. Scoped to the wake-captures directory: nothing else in
+          filesDir is exposed. Not exported; access is per-URI via the grant
+          flag on the share intent.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.wakecaptures"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/wake_capture_paths" />
+        </provider>
+
         <service
             android:name=".assistant.AriRecognitionService"
             android:exported="true">
