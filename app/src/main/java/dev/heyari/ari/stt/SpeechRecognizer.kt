@@ -492,7 +492,7 @@ class SpeechRecognizer @Inject constructor(
                                     rec.decode(ps)
                                 }
                                 val parRaw = rec.getResult(ps).text.trim()
-                                val parCleaned = stripWakePhrase(parRaw, localeProvider.currentLocale())
+                                val parCleaned = stripWakePhrase(parRaw, locale)
                                 Log.i(TAG, "Parallel stream final: raw='$parRaw' cleaned='$parCleaned'")
                                 parCleaned.takeIf { it.isNotEmpty() && it != cleanedPartial }
                             } catch (t: Throwable) {

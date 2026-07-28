@@ -81,7 +81,7 @@ internal fun evictOldest(dir: File, maxFiles: Int, maxBytes: Long) {
 class WakeCaptureStore @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
-    val dir: File get() = File(context.filesDir, DIR_NAME)
+    private val dir: File get() = File(context.filesDir, DIR_NAME)
 
     fun save(
         pcm: ShortArray,
@@ -98,8 +98,12 @@ class WakeCaptureStore @Inject constructor(
         val stem = "wake-%017d-%s".format(timestampMs, hook.slug)
         File(target, "$stem.wav").writeBytes(wavBytes(pcm))
         File(target, "$stem.txt").writeText(rawTranscript)
-        evictOldest(target, MAX_FILES, MAX_BYTES)
+        // Log the write, then evict: the line reports what this call did, not
+        // what survived the caps. The other order reads as a flat lie when a
+        // clip large enough to breach MAX_BYTES on its own gets written,
+        // evicted, and then announced as captured.
         Log.i(TAG, "Captured false trigger: $stem.wav (${pcm.size} samples)")
+        evictOldest(target, MAX_FILES, MAX_BYTES)
     }
 
     fun stats(): WakeCaptureStats {
