@@ -139,6 +139,7 @@ class VoiceSession @Inject constructor(
     private val settingsRepository: dev.heyari.ari.data.SettingsRepository,
     private val wakeCaptureStore: dev.heyari.ari.wakeword.WakeCaptureStore,
     private val logRepository: ConversationLogRepository,
+    private val captureBus: dev.heyari.ari.audio.CaptureBus,
 ) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var sessionJob: Job? = null
@@ -173,6 +174,11 @@ class VoiceSession @Inject constructor(
     // rewindSeconds = 0f and have nothing to verify against.
     @Volatile
     private var verifyWake: Boolean = false
+
+    // Pre-detection audio held for the duration of an unverified wake turn.
+    // Dropped the moment the turn is accepted; persisted if it dies silently.
+    @Volatile
+    private var wakePreroll: ShortArray? = null
 
     // "Let's talk" continuous mode: while true, every turn re-arms the mic
     // (no wake word) until an exit phrase, 30s silence, or an error.
@@ -218,6 +224,10 @@ class VoiceSession @Inject constructor(
             return
         }
         this.verifyWake = verifyWake
+        // Snapshot now rather than at detection time: the overlay launch costs
+        // a few hundred ms, but the ring holds 2 s and "Hey Ari" is ~0.7 s, so
+        // the phrase is still comfortably inside the window.
+        wakePreroll = if (verifyWake) captureBus.peekRecent(PREROLL_CAPTURE_SECONDS) else null
         // A fresh wake cancels any reply the engine was still waiting on from a
         // previous turn — the user has clearly moved on. No-op when nothing is
         // pending.
@@ -287,6 +297,13 @@ class VoiceSession @Inject constructor(
                         val idle = System.currentTimeMillis() - lastActivityAt
                         if (idle > timeoutMs) {
                             Log.i(TAG, "No speech detected within $timeoutMs ms — dismissing")
+                            if (verifyWake) {
+                                captureFalseTrigger(
+                                    wakePreroll,
+                                    "",
+                                    dev.heyari.ari.wakeword.WakeCaptureHook.SILENT,
+                                )
+                            }
                             dismiss()
                             return@launch
                         }
@@ -363,6 +380,7 @@ class VoiceSession @Inject constructor(
                                     return@collect
                                 }
                                 this@VoiceSession.verifyWake = false
+                                wakePreroll = null
                                 handleFinalText(
                                     sttState.text,
                                     sttState.parallel,
@@ -737,6 +755,7 @@ class VoiceSession @Inject constructor(
         engineHolder.peek()?.cancelPendingReply()
         awaitingReply = false
         verifyWake = false
+        wakePreroll = null
         speechRecognizer.stopListening()
         speechRecognizer.reset()
         speechOutput.stop()
@@ -864,6 +883,9 @@ class VoiceSession @Inject constructor(
         // are cases where Ari asked a question or the user deliberately opened
         // the mic, so waiting is legitimate.
         private const val WAKE_TURN_SILENCE_TIMEOUT_MS = 8_000L
+        // 2 s pre-roll snapshot at session start — see the comment at the
+        // capture site in start() for why this stays within the wake phrase.
+        private const val PREROLL_CAPTURE_SECONDS = 2.0f
         // How long to flash the corrected transcript in the overlay before
         // transitioning to the response. Long enough for the user to notice
         // the text changed, short enough not to feel like a stall.

@@ -102,6 +102,18 @@ class CaptureBus @Inject constructor() {
         return ch
     }
 
+    /**
+     * Snapshot the last [seconds] of audio **without** arming. Used to keep the
+     * pre-detection audio around while a wake turn plays out, so a wake that
+     * nobody answers can be persisted as a hard negative for model retraining.
+     * Does not disturb the live channel or [armed].
+     */
+    fun peekRecent(seconds: Float): ShortArray {
+        val head = ringBuffer.samplesWritten
+        val from = (head - (SAMPLE_RATE * seconds).toLong()).coerceAtLeast(0L)
+        return ringBuffer.snapshot(from, head)
+    }
+
     /** Close the gate and the live channel. Idempotent. */
     @Synchronized
     fun disarm() {
