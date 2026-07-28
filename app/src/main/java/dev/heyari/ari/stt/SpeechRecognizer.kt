@@ -108,6 +108,17 @@ class SpeechRecognizer @Inject constructor(
     val isModelLoaded: Boolean
         get() = onlineRecognizer != null || offlineRecognizer != null
 
+    /**
+     * True when the loaded recogniser is the online streaming one. Hosts need
+     * this to know whether [SttState.Listening] partials are a usable liveness
+     * signal: the streaming path emits one per decode, whereas the offline
+     * whisper path emits `Listening("")` once at arm and then nothing at all
+     * until [SttState.Transcribing]. A host timing out on "no partials" would
+     * therefore cut every offline utterance short.
+     */
+    val isStreaming: Boolean
+        get() = onlineRecognizer != null
+
     val currentModelId: String?
         get() = loadedModelId
 

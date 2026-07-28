@@ -278,7 +278,13 @@ class VoiceSession @Inject constructor(
                     // utterance, and the user is repeating a bare command. Same
                     // reasoning as rearmForReply — verify only what actually
                     // carries a wake phrase in its pre-roll.
+                    //
+                    // Drop the snapshot with it. It holds the user's genuine
+                    // "Hey Ari", and if this turn is then abandoned the silence
+                    // watcher would file that as a hard negative — training the
+                    // next model not to fire on its own wake word.
                     verifyWakePending = false
+                    wakePreroll = null
                     // Zero rewind: the repeat prompt + ready cue must not be
                     // ingested as the user's answer (same guard as rearmForReply).
                     speechRecognizer.startListening(rewindSeconds = 0f)
@@ -308,7 +314,13 @@ class VoiceSession @Inject constructor(
                         val idle = System.currentTimeMillis() - lastActivityAt
                         if (idle > timeoutMs) {
                             Log.i(TAG, "No speech detected within $timeoutMs ms — dismissing")
-                            if (verifyWake) {
+                            // Guard on the pre-roll, not on verifyWakePending:
+                            // the buffer is only ever held for a turn whose
+                            // audio genuinely contains a wake phrase we did not
+                            // act on, so this can never file a real "Hey Ari"
+                            // as a hard negative. The cold-start branch clears
+                            // both for exactly that reason.
+                            if (wakePreroll != null) {
                                 captureFalseTrigger(
                                     wakePreroll,
                                     "",
@@ -326,8 +338,21 @@ class VoiceSession @Inject constructor(
                 // phrase, so silence means it wasn't you — and every second the
                 // mic stays armed after a false accept is a second ambient
                 // speech could be mistaken for a command.
+                //
+                // Streaming path only. The short window measures *silence*, and
+                // only the streaming recogniser gives us silence to measure —
+                // it refreshes lastActivityAt on every non-blank partial. The
+                // offline whisper path (every non-English locale) emits no
+                // partials at all between arm and endpoint, so there 8 s would
+                // be a hard cap on the whole utterance and would cut Italian
+                // speakers off mid-sentence. They keep the 30 s window, which
+                // is what MAX_OFFLINE_UTTERANCE_SAMPLES already assumes.
                 var silenceWatcher = launchSilenceWatcher(
-                    if (verifyWake) WAKE_TURN_SILENCE_TIMEOUT_MS else SILENCE_TIMEOUT_MS
+                    if (verifyWakePending && speechRecognizer.isStreaming) {
+                        WAKE_TURN_SILENCE_TIMEOUT_MS
+                    } else {
+                        SILENCE_TIMEOUT_MS
+                    }
                 )
 
                 try {
@@ -382,8 +407,15 @@ class VoiceSession @Inject constructor(
                                     )
                                 ) {
                                     Log.w(TAG, "Wake rejected: raw='${sttState.raw}'")
+                                    // Fall back to the pre-roll snapshot: the
+                                    // whisper path always reports audio = null
+                                    // (it has no retry layer to feed), and
+                                    // English-on-whisper is a selectable config
+                                    // that forms a verdict — so without this the
+                                    // rejection that most wants capturing
+                                    // captures nothing.
                                     captureFalseTrigger(
-                                        sttState.audio,
+                                        sttState.audio ?: wakePreroll,
                                         sttState.raw.orEmpty(),
                                         dev.heyari.ari.wakeword.WakeCaptureHook.REJECTED,
                                     )
