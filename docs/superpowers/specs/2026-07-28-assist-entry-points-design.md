@@ -87,13 +87,36 @@ enum class TurnSource { HEADLESS, IN_APP }
 fun launch(source: TurnSource): TurnLaunch
 ```
 
+The gating itself is a pure function so it can be tested without mocks:
+
+```kotlin
+internal fun decideGate(
+    turnActive: Boolean,
+    oneShotActive: Boolean,
+    micGranted: Boolean,
+    sttReady: Boolean,
+): TurnLaunch
+```
+
 Checks run in this order, first failure wins:
 
-1. `voiceSession.isActive || WakeWordService.oneShotActive` → `AlreadyActive`,
-   silent. Pressing the button mid-turn must not nag.
-2. `RECORD_AUDIO` not granted → `NoMicPermission`.
-3. `speechRecognizer.isModelLoaded` false → `SttNotReady`.
-4. Otherwise compute one-shot, `startForegroundService`, `Started`.
+1. `turnActive || oneShotActive` → `AlreadyActive`, silent. Pressing the button
+   mid-turn must not nag.
+2. `micGranted` false → `NoMicPermission`.
+3. `sttReady` false → `SttNotReady`.
+4. Otherwise `Started`.
+
+`launch()` reads the four values off `VoiceSession`, `SpeechRecognizer` and the
+permission checker, calls `decideGate`, and on `Started` computes one-shot and
+fires the service.
+
+**Why one-shot is computed separately from the gate.** `computeOneShot` re-reads
+`WakeWordService.oneShotActive` at the moment of use rather than reusing the
+value the gate saw. Those are `@Volatile` statics and the gap between the two
+reads is exactly the race the sticky `oneShotActive` term exists to close: if a
+transient host comes up in that window, a single-snapshot version would send
+`EXTRA_ONE_SHOT=false` and strand a hot mic. Folding the two into one function
+would silently remove that protection.
 
 **Why `TurnSource` exists.** `HEADLESS` speaks its failures. `IN_APP` does not —
 the conversation screen already routes permission through the shared permission
@@ -206,17 +229,24 @@ copy.
 
 ## Testing
 
+The project has **no mocking library** — plain JUnit 4 only, no MockK, no
+Robolectric — and that is deliberate. `VoiceSessionTest` states the house
+pattern: extract the load-bearing decision into a framework-free function and
+test that directly, rather than mocking Android. This design follows it and adds
+no test dependency.
+
 **Unit — `computeOneShot`.** Table test over all four `(isRunning,
-oneShotActive)` combinations asserting the exact boolean. This is the subtle
-logic and the reason the extraction is worth doing.
+oneShotActive)` combinations asserting the exact boolean.
 
-**Unit — `VoiceTurnLauncher`.** One test per precondition asserting both the
-returned type and whether `SpeechOutput` was called. Explicitly assert that
-`IN_APP` does **not** speak on `NoMicPermission`, since that is the regression
-this design is guarding against.
+**Unit — `decideGate`.** Table test over the precondition matrix asserting the
+exact returned type. Covers priority order: an inactive turn with neither
+permission nor model returns `NoMicPermission`, not `SttNotReady`.
 
-**Unit — `AssistRoleSync`.** Role held → component enabled; role absent →
-disabled.
+**Unit — `componentStateFor`.** Role held → `COMPONENT_ENABLED_STATE_ENABLED`;
+absent → `COMPONENT_ENABLED_STATE_DISABLED`.
+
+`VoiceTurnLauncher`, `AssistTrampolineActivity` and `AssistRoleSync` are left as
+thin Android shells over these functions, containing no branching worth testing.
 
 **Device.** The headset button needs a real check on hardware — OEM routing of
 `ACTION_VOICE_COMMAND` varies and no unit test establishes whether a given phone
