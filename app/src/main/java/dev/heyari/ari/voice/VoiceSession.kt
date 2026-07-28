@@ -14,6 +14,10 @@ import dev.heyari.ari.model.Message
 import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.stt.SttModelLoader
 import dev.heyari.ari.stt.SttState
+import dev.heyari.ari.stt.UtteranceCapture
+import dev.heyari.ari.stt.UtteranceCaptureStore
+import dev.heyari.ari.stt.UtteranceOutcome
+import dev.heyari.ari.stt.UtteranceTurn
 import dev.heyari.ari.tts.SpeechOutput
 import dev.heyari.ari.tts.pleaseWaitPhrase
 import dev.heyari.ari.tts.pleaseRepeatPhrase
@@ -108,6 +112,49 @@ internal fun shouldPersistFacts(response: FfiResponse): Boolean = when (response
 }
 
 /**
+ * Which kind of turn produced this utterance, for the debug capture sidecar.
+ * Sampled at the top of a turn: [awaitingReply] is consumed part-way through
+ * dispatch, and [talkMode] is set by the response that *enters* continuous
+ * mode — so the turn that opens a "let's talk" session is still an opening one.
+ */
+internal fun utteranceTurn(talkMode: Boolean, awaitingReply: Boolean): UtteranceTurn = when {
+    talkMode -> UtteranceTurn.TALK
+    awaitingReply -> UtteranceTurn.REPLY
+    else -> UtteranceTurn.OPENING
+}
+
+/**
+ * What became of the transcript. [corrected] is true when a retry layer supplied
+ * the text the engine finally acted on — the signal that Ari needed more than
+ * one go at hearing this, which is exactly what the capture exists to surface.
+ */
+internal fun utteranceOutcome(response: FfiResponse, corrected: Boolean): UtteranceOutcome = when {
+    response is FfiResponse.NotUnderstood -> UtteranceOutcome.NOT_UNDERSTOOD
+    corrected -> UtteranceOutcome.RESCUED
+    else -> UtteranceOutcome.ANSWERED
+}
+
+/** How the engine replied, for the debug capture sidecar. */
+internal fun responseLabel(response: FfiResponse): String = when (response) {
+    is FfiResponse.Text -> "text"
+    is FfiResponse.Action -> "action(${response.skillId})"
+    is FfiResponse.Binary -> "binary(${response.mime})"
+    is FfiResponse.NotUnderstood -> "not-understood"
+}
+
+/**
+ * Mutable scratch for one turn's debug capture. [VoiceSession.dispatchFinalText]
+ * fills in what it learns as the turn plays out; the wrapper renders it once the
+ * turn is over, including when the turn ends early or is cancelled mid-flight.
+ */
+private class TurnRecord(val transcript: String) {
+    var outcome: UtteranceOutcome = UtteranceOutcome.BLANK
+    var response: String? = null
+    var offline: String? = null
+    var used: String = transcript
+}
+
+/**
  * Singleton state machine + pipeline for one voice interaction. Owned by Hilt
  * at the singleton scope so it can be injected by both [WakeWordService] (which
  * triggers the session) and [VoiceOverlayActivity] (which renders the UI).
@@ -138,6 +185,8 @@ class VoiceSession @Inject constructor(
     private val cardActionDispatcher: dev.heyari.ari.actions.CardActionDispatcher,
     private val settingsRepository: dev.heyari.ari.data.SettingsRepository,
     private val wakeCaptureStore: dev.heyari.ari.wakeword.WakeCaptureStore,
+    private val utteranceCaptureStore: UtteranceCaptureStore,
+    private val localeProvider: dev.heyari.ari.locale.AriFfiLocaleProvider,
     private val logRepository: ConversationLogRepository,
     private val captureBus: dev.heyari.ari.audio.CaptureBus,
 ) {
@@ -437,6 +486,7 @@ class VoiceSession @Inject constructor(
                                     sttState.text,
                                     sttState.parallel,
                                     sttState.audio,
+                                    sttState.raw,
                                 )
                                 // If the skill asked a follow-up question,
                                 // handleFinalText re-armed the mic instead of
@@ -474,10 +524,47 @@ class VoiceSession @Inject constructor(
         }
     }
 
+    /**
+     * Dispatch one final transcript, and keep the debug capture honest about
+     * what happened to it. The turn kind is sampled before dispatch (it reads
+     * state the dispatch mutates) and the recording is written in a `finally`
+     * so the early-return paths — blank transcript, card intercept — and a
+     * mid-turn [dismiss] are all captured, not just the happy path.
+     */
     private suspend fun handleFinalText(
         text: String,
         parallel: String?,
         audio: ShortArray?,
+        raw: String?,
+    ) {
+        val turn = utteranceTurn(talkMode, awaitingReply)
+        val record = TurnRecord(text)
+        try {
+            dispatchFinalText(text, parallel, audio, record)
+        } finally {
+            captureUtterance(
+                audio,
+                UtteranceCapture(
+                    turn = turn,
+                    outcome = record.outcome,
+                    response = record.response,
+                    raw = raw,
+                    transcript = text,
+                    parallel = parallel,
+                    offline = record.offline,
+                    used = record.used,
+                    locale = localeProvider.currentLocale(),
+                    model = speechRecognizer.currentModelId,
+                ),
+            )
+        }
+    }
+
+    private suspend fun dispatchFinalText(
+        text: String,
+        parallel: String?,
+        audio: ShortArray?,
+        record: TurnRecord,
     ) {
         if (text.isBlank()) {
             dismiss()
@@ -498,6 +585,7 @@ class VoiceSession @Inject constructor(
         if (!awaitingReply) {
             val intercept = cardActionVoiceIntercept.resolve(text)
             if (intercept != null) {
+                record.outcome = UtteranceOutcome.CARD
                 logRepository.append(Message(text = text, isFromUser = true, source = InputSource.Voice))
                 val outcome = cardActionDispatcher.dispatch(intercept.cardId, intercept.action)
                 when (outcome) {
@@ -536,10 +624,10 @@ class VoiceSession @Inject constructor(
         // --- Layer 2 + 3 retries apply to the online streaming path only ---
         // The offline whisper path (non-English locales) sees the full
         // utterance before committing any token, so there's nothing for a
-        // parallel decoder or a re-decode to improve. SpeechRecognizer
-        // signals the offline path by emitting parallel = null, audio =
-        // null in SttState.Done — the null guards below skip the retries
-        // automatically. No explicit modelType / locale check needed.
+        // parallel decoder or a re-decode to improve. Layer 2 skips itself
+        // (whisper emits parallel = null); Layer 3 is gated on isStreaming,
+        // because whisper DOES hand over its audio — for the debug capture,
+        // not as an invitation to decode it a second time.
 
         // --- Layer 2: parallel-stream transcript ---
         if (response is FfiResponse.NotUnderstood &&
@@ -555,7 +643,7 @@ class VoiceSession @Inject constructor(
         }
 
         // --- Layer 3: offline full-buffer retry ---
-        if (response is FfiResponse.NotUnderstood && audio != null) {
+        if (response is FfiResponse.NotUnderstood && audio != null && speechRecognizer.isStreaming) {
             Log.i(TAG, "Parallel also failed — running offline retry (${audio.size} samples)")
             // transcribeOffline blocks while sherpa decodes the full
             // buffer. We're already on Main here so dispatch to Default
@@ -563,6 +651,7 @@ class VoiceSession @Inject constructor(
             val offlineText = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
                 speechRecognizer.transcribeOffline(audio)
             }
+            record.offline = offlineText
             if (!offlineText.isNullOrBlank() && offlineText != text && offlineText != parallel) {
                 Log.i(TAG, "Offline produced '$offlineText' — retrying engine")
                 val retry = engine.processInput(offlineText)
@@ -573,6 +662,10 @@ class VoiceSession @Inject constructor(
                 }
             }
         }
+
+        record.outcome = utteranceOutcome(response, corrected = usedText != text)
+        record.response = responseLabel(response)
+        record.used = usedText
 
         // If we used a different transcript (from parallel or offline),
         // briefly flash the corrected text in the overlay so the user
@@ -845,6 +938,27 @@ class VoiceSession @Inject constructor(
     }
 
     /**
+     * Persist what the user said, and every transcript it produced, if the user
+     * opted in. Same shape as [captureFalseTrigger] and for the same reasons:
+     * the flag is read at call time so a toggle takes effect immediately, the
+     * disk write is IO-dispatched so it never blocks the STT collector, and
+     * failures die here — this is an opt-in debug feature and must never take
+     * the app down.
+     */
+    private fun captureUtterance(pcm: ShortArray?, capture: UtteranceCapture) {
+        if (pcm == null || pcm.isEmpty()) return
+        scope.launch(Dispatchers.IO) {
+            try {
+                if (!settingsRepository.keepUtteranceAudio.first()) return@launch
+                utteranceCaptureStore.save(pcm, capture, System.currentTimeMillis())
+            } catch (t: Throwable) {
+                if (t is kotlinx.coroutines.CancellationException) throw t
+                Log.e(TAG, "Failed to capture utterance audio", t)
+            }
+        }
+    }
+
+    /**
      * Foreground in-place dictation — STT only. No engine, no TTS, no re-arm,
      * no barge-in. Streams partials through [state] as VoiceState.Listening and
      * emits the final transcript on [dictatedText]; the caller (ConversationViewModel)
@@ -885,6 +999,21 @@ class VoiceSession @Inject constructor(
                         }
                         SttState.Transcribing -> _state.update { VoiceState.Thinking }
                         is SttState.Done -> {
+                            captureUtterance(
+                                stt.audio,
+                                UtteranceCapture(
+                                    turn = UtteranceTurn.DICTATION,
+                                    outcome = UtteranceOutcome.DICTATED,
+                                    response = null,
+                                    raw = stt.raw,
+                                    transcript = stt.text,
+                                    parallel = stt.parallel,
+                                    offline = null,
+                                    used = stt.text,
+                                    locale = localeProvider.currentLocale(),
+                                    model = speechRecognizer.currentModelId,
+                                ),
+                            )
                             _dictatedText.emit(stt.text)
                             dismiss()
                             return@collect

@@ -36,6 +36,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.heyari.ari.R
+import dev.heyari.ari.audio.ClipStats
 import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.llm.LlmModel
 import dev.heyari.ari.stt.ModelDownloadState
@@ -44,7 +45,6 @@ import dev.heyari.ari.ui.settings.LlmModelStatus
 import dev.heyari.ari.ui.settings.ModelStatus
 import dev.heyari.ari.ui.settings.PermissionStatus
 import dev.heyari.ari.ui.settings.WakeWordOption
-import dev.heyari.ari.wakeword.WakeCaptureStats
 import dev.heyari.ari.wakeword.WakeWordModel
 import dev.heyari.ari.wakeword.WakeWordSensitivity
 import java.util.Locale
@@ -291,10 +291,18 @@ internal fun WakeWordSensitivitySection(
     }
 }
 
+/**
+ * One debug audio-capture toggle: switch, blurb, live clip count, and — once
+ * there is something to act on — export and delete. Shared by the wake-word
+ * false-trigger capture and the spoken-command capture; only the [title] and
+ * [blurb] differ.
+ */
 @Composable
-internal fun WakeCaptureSection(
+internal fun AudioCaptureSection(
+    title: String,
+    blurb: String,
     enabled: Boolean,
-    stats: WakeCaptureStats,
+    stats: ClipStats,
     onToggle: (Boolean) -> Unit,
     onExport: () -> Unit,
     onClear: () -> Unit,
@@ -307,22 +315,22 @@ internal fun WakeCaptureSection(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                text = stringResource(R.string.settings_wake_capture_title),
+                text = title,
                 style = MaterialTheme.typography.titleMedium,
             )
             Switch(checked = enabled, onCheckedChange = onToggle)
         }
         Text(
-            text = stringResource(R.string.settings_wake_capture_blurb),
+            text = blurb,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
             text = if (stats.count == 0) {
-                stringResource(R.string.settings_wake_capture_empty)
+                stringResource(R.string.settings_capture_empty)
             } else {
                 pluralStringResource(
-                    R.plurals.settings_wake_capture_stats,
+                    R.plurals.settings_capture_stats,
                     stats.count,
                     stats.count,
                     Formatter.formatShortFileSize(context, stats.totalBytes),
@@ -334,12 +342,12 @@ internal fun WakeCaptureSection(
             OutlinedButton(onClick = onExport) {
                 Icon(Icons.Default.Share, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.settings_wake_capture_export))
+                Text(stringResource(R.string.settings_capture_export))
             }
             OutlinedButton(onClick = onClear) {
                 Icon(Icons.Default.Delete, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.settings_wake_capture_delete))
+                Text(stringResource(R.string.settings_capture_delete))
             }
         }
     }

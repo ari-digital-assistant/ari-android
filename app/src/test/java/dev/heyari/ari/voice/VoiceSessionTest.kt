@@ -1,5 +1,8 @@
 package dev.heyari.ari.voice
 
+import dev.heyari.ari.stt.UtteranceOutcome
+import dev.heyari.ari.stt.UtteranceTurn
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -108,5 +111,38 @@ class VoiceSessionTest {
     @Test
     fun `wake turn with speech but no name token is rejected`() {
         assertFalse(shouldAcceptWake(verifyWake = true, raw = "hey there mate", nameMatched = false))
+    }
+
+    @Test
+    fun `talk mode outranks awaiting reply when labelling a turn`() {
+        assertEquals(UtteranceTurn.TALK, utteranceTurn(talkMode = true, awaitingReply = true))
+        assertEquals(UtteranceTurn.TALK, utteranceTurn(talkMode = true, awaitingReply = false))
+        assertEquals(UtteranceTurn.REPLY, utteranceTurn(talkMode = false, awaitingReply = true))
+        assertEquals(UtteranceTurn.OPENING, utteranceTurn(talkMode = false, awaitingReply = false))
+    }
+
+    @Test
+    fun `a retry-corrected transcript is recorded as a rescue`() {
+        val answered = FfiResponse.Text("Sunny.", false, false, false, false)
+        assertEquals(UtteranceOutcome.RESCUED, utteranceOutcome(answered, corrected = true))
+        assertEquals(UtteranceOutcome.ANSWERED, utteranceOutcome(answered, corrected = false))
+    }
+
+    @Test
+    fun `NotUnderstood outranks the correction flag`() {
+        val lost = FfiResponse.NotUnderstood("Sorry, I didn't catch that.")
+        assertEquals(UtteranceOutcome.NOT_UNDERSTOOD, utteranceOutcome(lost, corrected = true))
+        assertEquals(UtteranceOutcome.NOT_UNDERSTOOD, utteranceOutcome(lost, corrected = false))
+    }
+
+    @Test
+    fun `the response label names the skill that answered`() {
+        assertEquals(
+            "action(dev.heyari.music)",
+            responseLabel(FfiResponse.Action("{\"v\":1}", "dev.heyari.music", false, false, false, false)),
+        )
+        assertEquals("text", responseLabel(FfiResponse.Text("Playing.", false, false, false, false)))
+        assertEquals("binary(image/png)", responseLabel(FfiResponse.Binary("image/png", ByteArray(4))))
+        assertEquals("not-understood", responseLabel(FfiResponse.NotUnderstood("?")))
     }
 }

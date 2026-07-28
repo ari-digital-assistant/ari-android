@@ -107,6 +107,22 @@ class SettingsRepository @Inject constructor(
     }
 
     /**
+     * Whether to keep a recording of every command the user speaks, alongside
+     * the transcripts it produced, so mis-hearings can be diagnosed against the
+     * audio. Default off, for the same reason as [keepFalseTriggerAudio] — and
+     * more so, since this one records what the user meant to say to Ari.
+     */
+    val keepUtteranceAudio: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_KEEP_UTTERANCE_AUDIO] ?: false
+    }
+
+    suspend fun setKeepUtteranceAudio(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_KEEP_UTTERANCE_AUDIO] = enabled
+        }
+    }
+
+    /**
      * Whether the user may interrupt Ari mid-sentence during a "Let's talk"
      * conversation. Default on — it's the natural feel of a conversation.
      * Effective barge-in additionally requires a hardware echo canceller
@@ -333,6 +349,8 @@ class SettingsRepository @Inject constructor(
         private val KEY_START_ON_BOOT = booleanPreferencesKey("start_on_boot")
         private val KEY_KEEP_FALSE_TRIGGER_AUDIO =
             booleanPreferencesKey("keep_false_trigger_audio")
+        private val KEY_KEEP_UTTERANCE_AUDIO =
+            booleanPreferencesKey("keep_utterance_audio")
         private val KEY_BARGE_IN_ENABLED = booleanPreferencesKey("barge_in_enabled")
         private val KEY_CONVERSATION_MEMORY_ENABLED =
             booleanPreferencesKey("conversation_memory_enabled")

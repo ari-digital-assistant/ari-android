@@ -6,10 +6,12 @@
 -->
 <full-backup-content>
     <!--
-      Captured false-trigger audio (WakeCaptureStore). This is microphone
-      recordings of the user's home, and the settings page promises they never
-      leave the device. Backing them up would copy them to Google's servers,
-      so it is excluded here and in data_extraction_rules.xml.
+      Captured false-trigger audio (WakeCaptureStore) and captured commands
+      (UtteranceCaptureStore). These are microphone recordings of the user's
+      home, and the settings page promises they never leave the device. Backing
+      them up would copy them to Google's servers, so they are excluded here
+      and in data_extraction_rules.xml.
     -->
     <exclude domain="file" path="wake-captures/" />
+    <exclude domain="file" path="utterance-captures/" />
 </full-backup-content>

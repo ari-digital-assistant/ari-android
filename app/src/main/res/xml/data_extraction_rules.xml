@@ -8,14 +8,16 @@
 <data-extraction-rules>
     <cloud-backup>
         <!--
-          Captured false-trigger audio (WakeCaptureStore). Microphone
-          recordings of the user's home; the settings page promises they never
-          leave the device. Never upload them.
+          Captured false-trigger audio (WakeCaptureStore) and captured commands
+          (UtteranceCaptureStore). Microphone recordings of the user's home; the
+          settings page promises they never leave the device. Never upload them.
         -->
         <exclude domain="file" path="wake-captures/" />
+        <exclude domain="file" path="utterance-captures/" />
     </cloud-backup>
     <device-transfer>
         <!-- Same audio, same promise — and no quota to hide behind here. -->
         <exclude domain="file" path="wake-captures/" />
+        <exclude domain="file" path="utterance-captures/" />
     </device-transfer>
 </data-extraction-rules>

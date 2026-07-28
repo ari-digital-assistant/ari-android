@@ -49,10 +49,9 @@ import kotlin.math.sqrt
  *
  * Dispatch on [SttModel.modelType] at [loadModel] time. Callers (VoiceSession,
  * onboarding flow) don't need to know which path is active — both produce the
- * same [SttState.Done] terminal event. The retry layers in `VoiceSession` skip
- * automatically for the offline path because [SttState.Done.parallel] and
- * [SttState.Done.audio] are both null when whisper produces the result (no
- * second decoder to compare against, no point retrying with a model that
+ * same [SttState.Done] terminal event. Neither retry layer applies to the
+ * offline path: [SttState.Done.parallel] is null (no second decoder to compare
+ * against) and [isStreaming] is false (no point re-decoding with a model that
  * already saw the full utterance).
  */
 @Singleton
@@ -643,12 +642,13 @@ class SpeechRecognizer @Inject constructor(
         val match = matchWakePhrase(transcript, locale)
         Log.i(TAG, "Whisper transcript: raw='$transcript' cleaned='${match.text}'")
 
-        // No parallel stream, no audio-for-retry: whisper is the final
-        // word. The retry layers in VoiceSession skip on null.
+        // No parallel stream: whisper has no second decoder to disagree with.
+        // The audio is still carried — not for a retry (whisper already saw the
+        // whole utterance), but so the host can persist it for debug capture.
         _state.value = SttState.Done(
             text = match.text,
             parallel = null,
-            audio = null,
+            audio = merged,
             raw = transcript,
             nameMatched = wakeVerdict(match, locale),
         )
@@ -812,11 +812,13 @@ sealed interface SttState {
      * @param parallel Transcript from the parallel clean-start stream,
      *   or null if it was identical to [text], empty, or the offline
      *   path was used (whisper has no parallel decoder).
-     * @param audio Raw 16-bit PCM of the entire captured utterance, or
-     *   null when the offline whisper path produced [text] (no point
-     *   retrying with a model that already saw the full utterance). The
-     *   host can feed non-null audio into [SpeechRecognizer.transcribeOffline]
-     *   for a third-layer retry if both [text] and [parallel] fail.
+     * @param audio Raw 16-bit PCM of the entire captured utterance, from
+     *   whichever path produced [text]. Null only on the manual
+     *   [SpeechRecognizer.stopListening] path, which has no buffer to hand
+     *   over. Non-null audio is NOT on its own a licence to retry — that is
+     *   what [SpeechRecognizer.isStreaming] is for; feeding whisper's audio
+     *   back into [SpeechRecognizer.transcribeOffline] would re-decode an
+     *   utterance the model has already seen in full.
      * @param raw The transcript before wake-phrase stripping, or null where
      *   only a cleaned partial survived (the manual [stopListening] path).
      *   Used for the wake-rejection log and the false-trigger capture sidecar.

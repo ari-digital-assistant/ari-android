@@ -288,14 +288,17 @@
     <string name="wakeword_sensitivity_low_description">Stricter. Use if Ari wakes when it shouldn\'t.</string>
     <string name="settings_wake_capture_title">Keep false-trigger audio</string>
     <string name="settings_wake_capture_blurb">When Ari wakes for something you didn\'t say, keep the recording so the wake word can be improved. Audio stays on this device in Ari\'s private storage, is never uploaded, and is capped at 50 clips. Off by default.</string>
-    <plurals name="settings_wake_capture_stats">
+    <plurals name="settings_capture_stats">
         <item quantity="one">%1$d clip · %2$s</item>
         <item quantity="other">%1$d clips · %2$s</item>
     </plurals>
-    <string name="settings_wake_capture_empty">No clips saved yet.</string>
-    <string name="settings_wake_capture_delete">Delete all clips</string>
-    <string name="settings_wake_capture_export">Export clips</string>
+    <string name="settings_capture_empty">No clips saved yet.</string>
+    <string name="settings_capture_delete">Delete all clips</string>
+    <string name="settings_capture_export">Export clips</string>
     <string name="settings_wake_capture_export_chooser">Export wake-word clips</string>
+    <string name="settings_utterance_capture_title">Keep command recordings</string>
+    <string name="settings_utterance_capture_blurb">Keep a recording of everything you say to Ari, next to every transcript the recogniser produced for it, so mis-hearings can be traced back to the audio. Recordings stay on this device in Ari\'s private storage, are never uploaded, and are capped at 100 clips. Off by default.</string>
+    <string name="settings_utterance_capture_export_chooser">Export command recordings</string>
     <string name="settings_stt_models_blurb">Choose a voice recognition model. Larger models are more accurate but use more storage and RAM.</string>
     <string name="settings_language_blurb">The language Ari listens and speaks in. Changing this updates the assistant\'s replies and the app\'s chrome — you may need to swap your speech-to-text model below if it doesn\'t support the new language.</string>
     <string name="settings_cloud_stt_for_non_english_title">Use cloud STT for non-English</string>

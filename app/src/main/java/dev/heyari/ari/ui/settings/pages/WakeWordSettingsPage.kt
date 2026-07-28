@@ -47,7 +47,9 @@ fun WakeWordSettingsPage(
                 current = state.wakeWordSensitivity,
                 onSelect = viewModel::selectWakeWordSensitivity,
             )
-            WakeCaptureSection(
+            AudioCaptureSection(
+                title = stringResource(R.string.settings_wake_capture_title),
+                blurb = stringResource(R.string.settings_wake_capture_blurb),
                 enabled = state.keepFalseTriggerAudio,
                 stats = state.wakeCaptureStats,
                 onToggle = viewModel::setKeepFalseTriggerAudio,
