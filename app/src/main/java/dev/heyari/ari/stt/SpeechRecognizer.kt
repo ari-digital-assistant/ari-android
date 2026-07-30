@@ -1,5 +1,6 @@
 package dev.heyari.ari.stt
 
+import android.content.Context
 import android.util.Log
 import com.k2fsa.sherpa.onnx.EndpointConfig
 import com.k2fsa.sherpa.onnx.EndpointRule
@@ -14,6 +15,7 @@ import com.k2fsa.sherpa.onnx.OnlineRecognizer
 import com.k2fsa.sherpa.onnx.OnlineRecognizerConfig
 import com.k2fsa.sherpa.onnx.OnlineStream
 import com.k2fsa.sherpa.onnx.OnlineTransducerModelConfig
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.audio.CaptureBus
 import dev.heyari.ari.locale.AriFfiLocaleProvider
 import dev.heyari.ari.voice.matchWakePhrase
@@ -36,6 +38,43 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.sqrt
 
+// How long the cleaned partial must hold steady before we declare the user
+// is done speaking. 1500 ms is the empirical sweet spot — longer doesn't
+// help (sherpa's streaming decoder either commits late tokens within ~1s or
+// never does) and slows responses.
+internal const val STABILITY_WINDOW_MS = 1500L
+
+// VAD veto: the partial-stability endpoint may only fire when silero
+// has also heard no speech for this long. Stability measures the
+// DECODER going quiet; in heavy noise sherpa stalls mid-utterance and
+// the two diverge — the two-day capture set has a clip where the user
+// spoke for 2.3s past the last committed token and got amputated.
+internal const val VETO_SPEECH_WINDOW_MS = 1000L
+
+// Hard cap on a single online utterance, matching the offline path's
+// 30s. Without it, steady noise that silero scores as speech would
+// veto the endpoint indefinitely.
+internal const val MAX_ONLINE_UTTERANCE_MS = 30_000L
+
+/**
+ * Whether the online decode loop should end the utterance now.
+ *
+ * [partialStableForMs] is how long the cleaned partial has held its current
+ * value, and callers pass 0 while it is empty — an empty partial can never
+ * satisfy the stability arm, but it must still be able to hit the cap.
+ * [msSinceLastSpeech] is [SpeechGate.msSinceLastSpeech], or [Long.MAX_VALUE]
+ * when no VAD is available, which reduces this to the stability-only
+ * endpoint we shipped before the veto.
+ */
+internal fun shouldEndpoint(
+    partialStableForMs: Long,
+    msSinceLastSpeech: Long,
+    listeningForMs: Long,
+): Boolean {
+    if (listeningForMs >= MAX_ONLINE_UTTERANCE_MS) return true
+    return partialStableForMs >= STABILITY_WINDOW_MS && msSinceLastSpeech >= VETO_SPEECH_WINDOW_MS
+}
+
 /**
  * Two-mode STT recogniser:
  *
@@ -56,6 +95,7 @@ import kotlin.math.sqrt
  */
 @Singleton
 class SpeechRecognizer @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     private val captureBus: CaptureBus,
     private val localeProvider: AriFfiLocaleProvider,
 ) {
@@ -72,6 +112,15 @@ class SpeechRecognizer @Inject constructor(
      * NotUnderstood retry path in [VoiceSession].
      */
     private var parallelStream: OnlineStream? = null
+    /**
+     * Silero VAD that vetoes the partial-stability endpoint while it can
+     * still hear speech. Built on first listen and reused for the app's
+     * lifetime — constructing one loads an ONNX model, which is far too
+     * expensive to repeat per utterance. Null when the model asset is
+     * missing or the native build refuses to load it, in which case
+     * [shouldEndpoint] runs unvetoed.
+     */
+    private var speechGate: SpeechGate? = null
 
     // --- Offline whisper path state ---
     private var offlineRecognizer: OfflineRecognizer? = null
@@ -349,6 +398,18 @@ class SpeechRecognizer @Inject constructor(
         listenJob = scope.launch {
             val currentStream = stream ?: return@launch
             val parStream = parallelStream
+            // Built here rather than in the caller so the ONNX load lands on
+            // this coroutine's background thread — startListening() is called
+            // from the main thread on the tap-to-talk path. A gate we can't
+            // build is not fatal: the endpoint just runs unvetoed, exactly as
+            // it did before this existed.
+            val gate = speechGate ?: try {
+                SpeechGate(context.assets).also { speechGate = it }
+            } catch (t: Throwable) {
+                Log.w(TAG, "VAD unavailable — endpoint veto disabled", t)
+                null
+            }
+            gate?.beginUtterance()
             var firstChunkLogged = false
             // Sherpa-onnx zipformer is tuned for ~100ms chunks. The producer
             // (WakeWordService) writes 10ms chunks because microWakeWord wants
@@ -381,7 +442,10 @@ class SpeechRecognizer @Inject constructor(
             // tokens — once it decides a hypothesis is "final", it's final.
             // Audio-energy detection fires too early because sherpa can be
             // 500-1000ms behind real time when the user stops speaking.
-            // Partial-text stability is the least-bad signal we have.
+            // Partial-text stability is the least-bad signal we have — but
+            // it is only ever a proxy for "the user stopped", so [gate]
+            // holds it back while silero can still hear speech. See
+            // shouldEndpoint().
             var lastCleaned = ""
             var lastChangeAt = System.currentTimeMillis()
             try {
@@ -418,8 +482,15 @@ class SpeechRecognizer @Inject constructor(
                     audioAccum.add(merged.copyOf())
                     audioAccumSamples += merged.size
 
+                    // One clock reading per iteration, taken before the decode
+                    // (which can burn tens of ms): the VAD's speech timestamps
+                    // and the partial-stability window have to be measured on
+                    // the same instant or comparing them is meaningless.
+                    val now = System.currentTimeMillis()
+
                     val floatBuffer = FloatArray(merged.size) { i -> merged[i] / 32768.0f }
                     currentStream.acceptWaveform(floatBuffer, SAMPLE_RATE)
+                    gate?.feed(floatBuffer, now)
 
                     while (rec.isReady(currentStream)) {
                         rec.decode(currentStream)
@@ -461,13 +532,29 @@ class SpeechRecognizer @Inject constructor(
                         _state.value = SttState.Listening(cleanedPartial)
                     }
 
-                    val now = System.currentTimeMillis()
                     if (cleanedPartial != lastCleaned) {
                         lastCleaned = cleanedPartial
                         lastChangeAt = now
-                    } else if (cleanedPartial.isNotEmpty() &&
-                        now - lastChangeAt >= STABILITY_WINDOW_MS) {
-                        Log.i(TAG, "Custom endpoint: stable for ${now - lastChangeAt}ms cleaned='$cleanedPartial'")
+                    }
+                    // Report zero stability while the partial is empty (or
+                    // just changed) so it can't satisfy the stability arm.
+                    // The check still has to run in those cases, because the
+                    // 30s cap is the only thing that ends a session where
+                    // noise keeps the VAD hot and the decoder never settles.
+                    val stableForMs = if (cleanedPartial.isEmpty()) 0L else now - lastChangeAt
+                    val sinceSpeech = gate?.msSinceLastSpeech(now) ?: Long.MAX_VALUE
+                    if (shouldEndpoint(
+                            partialStableForMs = stableForMs,
+                            msSinceLastSpeech = sinceSpeech,
+                            listeningForMs = now - startTime,
+                        )
+                    ) {
+                        Log.i(
+                            TAG,
+                            "Custom endpoint: stable=${stableForMs}ms " +
+                                "sinceSpeech=${if (sinceSpeech == Long.MAX_VALUE) "never" else "${sinceSpeech}ms"} " +
+                                "listening=${now - startTime}ms cleaned='$cleanedPartial'",
+                        )
                         // Flush any leftover audio into the parallel stream,
                         // then finalise it so its decoder commits everything
                         // it has. Read its result for the NotUnderstood
@@ -682,6 +769,11 @@ class SpeechRecognizer @Inject constructor(
     fun release() {
         stopRecording()
         scope.cancel()
+        // Safe to release explicitly, unlike the recognisers above: Vad's
+        // finalize() zeroes its native pointer, so the GC pass can't free
+        // it a second time.
+        speechGate?.release()
+        speechGate = null
         onlineRecognizer = null
         offlineRecognizer = null
         offlineLocale = null
@@ -758,12 +850,6 @@ class SpeechRecognizer @Inject constructor(
         // parallel decoder starts clean on user speech only.
         // 32000 pre-roll samples / 1600 batch target = 20 batches.
         private const val PREROLL_SKIP_BATCHES = 20
-        // How long the cleaned partial must hold steady before we declare
-        // the user is done speaking. 1500 ms is the empirical sweet spot —
-        // longer doesn't help (sherpa's streaming decoder either commits
-        // late tokens within ~1s or never does) and slows responses.
-        // Remaining flakiness is sherpa-onnx model lag, not this value.
-        private const val STABILITY_WINDOW_MS = 1500L
 
         // --- Offline whisper endpointing constants ---
         // RMS threshold for "this chunk contains speech". int16 PCM samples
