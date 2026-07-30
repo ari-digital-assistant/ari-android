@@ -6,6 +6,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.audio.AudioClipStore
 import dev.heyari.ari.audio.ClipStats
 import dev.heyari.ari.audio.clipStem
+import dev.heyari.ari.audio.shareIntentFor
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,12 +27,37 @@ enum class WakeCaptureHook(val slug: String) {
  * App-private storage only, hard-bounded, and gated behind a debug setting that
  * is off by default — the caller checks the setting, this class does not. See
  * `docs/superpowers/specs/2026-07-27-wake-word-false-accept-design.md` §5.
+ *
+ * Clips land in one of two directories depending on which hook caught them, and
+ * the difference matters more than a filename slug can carry — see
+ * [rejectedClips]. Everything the settings page does (stats, clear, share) spans
+ * both.
+ *
+ * The primary constructor takes the directory the two stores sit under so a JVM
+ * test can assert the routing against a `TemporaryFolder`; [context] is null on
+ * that path and only [shareIntent] needs it.
  */
 @Singleton
-class WakeCaptureStore @Inject constructor(
-    @ApplicationContext context: Context,
+class WakeCaptureStore internal constructor(
+    private val context: Context?,
+    baseDir: File,
 ) {
-    private val clips = AudioClipStore(context, DIR_NAME, MAX_FILES, MAX_BYTES)
+    @Inject
+    constructor(@ApplicationContext context: Context) : this(context, context.filesDir)
+
+    /** Hard-negative candidates: the wake fired and nobody spoke. Safe retrain feed. */
+    private val silentClips =
+        AudioClipStore(context, File(baseDir, DIR_NAME), MAX_FILES, MAX_BYTES)
+
+    /**
+     * QUARANTINE: the wake fired but the transcript carried no name token. The
+     * 2026-07-29 captures proved these are frequently genuine wakes that sherpa
+     * misheard ("ARA", "Rind…") — training on them as negatives teaches the
+     * model to ignore the user. A human reviews them before ANY clip in here
+     * enters a retrain set, which is why they never touch [silentClips]' dir.
+     */
+    private val rejectedClips =
+        AudioClipStore(context, File(baseDir, REJECTED_DIR_NAME), MAX_FILES, MAX_BYTES)
 
     fun save(
         pcm: ShortArray,
@@ -38,17 +65,29 @@ class WakeCaptureStore @Inject constructor(
         hook: WakeCaptureHook,
         timestampMs: Long,
     ) {
+        val clips = if (hook == WakeCaptureHook.REJECTED) rejectedClips else silentClips
         clips.save(clipStem("wake", timestampMs, hook.slug), pcm, rawTranscript)
     }
 
-    fun stats(): ClipStats = clips.stats()
+    fun stats(): ClipStats {
+        val silent = silentClips.stats()
+        val rejected = rejectedClips.stats()
+        return ClipStats(silent.count + rejected.count, silent.totalBytes + rejected.totalBytes)
+    }
 
-    fun clear() = clips.clear()
+    fun clear() {
+        silentClips.clear()
+        rejectedClips.clear()
+    }
 
-    fun shareIntent(): Intent? = clips.shareIntent()
+    fun shareIntent(): Intent? {
+        val ctx = context ?: return null
+        return shareIntentFor(ctx, silentClips.files() + rejectedClips.files())
+    }
 
     private companion object {
         const val DIR_NAME = "wake-captures"
+        const val REJECTED_DIR_NAME = "wake-captures-rejected"
         const val MAX_FILES = 50
         const val MAX_BYTES = 20L * 1024 * 1024
     }

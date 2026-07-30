@@ -60,7 +60,7 @@ object WakeMishearTable {
 //      a query with "ok" — accepted cost.
 private val BASE_OPENERS = listOf("hey", "ok", "okay", "hi", "hello")
 private val BASE_NAMES = listOf(
-    "ari", "ary", "arie", "arrie", "airy", "harry", "hari", "hairy",
+    "ari", "ary", "arie", "arrie", "airy", "harry", "hari", "hairy", "ara",
     "ori", "orie", "re", "ray", "rae", "jarvis", "jarviz",
 )
 

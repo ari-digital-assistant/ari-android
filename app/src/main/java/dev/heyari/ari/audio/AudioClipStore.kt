@@ -23,6 +23,7 @@ internal fun clipStem(prefix: String, timestampMs: Long, slug: String): String =
 private const val SAMPLE_RATE = 16000
 private const val CHANNELS = 1
 private const val BYTES_PER_SAMPLE = 2
+private const val AUTHORITY_SUFFIX = ".captures"
 
 /**
  * Encode [pcm] as a 16-bit mono 16 kHz WAV. That is the format microWakeWord
@@ -68,6 +69,24 @@ internal fun evictOldest(dir: File, maxFiles: Int, maxBytes: Long) {
 }
 
 /**
+ * An `ACTION_SEND_MULTIPLE` intent carrying [files] as `.captures` content URIs,
+ * or null when there is nothing to share. Top-level rather than a method because
+ * a capture feature spanning more than one directory (see
+ * [dev.heyari.ari.wakeword.WakeCaptureStore]) shares the authority and the grant
+ * flag with the single-directory case, and only one place should know them.
+ */
+internal fun shareIntentFor(context: Context, files: List<File>): Intent? {
+    if (files.isEmpty()) return null
+    val authority = "${context.packageName}$AUTHORITY_SUFFIX"
+    val uris = ArrayList(files.map { FileProvider.getUriForFile(context, authority, it) })
+    return Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+        type = "*/*"
+        putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+}
+
+/**
  * A bounded directory of captured audio clips under `filesDir`, each written as
  * a WAV plus a `.txt` sidecar sharing its stem. Storage is app-private and both
  * caps are hard — the oldest pairs are evicted on every write.
@@ -75,30 +94,34 @@ internal fun evictOldest(dir: File, maxFiles: Int, maxBytes: Long) {
  * Not a Hilt singleton: each debug capture feature owns one, with its own
  * directory and caps, and adds the domain meaning on top (what the stem encodes,
  * what goes in the sidecar, which setting gates the write).
+ *
+ * The primary constructor takes the directory outright, so a JVM test can drive
+ * a real store against a `TemporaryFolder` with no Android framework in sight —
+ * [context] is null on that path and only [shareIntent] needs it.
  */
-class AudioClipStore(
-    private val context: Context,
-    private val dirName: String,
+class AudioClipStore internal constructor(
+    private val context: Context?,
+    private val dir: File,
     private val maxFiles: Int,
     private val maxBytes: Long,
 ) {
-    private val dir: File get() = File(context.filesDir, dirName)
+    constructor(context: Context, dirName: String, maxFiles: Int, maxBytes: Long) :
+        this(context, File(context.filesDir, dirName), maxFiles, maxBytes)
 
     fun save(stem: String, pcm: ShortArray, sidecar: String) {
         if (pcm.isEmpty()) return
-        val target = dir
-        if (!target.exists() && !target.mkdirs()) {
-            Log.w(TAG, "Could not create capture directory ${target.path}")
+        if (!dir.exists() && !dir.mkdirs()) {
+            Log.w(TAG, "Could not create capture directory ${dir.path}")
             return
         }
-        File(target, "$stem.wav").writeBytes(wavBytes(pcm))
-        File(target, "$stem.txt").writeText(sidecar)
+        File(dir, "$stem.wav").writeBytes(wavBytes(pcm))
+        File(dir, "$stem.txt").writeText(sidecar)
         // Log the write, then evict: the line reports what this call did, not
         // what survived the caps. The other order reads as a flat lie when a
         // clip large enough to breach maxBytes on its own gets written,
         // evicted, and then announced as captured.
-        Log.i(TAG, "Captured $dirName/$stem.wav (${pcm.size} samples)")
-        evictOldest(target, maxFiles, maxBytes)
+        Log.i(TAG, "Captured ${dir.name}/$stem.wav (${pcm.size} samples)")
+        evictOldest(dir, maxFiles, maxBytes)
     }
 
     fun stats(): ClipStats {
@@ -110,26 +133,20 @@ class AudioClipStore(
         dir.listFiles()?.forEach { it.delete() }
     }
 
+    /** Every clip and sidecar, name-sorted — the share sheet's manifest. */
+    fun files(): List<File> = dir.listFiles()?.sortedBy { it.name } ?: emptyList()
+
     /**
      * An `ACTION_SEND_MULTIPLE` intent carrying every clip and its sidecar, or
      * null when there is nothing to share. The caller adds
      * `FLAG_ACTIVITY_NEW_TASK` if launching from a non-activity context.
      */
     fun shareIntent(): Intent? {
-        val files = dir.listFiles()?.sortedBy { it.name } ?: return null
-        if (files.isEmpty()) return null
-        val uris = ArrayList(
-            files.map { FileProvider.getUriForFile(context, "${context.packageName}$AUTHORITY_SUFFIX", it) }
-        )
-        return Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-            type = "*/*"
-            putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
+        val ctx = context ?: return null
+        return shareIntentFor(ctx, files())
     }
 
     private companion object {
         const val TAG = "AudioClipStore"
-        const val AUTHORITY_SUFFIX = ".captures"
     }
 }

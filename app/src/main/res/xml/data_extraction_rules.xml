@@ -13,11 +13,13 @@
           settings page promises they never leave the device. Never upload them.
         -->
         <exclude domain="file" path="wake-captures/" />
+        <exclude domain="file" path="wake-captures-rejected/" />
         <exclude domain="file" path="utterance-captures/" />
     </cloud-backup>
     <device-transfer>
         <!-- Same audio, same promise — and no quota to hide behind here. -->
         <exclude domain="file" path="wake-captures/" />
+        <exclude domain="file" path="wake-captures-rejected/" />
         <exclude domain="file" path="utterance-captures/" />
     </device-transfer>
 </data-extraction-rules>

@@ -30,6 +30,22 @@ class WakePhraseTest {
     }
 
     @Test
+    fun `ara mishear is accepted as a name token`() {
+        // Real capture 2026-07-29: user said "Hey Ari", sherpa wrote "ARA".
+        val match = matchWakePhrase("ARA reminds me about business in one hour", "en")
+        assertEquals("reminds me about business in one hour", match.text)
+        assertTrue(match.nameMatched)
+    }
+
+    @Test
+    fun `fused wake and verb still fails - documented gap`() {
+        // "Hey Ari, remind" -> "Rind": no separable name token exists.
+        // If this starts passing, a list entry got too greedy — investigate.
+        val match = matchWakePhrase("Rind me about business in one hour", "en")
+        assertFalse(match.nameMatched)
+    }
+
+    @Test
     fun `unrelated speech reports no name match and is left alone`() {
         val match = matchWakePhrase("i was talking to dave about it")
         assertFalse(match.nameMatched)

@@ -353,7 +353,7 @@
 
         <!--
           Grants read access to the debug audio captures for the share sheet
-          only. Scoped to the two capture directories: nothing else in filesDir
+          only. Scoped to the three capture directories: nothing else in filesDir
           is exposed. Not exported; access is per-URI via the grant flag on the
           share intent.
         -->
