@@ -51,6 +51,15 @@ internal const val STABILITY_WINDOW_MS = 1500L
 // spoke for 2.3s past the last committed token and got amputated.
 internal const val VETO_SPEECH_WINDOW_MS = 1000L
 
+// Upper bound on the veto itself. Continuous speech-like noise — a
+// television, a conversation at the next table — never lets
+// msSinceLastSpeech reach VETO_SPEECH_WINDOW_MS, which would starve the
+// stability arm and leave MAX_ONLINE_UTTERANCE_MS as the only way out:
+// 30s of dead air where today there is 1.5s. The veto exists to outlast a
+// stalled decoder, not to hand the endpoint over to the telly. 4s is a
+// human-decided UX bound (2026-07-30 review), not a measured constant.
+internal const val VETO_OVERRIDE_STABILITY_MS = 4000L
+
 // Hard cap on a single online utterance, matching the offline path's
 // 30s. Without it, steady noise that silero scores as speech would
 // veto the endpoint indefinitely.
@@ -65,6 +74,9 @@ internal const val MAX_ONLINE_UTTERANCE_MS = 30_000L
  * [msSinceLastSpeech] is [SpeechGate.msSinceLastSpeech], or [Long.MAX_VALUE]
  * when no VAD is available, which reduces this to the stability-only
  * endpoint we shipped before the veto.
+ *
+ * Stability below [STABILITY_WINDOW_MS] never fires — so an empty partial,
+ * which callers report as zero, can only ever leave via the cap.
  */
 internal fun shouldEndpoint(
     partialStableForMs: Long,
@@ -72,7 +84,9 @@ internal fun shouldEndpoint(
     listeningForMs: Long,
 ): Boolean {
     if (listeningForMs >= MAX_ONLINE_UTTERANCE_MS) return true
-    return partialStableForMs >= STABILITY_WINDOW_MS && msSinceLastSpeech >= VETO_SPEECH_WINDOW_MS
+    if (partialStableForMs < STABILITY_WINDOW_MS) return false
+    return msSinceLastSpeech >= VETO_SPEECH_WINDOW_MS ||
+        partialStableForMs >= VETO_OVERRIDE_STABILITY_MS
 }
 
 /**
