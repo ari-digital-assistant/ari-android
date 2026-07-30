@@ -3,8 +3,8 @@ package dev.heyari.ari.voice
 import kotlinx.coroutines.Job
 
 /** How the shared mic is being captured. NORMAL = wake-word listening
- *  (AudioSource.MIC); CONVERSATION = comms-mode AEC capture during a talk
- *  session (AudioSource.VOICE_COMMUNICATION). */
+ *  (AudioSource.VOICE_RECOGNITION); CONVERSATION = comms-mode AEC capture
+ *  during a talk session (AudioSource.VOICE_COMMUNICATION). */
 enum class CaptureMode { NORMAL, CONVERSATION }
 
 /** Barge-in only runs when the user enabled it AND the device actually offers

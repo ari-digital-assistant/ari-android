@@ -64,7 +64,7 @@ class WakeWordService : Service() {
     // VOICE_COMMUNICATION during a "let's talk" conversation so the phone's
     // hardware AEC strips Ari's own TTS out of the capture.
     @Volatile
-    private var currentSource: Int = MediaRecorder.AudioSource.MIC
+    private var currentSource: Int = audioSourceFor(CaptureMode.NORMAL)
 
     // While true the wake detector is skipped (we're mid-conversation), but
     // audio still flows into the CaptureBus every chunk.
@@ -325,7 +325,7 @@ class WakeWordService : Service() {
         val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
         when (mode) {
             CaptureMode.CONVERSATION -> {
-                switchSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
+                switchSource(audioSourceFor(CaptureMode.CONVERSATION))
                 am.mode = android.media.AudioManager.MODE_IN_COMMUNICATION
                 @Suppress("DEPRECATION") run { am.isSpeakerphoneOn = true }
                 wakePaused = true
@@ -334,7 +334,7 @@ class WakeWordService : Service() {
                 wakePaused = false
                 am.mode = android.media.AudioManager.MODE_NORMAL
                 @Suppress("DEPRECATION") run { am.isSpeakerphoneOn = false }
-                switchSource(MediaRecorder.AudioSource.MIC)
+                switchSource(audioSourceFor(CaptureMode.NORMAL))
             }
         }
     }
@@ -564,7 +564,7 @@ class WakeWordService : Service() {
             @Suppress("DEPRECATION") run { am.isSpeakerphoneOn = false }
         }
         wakePaused = false
-        currentSource = MediaRecorder.AudioSource.MIC
+        currentSource = audioSourceFor(CaptureMode.NORMAL)
         oneShotActive = false
         Log.i(TAG, "Wake word listening stopped")
         super.onDestroy()
@@ -615,4 +615,18 @@ class WakeWordService : Service() {
         var oneShotActive = false
             private set
     }
+}
+
+/**
+ * Which AudioSource each capture mode records on. NORMAL uses
+ * VOICE_RECOGNITION: the CDD requires it to disable AGC and noise
+ * suppression with a flat response — plain MIC on Pixel pumps room
+ * tone to a -25 dB floor with peaks pinned at 0 dBFS, which is what
+ * was drowning STT (see docs/superpowers/plans/2026-07-30-audio-
+ * pipeline-and-reminder-fixes.md). CONVERSATION stays on
+ * VOICE_COMMUNICATION for the hardware AEC that cancels Ari's TTS.
+ */
+internal fun audioSourceFor(mode: CaptureMode): Int = when (mode) {
+    CaptureMode.NORMAL -> MediaRecorder.AudioSource.VOICE_RECOGNITION
+    CaptureMode.CONVERSATION -> MediaRecorder.AudioSource.VOICE_COMMUNICATION
 }
