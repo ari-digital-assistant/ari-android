@@ -123,6 +123,23 @@ class SettingsRepository @Inject constructor(
     }
 
     /**
+     * The debugging firehose: keep EVERY wake-word firing (accepted ones
+     * included, not just the containment paths) and every spoken turn,
+     * regardless of the two per-feature toggles above. Default off — this is
+     * the most privacy-hostile switch in the app and exists purely so a dev
+     * can reconstruct a whole session's audio when chasing a bug.
+     */
+    val keepEverythingAudio: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_KEEP_EVERYTHING_AUDIO] ?: false
+    }
+
+    suspend fun setKeepEverythingAudio(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_KEEP_EVERYTHING_AUDIO] = enabled
+        }
+    }
+
+    /**
      * Whether the user may interrupt Ari mid-sentence during a "Let's talk"
      * conversation. Default on — it's the natural feel of a conversation.
      * Effective barge-in additionally requires a hardware echo canceller
@@ -351,6 +368,8 @@ class SettingsRepository @Inject constructor(
             booleanPreferencesKey("keep_false_trigger_audio")
         private val KEY_KEEP_UTTERANCE_AUDIO =
             booleanPreferencesKey("keep_utterance_audio")
+        private val KEY_KEEP_EVERYTHING_AUDIO =
+            booleanPreferencesKey("keep_everything_audio")
         private val KEY_BARGE_IN_ENABLED = booleanPreferencesKey("barge_in_enabled")
         private val KEY_CONVERSATION_MEMORY_ENABLED =
             booleanPreferencesKey("conversation_memory_enabled")

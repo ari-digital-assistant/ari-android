@@ -42,6 +42,7 @@ import dev.heyari.ari.ui.settings.pages.GeneralSettingsPage
 import dev.heyari.ari.ui.settings.pages.PermissionsSettingsPage
 import dev.heyari.ari.ui.settings.pages.SttSettingsPage
 import dev.heyari.ari.ui.settings.pages.TtsSettingsPage
+import dev.heyari.ari.ui.settings.pages.DebugSettingsPage
 import dev.heyari.ari.ui.settings.pages.WakeWordSettingsPage
 import dev.heyari.ari.ui.settings.skills.SKILLS_SHOW_INSTALLED_TAB_KEY
 import dev.heyari.ari.ui.settings.skills.SkillDetailScreen
@@ -63,6 +64,7 @@ object Routes {
     const val SETTINGS_CONVERSATION = "settings/conversation"
     const val SETTINGS_LLM = "settings/llm"
     const val SETTINGS_AUTO_UPDATE = "settings/auto-update"
+    const val SETTINGS_DEBUG = "settings/debug"
     const val SKILLS = "skills?type={type}"
     const val SKILL_DETAIL = "skills/detail/{skillId}?source={source}"
     const val ABOUT = "about"
@@ -159,6 +161,7 @@ fun AriNavHost(
                 onOpenConversation = { navController.navigate(Routes.SETTINGS_CONVERSATION) },
                 onOpenLlm = { navController.navigate(Routes.SETTINGS_LLM) },
                 onOpenAutoUpdate = { navController.navigate(Routes.SETTINGS_AUTO_UPDATE) },
+                onOpenDebug = { navController.navigate(Routes.SETTINGS_DEBUG) },
             )
         }
         composable(Routes.SETTINGS_GENERAL) {
@@ -189,6 +192,9 @@ fun AriNavHost(
         }
         composable(Routes.SETTINGS_AUTO_UPDATE) {
             AutoUpdateSettingsPage(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.SETTINGS_DEBUG) {
+            DebugSettingsPage(onBack = { navController.popBackStack() })
         }
         composable(
             route = Routes.SKILLS,

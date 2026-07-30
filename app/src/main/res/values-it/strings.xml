@@ -135,6 +135,10 @@
     <string name="settings_section_app">Impostazioni app</string>
     <string name="settings_section_listening">Ascolto e voce</string>
     <string name="settings_section_ai">IA</string>
+    <string name="settings_section_debug">Debug</string>
+    <string name="settings_category_debug">Debug</string>
+    <string name="settings_keep_everything_title">Conserva tutto</string>
+    <string name="settings_keep_everything_blurb">Registrazione completa per il debug: conserva ogni attivazione della parola di attivazione — comprese quelle accettate — e ogni conversazione vocale con Ari, anche quando i due interruttori qui sotto sono spenti. Tutto resta su questo dispositivo, nella memoria privata di Ari, e non viene mai caricato online. Disattivato per impostazione predefinita; lascialo spento se non stai cercando un bug.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_language_title">Scegli la tua lingua</string>
@@ -287,7 +291,7 @@
     <string name="wakeword_sensitivity_low_label">Bassa</string>
     <string name="wakeword_sensitivity_low_description">Più rigorosa. Usa se Ari si attiva quando non dovrebbe.</string>
     <string name="settings_wake_capture_title">Conserva l\'audio delle attivazioni errate</string>
-    <string name="settings_wake_capture_blurb">Quando Ari si attiva per qualcosa che non hai detto, conserva la registrazione per migliorare la parola di attivazione. L\'audio resta su questo dispositivo, nella memoria privata di Ari, non viene mai caricato online ed è limitato a 100 clip. Disattivato per impostazione predefinita.</string>
+    <string name="settings_wake_capture_blurb">Quando Ari si attiva per qualcosa che non hai detto, conserva la registrazione per migliorare la parola di attivazione. L\'audio resta su questo dispositivo, nella memoria privata di Ari, non viene mai caricato online ed è limitato a 50 clip per categoria di registrazione. Disattivato per impostazione predefinita.</string>
     <!-- "clip" is invariant in the Italian plural, so both quantities match. -->
     <plurals name="settings_capture_stats">
         <item quantity="one">%1$d clip · %2$s</item>

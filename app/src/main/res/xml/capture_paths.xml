@@ -2,5 +2,6 @@
 <paths>
     <files-path name="wake-captures" path="wake-captures/" />
     <files-path name="wake-captures-rejected" path="wake-captures-rejected/" />
+    <files-path name="wake-captures-accepted" path="wake-captures-accepted/" />
     <files-path name="utterance-captures" path="utterance-captures/" />
 </paths>

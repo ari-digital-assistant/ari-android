@@ -49,18 +49,37 @@ class WakeCaptureStoreTest {
     }
 
     @Test
-    fun `stats and clear span both directories`() {
+    fun `accepted clips land in their own dir, never the retrain feed or quarantine`() {
+        val store = store()
+
+        store.save(pcm, "hey ari how s the weather", WakeCaptureHook.ACCEPTED, 3_000L)
+
+        assertEquals(
+            listOf(
+                "wake-00000000000003000-accepted.txt",
+                "wake-00000000000003000-accepted.wav",
+            ),
+            names("wake-captures-accepted"),
+        )
+        assertEquals(emptyList<String>(), names("wake-captures"))
+        assertEquals(emptyList<String>(), names("wake-captures-rejected"))
+    }
+
+    @Test
+    fun `stats and clear span all three directories`() {
         val store = store()
         store.save(pcm, "ARA reminds me", WakeCaptureHook.REJECTED, 1_000L)
         store.save(pcm, "", WakeCaptureHook.SILENT, 2_000L)
+        store.save(pcm, "hey ari how s the weather", WakeCaptureHook.ACCEPTED, 3_000L)
 
-        // Two 1600-sample WAVs: 44 header bytes + 3200 data bytes each.
-        assertEquals(ClipStats(count = 2, totalBytes = 6488L), store.stats())
+        // Three 1600-sample WAVs: 44 header bytes + 3200 data bytes each.
+        assertEquals(ClipStats(count = 3, totalBytes = 9732L), store.stats())
 
         store.clear()
 
         assertEquals(ClipStats(count = 0, totalBytes = 0L), store.stats())
         assertEquals(emptyList<String>(), names("wake-captures-rejected"))
         assertEquals(emptyList<String>(), names("wake-captures"))
+        assertEquals(emptyList<String>(), names("wake-captures-accepted"))
     }
 }

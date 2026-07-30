@@ -14,5 +14,6 @@
     -->
     <exclude domain="file" path="wake-captures/" />
     <exclude domain="file" path="wake-captures-rejected/" />
+    <exclude domain="file" path="wake-captures-accepted/" />
     <exclude domain="file" path="utterance-captures/" />
 </full-backup-content>

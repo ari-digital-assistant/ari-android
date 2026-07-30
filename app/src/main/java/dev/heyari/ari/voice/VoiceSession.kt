@@ -480,6 +480,11 @@ class VoiceSession @Inject constructor(
                                     dismiss()
                                     return@collect
                                 }
+                                // Keep-everything firehose: an accepted wake is
+                                // a confirmed true positive — record the wake
+                                // moment (pre-roll) before the slot is cleared.
+                                // The full utterance is captureUtterance's job.
+                                captureAcceptedWake(wakePreroll, sttState.raw.orEmpty())
                                 verifyWakePending = false
                                 wakePreroll = null
                                 handleFinalText(
@@ -928,11 +933,42 @@ class VoiceSession @Inject constructor(
         if (pcm == null || pcm.isEmpty()) return
         scope.launch(Dispatchers.IO) {
             try {
-                if (!settingsRepository.keepFalseTriggerAudio.first()) return@launch
+                // The keep-everything firehose implies this capture: either
+                // toggle keeps the containment clips flowing.
+                if (!settingsRepository.keepFalseTriggerAudio.first() &&
+                    !settingsRepository.keepEverythingAudio.first()
+                ) {
+                    return@launch
+                }
                 wakeCaptureStore.save(pcm, rawTranscript, hook, System.currentTimeMillis())
             } catch (t: Throwable) {
                 if (t is kotlinx.coroutines.CancellationException) throw t
                 Log.e(TAG, "Failed to capture false-trigger audio", t)
+            }
+        }
+    }
+
+    /**
+     * Keep-everything firehose only: persist the wake moment of an ACCEPTED
+     * turn — a confirmed true positive. [pcm] is the wake pre-roll snapshot; it
+     * is null on tap-to-talk and reply turns, which have no wake moment, and
+     * the guard makes those calls a no-op. Same failure posture as
+     * [captureFalseTrigger]: an opt-in debug feature never takes the app down.
+     */
+    private fun captureAcceptedWake(pcm: ShortArray?, rawTranscript: String) {
+        if (pcm == null || pcm.isEmpty()) return
+        scope.launch(Dispatchers.IO) {
+            try {
+                if (!settingsRepository.keepEverythingAudio.first()) return@launch
+                wakeCaptureStore.save(
+                    pcm,
+                    rawTranscript,
+                    dev.heyari.ari.wakeword.WakeCaptureHook.ACCEPTED,
+                    System.currentTimeMillis(),
+                )
+            } catch (t: Throwable) {
+                if (t is kotlinx.coroutines.CancellationException) throw t
+                Log.e(TAG, "Failed to capture accepted-wake audio", t)
             }
         }
     }
@@ -949,7 +985,12 @@ class VoiceSession @Inject constructor(
         if (pcm == null || pcm.isEmpty()) return
         scope.launch(Dispatchers.IO) {
             try {
-                if (!settingsRepository.keepUtteranceAudio.first()) return@launch
+                // Keep-everything implies this capture too.
+                if (!settingsRepository.keepUtteranceAudio.first() &&
+                    !settingsRepository.keepEverythingAudio.first()
+                ) {
+                    return@launch
+                }
                 utteranceCaptureStore.save(pcm, capture, System.currentTimeMillis())
             } catch (t: Throwable) {
                 if (t is kotlinx.coroutines.CancellationException) throw t

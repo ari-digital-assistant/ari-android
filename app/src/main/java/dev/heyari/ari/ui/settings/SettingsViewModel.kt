@@ -119,6 +119,7 @@ data class SettingsState(
     val wakeCaptureStats: ClipStats = ClipStats(0, 0L),
     val keepUtteranceAudio: Boolean = false,
     val utteranceCaptureStats: ClipStats = ClipStats(0, 0L),
+    val keepEverythingAudio: Boolean = false,
     val bargeInEnabled: Boolean = true,
     val conversationMemoryEnabled: Boolean = true,
     val rememberedFacts: List<String> = emptyList(),
@@ -304,6 +305,12 @@ class SettingsViewModel @Inject constructor(
         }
 
         viewModelScope.launch(Dispatchers.IO) {
+            settingsRepository.keepEverythingAudio.collect { enabled ->
+                _state.update { it.copy(keepEverythingAudio = enabled) }
+            }
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
             settingsRepository.keepUtteranceAudio.collect { enabled ->
                 val stats = utteranceCaptureStore.stats()
                 _state.update {
@@ -438,6 +445,12 @@ class SettingsViewModel @Inject constructor(
     fun setKeepUtteranceAudio(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setKeepUtteranceAudio(enabled)
+        }
+    }
+
+    fun setKeepEverythingAudio(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setKeepEverythingAudio(enabled)
         }
     }
 

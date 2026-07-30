@@ -129,6 +129,10 @@
     <string name="settings_section_app">App Settings</string>
     <string name="settings_section_listening">Listening &amp; Speech</string>
     <string name="settings_section_ai">AI</string>
+    <string name="settings_section_debug">Debug</string>
+    <string name="settings_category_debug">Debug</string>
+    <string name="settings_keep_everything_title">Keep everything</string>
+    <string name="settings_keep_everything_blurb">The debugging firehose: record every wake-word firing — including accepted ones — and every spoken conversation with Ari, even when the two switches below are off. Everything stays on this device in Ari\'s private storage and is never uploaded. Off by default; leave it off unless you\'re chasing a bug.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_language_title">Choose your language</string>
@@ -287,7 +291,7 @@
     <string name="wakeword_sensitivity_low_label">Low</string>
     <string name="wakeword_sensitivity_low_description">Stricter. Use if Ari wakes when it shouldn\'t.</string>
     <string name="settings_wake_capture_title">Keep false-trigger audio</string>
-    <string name="settings_wake_capture_blurb">When Ari wakes for something you didn\'t say, keep the recording so the wake word can be improved. Audio stays on this device in Ari\'s private storage, is never uploaded, and is capped at 100 clips. Off by default.</string>
+    <string name="settings_wake_capture_blurb">When Ari wakes for something you didn\'t say, keep the recording so the wake word can be improved. Audio stays on this device in Ari\'s private storage, is never uploaded, and is capped at 50 clips per capture category. Off by default.</string>
     <plurals name="settings_capture_stats">
         <item quantity="one">%1$d clip · %2$s</item>
         <item quantity="other">%1$d clips · %2$s</item>
