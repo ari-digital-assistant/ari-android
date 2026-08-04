@@ -306,7 +306,7 @@
     <string name="settings_utterance_capture_title">Conserva le registrazioni dei comandi</string>
     <string name="settings_utterance_capture_blurb">Conserva una registrazione di tutto ciò che dici ad Ari, insieme a ogni trascrizione prodotta dal riconoscimento vocale, per risalire dall\'audio agli errori di comprensione. Le registrazioni restano su questo dispositivo, nella memoria privata di Ari, non vengono mai caricate online e sono limitate a 100 clip. Disattivato per impostazione predefinita.</string>
     <string name="settings_utterance_capture_export_chooser">Esporta le registrazioni dei comandi</string>
-    <string name="settings_stt_models_blurb">Scegli un modello di riconoscimento vocale. I modelli più grandi sono più accurati ma occupano più spazio e RAM.</string>
+    <string name="settings_stt_models_blurb">Il modello vocale per la tua lingua. Si scarica una volta, poi funziona offline.</string>
     <string name="settings_language_blurb">La lingua in cui Ari ascolta e parla. Cambiarla aggiorna le risposte dell\'assistente e i testi dell\'app — potresti dover sostituire il modello di riconoscimento vocale qui sotto se non supporta la nuova lingua.</string>
     <string name="settings_stt_mode_on_device_title">Sul dispositivo</string>
     <string name="settings_stt_mode_on_device_blurb">Trascrive sul telefono. Funziona offline.</string>

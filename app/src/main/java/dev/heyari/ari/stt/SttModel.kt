@@ -53,6 +53,15 @@ enum class SttMode {
  */
 data class SttModel(
     val id: String,
+    /**
+     * What the user is shown. Named by language and size, not by architecture:
+     * they chose "on device", and "Kroko Zipformer2" is not a thing anyone can
+     * act on. Also appears in auto-update notifications, so it has to read as a
+     * noun phrase on its own ("… updated to v2").
+     *
+     * Still an English literal, unlike the rest of the UI — see the note on
+     * [SttModelRegistry].
+     */
     val displayName: String,
     val description: String,
     val totalBytes: Long,
@@ -71,11 +80,21 @@ data class SttModel(
     val manifestUrl: String = "",
 )
 
+/**
+ * The on-device models this build ships.
+ *
+ * Note: [SttModel.displayName] and [SttModel.description] are English literals
+ * rather than string resources, so they stay English in an Italian install.
+ * Fixing that properly means resource ids on [SttModel], which ripples into
+ * `ModelUpdateApplier` and `ModelUpdateNotifier` — they put the name into event
+ * payloads and notifications with no Context to resolve one. Worth doing;
+ * bigger than a copy change.
+ */
 object SttModelRegistry {
     val KROKO = SttModel(
         id = "kroko-2025-08-06",
-        displayName = "Small (Kroko Zipformer2)",
-        description = "Fast, lightweight. ~71 MB. Best for short commands.",
+        displayName = "English speech model",
+        description = "71 MB. Works offline.",
         totalBytes = 71_500_000L,
         encoderFile = "encoder.onnx",
         decoderFile = "decoder.onnx",
@@ -99,8 +118,8 @@ object SttModelRegistry {
      */
     val WHISPER_TURBO = SttModel(
         id = "whisper-turbo-int8-2024-09",
-        displayName = "Multilingual (Whisper Turbo int8)",
-        description = "99 languages. ~1 GB. Non-streaming.",
+        displayName = "Multilingual speech model",
+        description = "1 GB. Works offline, 99 languages.",
         totalBytes = 1_037_000_000L,
         encoderFile = "turbo-encoder.int8.onnx",
         decoderFile = "turbo-decoder.int8.onnx",

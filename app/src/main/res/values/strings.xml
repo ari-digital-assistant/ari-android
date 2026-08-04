@@ -305,7 +305,7 @@
     <string name="settings_utterance_capture_title">Keep command recordings</string>
     <string name="settings_utterance_capture_blurb">Keep a recording of everything you say to Ari, next to every transcript the recogniser produced for it, so mis-hearings can be traced back to the audio. Recordings stay on this device in Ari\'s private storage, are never uploaded, and are capped at 100 clips. Off by default.</string>
     <string name="settings_utterance_capture_export_chooser">Export command recordings</string>
-    <string name="settings_stt_models_blurb">Choose a voice recognition model. Larger models are more accurate but use more storage and RAM.</string>
+    <string name="settings_stt_models_blurb">The speech model for your language. Downloaded once, then it works offline.</string>
     <string name="settings_language_blurb">The language Ari listens and speaks in. Changing this updates the assistant\'s replies and the app\'s chrome — you may need to swap your speech-to-text model below if it doesn\'t support the new language.</string>
     <string name="settings_stt_mode_on_device_title">On device</string>
     <string name="settings_stt_mode_on_device_blurb">Transcribes on your phone. Works offline.</string>
