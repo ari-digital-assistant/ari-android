@@ -132,6 +132,11 @@ class AriApplication : Application(), Configuration.Provider {
      */
     private fun eagerLoadActiveSttModel() {
         scope.launch {
+            // Migrate first: an install pointing at a retired model resolves to
+            // no model at all, so loading before migrating would warm nothing
+            // and report "not installed" for a user who has one available.
+            runCatching { sttModelLoader.migrateRetiredModel() }
+                .onFailure { Log.w(TAG, "retired STT model migration failed", it) }
             runCatching { sttModelLoader.ensureLoaded() }
                 .onFailure { Log.w(TAG, "eager STT model load failed", it) }
         }

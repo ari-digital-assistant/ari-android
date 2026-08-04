@@ -357,7 +357,9 @@ fun AriNavHost(
                             navController.navigate(Routes.ONBOARDING_STT)
                         } else {
                             settingsViewModel.selectAndDownloadModel(
-                                dev.heyari.ari.stt.SttModelRegistry.WHISPER_TURBO,
+                                dev.heyari.ari.stt.SttModelRegistry.onDeviceFor(
+                                    wizardState.selectedLocale!!,
+                                ),
                             )
                             navController.navigate(Routes.ONBOARDING_ASSISTANT)
                         }

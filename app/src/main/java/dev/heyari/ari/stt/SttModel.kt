@@ -43,18 +43,6 @@ object SttModelRegistry {
         manifestUrl = "https://github.com/ari-digital-assistant/ari-tools/releases/download/stt-kroko-latest/manifest.json",
     )
 
-    val NEMOTRON = SttModel(
-        id = "nemotron-0.6b-int8-2026-01-14",
-        displayName = "Large (Nemotron 0.6B int8)",
-        description = "High accuracy with native punctuation. ~663 MB. Slower, needs more RAM.",
-        totalBytes = 663_000_000L,
-        encoderFile = "encoder.int8.onnx",
-        decoderFile = "decoder.int8.onnx",
-        joinerFile = "joiner.int8.onnx",
-        baseUrl = "https://huggingface.co/csukuangfj/sherpa-onnx-nemotron-speech-streaming-en-0.6b-int8-2026-01-14/resolve/main",
-        manifestUrl = "https://github.com/ari-digital-assistant/ari-tools/releases/download/stt-nemotron-latest/manifest.json",
-    )
-
     /**
      * OpenAI's whisper-large-v3-turbo, exported to ONNX and int8-quantised
      * by csukuangfj. Multilingual (99 languages) — the only on-device option
@@ -81,7 +69,34 @@ object SttModelRegistry {
         manifestUrl = "https://github.com/ari-digital-assistant/ari-tools/releases/download/stt-whisper-turbo-latest/manifest.json",
     )
 
-    val all = listOf(KROKO, NEMOTRON, WHISPER_TURBO)
+    val all = listOf(KROKO, WHISPER_TURBO)
 
     fun byId(id: String?): SttModel? = all.firstOrNull { it.id == id }
+
+    /**
+     * The on-device model for [locale]. Users choose between on-device and
+     * cloud, not between architectures — the language decides which local
+     * model can actually serve them, so picking it is our job, not theirs.
+     *
+     * [KROKO] is English-only (the `-en-` in its upstream repo name is
+     * literal), so every other locale gets [WHISPER_TURBO], the only
+     * multilingual on-device option. That costs non-English users ~1 GB
+     * instead of 71 MB, which is the price of not forcing them to the cloud.
+     */
+    fun onDeviceFor(locale: String): SttModel =
+        if (locale.startsWith("en")) KROKO else WHISPER_TURBO
+
+    /**
+     * Model ids this build no longer ships. An install whose active id is in
+     * here has to be migrated — [byId] returns null for it, which would leave
+     * the user with no recogniser at all rather than a degraded one.
+     *
+     * `nemotron-0.6b-int8-2026-01-14` was dropped after replaying the debug
+     * capture set through sherpa offline: given identical audio it produced
+     * "how's the weat" and "ton" where the 71 MB Kroko produced "how's the
+     * weather" and "turn on the kitchen table". Ten times the size, an order
+     * of magnitude worse — most likely int8 quantisation damage to a 0.6B
+     * streaming transducer.
+     */
+    val retiredIds = setOf("nemotron-0.6b-int8-2026-01-14")
 }

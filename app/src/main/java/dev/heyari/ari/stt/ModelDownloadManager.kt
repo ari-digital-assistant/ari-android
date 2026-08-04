@@ -55,6 +55,22 @@ class ModelDownloadManager @Inject constructor(
         return dir.deleteRecursively()
     }
 
+    /**
+     * Delete a model directory by id, returning whether anything was actually
+     * removed. Needed for retired models, whose [SttModel] no longer exists to
+     * pass to [delete] — without this their files would sit on disk forever
+     * (Nemotron was 663 MB) with nothing left in the registry able to name them.
+     *
+     * The existence check is load-bearing: `deleteRecursively()` reports
+     * success for a path that was never there, so without it every caller
+     * would be told it reclaimed something on every single call.
+     */
+    fun deleteById(modelId: String): Boolean {
+        val dir = File(modelsRoot, modelId)
+        if (!dir.exists()) return false
+        return dir.deleteRecursively()
+    }
+
     /** Read the installed sidecar version. Missing/corrupt → `unknown`. */
     fun installedVersion(model: SttModel): String =
         InstalledModelMetadata.readVersion(modelDir(model))

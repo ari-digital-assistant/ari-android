@@ -46,6 +46,41 @@ class SttModelLoader @Inject constructor(
     }
 
     /**
+     * Move an install off a model this build no longer ships, and reclaim its
+     * files. Idempotent and safe to call on every start.
+     *
+     * Without this a retired id leaves [SttModelRegistry.byId] returning null,
+     * which reads downstream as "no model installed" — the user gets no
+     * recogniser at all and no explanation, while the retired model's files
+     * (663 MB for Nemotron) stay on disk unreferenced.
+     *
+     * The replacement is chosen by locale, not by asking: see
+     * [SttModelRegistry.onDeviceFor]. It is NOT downloaded here — that is the
+     * download manager's job and needs the user's network consent — so the
+     * next launch reports "not installed" and the UI offers the download,
+     * which is the honest outcome rather than a silent 1 GB fetch.
+     */
+    suspend fun migrateRetiredModel() {
+        // Reclaim unconditionally, and before looking at the active id. A user
+        // who already switched away from the retired model by hand still has
+        // its files, and nothing in the registry can name them any more — so
+        // gating the cleanup on "is it still active" leaks the whole 663 MB in
+        // the most likely case.
+        for (id in SttModelRegistry.retiredIds) {
+            if (downloadManager.deleteById(id)) {
+                Log.i(TAG, "reclaimed files for retired STT model $id")
+            }
+        }
+
+        val activeId = settingsRepository.activeSttModelId.first() ?: return
+        if (activeId !in SttModelRegistry.retiredIds) return
+
+        val replacement = SttModelRegistry.onDeviceFor(settingsRepository.activeLocale.first())
+        settingsRepository.setActiveSttModelId(replacement.id)
+        Log.i(TAG, "repointed active STT model $activeId -> ${replacement.id}")
+    }
+
+    /**
      * Load [model] (idempotent), bounded by [LOAD_TIMEOUT_MS] so a wedged
      * native load can't hang the caller. Returns true only once the model is
      * actually warm. On timeout the load continues on [scope] in the
