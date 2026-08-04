@@ -1,6 +1,28 @@
 package dev.heyari.ari.stt
 
 /**
+ * How the user wants their speech transcribed. This is the only STT choice we
+ * put in front of them — which *model* serves [ON_DEVICE] is decided by their
+ * locale (see [SttModelRegistry.onDeviceFor]), because the answer is forced and
+ * asking would only expose architecture names nobody should have to care about.
+ */
+enum class SttMode {
+    /** Local model. Private, works offline, smaller vocabulary. */
+    ON_DEVICE,
+
+    /** Any OpenAI-compatible endpoint — hosted or self-hosted. */
+    CLOUD,
+    ;
+
+    val slug: String get() = name.lowercase()
+
+    companion object {
+        fun fromSlug(slug: String?): SttMode =
+            entries.firstOrNull { it.slug == slug } ?: ON_DEVICE
+    }
+}
+
+/**
  * Metadata for a downloadable STT model.
  *
  * Models are downloaded into [filesDir]/models/<id>/ on demand. Encoder/decoder/joiner

@@ -324,6 +324,14 @@
     <string name="skill_panel_refresh_after_install">I\'ve installed one — refresh</string>
     <string name="skill_panel_enter_deps_first">Enter the fields above first.</string>
     <string name="skill_panel_checking">Checking…</string>
+
+    <!-- Cloud speech-to-text failures. Each names a different wall so the user
+         knows where to go next; a single generic error taught nobody anything. -->
+    <string name="stt_cloud_error_not_configured">No transcription server set. Add one in Settings.</string>
+    <string name="stt_cloud_error_network">Couldn\'t reach the transcription server.</string>
+    <string name="stt_cloud_error_auth">The transcription server rejected the API key.</string>
+    <string name="stt_cloud_error_server">The transcription server returned an error.</string>
+    <string name="stt_cloud_error_empty">I didn\'t catch any speech in that.</string>
     <string name="skill_panel_retry">Retry</string>
     <string name="skill_panel_no_options">No options found.</string>
     <string name="skill_panel_query_failed">Couldn\'t complete the request.</string>

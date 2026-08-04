@@ -7,6 +7,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.locale.SupportedLocales
+import dev.heyari.ari.stt.CloudTranscriber
+import dev.heyari.ari.stt.SttMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -21,6 +23,42 @@ private val Context.dataStore by preferencesDataStore(name = "ari_settings")
 class SettingsRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
+    /**
+     * On-device or cloud transcription. Defaults to [SttMode.ON_DEVICE] so an
+     * install that has never opened Settings — and every install that predates
+     * the cloud option — keeps working offline with no endpoint and no key.
+     */
+    val sttMode: Flow<SttMode> = context.dataStore.data.map { prefs ->
+        SttMode.fromSlug(prefs[KEY_STT_MODE])
+    }
+
+    suspend fun setSttMode(mode: SttMode) {
+        context.dataStore.edit { prefs -> prefs[KEY_STT_MODE] = mode.slug }
+    }
+
+    /**
+     * Base URL of an OpenAI-compatible transcription endpoint. Defaults to
+     * OpenAI's, but a self-hosted `faster-whisper` (including Home Assistant's
+     * Whisper add-on) is a first-class target — see [CloudTranscriber].
+     */
+    val cloudSttEndpoint: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[KEY_CLOUD_STT_ENDPOINT] ?: CloudTranscriber.DEFAULT_ENDPOINT
+    }
+
+    suspend fun setCloudSttEndpoint(url: String) {
+        context.dataStore.edit { prefs -> prefs[KEY_CLOUD_STT_ENDPOINT] = url.trim() }
+    }
+
+    /** Model name sent in the request. Servers disagree on what they call
+     *  Whisper, so it has to be editable. */
+    val cloudSttModel: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[KEY_CLOUD_STT_MODEL]?.takeIf { it.isNotBlank() } ?: CloudTranscriber.DEFAULT_MODEL
+    }
+
+    suspend fun setCloudSttModel(model: String) {
+        context.dataStore.edit { prefs -> prefs[KEY_CLOUD_STT_MODEL] = model.trim() }
+    }
+
     val activeSttModelId: Flow<String?> = context.dataStore.data.map { prefs ->
         prefs[KEY_ACTIVE_STT_MODEL]
     }
@@ -356,6 +394,9 @@ class SettingsRepository @Inject constructor(
     }
 
     companion object {
+        private val KEY_STT_MODE = stringPreferencesKey("stt_mode")
+        private val KEY_CLOUD_STT_ENDPOINT = stringPreferencesKey("cloud_stt_endpoint")
+        private val KEY_CLOUD_STT_MODEL = stringPreferencesKey("cloud_stt_model")
         private val KEY_ACTIVE_STT_MODEL = stringPreferencesKey("active_stt_model")
         private val KEY_ACTIVE_WAKE_WORD = stringPreferencesKey("active_wake_word")
         private val KEY_WAKE_WORD_SENSITIVITY = stringPreferencesKey("wake_word_sensitivity")

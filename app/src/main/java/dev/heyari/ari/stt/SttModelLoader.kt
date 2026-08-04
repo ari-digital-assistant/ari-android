@@ -99,6 +99,13 @@ class SttModelLoader @Inject constructor(
      *  reports the [Outcome]. Eager-load call sites await it but ignore the
      *  result; the model-change watcher uses it as a readiness check. */
     suspend fun ensureLoaded(): Outcome {
+        // Mode first. Cloud needs nothing downloaded, and applying it here
+        // rather than at each call site means a mode change taking effect is
+        // the same code path as a model change — one place to be wrong.
+        val cloud = settingsRepository.sttMode.first() == SttMode.CLOUD
+        speechRecognizer.setCloudMode(cloud)
+        if (cloud) return Outcome.Loaded
+
         val model = activeDownloadedModel()
         return when (decide(speechRecognizer.isModelLoaded, model != null)) {
             Readiness.READY -> Outcome.Loaded

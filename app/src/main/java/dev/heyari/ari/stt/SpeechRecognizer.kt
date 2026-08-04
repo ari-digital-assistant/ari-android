@@ -16,6 +16,7 @@ import com.k2fsa.sherpa.onnx.OnlineRecognizerConfig
 import com.k2fsa.sherpa.onnx.OnlineStream
 import com.k2fsa.sherpa.onnx.OnlineTransducerModelConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.heyari.ari.R
 import dev.heyari.ari.audio.CaptureBus
 import dev.heyari.ari.locale.AriFfiLocaleProvider
 import dev.heyari.ari.voice.matchWakePhrase
@@ -112,6 +113,7 @@ class SpeechRecognizer @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val captureBus: CaptureBus,
     private val localeProvider: AriFfiLocaleProvider,
+    private val cloudTranscriber: CloudTranscriber,
 ) {
 
     // --- Online streaming path state ---
@@ -167,8 +169,37 @@ class SpeechRecognizer @Inject constructor(
     private val _state = MutableStateFlow<SttState>(SttState.Idle)
     val state: StateFlow<SttState> = _state.asStateFlow()
 
+    /**
+     * True when transcription is routed to [CloudTranscriber] instead of a
+     * local recogniser. Set by [SttModelLoader] from the user's [SttMode];
+     * kept as plain state rather than read from settings here so this class
+     * stays free of DataStore and testable without it.
+     */
+    @Volatile
+    var cloudMode: Boolean = false
+        private set
+
+    /**
+     * Route transcription to the cloud (or back to a local model). Releases any
+     * loaded recogniser on the way in — holding ~1 GB of ONNX for a path that
+     * will never call it is exactly the memory pressure that gets the
+     * wake-word service killed.
+     */
+    fun setCloudMode(enabled: Boolean) {
+        if (cloudMode == enabled) return
+        cloudMode = enabled
+        if (enabled) {
+            synchronized(loadLock) { unload() }
+            Log.i(TAG, "STT routed to cloud; local recogniser released")
+        } else {
+            Log.i(TAG, "STT routed back to on-device")
+        }
+    }
+
+    /** Ready to transcribe — a local model is warm, or cloud is selected
+     *  (which needs nothing loaded). */
     val isModelLoaded: Boolean
-        get() = onlineRecognizer != null || offlineRecognizer != null
+        get() = cloudMode || onlineRecognizer != null || offlineRecognizer != null
 
     /**
      * True when the loaded recogniser is the online streaming one. Hosts need
@@ -179,7 +210,16 @@ class SpeechRecognizer @Inject constructor(
      * therefore cut every offline utterance short.
      */
     val isStreaming: Boolean
-        get() = onlineRecognizer != null
+        get() = !cloudMode && onlineRecognizer != null
+
+    /** Message for a cloud failure, so the user is told which wall they hit. */
+    private fun cloudErrorRes(failure: CloudSttFailure): Int = when (failure) {
+        CloudSttFailure.NOT_CONFIGURED -> R.string.stt_cloud_error_not_configured
+        CloudSttFailure.NETWORK -> R.string.stt_cloud_error_network
+        CloudSttFailure.AUTH -> R.string.stt_cloud_error_auth
+        CloudSttFailure.SERVER -> R.string.stt_cloud_error_server
+        CloudSttFailure.EMPTY -> R.string.stt_cloud_error_empty
+    }
 
     val currentModelId: String?
         get() = loadedModelId
@@ -385,12 +425,48 @@ class SpeechRecognizer @Inject constructor(
         val offline = offlineRecognizer
 
         when {
+            // Cloud first: it needs no local model, so checking it last would
+            // mean a leftover recogniser from a previous on-device session
+            // silently won after the user switched to cloud.
+            cloudMode -> startCloudListening(rewindSeconds)
             online != null -> startOnlineListening(online, rewindSeconds)
-            offline != null -> startOfflineListening(offline, rewindSeconds)
+            offline != null -> startBufferedListening(rewindSeconds, "offline whisper") { pcm ->
+                decodeWhisperAndEmit(offline, pcm)
+            }
             else -> {
                 Log.e(TAG, "startListening called but no model loaded")
                 _state.value = SttState.Error("No STT model loaded. Configure one in Settings.")
             }
+        }
+    }
+
+    private fun startCloudListening(rewindSeconds: Float) {
+        startBufferedListening(rewindSeconds, "cloud") { pcm ->
+            _state.value = SttState.Transcribing
+            val locale = localeProvider.currentLocale()
+            val transcript = try {
+                cloudTranscriber.transcribe(pcm, locale)
+            } catch (e: CloudSttException) {
+                // Say which way it failed. "Couldn't reach the server" and
+                // "your key was rejected" send the user to different places,
+                // and a single generic error taught nobody anything.
+                Log.w(TAG, "Cloud STT failed (${e.failure})", e)
+                _state.value = SttState.Error(context.getString(cloudErrorRes(e.failure)))
+                stopRecording()
+                return@startBufferedListening
+            }
+            val match = matchWakePhrase(transcript, locale)
+            Log.i(TAG, "Cloud transcript: raw='$transcript' cleaned='${match.text}'")
+            _state.value = SttState.Done(
+                text = match.text,
+                // No second decoder and no local model to re-run: a cloud
+                // retry would just be the same request billed twice.
+                parallel = null,
+                audio = pcm,
+                raw = transcript,
+                nameMatched = wakeVerdict(match, locale),
+            )
+            stopRecording()
         }
     }
 
@@ -662,7 +738,23 @@ class SpeechRecognizer @Inject constructor(
         }
     }
 
-    private fun startOfflineListening(rec: OfflineRecognizer, rewindSeconds: Float) {
+    /**
+     * Buffer until the user stops talking, then hand the whole utterance to
+     * [transcribe].
+     *
+     * Shared by the offline-whisper and cloud paths because the difference
+     * between them is only where the decode happens — the capture, the
+     * RMS endpointing and the hard cap are identical, and duplicating that
+     * loop once per backend is how the endpointing rules drift apart.
+     *
+     * [transcribe] runs off this coroutine's thread and may throw; the caller's
+     * wrapper decides what the user hears.
+     */
+    private fun startBufferedListening(
+        rewindSeconds: Float,
+        label: String,
+        transcribe: suspend (ShortArray) -> Unit,
+    ) {
         val channel = captureBus.arm(rewindSeconds) ?: run {
             Log.e(TAG, "CaptureBus already armed — refusing to start listening")
             _state.value = SttState.Error("Audio bus busy")
@@ -670,7 +762,7 @@ class SpeechRecognizer @Inject constructor(
         }
 
         _state.value = SttState.Listening("")
-        Log.i(TAG, "STT (offline whisper) listening started (rewindSeconds=$rewindSeconds)")
+        Log.i(TAG, "STT ($label) listening started (rewindSeconds=$rewindSeconds)")
 
         listenJob = scope.launch {
             // Buffer everything. Whisper has no streaming partials and no
@@ -721,16 +813,16 @@ class SpeechRecognizer @Inject constructor(
                         ) {
                             Log.i(
                                 TAG,
-                                "Offline endpoint: silence for ${sinceLastSpeech}ms after ${totalDuration}ms of utterance",
+                                "$label endpoint: silence for ${sinceLastSpeech}ms after ${totalDuration}ms of utterance",
                             )
-                            decodeWhisperAndEmit(rec, accumulator, totalSamples)
+                            transcribe(merge(accumulator, totalSamples))
                             return@launch
                         }
                     }
 
                     if (totalSamples >= MAX_OFFLINE_UTTERANCE_SAMPLES) {
-                        Log.i(TAG, "Offline endpoint: hard cap (${totalSamples} samples)")
-                        decodeWhisperAndEmit(rec, accumulator, totalSamples)
+                        Log.i(TAG, "$label endpoint: hard cap (${totalSamples} samples)")
+                        transcribe(merge(accumulator, totalSamples))
                         return@launch
                     }
                 }
@@ -741,18 +833,17 @@ class SpeechRecognizer @Inject constructor(
         }
     }
 
-    private suspend fun decodeWhisperAndEmit(
-        rec: OfflineRecognizer,
-        accumulator: List<ShortArray>,
-        totalSamples: Int,
-    ) {
+    private fun merge(accumulator: List<ShortArray>, totalSamples: Int): ShortArray {
         val merged = ShortArray(totalSamples)
         var pos = 0
         for (b in accumulator) {
             System.arraycopy(b, 0, merged, pos, b.size)
             pos += b.size
         }
+        return merged
+    }
 
+    private suspend fun decodeWhisperAndEmit(rec: OfflineRecognizer, merged: ShortArray) {
         // Hand-off signal between "we heard you stop talking" and "we
         // have a transcript". Posted before the (CPU-heavy) decode so
         // VoiceSession can flip its overlay to Thinking — otherwise
