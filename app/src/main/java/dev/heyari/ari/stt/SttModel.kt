@@ -10,13 +10,33 @@ enum class SttMode {
     /** Local model. Private, works offline, smaller vocabulary. */
     ON_DEVICE,
 
-    /** Any OpenAI-compatible endpoint — hosted or self-hosted. */
-    CLOUD,
+    /**
+     * OpenAI's hosted transcription. Needs only an API key — the endpoint and
+     * model are ours to pick, and picking them is the point of having a preset.
+     */
+    OPENAI,
+
+    /**
+     * Any other OpenAI-compatible `/audio/transcriptions` endpoint: whisper.cpp,
+     * faster-whisper, Home Assistant's Whisper add-on. Needs a URL; a key only
+     * if the server asks for one.
+     */
+    SELF_HOSTED,
     ;
 
     val slug: String get() = name.lowercase()
 
+    /** True for anything that transcribes off the device. */
+    val isCloud: Boolean get() = this != ON_DEVICE
+
     companion object {
+        /**
+         * Unknown slugs fall back to [ON_DEVICE] — including the short-lived
+         * `cloud` value this enum replaced, which was only ever selectable for
+         * the few minutes between the picker landing and this split. Falling
+         * back to on-device is the safe direction: it costs a re-pick, not a
+         * request to an endpoint the user did not choose.
+         */
         fun fromSlug(slug: String?): SttMode =
             entries.firstOrNull { it.slug == slug } ?: ON_DEVICE
     }

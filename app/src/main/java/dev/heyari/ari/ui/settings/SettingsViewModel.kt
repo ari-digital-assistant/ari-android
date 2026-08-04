@@ -593,13 +593,10 @@ class SettingsViewModel @Inject constructor(
     fun setSttMode(mode: SttMode) {
         viewModelScope.launch {
             settingsRepository.setSttMode(mode)
-            when (mode) {
-                SttMode.CLOUD -> speechRecognizer.setCloudMode(true)
-                SttMode.ON_DEVICE -> {
-                    speechRecognizer.setCloudMode(false)
-                    val model = SttModelRegistry.onDeviceFor(settingsRepository.activeLocale.first())
-                    selectAndDownloadModel(model)
-                }
+            speechRecognizer.setCloudMode(mode.isCloud)
+            if (mode == SttMode.ON_DEVICE) {
+                val model = SttModelRegistry.onDeviceFor(settingsRepository.activeLocale.first())
+                selectAndDownloadModel(model)
             }
         }
     }

@@ -49,12 +49,26 @@ class CloudTranscriber @Inject constructor(
      *   words in front of the user.
      */
     suspend fun transcribe(pcm: ShortArray, locale: String): String = withContext(Dispatchers.IO) {
-        val base = settingsRepository.cloudSttEndpoint.first()
+        val mode = settingsRepository.sttMode.first()
+        // OpenAI is a preset: we own the endpoint and the model so the user only
+        // has to supply a key. Self-hosted is the opposite — we know neither.
+        val base = when (mode) {
+            SttMode.OPENAI -> OPENAI_ENDPOINT
+            else -> settingsRepository.cloudSttEndpoint.first()
+        }
         if (base.isBlank()) {
             throw CloudSttException(CloudSttFailure.NOT_CONFIGURED, "no cloud STT endpoint configured")
         }
-        val model = settingsRepository.cloudSttModel.first()
+        val model = when (mode) {
+            SttMode.OPENAI -> OPENAI_MODEL
+            else -> settingsRepository.cloudSttModel.first()
+        }
         val apiKey = secretStore.get(SECRET_SCOPE, SECRET_KEY)
+        if (mode == SttMode.OPENAI && apiKey.isNullOrBlank()) {
+            // Distinguish "you haven't set this up" from "your key was
+            // rejected": the first is a Settings trip, the second is a new key.
+            throw CloudSttException(CloudSttFailure.NOT_CONFIGURED, "no OpenAI API key set")
+        }
 
         val boundary = "----AriBoundary${pcm.size}"
         val body = multipartBody(wavBytes(pcm), model, locale, boundary)
@@ -102,8 +116,28 @@ class CloudTranscriber @Inject constructor(
         const val SECRET_SCOPE = "stt.cloud"
         const val SECRET_KEY = "api_key"
 
-        const val DEFAULT_ENDPOINT = "https://api.openai.com/v1"
-        const val DEFAULT_MODEL = "whisper-1"
+        /** Fixed for [SttMode.OPENAI] — not user-editable, that's the preset. */
+        const val OPENAI_ENDPOINT = "https://api.openai.com/v1"
+
+        /**
+         * OpenAI's recommended transcription model (verified against their API
+         * docs, 2026-08). NOT `whisper-1`: that is now labelled legacy and
+         * retained mainly for word/segment timestamps and English translation,
+         * and it has a worse word error rate. Shipping the legacy model as the
+         * "more accurate than on-device" option would defeat the purpose.
+         */
+        const val OPENAI_MODEL = "gpt-transcribe"
+
+        /** Starting point for [SttMode.SELF_HOSTED], which the user then edits. */
+        const val DEFAULT_SELF_HOSTED_ENDPOINT = "http://homeassistant.local:10300/v1"
+
+        /**
+         * Default model name for a self-hosted server. Most OpenAI-compatible
+         * Whisper servers ignore this field or expect the legacy name, so
+         * `whisper-1` is the safer default here — the opposite of the hosted
+         * case.
+         */
+        const val DEFAULT_SELF_HOSTED_MODEL = "whisper-1"
 
         /**
          * Resolve the transcription URL from whatever the user typed. Accepts a

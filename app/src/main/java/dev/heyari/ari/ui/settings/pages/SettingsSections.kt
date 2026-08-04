@@ -583,10 +583,16 @@ internal fun SttModeSection(
             onClick = { onSelect(SttMode.ON_DEVICE) },
         )
         SttModeCard(
-            selected = mode == SttMode.CLOUD,
-            title = stringResource(R.string.settings_stt_mode_cloud_title),
-            blurb = stringResource(R.string.settings_stt_mode_cloud_blurb),
-            onClick = { onSelect(SttMode.CLOUD) },
+            selected = mode == SttMode.OPENAI,
+            title = stringResource(R.string.settings_stt_mode_openai_title),
+            blurb = stringResource(R.string.settings_stt_mode_openai_blurb),
+            onClick = { onSelect(SttMode.OPENAI) },
+        )
+        SttModeCard(
+            selected = mode == SttMode.SELF_HOSTED,
+            title = stringResource(R.string.settings_stt_mode_self_hosted_title),
+            blurb = stringResource(R.string.settings_stt_mode_self_hosted_blurb),
+            onClick = { onSelect(SttMode.SELF_HOSTED) },
         )
     }
 }
@@ -626,13 +632,20 @@ private fun SttModeCard(
 }
 
 /**
- * Endpoint configuration for [SttMode.CLOUD]. The API key field is optional on
- * purpose: a self-hosted `faster-whisper` (Home Assistant's Whisper add-on
- * among them) authenticates nothing, and demanding a key there would make the
- * self-hosted route look unsupported when it is the better one.
+ * Config for whichever cloud mode is selected — and only the fields that mode
+ * actually needs.
+ *
+ * [SttMode.OPENAI] asks for a key and nothing else: we know the endpoint and we
+ * pick the model, which is the entire value of offering a preset. Making
+ * everyone paste a URL to use the obvious option was the wrong default.
+ *
+ * [SttMode.SELF_HOSTED] is the mirror image — we know neither the URL nor what
+ * that server calls its model, and its key is genuinely optional because most
+ * self-hosted Whisper builds authenticate nothing.
  */
 @Composable
 internal fun CloudSttSection(
+    mode: SttMode,
     endpoint: String,
     model: String,
     apiKey: String,
@@ -640,6 +653,7 @@ internal fun CloudSttSection(
     onModelChange: (String) -> Unit,
     onApiKeyChange: (String) -> Unit,
 ) {
+    val selfHosted = mode == SttMode.SELF_HOSTED
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -649,30 +663,40 @@ internal fun CloudSttSection(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                text = stringResource(R.string.settings_stt_cloud_blurb),
+                text = stringResource(
+                    if (selfHosted) R.string.settings_stt_self_hosted_blurb
+                    else R.string.settings_stt_openai_blurb,
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            OutlinedTextField(
-                value = endpoint,
-                onValueChange = onEndpointChange,
-                label = { Text(stringResource(R.string.settings_stt_cloud_endpoint_label)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = model,
-                onValueChange = onModelChange,
-                label = { Text(stringResource(R.string.settings_stt_cloud_model_label)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            if (selfHosted) {
+                OutlinedTextField(
+                    value = endpoint,
+                    onValueChange = onEndpointChange,
+                    label = { Text(stringResource(R.string.settings_stt_cloud_endpoint_label)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = model,
+                    onValueChange = onModelChange,
+                    label = { Text(stringResource(R.string.settings_stt_cloud_model_label)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             OutlinedTextField(
                 value = apiKey,
                 onValueChange = onApiKeyChange,
                 label = { Text(stringResource(R.string.settings_stt_cloud_api_key_label)) },
                 supportingText = {
-                    Text(stringResource(R.string.settings_stt_cloud_api_key_hint))
+                    Text(
+                        stringResource(
+                            if (selfHosted) R.string.settings_stt_cloud_api_key_hint_optional
+                            else R.string.settings_stt_cloud_api_key_hint_required,
+                        ),
+                    )
                 },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),

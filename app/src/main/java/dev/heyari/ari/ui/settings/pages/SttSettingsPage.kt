@@ -50,7 +50,8 @@ fun SttSettingsPage(
                     onDelete = viewModel::deleteModel,
                     onSelect = viewModel::selectModel,
                 )
-                SttMode.CLOUD -> CloudSttSection(
+                else -> CloudSttSection(
+                    mode = state.sttMode,
                     endpoint = state.cloudSttEndpoint,
                     model = state.cloudSttModel,
                     apiKey = state.cloudSttApiKey,

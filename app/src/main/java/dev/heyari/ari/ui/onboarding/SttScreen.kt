@@ -64,7 +64,8 @@ fun SttScreen(
                 onDelete = settingsViewModel::deleteModel,
                 onSelect = settingsViewModel::selectModel,
             )
-            SttMode.CLOUD -> CloudSttSection(
+            else -> CloudSttSection(
+                mode = state.sttMode,
                 endpoint = state.cloudSttEndpoint,
                 model = state.cloudSttModel,
                 apiKey = state.cloudSttApiKey,

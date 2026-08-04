@@ -102,7 +102,7 @@ class SttModelLoader @Inject constructor(
         // Mode first. Cloud needs nothing downloaded, and applying it here
         // rather than at each call site means a mode change taking effect is
         // the same code path as a model change — one place to be wrong.
-        val cloud = settingsRepository.sttMode.first() == SttMode.CLOUD
+        val cloud = settingsRepository.sttMode.first().isCloud
         speechRecognizer.setCloudMode(cloud)
         if (cloud) return Outcome.Loaded
 

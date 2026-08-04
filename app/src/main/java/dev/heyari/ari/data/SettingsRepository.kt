@@ -37,12 +37,11 @@ class SettingsRepository @Inject constructor(
     }
 
     /**
-     * Base URL of an OpenAI-compatible transcription endpoint. Defaults to
-     * OpenAI's, but a self-hosted `faster-whisper` (including Home Assistant's
-     * Whisper add-on) is a first-class target — see [CloudTranscriber].
+     * Base URL for [SttMode.SELF_HOSTED] only. [SttMode.OPENAI] uses a fixed
+     * endpoint that the user never sees — see [CloudTranscriber].
      */
     val cloudSttEndpoint: Flow<String> = context.dataStore.data.map { prefs ->
-        prefs[KEY_CLOUD_STT_ENDPOINT] ?: CloudTranscriber.DEFAULT_ENDPOINT
+        prefs[KEY_CLOUD_STT_ENDPOINT] ?: CloudTranscriber.DEFAULT_SELF_HOSTED_ENDPOINT
     }
 
     suspend fun setCloudSttEndpoint(url: String) {
@@ -52,7 +51,7 @@ class SettingsRepository @Inject constructor(
     /** Model name sent in the request. Servers disagree on what they call
      *  Whisper, so it has to be editable. */
     val cloudSttModel: Flow<String> = context.dataStore.data.map { prefs ->
-        prefs[KEY_CLOUD_STT_MODEL]?.takeIf { it.isNotBlank() } ?: CloudTranscriber.DEFAULT_MODEL
+        prefs[KEY_CLOUD_STT_MODEL]?.takeIf { it.isNotBlank() } ?: CloudTranscriber.DEFAULT_SELF_HOSTED_MODEL
     }
 
     suspend fun setCloudSttModel(model: String) {
