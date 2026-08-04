@@ -450,12 +450,15 @@ class SpeechRecognizer @Inject constructor(
             // When it stays at the same NON-EMPTY value for STABILITY_WINDOW_MS,
             // assume the user has stopped speaking and emit Done.
             //
-            // Why this and not RMS / inputFinished: sherpa-onnx's streaming
-            // decoder lags audio by an unpredictable amount on-device, and
-            // calling inputFinished() does NOT force it to commit late
-            // tokens — once it decides a hypothesis is "final", it's final.
-            // Audio-energy detection fires too early because sherpa can be
-            // 500-1000ms behind real time when the user stops speaking.
+            // Why this and not RMS: sherpa-onnx's streaming decoder lags
+            // audio by an unpredictable amount on-device, and audio-energy
+            // detection fires too early because sherpa can be 500-1000ms
+            // behind real time when the user stops speaking. inputFinished()
+            // is not an alternative to this — it decides nothing about *when*
+            // the utterance ends — but it does force the decoder to commit
+            // what it still owes, so it is called once the endpoint fires.
+            // (An earlier note here claimed otherwise. It was wrong, and it
+            // cost us every truncated transcript in the capture set.)
             // Partial-text stability is the least-bad signal we have — but
             // it is only ever a proxy for "the user stopped", so [gate]
             // holds it back while silero can still hear speech. See
@@ -569,6 +572,39 @@ class SpeechRecognizer @Inject constructor(
                                 "sinceSpeech=${if (sinceSpeech == Long.MAX_VALUE) "never" else "${sinceSpeech}ms"} " +
                                 "listening=${now - startTime}ms cleaned='$cleanedPartial'",
                         )
+                        // Finalise the MAIN stream before reading its result.
+                        // Sherpa holds tokens back pending right context, and
+                        // the endpoint fires precisely when the partial has
+                        // gone quiet — which is exactly when those tokens are
+                        // still owed. Reading getResult() without
+                        // inputFinished() discards them, which is why every
+                        // mangled clip in the debug capture set is a
+                        // truncation and not a mishearing: "turn on the
+                        // kitchen table light" arrived as "ton", and the
+                        // parallel stream (which does finalise) had the
+                        // missing words. Greedy transducer decoding cannot
+                        // retract a committed token, so this can only ever
+                        // append — the flushed text is the partial plus
+                        // whatever was in flight.
+                        var finalRaw = rawPartial
+                        var finalMatch = partialMatch
+                        try {
+                            currentStream.inputFinished()
+                            while (rec.isReady(currentStream)) {
+                                rec.decode(currentStream)
+                            }
+                            val flushed = rec.getResult(currentStream).text.trim()
+                            if (flushed.isNotEmpty()) {
+                                finalRaw = flushed
+                                finalMatch = matchWakePhrase(flushed, locale)
+                            }
+                        } catch (t: Throwable) {
+                            Log.w(TAG, "Main stream finalisation failed — using last partial", t)
+                        }
+                        val finalCleaned = finalMatch.text
+                        if (finalCleaned != cleanedPartial) {
+                            Log.i(TAG, "Flush recovered: '$cleanedPartial' -> '$finalCleaned'")
+                        }
                         // Flush any leftover audio into the parallel stream,
                         // then finalise it so its decoder commits everything
                         // it has. Read its result for the NotUnderstood
@@ -594,7 +630,7 @@ class SpeechRecognizer @Inject constructor(
                                 val parRaw = rec.getResult(ps).text.trim()
                                 val parCleaned = stripWakePhrase(parRaw, locale)
                                 Log.i(TAG, "Parallel stream final: raw='$parRaw' cleaned='$parCleaned'")
-                                parCleaned.takeIf { it.isNotEmpty() && it != cleanedPartial }
+                                parCleaned.takeIf { it.isNotEmpty() && it != finalCleaned }
                             } catch (t: Throwable) {
                                 Log.w(TAG, "Parallel stream finalisation failed", t)
                                 null
@@ -609,11 +645,11 @@ class SpeechRecognizer @Inject constructor(
                             apos += a.size
                         }
                         _state.value = SttState.Done(
-                            cleanedPartial,
+                            finalCleaned,
                             parallelText,
                             mergedAudio,
-                            rawPartial,
-                            wakeVerdict(partialMatch, locale),
+                            finalRaw,
+                            wakeVerdict(finalMatch, locale),
                         )
                         stopRecording()
                         return@launch
