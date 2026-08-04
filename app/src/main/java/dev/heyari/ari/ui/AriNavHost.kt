@@ -346,23 +346,13 @@ fun AriNavHost(
                             val intent = Intent(context, WakeWordService::class.java)
                             ContextCompat.startForegroundService(context, intent)
                         }
-                        // Phase 6: non-English users skip the STT model
-                        // picker — Whisper-turbo is the only option for
-                        // them. Pin it as the active model and start the
-                        // download in the background; the existing
-                        // activeSttModelId observer loads it into the
-                        // recogniser when the download completes.
-                        if (wizardState.selectedLocale == "en"
-                            || wizardState.selectedLocale == null) {
-                            navController.navigate(Routes.ONBOARDING_STT)
-                        } else {
-                            settingsViewModel.selectAndDownloadModel(
-                                dev.heyari.ari.stt.SttModelRegistry.onDeviceFor(
-                                    wizardState.selectedLocale!!,
-                                ),
-                            )
-                            navController.navigate(Routes.ONBOARDING_ASSISTANT)
-                        }
+                        // Everyone sees the STT step now. It used to be skipped
+                        // for non-English locales because Whisper-turbo was
+                        // their only choice, but the step is no longer a model
+                        // picker — it is on-device vs cloud, which is a real
+                        // choice in every language. Which local model serves
+                        // on-device is still decided for them.
+                        navController.navigate(Routes.ONBOARDING_STT)
                     },
                     onBack = { navController.popBackStack() },
                 )

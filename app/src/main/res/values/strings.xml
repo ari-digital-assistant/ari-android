@@ -162,6 +162,8 @@
     <string name="onboarding_wakeword_start_listening_help">This starts Ari listening right away. You can also choose to start Ari on boot in the General screen — they\'re separate switches.</string>
 
     <string name="onboarding_stt_title">Voice recognition</string>
+    <string name="onboarding_stt_blurb_lead">Ari transcribes your voice on your phone by default.</string>
+    <string name="onboarding_stt_blurb_emphasis">Audio never leaves your phone, unless you want it to.</string>
     <string name="onboarding_stt_body">Ari transcribes your voice on-device. <b>Audio never leaves your phone.</b></string>
     <string name="onboarding_stt_continue_hint">You can continue — we\'ll finish downloading in the background.</string>
 
@@ -305,8 +307,15 @@
     <string name="settings_utterance_capture_export_chooser">Export command recordings</string>
     <string name="settings_stt_models_blurb">Choose a voice recognition model. Larger models are more accurate but use more storage and RAM.</string>
     <string name="settings_language_blurb">The language Ari listens and speaks in. Changing this updates the assistant\'s replies and the app\'s chrome — you may need to swap your speech-to-text model below if it doesn\'t support the new language.</string>
-    <string name="settings_cloud_stt_for_non_english_title">Use cloud STT for non-English</string>
-    <string name="settings_cloud_stt_for_non_english_blurb">When on, non-English voice is transcribed by your configured cloud assistant instead of the on-device Whisper model. Faster on slow phones, but your audio leaves your device. Has no effect unless you\'ve set up a cloud assistant.</string>
+    <string name="settings_stt_mode_on_device_title">On device</string>
+    <string name="settings_stt_mode_on_device_blurb">Transcribes on your phone. Works offline.</string>
+    <string name="settings_stt_mode_cloud_title">Cloud (Whisper)</string>
+    <string name="settings_stt_mode_cloud_blurb">More accurate, and better in noisy rooms. Needs a connection.</string>
+    <string name="settings_stt_cloud_blurb">Any OpenAI-compatible transcription endpoint. Leave the key blank if you\'re running your own — a self-hosted Whisper (including Home Assistant\'s Whisper add-on) needs no key.</string>
+    <string name="settings_stt_cloud_endpoint_label">Endpoint URL</string>
+    <string name="settings_stt_cloud_model_label">Model name</string>
+    <string name="settings_stt_cloud_api_key_label">API key</string>
+    <string name="settings_stt_cloud_api_key_hint">Optional. Not needed for a self-hosted server.</string>
     <string name="settings_start_on_boot_title">Start Ari on boot</string>
     <string name="settings_start_on_boot_blurb">When your device boots, Ari will start listening for the wake word automatically. Uses a bit more battery since the microphone is always on — leave it off if you\'d rather start Ari manually.</string>
     <string name="settings_default_assistant_title">Default digital assistant</string>

@@ -15,8 +15,11 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.heyari.ari.R
+import dev.heyari.ari.stt.SttMode
 import dev.heyari.ari.ui.settings.SettingsViewModel
+import dev.heyari.ari.ui.settings.pages.CloudSttSection
 import dev.heyari.ari.ui.settings.pages.ModelsSection
+import dev.heyari.ari.ui.settings.pages.SttModeSection
 
 @Composable
 fun SttScreen(
@@ -34,9 +37,10 @@ fun SttScreen(
     ) {
         Text(
             text = buildAnnotatedString {
-                append("Ari transcribes your voice on-device. ")
+                append(stringResource(R.string.onboarding_stt_blurb_lead))
+                append(" ")
                 withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                    append("Audio never leaves your phone.")
+                    append(stringResource(R.string.onboarding_stt_blurb_emphasis))
                 }
             },
             style = MaterialTheme.typography.bodyMedium,
@@ -44,14 +48,31 @@ fun SttScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        ModelsSection(
-            models = state.models,
-            downloadState = state.download,
-            onDownload = settingsViewModel::downloadModel,
-            onCancel = settingsViewModel::cancelDownload,
-            onDelete = settingsViewModel::deleteModel,
-            onSelect = settingsViewModel::selectModel,
+        SttModeSection(
+            mode = state.sttMode,
+            onSelect = settingsViewModel::setSttMode,
         )
+
+        Spacer(Modifier.height(12.dp))
+
+        when (state.sttMode) {
+            SttMode.ON_DEVICE -> ModelsSection(
+                models = state.models,
+                downloadState = state.download,
+                onDownload = settingsViewModel::downloadModel,
+                onCancel = settingsViewModel::cancelDownload,
+                onDelete = settingsViewModel::deleteModel,
+                onSelect = settingsViewModel::selectModel,
+            )
+            SttMode.CLOUD -> CloudSttSection(
+                endpoint = state.cloudSttEndpoint,
+                model = state.cloudSttModel,
+                apiKey = state.cloudSttApiKey,
+                onEndpointChange = settingsViewModel::setCloudSttEndpoint,
+                onModelChange = settingsViewModel::setCloudSttModel,
+                onApiKeyChange = settingsViewModel::setCloudSttApiKey,
+            )
+        }
 
         Spacer(Modifier.height(8.dp))
 

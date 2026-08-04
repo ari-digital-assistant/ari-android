@@ -383,15 +383,11 @@ class SettingsRepository @Inject constructor(
      * call path (when a cloud assistant supports STT) reads this flag
      * before deciding which transcriber to invoke.
      */
-    val cloudSttForNonEnglish: Flow<Boolean> = context.dataStore.data.map { prefs ->
-        prefs[KEY_CLOUD_STT_FOR_NON_ENGLISH] ?: false
-    }
-
-    suspend fun setCloudSttForNonEnglish(enabled: Boolean) {
-        context.dataStore.edit { prefs ->
-            prefs[KEY_CLOUD_STT_FOR_NON_ENGLISH] = enabled
-        }
-    }
+    // `cloud_stt_for_non_english` used to live here. It was never wired to a
+    // call path — flipping it did nothing — and it is superseded by [sttMode],
+    // which is a real choice in every locale. The stored key is left orphaned
+    // rather than migrated: it never affected behaviour, so there is no state
+    // worth carrying forward.
 
     companion object {
         private val KEY_STT_MODE = stringPreferencesKey("stt_mode")
@@ -417,7 +413,6 @@ class SettingsRepository @Inject constructor(
         private val KEY_REMEMBERED_FACTS = stringPreferencesKey("remembered_facts")
         private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         private val KEY_ROUTER_ENABLED = booleanPreferencesKey("router_enabled")
-        private val KEY_CLOUD_STT_FOR_NON_ENGLISH = booleanPreferencesKey("cloud_stt_for_non_english")
         private val KEY_PENDING_CLOUD_ASSISTANT_SETUP = booleanPreferencesKey("pending_cloud_assistant_setup")
     }
 }

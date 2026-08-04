@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.heyari.ari.R
+import dev.heyari.ari.stt.SttMode
 import dev.heyari.ari.ui.settings.SettingsViewModel
 import dev.heyari.ari.ui.settings.components.SettingsScaffold
 
@@ -36,18 +37,28 @@ fun SttSettingsPage(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            ModelsSection(
-                models = state.models,
-                downloadState = state.download,
-                onDownload = viewModel::downloadModel,
-                onCancel = viewModel::cancelDownload,
-                onDelete = viewModel::deleteModel,
-                onSelect = viewModel::selectModel,
+            SttModeSection(
+                mode = state.sttMode,
+                onSelect = viewModel::setSttMode,
             )
-            CloudSttForNonEnglishSection(
-                enabled = state.cloudSttForNonEnglish,
-                onToggle = viewModel::setCloudSttForNonEnglish,
-            )
+            when (state.sttMode) {
+                SttMode.ON_DEVICE -> ModelsSection(
+                    models = state.models,
+                    downloadState = state.download,
+                    onDownload = viewModel::downloadModel,
+                    onCancel = viewModel::cancelDownload,
+                    onDelete = viewModel::deleteModel,
+                    onSelect = viewModel::selectModel,
+                )
+                SttMode.CLOUD -> CloudSttSection(
+                    endpoint = state.cloudSttEndpoint,
+                    model = state.cloudSttModel,
+                    apiKey = state.cloudSttApiKey,
+                    onEndpointChange = viewModel::setCloudSttEndpoint,
+                    onModelChange = viewModel::setCloudSttModel,
+                    onApiKeyChange = viewModel::setCloudSttApiKey,
+                )
+            }
             // The command-recording capture toggle lives on the Debug page
             // now, beside the other recording switches.
         }

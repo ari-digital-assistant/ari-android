@@ -22,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -40,6 +41,8 @@ import dev.heyari.ari.audio.ClipStats
 import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.llm.LlmModel
 import dev.heyari.ari.stt.ModelDownloadState
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import dev.heyari.ari.stt.SttMode
 import dev.heyari.ari.stt.SttModel
 import dev.heyari.ari.ui.settings.LlmModelStatus
 import dev.heyari.ari.ui.settings.ModelStatus
@@ -561,47 +564,120 @@ internal fun LanguageSection(
 }
 
 /**
- * Opt-in toggle: route non-English transcription through the user's
- * configured cloud assistant instead of on-device Whisper-turbo.
- * Off by default — only meaningful when a cloud assistant is
- * configured. Surfaced on the STT settings page; the actual cloud-STT
- * call path reads `SettingsRepository.cloudSttForNonEnglish` when it
- * decides which transcriber to invoke.
+ * The whole STT choice: on device, or cloud. Shared by the settings page and
+ * the onboarding wizard so both offer the same two options in the same words.
+ *
+ * Which local model backs on-device is not shown, because it is not a choice —
+ * the user's language decides it (see [SttModelRegistry.onDeviceFor]).
  */
 @Composable
-internal fun CloudSttForNonEnglishSection(
-    enabled: Boolean,
-    onToggle: (Boolean) -> Unit,
+internal fun SttModeSection(
+    mode: SttMode,
+    onSelect: (SttMode) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SttModeCard(
+            selected = mode == SttMode.ON_DEVICE,
+            title = stringResource(R.string.settings_stt_mode_on_device_title),
+            blurb = stringResource(R.string.settings_stt_mode_on_device_blurb),
+            onClick = { onSelect(SttMode.ON_DEVICE) },
+        )
+        SttModeCard(
+            selected = mode == SttMode.CLOUD,
+            title = stringResource(R.string.settings_stt_mode_cloud_title),
+            blurb = stringResource(R.string.settings_stt_mode_cloud_blurb),
+            onClick = { onSelect(SttMode.CLOUD) },
+        )
+    }
+}
+
+@Composable
+private fun SttModeCard(
+    selected: Boolean,
+    title: String,
+    blurb: String,
+    onClick: () -> Unit,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
+            else MaterialTheme.colorScheme.surfaceVariant,
         ),
+        onClick = onClick,
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.settings_cloud_stt_for_non_english_title),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = stringResource(R.string.settings_cloud_stt_for_non_english_blurb),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Spacer(Modifier.width(12.dp))
-                Switch(
-                    checked = enabled,
-                    onCheckedChange = onToggle,
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RadioButton(selected = selected, onClick = onClick)
+            Spacer(Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = title, style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = blurb,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+    }
+}
+
+/**
+ * Endpoint configuration for [SttMode.CLOUD]. The API key field is optional on
+ * purpose: a self-hosted `faster-whisper` (Home Assistant's Whisper add-on
+ * among them) authenticates nothing, and demanding a key there would make the
+ * self-hosted route look unsupported when it is the better one.
+ */
+@Composable
+internal fun CloudSttSection(
+    endpoint: String,
+    model: String,
+    apiKey: String,
+    onEndpointChange: (String) -> Unit,
+    onModelChange: (String) -> Unit,
+    onApiKeyChange: (String) -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.settings_stt_cloud_blurb),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedTextField(
+                value = endpoint,
+                onValueChange = onEndpointChange,
+                label = { Text(stringResource(R.string.settings_stt_cloud_endpoint_label)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = model,
+                onValueChange = onModelChange,
+                label = { Text(stringResource(R.string.settings_stt_cloud_model_label)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = apiKey,
+                onValueChange = onApiKeyChange,
+                label = { Text(stringResource(R.string.settings_stt_cloud_api_key_label)) },
+                supportingText = {
+                    Text(stringResource(R.string.settings_stt_cloud_api_key_hint))
+                },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }

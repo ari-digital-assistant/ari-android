@@ -27,9 +27,11 @@ import dev.heyari.ari.router.RouterDownloadManager
 import dev.heyari.ari.router.RouterDownloadState
 import dev.heyari.ari.router.RouterPolicy
 import dev.heyari.ari.router.loadRouterWithFloor
+import dev.heyari.ari.stt.CloudTranscriber
 import dev.heyari.ari.stt.ModelDownloadManager
 import dev.heyari.ari.stt.ModelDownloadState
 import dev.heyari.ari.stt.SpeechRecognizer
+import dev.heyari.ari.stt.SttMode
 import dev.heyari.ari.stt.SttModel
 import dev.heyari.ari.stt.SttModelRegistry
 import dev.heyari.ari.stt.UtteranceCaptureStore
@@ -127,12 +129,14 @@ data class SettingsState(
     val activeTtsVoice: String? = null,
     /** ISO 639-1 lowercase code of the user's active language. */
     val activeLocale: String = "en",
-    /**
-     * Opt-in: route non-English transcription through the cloud assistant
-     * instead of on-device Whisper-turbo. Off by default, only meaningful
-     * when a cloud assistant is configured.
-     */
-    val cloudSttForNonEnglish: Boolean = false,
+    /** On-device or cloud transcription — the only STT choice the user makes. */
+    val sttMode: SttMode = SttMode.ON_DEVICE,
+    /** Base URL of the OpenAI-compatible transcription endpoint. */
+    val cloudSttEndpoint: String = "",
+    /** Model name sent to that endpoint. */
+    val cloudSttModel: String = "",
+    /** API key for it. Blank is legitimate — a self-hosted endpoint needs none. */
+    val cloudSttApiKey: String = "",
 )
 
 @HiltViewModel
@@ -395,11 +399,31 @@ class SettingsViewModel @Inject constructor(
             }
         }
 
-        // Cloud-STT-for-non-English opt-in
+        // STT mode + cloud endpoint config. The API key is read once from the
+        // encrypted store rather than observed — it has no flow, and it only
+        // changes when this screen writes it.
         viewModelScope.launch {
-            settingsRepository.cloudSttForNonEnglish.collect { enabled ->
-                _state.update { it.copy(cloudSttForNonEnglish = enabled) }
+            settingsRepository.sttMode.collect { mode ->
+                _state.update { it.copy(sttMode = mode) }
             }
+        }
+        viewModelScope.launch {
+            settingsRepository.cloudSttEndpoint.collect { url ->
+                _state.update { it.copy(cloudSttEndpoint = url) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.cloudSttModel.collect { model ->
+                _state.update { it.copy(cloudSttModel = model) }
+            }
+        }
+        _state.update {
+            it.copy(
+                cloudSttApiKey = secretStore.get(
+                    CloudTranscriber.SECRET_SCOPE,
+                    CloudTranscriber.SECRET_KEY,
+                ).orEmpty(),
+            )
         }
 
         // Load the router into the engine once its background download
@@ -558,10 +582,45 @@ class SettingsViewModel @Inject constructor(
             .applicationLocales = LocaleList.forLanguageTags(code)
     }
 
-    fun setCloudSttForNonEnglish(enabled: Boolean) {
+    /**
+     * Switch between on-device and cloud transcription, and make it take effect
+     * now rather than at next launch.
+     *
+     * Picking on-device also resolves and starts the download for the user's
+     * language — they chose "on device", not "Zipformer vs Whisper", so
+     * selecting the model is our job (see [SttModelRegistry.onDeviceFor]).
+     */
+    fun setSttMode(mode: SttMode) {
         viewModelScope.launch {
-            settingsRepository.setCloudSttForNonEnglish(enabled)
+            settingsRepository.setSttMode(mode)
+            when (mode) {
+                SttMode.CLOUD -> speechRecognizer.setCloudMode(true)
+                SttMode.ON_DEVICE -> {
+                    speechRecognizer.setCloudMode(false)
+                    val model = SttModelRegistry.onDeviceFor(settingsRepository.activeLocale.first())
+                    selectAndDownloadModel(model)
+                }
+            }
         }
+    }
+
+    fun setCloudSttEndpoint(url: String) {
+        _state.update { it.copy(cloudSttEndpoint = url) }
+        viewModelScope.launch { settingsRepository.setCloudSttEndpoint(url) }
+    }
+
+    fun setCloudSttModel(model: String) {
+        _state.update { it.copy(cloudSttModel = model) }
+        viewModelScope.launch { settingsRepository.setCloudSttModel(model) }
+    }
+
+    fun setCloudSttApiKey(key: String) {
+        _state.update { it.copy(cloudSttApiKey = key) }
+        secretStore.set(
+            CloudTranscriber.SECRET_SCOPE,
+            CloudTranscriber.SECRET_KEY,
+            key.trim().takeIf { it.isNotEmpty() },
+        )
     }
 
     fun refreshPermissions() {
@@ -613,8 +672,20 @@ class SettingsViewModel @Inject constructor(
         runCatching { application.startActivity(intent) }
     }
 
+    /**
+     * What the on-device section shows: the model for the user's language,
+     * plus any other model still sitting on disk so they can reclaim the space.
+     *
+     * Deliberately not the whole registry — the user picks on-device or cloud,
+     * and listing every architecture invites them to choose one they can't use
+     * (Kroko cannot transcribe Italian).
+     */
     private fun buildModelList(activeId: String?): List<ModelStatus> {
-        return SttModelRegistry.all.map { model ->
+        val locale = _state.value.activeLocale
+        val forLocale = SttModelRegistry.onDeviceFor(locale)
+        val alsoOnDisk = SttModelRegistry.all
+            .filter { it != forLocale && downloadManager.isDownloaded(it) }
+        return (listOf(forLocale) + alsoOnDisk).map { model ->
             ModelStatus(
                 model = model,
                 downloaded = downloadManager.isDownloaded(model),

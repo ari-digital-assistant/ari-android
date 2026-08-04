@@ -168,6 +168,8 @@
     <string name="onboarding_wakeword_start_listening_help">Ari inizierà ad ascoltare subito. Puoi anche scegliere di avviare Ari all\'accensione dalla schermata Generali — sono due interruttori distinti.</string>
 
     <string name="onboarding_stt_title">Riconoscimento vocale</string>
+    <string name="onboarding_stt_blurb_lead">Per impostazione predefinita Ari trascrive la tua voce sul telefono.</string>
+    <string name="onboarding_stt_blurb_emphasis">L\'audio non lascia mai il telefono, a meno che non lo voglia tu.</string>
     <string name="onboarding_stt_body">Ari trascrive la tua voce sul dispositivo. <b>L\'audio non lascia mai il telefono.</b></string>
     <string name="onboarding_stt_continue_hint">Puoi continuare — il download finirà in background.</string>
 
@@ -306,8 +308,15 @@
     <string name="settings_utterance_capture_export_chooser">Esporta le registrazioni dei comandi</string>
     <string name="settings_stt_models_blurb">Scegli un modello di riconoscimento vocale. I modelli più grandi sono più accurati ma occupano più spazio e RAM.</string>
     <string name="settings_language_blurb">La lingua in cui Ari ascolta e parla. Cambiarla aggiorna le risposte dell\'assistente e i testi dell\'app — potresti dover sostituire il modello di riconoscimento vocale qui sotto se non supporta la nuova lingua.</string>
-    <string name="settings_cloud_stt_for_non_english_title">Usa STT cloud per le lingue non inglesi</string>
-    <string name="settings_cloud_stt_for_non_english_blurb">Se attivo, la voce non in inglese viene trascritta dall\'assistente cloud configurato invece che dal modello Whisper sul dispositivo. Più veloce sui telefoni lenti, ma il tuo audio lascia il dispositivo. Non ha effetto se non hai configurato un assistente cloud.</string>
+    <string name="settings_stt_mode_on_device_title">Sul dispositivo</string>
+    <string name="settings_stt_mode_on_device_blurb">Trascrive sul telefono. Funziona offline.</string>
+    <string name="settings_stt_mode_cloud_title">Cloud (Whisper)</string>
+    <string name="settings_stt_mode_cloud_blurb">Più preciso, e migliore in ambienti rumorosi. Richiede una connessione.</string>
+    <string name="settings_stt_cloud_blurb">Qualsiasi endpoint di trascrizione compatibile con OpenAI. Lascia vuota la chiave se usi un server tuo: un Whisper self-hosted (compreso il componente aggiuntivo Whisper di Home Assistant) non richiede chiavi.</string>
+    <string name="settings_stt_cloud_endpoint_label">URL dell\'endpoint</string>
+    <string name="settings_stt_cloud_model_label">Nome del modello</string>
+    <string name="settings_stt_cloud_api_key_label">Chiave API</string>
+    <string name="settings_stt_cloud_api_key_hint">Facoltativa. Non serve per un server self-hosted.</string>
     <string name="settings_start_on_boot_title">Avvia Ari all\'accensione</string>
     <string name="settings_start_on_boot_blurb">Quando il dispositivo si avvia, Ari inizierà ad ascoltare la parola di attivazione automaticamente. Consuma un po\' più di batteria poiché il microfono resta sempre attivo — lascia disattivato se preferisci avviare Ari manualmente.</string>
     <string name="settings_default_assistant_title">Assistente digitale predefinito</string>
