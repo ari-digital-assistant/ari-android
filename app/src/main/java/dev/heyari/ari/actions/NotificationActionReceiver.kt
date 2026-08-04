@@ -55,7 +55,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 if (!utterance.isNullOrBlank()) {
                     scope.launch {
                         runCatching {
-                            val response = engineHolder.engine().processInput(utterance)
+                            val response = engineHolder.processInput(utterance)
                             // Apply the response so dismissals / cards /
                             // alerts the skill emits in reply actually
                             // take effect. Same shape as the chat-input

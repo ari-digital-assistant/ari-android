@@ -622,8 +622,7 @@ class VoiceSession @Inject constructor(
         // dispatch. If the engine asks another question, rearm flips it back on.
         awaitingReply = false
 
-        val engine = engineHolder.engine()
-        var response = engine.processInput(text)
+        var response = engineHolder.processInput(text)
         var usedText = text
 
         // --- Layer 2 + 3 retries apply to the online streaming path only ---
@@ -639,7 +638,7 @@ class VoiceSession @Inject constructor(
             !parallel.isNullOrBlank() && parallel != text
         ) {
             Log.i(TAG, "NotUnderstood for '$text' — retrying with parallel '$parallel'")
-            val retry = engine.processInput(parallel)
+            val retry = engineHolder.processInput(parallel)
             if (retry !is FfiResponse.NotUnderstood) {
                 Log.i(TAG, "Retry succeeded with parallel transcript")
                 response = retry
@@ -659,7 +658,7 @@ class VoiceSession @Inject constructor(
             record.offline = offlineText
             if (!offlineText.isNullOrBlank() && offlineText != text && offlineText != parallel) {
                 Log.i(TAG, "Offline produced '$offlineText' — retrying engine")
-                val retry = engine.processInput(offlineText)
+                val retry = engineHolder.processInput(offlineText)
                 if (retry !is FfiResponse.NotUnderstood) {
                     Log.i(TAG, "Offline retry succeeded")
                     response = retry

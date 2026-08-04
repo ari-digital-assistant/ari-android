@@ -320,7 +320,7 @@ class ConversationViewModel @Inject constructor(
             }
 
             val response = try {
-                engineHolder.engine().processInput(text)
+                engineHolder.processInput(text)
             } finally {
                 fillerJob.cancel()
                 _state.update { it.copy(isThinking = false) }

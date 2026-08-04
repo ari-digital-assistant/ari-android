@@ -35,6 +35,7 @@ import kotlinx.coroutines.withContext
 import uniffi.ari_ffi.AriEngine
 import uniffi.ari_ffi.AriEngineBuilder
 import uniffi.ari_ffi.AssistantRegistry
+import uniffi.ari_ffi.FfiResponse
 import uniffi.ari_ffi.SkillSettingsStore
 import java.io.File
 import javax.inject.Inject
@@ -105,6 +106,25 @@ class EngineHolder @Inject constructor(
      * suspend (not block) while the first build is in flight.
      */
     suspend fun engine(): AriEngine = deferred.await()
+
+    /**
+     * Run one turn through the engine, off the main thread whatever the caller's
+     * dispatcher.
+     *
+     * `processInput` is a blocking FFI call that executes the matched skill
+     * inline, host callbacks and all — and some of those callbacks cannot run on
+     * the main thread at any price. `LocationProvider` waits on a Play Services
+     * `Task`, which throws `IllegalStateException` when called there, so every
+     * location-using skill reported a bogus timeout for the entire voice path
+     * (the text path, on [Dispatchers.Default], worked fine — which is what made
+     * it look like an STT problem rather than a threading one).
+     *
+     * Turns go through here rather than `engine().processInput(...)` so the
+     * dispatcher is decided once, in one place, instead of at each call site.
+     * Three of the four had it wrong.
+     */
+    suspend fun processInput(input: String): FfiResponse =
+        withContext(Dispatchers.Default) { engine().processInput(input) }
 
     /** Start the background build without waiting. Call once at app start. */
     fun warmUp() {

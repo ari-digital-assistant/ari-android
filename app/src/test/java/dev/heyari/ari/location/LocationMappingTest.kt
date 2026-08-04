@@ -1,6 +1,7 @@
 package dev.heyari.ari.location
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 import uniffi.ari_ffi.FfiLocationStatus
 
@@ -30,5 +31,22 @@ class LocationMappingTest {
         val r = LocationLogic.resolve(hasPermission = true, servicesAvailable = false, fix = null)
         assertEquals(FfiLocationStatus.UNAVAILABLE, r.status)
         assertEquals(0.0, r.lat, 0.0)
+    }
+
+    @Test fun freshest_picks_the_newest_fix() {
+        val old = LocationLogic.Fix(lat = 1.0, lon = 2.0, accuracyM = 10.0, timeMs = 100L)
+        val new = LocationLogic.Fix(lat = 3.0, lon = 4.0, accuracyM = 900.0, timeMs = 500L)
+        val mid = LocationLogic.Fix(lat = 5.0, lon = 6.0, accuracyM = 20.0, timeMs = 300L)
+        assertEquals(new, LocationLogic.freshest(listOf(old, new, mid)))
+    }
+
+    @Test fun freshest_ignores_nulls() {
+        val only = LocationLogic.Fix(lat = 1.0, lon = 2.0, accuracyM = 10.0, timeMs = 100L)
+        assertEquals(only, LocationLogic.freshest(listOf(null, only, null)))
+    }
+
+    @Test fun freshest_of_nothing_is_null() {
+        assertNull(LocationLogic.freshest(emptyList()))
+        assertNull(LocationLogic.freshest(listOf(null, null)))
     }
 }

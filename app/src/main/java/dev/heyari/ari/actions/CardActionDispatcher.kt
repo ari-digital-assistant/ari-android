@@ -84,7 +84,7 @@ class CardActionDispatcher @Inject constructor(
             // when the round-trip didn't produce text, so a skill can
             // still set a static ack.
             val followupSpeak: String? = if (!followup.isNullOrBlank()) {
-                when (val response = engineHolder.engine().processInput(followup)) {
+                when (val response = engineHolder.processInput(followup)) {
                     is FfiResponse.Action -> {
                         val r = actionHandler.handle(response.json, response.skillId)
                         r.text.ifBlank { null }
@@ -127,7 +127,7 @@ class CardActionDispatcher @Inject constructor(
         else Outcome.Spoken(speak, emptyList())
 
     private suspend fun runUtterance(utterance: String): Outcome {
-        val response = engineHolder.engine().processInput(utterance)
+        val response = engineHolder.processInput(utterance)
         return when (response) {
             is FfiResponse.Text -> Outcome.Spoken(response.body, emptyList())
             is FfiResponse.Action -> {
