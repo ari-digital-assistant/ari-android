@@ -470,7 +470,7 @@
     <string name="model_stt_whisper_turbo_desc">1 GB. Funziona offline, 99 lingue.</string>
     <string name="model_router_name">Router FunctionGemma</string>
     <string name="model_llm_small_name">Piccolo (Gemma 3 1B)</string>
-    <string name="model_llm_small_desc">Veloce ed efficiente (~769 MB di download, 4 GB+ di RAM). Usato esclusivamente per instradare le skill.</string>
+    <string name="model_llm_small_desc">Veloce ed efficiente (~769 MB di download, 4 GB+ di RAM). Usato esclusivamente per il routing delle skill.</string>
     <string name="model_llm_medium_name">Medio (Gemma 4 E2B)</string>
     <string name="model_llm_medium_desc">Un buon equilibrio tra prestazioni e capacità (~3,1 GB di download, 6 GB+ di RAM). Adatto a un\'ampia gamma di attività.</string>
     <string name="model_llm_large_name">Grande (Gemma 4 E4B)</string>
