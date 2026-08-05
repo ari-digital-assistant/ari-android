@@ -113,7 +113,7 @@ class UpdateBannerViewModel @Inject constructor(
                 Log.i(TAG, "opportunistic model check: ${models.size} update(s) available")
                 repository.recordCheck(
                     UpdatesPreferences.Category.MODEL,
-                    UpdatesRepository.summariesFromModelUpdates(models),
+                    UpdatesRepository.summariesFromModelUpdates(models, context::getString),
                     postSystemNotification = false,
                 )
             }.onFailure { Log.w(TAG, "opportunistic model check failed: ${it.message}") }
@@ -157,7 +157,7 @@ class UpdateBannerViewModel @Inject constructor(
                             category = UpdatesPreferences.Category.MODEL,
                             totalCount = updates.size,
                             currentIndex = idx + 1,
-                            currentDisplayName = update.target.displayName,
+                            currentDisplayName = context.getString(update.target.displayNameRes),
                             bytesSoFar = 0L,
                             totalBytes = 0L,
                         ),
@@ -197,7 +197,7 @@ class UpdateBannerViewModel @Inject constructor(
             }
             repository.recordCheck(
                 UpdatesPreferences.Category.MODEL,
-                UpdatesRepository.summariesFromModelUpdates(nowPending),
+                UpdatesRepository.summariesFromModelUpdates(nowPending, context::getString),
             )
             repository.markSeen(UpdatesPreferences.Category.MODEL)
             _state.update {

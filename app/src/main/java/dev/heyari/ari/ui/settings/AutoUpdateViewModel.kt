@@ -177,7 +177,7 @@ class AutoUpdateViewModel @Inject constructor(
                                     pendingUpdates = remaining,
                                     toast = application.getString(
                                         dev.heyari.ari.R.string.auto_update_apply_succeeded,
-                                        event.displayName,
+                                        application.getString(event.displayNameRes),
                                         event.version,
                                     ),
                                 )

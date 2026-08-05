@@ -165,11 +165,14 @@ class UpdatesRepository @Inject constructor(
     companion object {
         const val INACTIVE_THRESHOLD_DAYS = 3L
 
-        fun summariesFromModelUpdates(updates: List<ModelUpdate>): List<PendingUpdateSummary> =
+        fun summariesFromModelUpdates(
+            updates: List<ModelUpdate>,
+            resolveName: (Int) -> String,
+        ): List<PendingUpdateSummary> =
             updates.map {
                 PendingUpdateSummary(
                     id = it.target.key,
-                    displayName = it.target.displayName,
+                    displayName = resolveName(it.target.displayNameRes),
                     installedVersion = it.installedVersion,
                     availableVersion = it.availableVersion,
                 )

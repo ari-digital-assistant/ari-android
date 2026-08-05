@@ -222,7 +222,7 @@ private fun PendingUpdateCard(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = update.target.displayName,
+                text = stringResource(update.target.displayNameRes),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
@@ -276,7 +276,7 @@ private fun InstalledModelCard(row: InstalledModelRow) {
                 .padding(16.dp),
         ) {
             Text(
-                text = row.target.displayName,
+                text = stringResource(row.target.displayNameRes),
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(

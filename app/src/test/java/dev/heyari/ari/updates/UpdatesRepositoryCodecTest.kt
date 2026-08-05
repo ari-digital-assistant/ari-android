@@ -1,5 +1,9 @@
 package dev.heyari.ari.updates
 
+import dev.heyari.ari.models.ModelManifest
+import dev.heyari.ari.models.ModelTarget
+import dev.heyari.ari.models.ModelUpdate
+import dev.heyari.ari.stt.SttModelRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -92,5 +96,28 @@ class UpdatesRepositoryCodecTest {
         assertEquals(listOf(a), decoded)
         assertTrue(decoded.isNotEmpty())
         assertFalse(decoded.any { it.id == "not-a-valid-row" })
+    }
+
+    @Test
+    fun `model summaries resolve the display name through the caller's resolver`() {
+        // PendingUpdateSummary.displayName stays a String because it is
+        // persisted and shared with skill updates, whose names come from the
+        // FFI at runtime and are not resources. So the model path has to be
+        // handed a resolver — if it ever went back to reading a literal off
+        // the target, the name would stop translating and this would catch it.
+        val update = ModelUpdate(
+            target = ModelTarget.Stt(SttModelRegistry.KROKO),
+            installedVersion = "1",
+            manifest = ModelManifest(version = "2", releasedAt = null, files = emptyList()),
+        )
+        val summaries = UpdatesRepository.summariesFromModelUpdates(listOf(update)) { res ->
+            assertEquals(SttModelRegistry.KROKO.displayNameRes, res)
+            "resolved-by-caller"
+        }
+        assertEquals(1, summaries.size)
+        assertEquals("resolved-by-caller", summaries[0].displayName)
+        assertEquals(SttModelRegistry.KROKO.id, summaries[0].id)
+        assertEquals("1", summaries[0].installedVersion)
+        assertEquals("2", summaries[0].availableVersion)
     }
 }

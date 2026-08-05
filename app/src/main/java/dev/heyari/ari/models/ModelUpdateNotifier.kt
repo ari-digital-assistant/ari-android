@@ -27,7 +27,7 @@ class ModelUpdateNotifier @Inject constructor(
 ) {
     @JvmName("showOrUpdateUpdates")
     fun showOrUpdate(updates: List<ModelUpdate>) {
-        showOrUpdate(updates.map { it.target.displayName })
+        showOrUpdate(updates.map { context.getString(it.target.displayNameRes) })
     }
 
     /**

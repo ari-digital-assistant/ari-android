@@ -416,12 +416,12 @@ private fun ModelRow(
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = status.model.displayName,
+                        text = stringResource(status.model.displayNameRes),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        text = status.model.description,
+                        text = stringResource(status.model.descriptionRes),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -867,12 +867,12 @@ private fun LlmModelRow(
                 }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = status.model.displayName,
+                        text = stringResource(status.model.displayNameRes),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        text = status.model.description,
+                        text = stringResource(status.model.descriptionRes),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

@@ -1,6 +1,8 @@
 package dev.heyari.ari.models
 
+import androidx.annotation.StringRes
 import android.util.Log
+import dev.heyari.ari.R
 import dev.heyari.ari.data.AutoUpdatePreferences
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.di.EngineModule
@@ -29,24 +31,24 @@ import javax.inject.Singleton
 sealed interface ModelTarget {
     val key: String
     val category: String
-    val displayName: String
+    @get:StringRes val displayNameRes: Int
 
     data class Router(val locale: String) : ModelTarget {
         override val key = EngineModule.ROUTER_MODEL_KEY
         override val category = AutoUpdatePreferences.CATEGORY_ROUTER
-        override val displayName = "FunctionGemma router"
+        override val displayNameRes = R.string.model_router_name
     }
 
     data class Llm(val model: LlmModel) : ModelTarget {
         override val key: String get() = model.id
         override val category: String get() = AutoUpdatePreferences.CATEGORY_LLM
-        override val displayName: String get() = model.displayName
+        override val displayNameRes: Int get() = model.displayNameRes
     }
 
     data class Stt(val model: SttModel) : ModelTarget {
         override val key: String get() = model.id
         override val category: String get() = AutoUpdatePreferences.CATEGORY_STT
-        override val displayName: String get() = model.displayName
+        override val displayNameRes: Int get() = model.displayNameRes
     }
 }
 

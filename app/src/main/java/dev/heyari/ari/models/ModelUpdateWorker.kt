@@ -90,7 +90,7 @@ class ModelUpdateWorker @AssistedInject constructor(
             Log.i(TAG, "model update check: ${pending.size} update(s) available")
             updatesRepository.recordCheck(
                 UpdatesPreferences.Category.MODEL,
-                UpdatesRepository.summariesFromModelUpdates(pending),
+                UpdatesRepository.summariesFromModelUpdates(pending, applicationContext::getString),
             )
             Result.success()
         } catch (e: Exception) {

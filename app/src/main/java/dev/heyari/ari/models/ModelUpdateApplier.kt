@@ -1,5 +1,6 @@
 package dev.heyari.ari.models
 
+import androidx.annotation.StringRes
 import dev.heyari.ari.data.AutoUpdatePreferences
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.llm.LlmDownloadManager
@@ -29,10 +30,10 @@ import javax.inject.Singleton
  * from these — the applier itself doesn't know about ViewModels.
  */
 sealed interface ApplyEvent {
-    data class Started(val displayName: String) : ApplyEvent
+    data class Started(@StringRes val displayNameRes: Int) : ApplyEvent
     data class Progress(val bytesSoFar: Long, val totalBytes: Long) : ApplyEvent
-    data class Completed(val displayName: String, val version: String) : ApplyEvent
-    data class Failed(val displayName: String, val reason: String) : ApplyEvent
+    data class Completed(@StringRes val displayNameRes: Int, val version: String) : ApplyEvent
+    data class Failed(@StringRes val displayNameRes: Int, val reason: String) : ApplyEvent
 }
 
 /**
@@ -55,7 +56,7 @@ class ModelUpdateApplier @Inject constructor(
     private val settingsRepository: SettingsRepository,
 ) {
     fun apply(update: ModelUpdate): Flow<ApplyEvent> = channelFlow {
-        send(ApplyEvent.Started(update.target.displayName))
+        send(ApplyEvent.Started(update.target.displayNameRes))
         when (val target = update.target) {
             is ModelTarget.Router -> applyRouter(update, target.locale)
             is ModelTarget.Llm -> applyLlm(update, target)
@@ -98,22 +99,22 @@ class ModelUpdateApplier @Inject constructor(
                 // job can block in `input.read` for the full read timeout, long
                 // enough for a successor on another locale to finish first.
                 if (finalState.locale != locale) {
-                    send(ApplyEvent.Failed(update.target.displayName, "superseded by another download"))
+                    send(ApplyEvent.Failed(update.target.displayNameRes, "superseded by another download"))
                     return
                 }
                 if (!stillActive) {
-                    send(ApplyEvent.Failed(update.target.displayName, "language changed during update"))
+                    send(ApplyEvent.Failed(update.target.displayNameRes, "language changed during update"))
                     return
                 }
                 val ok = withContext(Dispatchers.IO) {
                     engine.loadRouterWithFloor(routerDownloadManager, locale)
                 }
                 if (!ok) {
-                    send(ApplyEvent.Failed(update.target.displayName, "engine refused new model"))
+                    send(ApplyEvent.Failed(update.target.displayNameRes, "engine refused new model"))
                     return
                 }
                 autoUpdatePreferences.setSkippedVersion(update.target.key, null)
-                send(ApplyEvent.Completed(update.target.displayName, update.availableVersion))
+                send(ApplyEvent.Completed(update.target.displayNameRes, update.availableVersion))
             }
             is RouterDownloadState.Failed -> {
                 // Best-effort restore: the existing on-disk file may be
@@ -126,9 +127,9 @@ class ModelUpdateApplier @Inject constructor(
                         engine.loadRouterWithFloor(routerDownloadManager, locale)
                     }
                 }
-                send(ApplyEvent.Failed(update.target.displayName, finalState.error))
+                send(ApplyEvent.Failed(update.target.displayNameRes, finalState.error))
             }
-            else -> send(ApplyEvent.Failed(update.target.displayName, "download did not complete"))
+            else -> send(ApplyEvent.Failed(update.target.displayNameRes, "download did not complete"))
         }
     }
 
@@ -159,11 +160,11 @@ class ModelUpdateApplier @Inject constructor(
                     engine.loadLlmModel(llmDownloadManager.modelFile(model).absolutePath)
                 }
                 if (!ok) {
-                    send(ApplyEvent.Failed(target.displayName, "engine refused new model"))
+                    send(ApplyEvent.Failed(target.displayNameRes, "engine refused new model"))
                     return
                 }
                 autoUpdatePreferences.setSkippedVersion(target.key, null)
-                send(ApplyEvent.Completed(target.displayName, update.availableVersion))
+                send(ApplyEvent.Completed(target.displayNameRes, update.availableVersion))
             }
             is LlmDownloadState.Failed -> {
                 if (llmDownloadManager.isDownloaded(model)) {
@@ -171,9 +172,9 @@ class ModelUpdateApplier @Inject constructor(
                         engine.loadLlmModel(llmDownloadManager.modelFile(model).absolutePath)
                     }
                 }
-                send(ApplyEvent.Failed(target.displayName, finalState.error))
+                send(ApplyEvent.Failed(target.displayNameRes, finalState.error))
             }
-            else -> send(ApplyEvent.Failed(target.displayName, "download did not complete"))
+            else -> send(ApplyEvent.Failed(target.displayNameRes, "download did not complete"))
         }
     }
 
@@ -207,14 +208,14 @@ class ModelUpdateApplier @Inject constructor(
                 if (reloadResult.isFailure) {
                     send(
                         ApplyEvent.Failed(
-                            target.displayName,
+                            target.displayNameRes,
                             reloadResult.exceptionOrNull()?.message ?: "recogniser refused new model",
                         ),
                     )
                     return
                 }
                 autoUpdatePreferences.setSkippedVersion(target.key, null)
-                send(ApplyEvent.Completed(target.displayName, update.availableVersion))
+                send(ApplyEvent.Completed(target.displayNameRes, update.availableVersion))
             }
             is ModelDownloadState.Failed -> {
                 if (sttDownloadManager.isDownloaded(model)) {
@@ -224,9 +225,9 @@ class ModelUpdateApplier @Inject constructor(
                         }
                     }
                 }
-                send(ApplyEvent.Failed(target.displayName, finalState.error))
+                send(ApplyEvent.Failed(target.displayNameRes, finalState.error))
             }
-            else -> send(ApplyEvent.Failed(target.displayName, "download did not complete"))
+            else -> send(ApplyEvent.Failed(target.displayNameRes, "download did not complete"))
         }
     }
 }

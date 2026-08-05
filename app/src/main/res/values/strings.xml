@@ -463,4 +463,19 @@
     <!-- Accessibility labels for the per-message input-modality glyph -->
     <string name="msg_source_typed">Typed message</string>
     <string name="msg_source_voice">Voice message</string>
+
+    <!-- On-device model names. Resource ids rather than Kotlin literals so they
+         translate: they appear in Settings, in the onboarding wizard, and in
+         auto-update notifications. -->
+    <string name="model_stt_kroko_name">English speech model</string>
+    <string name="model_stt_kroko_desc">71 MB. Works offline.</string>
+    <string name="model_stt_whisper_turbo_name">Multilingual speech model</string>
+    <string name="model_stt_whisper_turbo_desc">1 GB. Works offline, 99 languages.</string>
+    <string name="model_router_name">FunctionGemma router</string>
+    <string name="model_llm_small_name">Small (Gemma 3 1B)</string>
+    <string name="model_llm_small_desc">Fast and efficient (~769 MB download, 4 GB+ RAM). Used exclusively for skill routing.</string>
+    <string name="model_llm_medium_name">Medium (Gemma 4 E2B)</string>
+    <string name="model_llm_medium_desc">A good balance of performance and capability (~3.1 GB download, 6 GB+ RAM). Suitable for a wide range of tasks.</string>
+    <string name="model_llm_large_name">Large (Gemma 4 E4B)</string>
+    <string name="model_llm_large_desc">Most capable (~5 GB download, 8 GB+ RAM). Best for complex tasks and understanding nuanced language, but may be slower and require more resources.</string>
 </resources>

@@ -311,12 +311,12 @@ private fun LlmTierRow(
                 RadioButton(selected = selected, onClick = onSelect)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = model.displayName,
+                        text = stringResource(model.displayNameRes),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        text = model.description,
+                        text = stringResource(model.descriptionRes),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

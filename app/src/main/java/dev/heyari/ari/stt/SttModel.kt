@@ -1,5 +1,8 @@
 package dev.heyari.ari.stt
 
+import androidx.annotation.StringRes
+import dev.heyari.ari.R
+
 /**
  * How the user wants their speech transcribed. This is the only STT choice we
  * put in front of them — which *model* serves [ON_DEVICE] is decided by their
@@ -58,12 +61,9 @@ data class SttModel(
      * they chose "on device", and "Kroko Zipformer2" is not a thing anyone can
      * act on. Also appears in auto-update notifications, so it has to read as a
      * noun phrase on its own ("… updated to v2").
-     *
-     * Still an English literal, unlike the rest of the UI — see the note on
-     * [SttModelRegistry].
      */
-    val displayName: String,
-    val description: String,
+    @param:StringRes val displayNameRes: Int,
+    @param:StringRes val descriptionRes: Int,
     val totalBytes: Long,
     val encoderFile: String,
     val decoderFile: String,
@@ -80,21 +80,12 @@ data class SttModel(
     val manifestUrl: String = "",
 )
 
-/**
- * The on-device models this build ships.
- *
- * Note: [SttModel.displayName] and [SttModel.description] are English literals
- * rather than string resources, so they stay English in an Italian install.
- * Fixing that properly means resource ids on [SttModel], which ripples into
- * `ModelUpdateApplier` and `ModelUpdateNotifier` — they put the name into event
- * payloads and notifications with no Context to resolve one. Worth doing;
- * bigger than a copy change.
- */
+/** The on-device models this build ships. */
 object SttModelRegistry {
     val KROKO = SttModel(
         id = "kroko-2025-08-06",
-        displayName = "English speech model",
-        description = "71 MB. Works offline.",
+        displayNameRes = R.string.model_stt_kroko_name,
+        descriptionRes = R.string.model_stt_kroko_desc,
         totalBytes = 71_500_000L,
         encoderFile = "encoder.onnx",
         decoderFile = "decoder.onnx",
@@ -118,8 +109,8 @@ object SttModelRegistry {
      */
     val WHISPER_TURBO = SttModel(
         id = "whisper-turbo-int8-2024-09",
-        displayName = "Multilingual speech model",
-        description = "1 GB. Works offline, 99 languages.",
+        displayNameRes = R.string.model_stt_whisper_turbo_name,
+        descriptionRes = R.string.model_stt_whisper_turbo_desc,
         totalBytes = 1_037_000_000L,
         encoderFile = "turbo-encoder.int8.onnx",
         decoderFile = "turbo-decoder.int8.onnx",

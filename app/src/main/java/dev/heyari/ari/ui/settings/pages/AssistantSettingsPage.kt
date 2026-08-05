@@ -329,11 +329,11 @@ private fun BuiltinModelSection(
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = model.displayName,
+                            text = stringResource(model.displayNameRes),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         Text(
-                            text = model.description,
+                            text = stringResource(model.descriptionRes),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
