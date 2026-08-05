@@ -1,6 +1,9 @@
 package dev.heyari.ari.updates
 
 import dev.heyari.ari.models.ModelUpdate
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.heyari.ari.models.ModelTarget
 import dev.heyari.ari.models.ModelUpdateNotifier
 import dev.heyari.ari.skills.SkillUpdateNotifier
 import dev.heyari.ari.updates.UpdatesPreferences.Category
@@ -45,6 +48,7 @@ data class PendingUpdateSummary(
  */
 @Singleton
 class UpdatesRepository @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     private val prefs: UpdatesPreferences,
     private val modelNotifier: ModelUpdateNotifier,
     private val skillNotifier: SkillUpdateNotifier,
@@ -150,7 +154,7 @@ class UpdatesRepository @Inject constructor(
 
     private fun postNotification(category: Category, pending: List<PendingUpdateSummary>) {
         when (category) {
-            Category.MODEL -> modelNotifier.showOrUpdate(pending.map { it.displayName })
+            Category.MODEL -> modelNotifier.showOrUpdate(pending.map(::modelDisplayName))
             Category.SKILL -> skillNotifier.showOrUpdate(pending.size)
         }
     }
@@ -161,6 +165,24 @@ class UpdatesRepository @Inject constructor(
             Category.SKILL -> skillNotifier.showOrUpdate(0)
         }
     }
+
+    /**
+     * Name to show for a persisted model summary.
+     *
+     * Re-resolved from the stable target key rather than read back from
+     * storage. The stored string was rendered in whatever language was active
+     * when the update was found, so after a language change the notification
+     * would otherwise still be in the old one — the summaries outlive the
+     * locale that produced them.
+     *
+     * Falls back to the stored text when the key names a model this build no
+     * longer ships: a summary written before Nemotron was retired has no
+     * resource left to resolve, and a stale name beats a blank one.
+     */
+    private fun modelDisplayName(summary: PendingUpdateSummary): String =
+        ModelTarget.displayNameResFor(summary.id)
+            ?.let(context::getString)
+            ?: summary.displayName
 
     companion object {
         const val INACTIVE_THRESHOLD_DAYS = 3L

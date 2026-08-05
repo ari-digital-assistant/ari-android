@@ -1,5 +1,8 @@
 package dev.heyari.ari.updates
 
+import dev.heyari.ari.R
+import dev.heyari.ari.di.EngineModule
+import dev.heyari.ari.llm.LlmModelRegistry
 import dev.heyari.ari.models.ModelManifest
 import dev.heyari.ari.models.ModelTarget
 import dev.heyari.ari.models.ModelUpdate
@@ -7,6 +10,7 @@ import dev.heyari.ari.stt.SttModelRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -119,5 +123,33 @@ class UpdatesRepositoryCodecTest {
         assertEquals(SttModelRegistry.KROKO.id, summaries[0].id)
         assertEquals("1", summaries[0].installedVersion)
         assertEquals("2", summaries[0].availableVersion)
+    }
+
+    @Test
+    fun `display names resolve from the stable key, not a persisted resource id`() {
+        // Resource ids move between builds, so persisting one would silently
+        // point at a different string after an app update. Keys are ours and
+        // stable, which is why the summaries store the key.
+        assertEquals(
+            SttModelRegistry.KROKO.displayNameRes,
+            ModelTarget.displayNameResFor(SttModelRegistry.KROKO.id),
+        )
+        assertEquals(
+            LlmModelRegistry.SMALL.displayNameRes,
+            ModelTarget.displayNameResFor(LlmModelRegistry.SMALL.id),
+        )
+        assertEquals(
+            R.string.model_router_name,
+            ModelTarget.displayNameResFor(EngineModule.ROUTER_MODEL_KEY),
+        )
+    }
+
+    @Test
+    fun `a retired model's key resolves to null so the caller can fall back`() {
+        // A summary persisted before Nemotron was retired names something this
+        // build cannot resolve. Null is the signal to use the stored text; a
+        // crash or a blank name would both be worse.
+        assertNull(ModelTarget.displayNameResFor("nemotron-0.6b-int8-2026-01-14"))
+        assertNull(ModelTarget.displayNameResFor("not-a-model"))
     }
 }

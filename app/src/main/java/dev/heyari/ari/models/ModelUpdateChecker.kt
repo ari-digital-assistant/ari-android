@@ -50,6 +50,30 @@ sealed interface ModelTarget {
         override val category: String get() = AutoUpdatePreferences.CATEGORY_STT
         override val displayNameRes: Int get() = model.displayNameRes
     }
+
+    companion object {
+        /**
+         * Display-name resource for a stable [key], or null when no shipped
+         * model owns it.
+         *
+         * Exists so persisted state can hold the KEY and resolve the name on
+         * read. An R id must never be persisted: resource ids are assigned at
+         * build time and move between builds, so a stored one would silently
+         * come back pointing at a different string after an app update. Keys
+         * are ours and stable.
+         *
+         * Null is a real answer, not an error — a summary written before a
+         * model was retired (Nemotron) names something this build cannot
+         * resolve, and the caller should fall back to whatever text it stored
+         * at the time.
+         */
+        @StringRes
+        fun displayNameResFor(key: String): Int? = when (key) {
+            EngineModule.ROUTER_MODEL_KEY -> R.string.model_router_name
+            else -> LlmModelRegistry.byId(key)?.displayNameRes
+                ?: SttModelRegistry.byId(key)?.displayNameRes
+        }
+    }
 }
 
 /**

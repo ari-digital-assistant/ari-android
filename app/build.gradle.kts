@@ -42,7 +42,38 @@ android {
         }
     }
 
+    signingConfigs {
+        // A debug keystore committed to the repo, so every machine and CI
+        // runner signs debug builds with the SAME certificate.
+        //
+        // Android App Links are bound to the signing certificate. With the
+        // per-machine keystore the SDK generates by default, every new dev
+        // machine produces a fingerprint that heyari.dev's assetlinks.json has
+        // never heard of — Android then reports `heyari.dev: legacy_failure`
+        // and silently refuses to hand the OAuth callback to the app, so
+        // Home Assistant sign-in dead-ends in the browser with nothing to
+        // explain itself. One shared key means one fingerprint to publish.
+        //
+        // Committing a debug key is normal practice and it protects nothing:
+        // the point is reproducible signing, not secrecy. The trade-off is
+        // real though — the fingerprint is public, so anyone can build a debug
+        // APK that App Links will trust for heyari.dev. The OAuth flow uses
+        // PKCE (S256), so an intercepted authorization code is not redeemable
+        // without the verifier that never leaves the real app. Drop this
+        // fingerprint from the production assetlinks.json once release and
+        // F-Droid signing exist; until then it is the only way in.
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
