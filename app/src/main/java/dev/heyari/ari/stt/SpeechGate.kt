@@ -65,8 +65,6 @@ class SpeechGate(assets: AssetManager) {
     fun msSinceLastSpeech(nowMs: Long): Long =
         if (lastSpeechAtMs == 0L) Long.MAX_VALUE else nowMs - lastSpeechAtMs
 
-    fun release() = vad.release()
-
     private companion object {
         // The bundled model (silero-vad v4 re-exported by k2-fsa, 16 kHz
         // branch only) declares a fixed input shape of [1, 512] — feeding

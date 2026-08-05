@@ -8,12 +8,10 @@ import com.k2fsa.sherpa.onnx.FeatureConfig
 import com.k2fsa.sherpa.onnx.OfflineModelConfig
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
-import com.k2fsa.sherpa.onnx.OfflineStream
 import com.k2fsa.sherpa.onnx.OfflineWhisperModelConfig
 import com.k2fsa.sherpa.onnx.OnlineModelConfig
 import com.k2fsa.sherpa.onnx.OnlineRecognizer
 import com.k2fsa.sherpa.onnx.OnlineRecognizerConfig
-import com.k2fsa.sherpa.onnx.OnlineStream
 import com.k2fsa.sherpa.onnx.OnlineTransducerModelConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.R
@@ -23,6 +21,7 @@ import dev.heyari.ari.voice.matchWakePhrase
 import dev.heyari.ari.voice.stripWakePhrase
 import dev.heyari.ari.voice.wakeVerdict
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -32,6 +31,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -118,16 +118,6 @@ class SpeechRecognizer @Inject constructor(
 
     // --- Online streaming path state ---
     private var onlineRecognizer: OnlineRecognizer? = null
-    private var stream: OnlineStream? = null
-    /**
-     * Second sherpa stream that runs concurrently with [stream] but is fed
-     * with bigger acceptWaveform batches (~1 s instead of 100 ms). Sherpa's
-     * streaming decoder commits different tokens depending on how much audio
-     * arrives per call — bigger calls give it more context per decoder pass
-     * and sometimes catch words the streaming pass misses. Used by the
-     * NotUnderstood retry path in [VoiceSession].
-     */
-    private var parallelStream: OnlineStream? = null
     /**
      * Silero VAD that vetoes the partial-stability endpoint while it can
      * still hear speech. Built on first listen and reused for the app's
@@ -151,6 +141,14 @@ class SpeechRecognizer @Inject constructor(
     // --- Shared state ---
     private var loadedModelId: String? = null
     private var listenJob: Job? = null
+    /**
+     * Guards [listenJob] handover between the threads that start and stop
+     * listening — the decode loop endpointing on Dispatchers.Default, the main
+     * thread dismissing a voice session, and an IO thread swapping models. All
+     * three used to race on the job field and on the native stream handles
+     * beside it; see [armListenJob] and [stopRecording].
+     */
+    private val listenLock = Any()
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     /**
      * Serialises [loadModel] so a flurry of concurrent callers (multiple
@@ -398,10 +396,12 @@ class SpeechRecognizer @Inject constructor(
 
     fun unload() {
         stopRecording()
-        // Don't call recognizer.release() — sherpa-onnx's finalize() also
-        // frees native memory, and release() doesn't guard against that.
-        // On hardened allocators (GrapheneOS) the double free is fatal.
-        // Nulling the reference lets the GC handle cleanup via finalize().
+        // Don't call recognizer.release(): stopRecording() cancels the listen
+        // coroutine but does not wait for it, so a decode can still be running
+        // inside the native recogniser we'd be freeing. Nulling the reference
+        // instead leaves the recogniser alive for exactly as long as that
+        // coroutine's captured reference — the GC frees it via finalize() once
+        // nobody can reach it, which is the only point at which it is safe.
         onlineRecognizer = null
         offlineRecognizer = null
         offlineLocale = null
@@ -452,7 +452,6 @@ class SpeechRecognizer @Inject constructor(
                 // and a single generic error taught nobody anything.
                 Log.w(TAG, "Cloud STT failed (${e.failure})", e)
                 _state.value = SttState.Error(context.getString(cloudErrorRes(e.failure)))
-                stopRecording()
                 return@startBufferedListening
             }
             val match = matchWakePhrase(transcript, locale)
@@ -466,7 +465,6 @@ class SpeechRecognizer @Inject constructor(
                 raw = transcript,
                 nameMatched = wakeVerdict(match, locale),
             )
-            stopRecording()
         }
     }
 
@@ -477,17 +475,31 @@ class SpeechRecognizer @Inject constructor(
             return
         }
 
-        stream = rec.createStream()
-        parallelStream = rec.createStream()
-        Log.d(TAG, "Streams created (main + parallel)")
-
         _state.value = SttState.Listening("")
         val startTime = System.currentTimeMillis()
         Log.i(TAG, "STT (online) listening started (rewindSeconds=$rewindSeconds)")
 
-        listenJob = scope.launch {
-            val currentStream = stream ?: return@launch
-            val parStream = parallelStream
+        armListenJob(scope.launch(start = CoroutineStart.LAZY) {
+            val owner = coroutineContext.job
+            // Both streams are created, used and released entirely inside this
+            // coroutine, and never published to a field. Sherpa's
+            // OnlineStream.release() is just finalize(), whose "already freed?"
+            // guard is a plain non-volatile read of ptr — so two threads
+            // releasing the same stream both sail past it and delete the same
+            // native pointer twice. Bionic's allocator tolerates that; the
+            // hardened_malloc on GrapheneOS aborts the process. Sole ownership
+            // by one coroutine is what makes it unreachable: stopRecording()
+            // cancels the job and lets the unwind below do the freeing, on the
+            // same thread that was last decoding.
+            val currentStream = rec.createStream()
+            // Second stream, fed with bigger acceptWaveform batches (~1 s
+            // instead of 100 ms). Sherpa's streaming decoder commits different
+            // tokens depending on how much audio arrives per call — bigger
+            // calls give it more context per decoder pass and sometimes catch
+            // words the streaming pass misses. Feeds the NotUnderstood retry
+            // path in VoiceSession.
+            val parStream = rec.createStream()
+            Log.d(TAG, "Streams created (main + parallel)")
             // Built here rather than in the caller so the ONNX load lands on
             // this coroutine's background thread — startListening() is called
             // from the main thread on the tap-to-talk path. A gate we can't
@@ -499,7 +511,6 @@ class SpeechRecognizer @Inject constructor(
                 Log.w(TAG, "VAD unavailable — endpoint veto disabled", t)
                 null
             }
-            gate?.beginUtterance()
             var firstChunkLogged = false
             // Sherpa-onnx zipformer is tuned for ~100ms chunks. The producer
             // (WakeWordService) writes 10ms chunks because microWakeWord wants
@@ -542,6 +553,7 @@ class SpeechRecognizer @Inject constructor(
             var lastCleaned = ""
             var lastChangeAt = System.currentTimeMillis()
             try {
+                gate?.beginUtterance()
                 while (isActive) {
                     val incoming = try {
                         channel.receive()
@@ -596,7 +608,7 @@ class SpeechRecognizer @Inject constructor(
                     // meaningfully different decode that can rescue a bad
                     // streaming commit.
                     mainBatchCount++
-                    if (parStream != null && mainBatchCount > PREROLL_SKIP_BATCHES) {
+                    if (mainBatchCount > PREROLL_SKIP_BATCHES) {
                         parBatchAccumulator.add(merged)
                         parBatchSamples += merged.size
                         if (parBatchSamples >= PARALLEL_BATCH_TARGET_SAMPLES) {
@@ -685,32 +697,30 @@ class SpeechRecognizer @Inject constructor(
                         // then finalise it so its decoder commits everything
                         // it has. Read its result for the NotUnderstood
                         // retry path.
-                        val parallelText = parStream?.let { ps ->
-                            try {
-                                if (parBatchSamples > 0) {
-                                    val tail = ShortArray(parBatchSamples)
-                                    var tpos = 0
-                                    for (b in parBatchAccumulator) {
-                                        System.arraycopy(b, 0, tail, tpos, b.size)
-                                        tpos += b.size
-                                    }
-                                    parBatchAccumulator.clear()
-                                    parBatchSamples = 0
-                                    val tailFloat = FloatArray(tail.size) { i -> tail[i] / 32768.0f }
-                                    ps.acceptWaveform(tailFloat, SAMPLE_RATE)
+                        val parallelText = try {
+                            if (parBatchSamples > 0) {
+                                val tail = ShortArray(parBatchSamples)
+                                var tpos = 0
+                                for (b in parBatchAccumulator) {
+                                    System.arraycopy(b, 0, tail, tpos, b.size)
+                                    tpos += b.size
                                 }
-                                ps.inputFinished()
-                                while (rec.isReady(ps)) {
-                                    rec.decode(ps)
-                                }
-                                val parRaw = rec.getResult(ps).text.trim()
-                                val parCleaned = stripWakePhrase(parRaw, locale)
-                                Log.i(TAG, "Parallel stream final: raw='$parRaw' cleaned='$parCleaned'")
-                                parCleaned.takeIf { it.isNotEmpty() && it != finalCleaned }
-                            } catch (t: Throwable) {
-                                Log.w(TAG, "Parallel stream finalisation failed", t)
-                                null
+                                parBatchAccumulator.clear()
+                                parBatchSamples = 0
+                                val tailFloat = FloatArray(tail.size) { i -> tail[i] / 32768.0f }
+                                parStream.acceptWaveform(tailFloat, SAMPLE_RATE)
                             }
+                            parStream.inputFinished()
+                            while (rec.isReady(parStream)) {
+                                rec.decode(parStream)
+                            }
+                            val parRaw = rec.getResult(parStream).text.trim()
+                            val parCleaned = stripWakePhrase(parRaw, locale)
+                            Log.i(TAG, "Parallel stream final: raw='$parRaw' cleaned='$parCleaned'")
+                            parCleaned.takeIf { it.isNotEmpty() && it != finalCleaned }
+                        } catch (t: Throwable) {
+                            Log.w(TAG, "Parallel stream finalisation failed", t)
+                            null
                         }
                         // Merge the raw PCM accumulator into one flat array
                         // for the offline retry fallback.
@@ -727,15 +737,15 @@ class SpeechRecognizer @Inject constructor(
                             finalRaw,
                             wakeVerdict(finalMatch, locale),
                         )
-                        stopRecording()
+                        stopRecording(owner)
                         return@launch
                     }
                 }
             } finally {
-                // If the loop exits for any reason and we're still armed, the
-                // stopRecording() path below handles disarming. Defensive only.
+                currentStream.release()
+                parStream.release()
             }
-        }
+        })
     }
 
     /**
@@ -748,7 +758,9 @@ class SpeechRecognizer @Inject constructor(
      * loop once per backend is how the endpointing rules drift apart.
      *
      * [transcribe] runs off this coroutine's thread and may throw; the caller's
-     * wrapper decides what the user hears.
+     * wrapper decides what the user hears. It emits the terminal state and
+     * nothing else — tearing the listen down is this loop's job, because only
+     * the loop holds the job identity that makes the teardown safe.
      */
     private fun startBufferedListening(
         rewindSeconds: Float,
@@ -764,7 +776,8 @@ class SpeechRecognizer @Inject constructor(
         _state.value = SttState.Listening("")
         Log.i(TAG, "STT ($label) listening started (rewindSeconds=$rewindSeconds)")
 
-        listenJob = scope.launch {
+        armListenJob(scope.launch(start = CoroutineStart.LAZY) {
+            val owner = coroutineContext.job
             // Buffer everything. Whisper has no streaming partials and no
             // per-chunk decode — we just accumulate audio until the silence
             // detector says the user is done, then run one decode.
@@ -782,55 +795,52 @@ class SpeechRecognizer @Inject constructor(
             var firstSpeechAt: Long? = null
             var lastSpeechAt = System.currentTimeMillis()
 
-            try {
-                while (isActive) {
-                    val incoming = try {
-                        channel.receive()
-                    } catch (e: ClosedReceiveChannelException) {
-                        return@launch
+            while (isActive) {
+                val incoming = try {
+                    channel.receive()
+                } catch (e: ClosedReceiveChannelException) {
+                    return@launch
+                }
+                if (incoming.isEmpty()) continue
+
+                accumulator.add(incoming)
+                totalSamples += incoming.size
+
+                val now = System.currentTimeMillis()
+                val rms = computeRms(incoming)
+                if (rms >= SPEECH_RMS_THRESHOLD) {
+                    if (firstSpeechAt == null) {
+                        firstSpeechAt = now
+                        Log.d(TAG, "Offline: speech started (rms=$rms)")
                     }
-                    if (incoming.isEmpty()) continue
+                    lastSpeechAt = now
+                }
 
-                    accumulator.add(incoming)
-                    totalSamples += incoming.size
-
-                    val now = System.currentTimeMillis()
-                    val rms = computeRms(incoming)
-                    if (rms >= SPEECH_RMS_THRESHOLD) {
-                        if (firstSpeechAt == null) {
-                            firstSpeechAt = now
-                            Log.d(TAG, "Offline: speech started (rms=$rms)")
-                        }
-                        lastSpeechAt = now
-                    }
-
-                    val firstAt = firstSpeechAt
-                    if (firstAt != null) {
-                        val sinceLastSpeech = now - lastSpeechAt
-                        val totalDuration = now - firstAt
-                        if (sinceLastSpeech >= MIN_SILENCE_AFTER_SPEECH_MS &&
-                            totalDuration >= MIN_UTTERANCE_MS
-                        ) {
-                            Log.i(
-                                TAG,
-                                "$label endpoint: silence for ${sinceLastSpeech}ms after ${totalDuration}ms of utterance",
-                            )
-                            transcribe(merge(accumulator, totalSamples))
-                            return@launch
-                        }
-                    }
-
-                    if (totalSamples >= MAX_OFFLINE_UTTERANCE_SAMPLES) {
-                        Log.i(TAG, "$label endpoint: hard cap (${totalSamples} samples)")
+                val firstAt = firstSpeechAt
+                if (firstAt != null) {
+                    val sinceLastSpeech = now - lastSpeechAt
+                    val totalDuration = now - firstAt
+                    if (sinceLastSpeech >= MIN_SILENCE_AFTER_SPEECH_MS &&
+                        totalDuration >= MIN_UTTERANCE_MS
+                    ) {
+                        Log.i(
+                            TAG,
+                            "$label endpoint: silence for ${sinceLastSpeech}ms after ${totalDuration}ms of utterance",
+                        )
                         transcribe(merge(accumulator, totalSamples))
+                        stopRecording(owner)
                         return@launch
                     }
                 }
-            } finally {
-                // stopRecording() handles disarm when the job is cancelled
-                // externally. Defensive only.
+
+                if (totalSamples >= MAX_OFFLINE_UTTERANCE_SAMPLES) {
+                    Log.i(TAG, "$label endpoint: hard cap (${totalSamples} samples)")
+                    transcribe(merge(accumulator, totalSamples))
+                    stopRecording(owner)
+                    return@launch
+                }
             }
-        }
+        })
     }
 
     private fun merge(accumulator: List<ShortArray>, totalSamples: Int): ShortArray {
@@ -880,7 +890,6 @@ class SpeechRecognizer @Inject constructor(
             raw = transcript,
             nameMatched = wakeVerdict(match, locale),
         )
-        stopRecording()
     }
 
     private fun computeRms(samples: ShortArray): Float {
@@ -910,10 +919,9 @@ class SpeechRecognizer @Inject constructor(
     fun release() {
         stopRecording()
         scope.cancel()
-        // Safe to release explicitly, unlike the recognisers above: Vad's
-        // finalize() zeroes its native pointer, so the GC pass can't free
-        // it a second time.
-        speechGate?.release()
+        // Same reasoning as unload(): cancel() doesn't wait, so the listen
+        // coroutine may still be inside gate.feed(). Drop the reference and let
+        // the GC free the VAD once that coroutine has gone with it.
         speechGate = null
         onlineRecognizer = null
         offlineRecognizer = null
@@ -960,14 +968,44 @@ class SpeechRecognizer @Inject constructor(
         }
     }
 
-    private fun stopRecording() {
-        listenJob?.cancel()
-        listenJob = null
+    /**
+     * Publish [job] as the active listen and start it. Created LAZY by the
+     * caller so the field is set before a single line of the coroutine runs —
+     * otherwise a listen that endpointed in the microseconds between `launch`
+     * and the assignment would find no job to tear down and leave the
+     * CaptureBus armed, which fails every subsequent listen with "Audio bus
+     * busy".
+     */
+    private fun armListenJob(job: Job) {
+        val previous = synchronized(listenLock) {
+            listenJob.also { listenJob = job }
+        }
+        previous?.cancel()
+        job.start()
+    }
+
+    /**
+     * Cancel the active listen and hand the mic back. Native stream handles are
+     * deliberately NOT touched here: the listen coroutine owns them and frees
+     * them on its own unwind, which is what keeps two threads from freeing the
+     * same one (see [startOnlineListening]).
+     *
+     * A listen coroutine tearing down its own turn passes itself as [owner], and
+     * the teardown is skipped if it is no longer the active listen. By the time
+     * a decode loop reaches its endpoint the user may already have dismissed and
+     * re-armed — an unconditional teardown would then disarm the fresh session
+     * on behalf of a turn nobody is waiting for. External callers pass nothing
+     * and mean "whatever is listening, stop".
+     */
+    private fun stopRecording(owner: Job? = null) {
+        val active = synchronized(listenLock) {
+            val current = listenJob
+            if (owner != null && current !== owner) return
+            listenJob = null
+            current
+        }
+        active?.cancel()
         captureBus.disarm()
-        stream?.release()
-        stream = null
-        parallelStream?.release()
-        parallelStream = null
     }
 
     companion object {
