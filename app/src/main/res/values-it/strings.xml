@@ -97,6 +97,8 @@
     <string name="skills_detail_about">Informazioni su questo skill</string>
     <string name="skills_detail_settings">Impostazioni</string>
     <string name="skills_detail_skill_detail">Dettaglio skill</string>
+    <string name="skills_detail_screenshots">Screenshot</string>
+    <string name="skills_detail_screenshot_of">Screenshot di %1$s</string>
     <string name="skills_install_locale_mismatch_title">Lingua non supportata</string>
     <string name="skills_install_locale_mismatch_message">Questo skill non è disponibile in %1$s. Lingue supportate: %2$s. Risponderà nelle lingue supportate. Continuare?</string>
     <string name="skills_install_locale_mismatch_continue">Installa comunque</string>
