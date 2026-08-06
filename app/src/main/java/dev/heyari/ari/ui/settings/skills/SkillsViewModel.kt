@@ -35,6 +35,13 @@ import java.time.Instant
 import javax.inject.Inject
 
 /**
+ * Platform we ask the registry for screenshots as. Skills that haven't
+ * been photographed on Android fall back to another platform's shots
+ * inside the engine, so this is the only place a frontend names itself.
+ */
+private const val SCREENSHOT_PLATFORM = "android"
+
+/**
  * Backing state for the Skills settings screen.
  */
 @HiltViewModel
@@ -44,6 +51,8 @@ class SkillsViewModel @Inject constructor(
     private val engineHolder: EngineHolder,
     private val assistantRegistry: AssistantRegistry,
     private val notifier: SkillUpdateNotifier,
+    /** Exposed for the detail screen's screenshot strip to read through. */
+    val screenshotCache: dev.heyari.ari.skills.SkillScreenshotCache,
     private val prefs: SkillsPreferences,
     private val settingsRepository: dev.heyari.ari.data.SettingsRepository,
     private val secretStore: SecretStore,
@@ -101,6 +110,14 @@ class SkillsViewModel @Inject constructor(
      * starting a new one.
      */
     private var detailManifestJob: Job? = null
+
+    /**
+     * Tracks the in-flight screenshot-URL fetch. Separate from
+     * [detailManifestJob] because the detail screen can re-run the
+     * manifest load without the screenshots changing, and cancelling one
+     * must not take the other down with it.
+     */
+    private var screenshotsJob: Job? = null
 
     init {
         refresh()
@@ -461,6 +478,34 @@ class SkillsViewModel @Inject constructor(
     }
 
     /**
+     * Populate [SkillsScreenState.detailScreenshots] with the registry's
+     * preview images for this skill, asked for as Android.
+     *
+     * Screenshots live in the registry, never in the bundle, so this is
+     * the same call whether the skill is installed or not. Failure is
+     * silent on purpose: no gallery is a perfectly fine detail screen,
+     * and an error toast about decorative images would be noise on top
+     * of whatever else the network is already doing to the user.
+     */
+    fun loadScreenshots(id: String) {
+        screenshotsJob?.cancel()
+        _state.update { it.copy(detailScreenshots = emptyList()) }
+        screenshotsJob = viewModelScope.launch {
+            val urls = runCatching {
+                withContext(Dispatchers.IO) { skillRegistry.fetchScreenshotUrls(id, SCREENSHOT_PLATFORM) }
+            }
+            urls.exceptionOrNull()?.let { if (it is CancellationException) throw it }
+            _state.update { it.copy(detailScreenshots = urls.getOrDefault(emptyList())) }
+        }
+    }
+
+    fun clearScreenshots() {
+        screenshotsJob?.cancel()
+        screenshotsJob = null
+        _state.update { it.copy(detailScreenshots = emptyList()) }
+    }
+
+    /**
      * Hydrate persistent settings (DataStore for non-secrets,
      * EncryptedSharedPreferences for secrets) into the in-memory
      * [uniffi.ari_ffi.SkillSettingsStore], then publish the resulting
@@ -657,6 +702,14 @@ data class SkillsScreenState(
     val lastCheckedBrowse: Instant? = null,
     val detailManifest: FfiSkillManifest? = null,
     val detailManifestLoading: Boolean = false,
+    /**
+     * Registry URLs of the active skill's preview screenshots, in
+     * display order. Empty while the fetch is in flight, and for skills
+     * whose authors haven't shipped any — the detail screen simply
+     * renders no gallery in both cases, since a spinner over decoration
+     * is worse than its absence.
+     */
+    val detailScreenshots: List<String> = emptyList(),
     /// Schema + current values for the active skill's user-configurable
     /// settings. Empty for skills that declare no settings, or while
     /// the load is in flight.

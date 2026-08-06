@@ -5,12 +5,17 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -46,14 +51,21 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -63,11 +75,15 @@ import com.halilibo.richtext.ui.material3.RichText
 import dev.heyari.ari.R
 import dev.heyari.ari.media.hasNotificationAccess
 import dev.heyari.ari.media.openNotificationListenerSettings
+import dev.heyari.ari.skills.SkillScreenshotCache
 import dev.heyari.ari.ui.components.AriTopBar
 import dev.heyari.ari.ui.components.SkillSettingsPanel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import uniffi.ari_ffi.FfiConfigField
 import uniffi.ari_ffi.FfiSettingsQueryResult
 import uniffi.ari_ffi.FfiSkillManifest
+import java.io.File
 
 /**
  * Skill detail view — used for both browse rows and installed rows.
@@ -163,10 +179,16 @@ fun SkillDetailScreen(
             viewModel.loadBrowseManifestPreview(skillId)
         }
     }
+    // Screenshots come from the registry either way — they're never in the
+    // bundle — so this doesn't care whether the skill is installed.
+    LaunchedEffect(skillId) {
+        viewModel.loadScreenshots(skillId)
+    }
     DisposableEffect(skillId) {
         onDispose {
             viewModel.clearDetailManifest()
             viewModel.clearSkillSettings()
+            viewModel.clearScreenshots()
         }
     }
 
@@ -441,6 +463,17 @@ fun SkillDetailScreen(
                 }
             }
 
+            // Straight after the description: "what does this actually look
+            // like" is the next question a browsing user asks, and it's the
+            // one that decides the install.
+            if (state.detailScreenshots.isNotEmpty()) {
+                ScreenshotStrip(
+                    urls = state.detailScreenshots,
+                    skillName = view.title,
+                    cache = viewModel.screenshotCache,
+                )
+            }
+
             // Two layout flavours:
             //   - Installed: settings inline (always visible since they're
             //     the thing the user opens this screen to tweak), then a
@@ -511,6 +544,164 @@ fun SkillDetailScreen(
         }
     }
 }
+
+/**
+ * Horizontally scrolling strip of the skill's preview screenshots, with a
+ * full-screen viewer on tap.
+ *
+ * Screenshots are tall and phones are narrow, so a wrapped grid would push
+ * everything else off the screen — the strip keeps the description, facts
+ * and install button where the user left them. Each image loads
+ * independently, so a slow or missing one never holds up the others.
+ */
+@Composable
+private fun ScreenshotStrip(
+    urls: List<String>,
+    skillName: String,
+    cache: SkillScreenshotCache,
+) {
+    var zoomed by remember(urls) { mutableStateOf<String?>(null) }
+
+    zoomed?.let { url ->
+        Dialog(
+            onDismissRequest = { zoomed = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.92f))
+                    .clickable { zoomed = null },
+                contentAlignment = Alignment.Center,
+            ) {
+                ScreenshotImage(
+                    url = url,
+                    cache = cache,
+                    contentDescription = stringResource(
+                        R.string.skills_detail_screenshot_of,
+                        skillName,
+                    ),
+                    decodeWidthPx = SCREENSHOT_VIEWER_WIDTH_PX,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = stringResource(R.string.skills_detail_screenshots),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            for (url in urls) {
+                Surface(
+                    tonalElevation = 1.dp,
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.clickable { zoomed = url },
+                ) {
+                    ScreenshotImage(
+                        url = url,
+                        cache = cache,
+                        contentDescription = stringResource(
+                            R.string.skills_detail_screenshot_of,
+                            skillName,
+                        ),
+                        decodeWidthPx = SCREENSHOT_THUMB_WIDTH_PX,
+                        modifier = Modifier.height(SCREENSHOT_STRIP_HEIGHT),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * One screenshot, fetched through [SkillScreenshotCache] and decoded no
+ * larger than [decodeWidthPx] needs.
+ *
+ * The downsampling isn't optional politeness. A phone screenshot is around
+ * 1080x2400, which is a 10 MB bitmap, and the strip composes every shot at
+ * once — three of them at full size is 30 MB held to render thumbnails a
+ * finger wide. The registry caps screenshots by file size, not by
+ * dimensions, so a well-compressed 4000px-wide image is a legal upload and
+ * would be an OOM without this.
+ *
+ * Renders a placeholder box while loading, and keeps that box if the fetch
+ * or decode fails. Screenshots are decoration; a broken one must never be
+ * louder than the skill it's decorating.
+ */
+@Composable
+private fun ScreenshotImage(
+    url: String,
+    cache: SkillScreenshotCache,
+    contentDescription: String,
+    decodeWidthPx: Int,
+    modifier: Modifier = Modifier,
+) {
+    val bitmap by produceState<ImageBitmap?>(initialValue = null, url, decodeWidthPx) {
+        val file = cache.fetch(url) ?: return@produceState
+        value = withContext(Dispatchers.IO) { decodeDownsampled(file, decodeWidthPx) }
+    }
+    val shown = bitmap
+    if (shown == null) {
+        Box(
+            modifier = modifier
+                .width(SCREENSHOT_PLACEHOLDER_WIDTH)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+        )
+    } else {
+        Image(
+            bitmap = shown,
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Fit,
+            modifier = modifier,
+        )
+    }
+}
+
+/**
+ * Decode [file] at the smallest power-of-two reduction that still leaves it
+ * at least [reqWidthPx] wide. Two passes: bounds-only first to learn the
+ * real size, then the real decode.
+ */
+private fun decodeDownsampled(file: File, reqWidthPx: Int): ImageBitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(file.absolutePath, bounds)
+    if (bounds.outWidth <= 0) return null
+    var sample = 1
+    while (bounds.outWidth / (sample * 2) >= reqWidthPx) {
+        sample *= 2
+    }
+    val opts = BitmapFactory.Options().apply { inSampleSize = sample }
+    return BitmapFactory.decodeFile(file.absolutePath, opts)?.asImageBitmap()
+}
+
+/** Strip height — tall enough to read a phone screenshot's layout at a glance. */
+private val SCREENSHOT_STRIP_HEIGHT = 320.dp
+
+/** Width of the placeholder box standing in for a not-yet-decoded shot. */
+private val SCREENSHOT_PLACEHOLDER_WIDTH = 148.dp
+
+/**
+ * Decode target for a thumbnail in the strip. They render around 150dp
+ * wide, so this is generous even on a 4x-density screen, and it keeps a
+ * typical phone screenshot down to a quarter of its full bitmap size.
+ */
+private const val SCREENSHOT_THUMB_WIDTH_PX = 450
+
+/**
+ * Decode target for the full-screen viewer — above any phone's width, so a
+ * screenshot taken on a phone shows at its native resolution rather than
+ * being upscaled into mush.
+ */
+private const val SCREENSHOT_VIEWER_WIDTH_PX = 1200
 
 /**
  * Always-visible settings card for installed skills. Wraps the shared

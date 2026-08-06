@@ -924,6 +924,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_load_llm_model(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_load_model_catalog(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_load_router_model(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_process_input(
@@ -1038,6 +1040,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_skillregistry_fetch_manifest_preview(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_skillregistry_fetch_screenshot_urls(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_skillregistry_get_skill_settings(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_skillregistry_install_skill_by_id(
@@ -1047,6 +1051,8 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_ari_ffi_checksum_method_skillregistry_list_installed(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_skillregistry_read_installed_manifest(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_skillregistry_refresh_model_catalog(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_skillregistry_set_skill_setting(
     ): Short
@@ -1107,6 +1113,8 @@ external fun uniffi_ari_ffi_fn_method_ariengine_current_locale(`ptr`: Long,uniff
 external fun uniffi_ari_ffi_fn_method_ariengine_debug_route(`ptr`: Long,`input`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ariengine_load_llm_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Byte
+external fun uniffi_ari_ffi_fn_method_ariengine_load_model_catalog(`ptr`: Long,`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
 external fun uniffi_ari_ffi_fn_method_ariengine_load_router_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
@@ -1306,6 +1314,8 @@ external fun uniffi_ari_ffi_fn_method_skillregistry_check_for_updates(`ptr`: Lon
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_skillregistry_fetch_manifest_preview(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_skillregistry_fetch_screenshot_urls(`ptr`: Long,`id`: RustBuffer.ByValue,`platform`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_skillregistry_get_skill_settings(`ptr`: Long,`id`: RustBuffer.ByValue,`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_skillregistry_install_skill_by_id(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1315,6 +1325,8 @@ external fun uniffi_ari_ffi_fn_method_skillregistry_install_skill_update(`ptr`: 
 external fun uniffi_ari_ffi_fn_method_skillregistry_list_installed(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_skillregistry_read_installed_manifest(`ptr`: Long,`id`: RustBuffer.ByValue,`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_skillregistry_refresh_model_catalog(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_skillregistry_set_skill_setting(`ptr`: Long,`skillId`: RustBuffer.ByValue,`key`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
@@ -1449,6 +1461,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_llm_model() != 22848.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_model_catalog() != 21577.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_router_model() != 5512.toShort()) {
@@ -1622,6 +1637,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_skillregistry_fetch_manifest_preview() != 28579.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ari_ffi_checksum_method_skillregistry_fetch_screenshot_urls() != 57785.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ari_ffi_checksum_method_skillregistry_get_skill_settings() != 58446.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1635,6 +1653,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_skillregistry_read_installed_manifest() != 29420.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_skillregistry_refresh_model_catalog() != 23253.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_skillregistry_set_skill_setting() != 54661.toShort()) {
@@ -2252,6 +2273,21 @@ public interface AriEngineInterface {
     fun `loadLlmModel`(`modelPath`: kotlin.String): kotlin.Boolean
     
     /**
+     * Load the cached tier→model catalog written by
+     * [`crate::SkillRegistry::refresh_model_catalog`], so cloud assistant
+     * skills resolve their `fast`/`balanced`/`smartest` setting to a current
+     * model ID. Call this at startup with the path that method returned, and
+     * again after each refresh.
+     *
+     * Returns whether a catalog was installed. `false` is a normal state, not
+     * a failure — a first run has nothing cached yet, and skills fall back to
+     * the per-tier pins in their own manifests. The reason is logged either
+     * way, since a catalog that stops loading is otherwise invisible: the
+     * skills keep working, just on ageing pinned models.
+     */
+    fun `loadModelCatalog`(`path`: kotlin.String): kotlin.Boolean
+    
+    /**
      * Set the FunctionGemma router model path. Like the LLM fallback,
      * the model loads lazily on first use and unloads after 60s idle.
      * `locale` is the language this model was trained for — the engine
@@ -2554,6 +2590,32 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     UniffiLib.uniffi_ari_ffi_fn_method_ariengine_load_llm_model(
         it,
         FfiConverterString.lower(`modelPath`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Load the cached tier→model catalog written by
+     * [`crate::SkillRegistry::refresh_model_catalog`], so cloud assistant
+     * skills resolve their `fast`/`balanced`/`smartest` setting to a current
+     * model ID. Call this at startup with the path that method returned, and
+     * again after each refresh.
+     *
+     * Returns whether a catalog was installed. `false` is a normal state, not
+     * a failure — a first run has nothing cached yet, and skills fall back to
+     * the per-tier pins in their own manifests. The reason is logged either
+     * way, since a catalog that stops loading is otherwise invisible: the
+     * skills keep working, just on ageing pinned models.
+     */override fun `loadModelCatalog`(`path`: kotlin.String): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_load_model_catalog(
+        it,
+        FfiConverterString.lower(`path`),_status)
 }
     }
     )
@@ -7394,6 +7456,31 @@ public interface SkillRegistryInterface {
     fun `fetchManifestPreview`(`id`: kotlin.String): FfiSkillManifest
     
     /**
+     * URLs of the registry's preview screenshots for `id`, in display
+     * order, for a frontend running on `platform` (`"android"`,
+     * `"linux"`, …).
+     *
+     * A skill with no shots for this platform falls back to whichever
+     * platform it *has* been photographed on — see
+     * [`ari_skill_loader::IndexEntry::screenshots_for_platform`]. An
+     * empty result means the skill ships none at all, and the UI should
+     * simply not render a gallery.
+     *
+     * Screenshots live in the registry rather than the bundle, so this
+     * works the same for installed and not-yet-installed skills. The
+     * frontend fetches the image bytes itself — every platform already
+     * has an image pipeline and a cache policy better than anything we'd
+     * bolt on here.
+     *
+     * Errors:
+     * * [`FfiRegistryError::NotFound`] — the id isn't in the registry.
+     * * [`FfiRegistryError::Registry`] — network / HTTP failure.
+     *
+     * Blocks on the network — callers must run this off the main thread.
+     */
+    fun `fetchScreenshotUrls`(`id`: kotlin.String, `platform`: kotlin.String): List<kotlin.String>
+    
+    /**
      * Read the user-configurable settings schema for an installed
      * skill, with current values from the shared [`SkillSettingsStore`]
      * merged in. Empty list if the skill declares no settings.
@@ -7466,6 +7553,21 @@ public interface SkillRegistryInterface {
      * missing or fails to parse.
      */
     fun `readInstalledManifest`(`id`: kotlin.String, `locale`: kotlin.String): FfiSkillManifest
+    
+    /**
+     * Fetch, verify and cache the registry's tier→model catalog, returning the
+     * path it was written to. Hand that path to
+     * [`crate::AriEngine::load_model_catalog`] so cloud assistant skills
+     * resolve their `fast`/`balanced`/`smartest` setting to a current model ID.
+     *
+     * Cached next to the installed skills so a device that later goes offline
+     * keeps using the last known catalog instead of falling all the way back to
+     * the per-tier pins baked into each skill's manifest. `SkillStore::rescan`
+     * only looks at directories, so the file is inert there.
+     *
+     * Blocks on the network — callers must run this off the main thread.
+     */
+    fun `refreshModelCatalog`(): kotlin.String
     
     /**
      * Write a single setting value to the shared store. Equivalent to
@@ -7688,6 +7790,43 @@ open class SkillRegistry: Disposable, AutoCloseable, SkillRegistryInterface
 
     
     /**
+     * URLs of the registry's preview screenshots for `id`, in display
+     * order, for a frontend running on `platform` (`"android"`,
+     * `"linux"`, …).
+     *
+     * A skill with no shots for this platform falls back to whichever
+     * platform it *has* been photographed on — see
+     * [`ari_skill_loader::IndexEntry::screenshots_for_platform`]. An
+     * empty result means the skill ships none at all, and the UI should
+     * simply not render a gallery.
+     *
+     * Screenshots live in the registry rather than the bundle, so this
+     * works the same for installed and not-yet-installed skills. The
+     * frontend fetches the image bytes itself — every platform already
+     * has an image pipeline and a cache policy better than anything we'd
+     * bolt on here.
+     *
+     * Errors:
+     * * [`FfiRegistryError::NotFound`] — the id isn't in the registry.
+     * * [`FfiRegistryError::Registry`] — network / HTTP failure.
+     *
+     * Blocks on the network — callers must run this off the main thread.
+     */
+    @Throws(FfiRegistryException::class)override fun `fetchScreenshotUrls`(`id`: kotlin.String, `platform`: kotlin.String): List<kotlin.String> {
+            return FfiConverterSequenceString.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FfiRegistryException) { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_skillregistry_fetch_screenshot_urls(
+        it,
+        FfiConverterString.lower(`id`),FfiConverterString.lower(`platform`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
      * Read the user-configurable settings schema for an installed
      * skill, with current values from the shared [`SkillSettingsStore`]
      * merged in. Empty list if the skill declares no settings.
@@ -7813,6 +7952,33 @@ open class SkillRegistry: Disposable, AutoCloseable, SkillRegistryInterface
     UniffiLib.uniffi_ari_ffi_fn_method_skillregistry_read_installed_manifest(
         it,
         FfiConverterString.lower(`id`),FfiConverterString.lower(`locale`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Fetch, verify and cache the registry's tier→model catalog, returning the
+     * path it was written to. Hand that path to
+     * [`crate::AriEngine::load_model_catalog`] so cloud assistant skills
+     * resolve their `fast`/`balanced`/`smartest` setting to a current model ID.
+     *
+     * Cached next to the installed skills so a device that later goes offline
+     * keeps using the last known catalog instead of falling all the way back to
+     * the per-tier pins baked into each skill's manifest. `SkillStore::rescan`
+     * only looks at directories, so the file is inert there.
+     *
+     * Blocks on the network — callers must run this off the main thread.
+     */
+    @Throws(FfiRegistryException::class)override fun `refreshModelCatalog`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FfiRegistryException) { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_skillregistry_refresh_model_catalog(
+        it,
+        _status)
 }
     }
     )
