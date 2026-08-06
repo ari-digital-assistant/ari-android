@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "dev.heyari.ari"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "dev.heyari.ari"
@@ -141,6 +141,7 @@ dependencies {
     implementation(libs.richtext.ui.material3)
     implementation(libs.play.services.location)
     implementation(libs.androidx.media)
+    implementation(libs.ramani.maplibre)
 
     testImplementation(libs.junit)
     // Real org.json for unit tests — the Android stub returns null from

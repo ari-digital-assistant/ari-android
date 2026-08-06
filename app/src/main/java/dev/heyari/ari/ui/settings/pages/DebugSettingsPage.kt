@@ -19,7 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.heyari.ari.R
 import dev.heyari.ari.ui.settings.SettingsViewModel
@@ -38,6 +38,11 @@ fun DebugSettingsPage(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    // Resolved during composition, not inside the export lambdas: LocalContext
+    // reads don't invalidate on a Configuration change, so getString() there
+    // would hand out a stale title after a language switch.
+    val wakeExportChooserTitle = stringResource(R.string.settings_wake_capture_export_chooser)
+    val utteranceExportChooserTitle = stringResource(R.string.settings_utterance_capture_export_chooser)
 
     SettingsScaffold(
         title = stringResource(R.string.settings_category_debug),
@@ -83,10 +88,7 @@ fun DebugSettingsPage(
                 onExport = {
                     viewModel.wakeCaptureShareIntent()?.let { intent ->
                         context.startActivity(
-                            Intent.createChooser(
-                                intent,
-                                context.getString(R.string.settings_wake_capture_export_chooser),
-                            )
+                            Intent.createChooser(intent, wakeExportChooserTitle)
                         )
                     }
                 },
@@ -101,10 +103,7 @@ fun DebugSettingsPage(
                 onExport = {
                     viewModel.utteranceCaptureShareIntent()?.let { intent ->
                         context.startActivity(
-                            Intent.createChooser(
-                                intent,
-                                context.getString(R.string.settings_utterance_capture_export_chooser),
-                            )
+                            Intent.createChooser(intent, utteranceExportChooserTitle)
                         )
                     }
                 },

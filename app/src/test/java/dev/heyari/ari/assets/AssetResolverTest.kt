@@ -6,6 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import java.io.File
+import java.nio.file.Files
 
 class AssetResolverTest {
 
@@ -13,7 +14,7 @@ class AssetResolverTest {
 
     @Before
     fun setUp() {
-        skillsRoot = createTempDir(prefix = "ari-skills-test-")
+        skillsRoot = Files.createTempDirectory("ari-skills-test-").toFile()
     }
 
     @After

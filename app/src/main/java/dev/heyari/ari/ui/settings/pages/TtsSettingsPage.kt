@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -23,7 +23,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -34,16 +34,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.heyari.ari.R
 import dev.heyari.ari.ui.settings.SettingsViewModel
 import dev.heyari.ari.ui.settings.TtsVoiceOption
 import dev.heyari.ari.ui.settings.components.SettingsScaffold
-import java.util.Locale
 
 @Composable
 fun TtsSettingsPage(
@@ -95,7 +95,11 @@ private fun TtsVoicesSection(
     val firstAriMatchLocale = remember(voices, activeAriLocale) {
         voices.firstOrNull { it.localeLanguage == activeAriLocale }?.locale
     }
-    val systemLocaleDisplay = Locale.getDefault().displayName
+    // LocalLocale rather than Locale.getDefault(): the latter isn't observable
+    // state, so switching language left the picker showing a locale nobody
+    // selected until it recomposed for some other reason.
+    val platformLocale = LocalLocale.current.platformLocale
+    val systemLocaleDisplay = remember(platformLocale) { platformLocale.displayName }
     var selectedLocale by remember(locales, firstAriMatchLocale) {
         mutableStateOf(
             firstAriMatchLocale
@@ -176,7 +180,7 @@ private fun TtsVoicesSection(
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
             )
             ExposedDropdownMenu(
                 expanded = expanded,
@@ -272,7 +276,7 @@ private fun VoiceCard(
             }
             IconButton(onClick = { onPreview(previewName) }) {
                 Icon(
-                    imageVector = Icons.Default.VolumeUp,
+                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                     contentDescription = stringResource(R.string.tts_preview_voice_description),
                     modifier = Modifier.size(20.dp),
                 )

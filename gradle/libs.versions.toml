@@ -1,27 +1,32 @@
 [versions]
-agp = "9.1.0"
-kotlin = "2.2.10"
-coreKtx = "1.10.1"
+agp = "9.3.1"
+kotlin = "2.4.10"
+coreKtx = "1.19.0"
 junit = "4.13.2"
-junitVersion = "1.1.5"
-espressoCore = "3.5.1"
-lifecycleRuntimeKtx = "2.6.1"
-activityCompose = "1.8.0"
-composeBom = "2026.02.01"
+junitVersion = "1.3.0"
+espressoCore = "3.7.0"
+lifecycleRuntimeKtx = "2.11.0"
+activityCompose = "1.13.0"
+composeBom = "2026.06.01"
 androidRust = "0.6.0"
 browser = "1.10.0"
-hilt = "2.59.2"
-hiltNavigationCompose = "1.2.0"
-navigationCompose = "2.9.7"
-ksp = "2.2.10-2.0.2"
-jna = "5.17.0"
+hilt = "2.60.1"
+hiltNavigationCompose = "1.4.0"
+navigationCompose = "2.9.8"
+ksp = "2.3.11"
+jna = "5.19.1"
 datastore = "1.2.1"
 workManager = "2.11.2"
-hiltWork = "1.3.0"
-richtext = "1.0.0-alpha04"
+hiltWork = "1.4.0"
+richtext = "1.0.0-alpha05"
 securityCrypto = "1.1.0"
-playServicesLocation = "21.3.0"
+playServicesLocation = "21.4.0"
 media = "1.8.0"
+# Compose wrapper over MapLibre Native, for the listening-places picker. It
+# brings its own maplibre-gl android-sdk (13.0.2) — deliberately not overridden
+# to the newer 13.4.1, because that is the pairing the wrapper is built and
+# tested against and the renderer gains us nothing by being newer.
+ramaniMaplibre = "0.13.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -53,6 +58,7 @@ androidx-security-crypto = { group = "androidx.security", name = "security-crypt
 richtext-commonmark = { group = "com.halilibo.compose-richtext", name = "richtext-commonmark", version.ref = "richtext" }
 richtext-ui-material3 = { group = "com.halilibo.compose-richtext", name = "richtext-ui-material3", version.ref = "richtext" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+ramani-maplibre = { group = "org.ramani-maps", name = "ramani-maplibre", version.ref = "ramaniMaplibre" }
 androidx-media = { group = "androidx.media", name = "media", version.ref = "media" }
 
 [plugins]

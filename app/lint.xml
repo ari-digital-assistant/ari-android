@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!--
+      uniffi-bindgen output. Its cleaner picks java.lang.ref.Cleaner (API 33) or
+      the JNA fallback via a Class.forName check that lint can't follow, so on
+      minSdk 29 it reads as three NewApi violations. Editing the file is
+      pointless — the next bindgen run overwrites it. Scoped to the generated
+      package so NewApi stays on for everything we actually write.
+    -->
+    <issue id="NewApi">
+        <ignore path="src/main/java/uniffi/**" />
+    </issue>
+</lint>
