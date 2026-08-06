@@ -1,5 +1,7 @@
 #include "MicroFrontendWrapper.h"
 
+#include <algorithm>
+
 extern "C" {
 #include "tensorflow/lite/experimental/microfrontend/lib/frontend_util.h"
 }
@@ -83,44 +85,33 @@ MicroFrontendWrapper::~MicroFrontendWrapper() {
     }
 }
 
-std::vector<std::vector<float>> MicroFrontendWrapper::processSamples(const int16_t* samples, size_t numSamples) {
-    std::vector<std::vector<float>> results;
+size_t MicroFrontendWrapper::nextFrame(const int16_t* samples, size_t numSamples, const float** frameOut) {
+    *frameOut = nullptr;
 
     if (!initialized_) {
         LOGE(LOG_TAG, "MicroFrontend not initialized");
-        return results;
+        return 0;
     }
 
-    size_t samplesProcessed = 0;
+    size_t numSamplesRead = 0;
+    struct FrontendOutput output = FrontendProcessSamples(
+        &state_, samples, numSamples, &numSamplesRead
+    );
 
-    while (samplesProcessed < numSamples) {
-        size_t numSamplesRead = 0;
-
-        struct FrontendOutput output = FrontendProcessSamples(
-            &state_,
-            samples + samplesProcessed,
-            numSamples - samplesProcessed,
-            &numSamplesRead
-        );
-
-        if (numSamplesRead == 0) {
-            break;
-        }
-
-        samplesProcessed += numSamplesRead;
-
-        if (output.values != nullptr && output.size > 0) {
-            std::vector<float> frame(PREPROCESSOR_FEATURE_SIZE);
-
-            for (size_t index = 0; index < PREPROCESSOR_FEATURE_SIZE && index < output.size; index++) {
-                frame[index] = static_cast<float>(output.values[index]) * FLOAT32_SCALE;
-            }
-
-            results.push_back(std::move(frame));
-        }
+    if (numSamplesRead == 0) {
+        return 0;
     }
 
-    return results;
+    if (output.values != nullptr && output.size > 0) {
+        const size_t channels = std::min(output.size, PREPROCESSOR_FEATURE_SIZE);
+        for (size_t index = 0; index < channels; index++) {
+            frame_[index] = static_cast<float>(output.values[index]) * FLOAT32_SCALE;
+        }
+        std::fill(frame_.begin() + channels, frame_.end(), 0.0f);
+        *frameOut = frame_.data();
+    }
+
+    return numSamplesRead;
 }
 
 void MicroFrontendWrapper::reset() {

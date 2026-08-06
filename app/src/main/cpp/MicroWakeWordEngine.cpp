@@ -183,12 +183,27 @@ bool MicroWakeWordEngine::loadModel() {
 bool MicroWakeWordEngine::processAudio(const int16_t* samples, size_t numSamples) {
     if (!initialized_) return false;
 
-    auto features = frontend_.processSamples(samples, numSamples);
+    int8_t quantizedFeatures[PREPROCESSOR_FEATURE_SIZE]{};
+    size_t samplesProcessed = 0;
 
-    for (auto& frame : features) {
+    while (samplesProcessed < numSamples) {
+        const float* frame = nullptr;
+        size_t consumed = frontend_.nextFrame(
+            samples + samplesProcessed, numSamples - samplesProcessed, &frame
+        );
+
+        if (consumed == 0) {
+            break;
+        }
+
+        samplesProcessed += consumed;
+
+        if (frame == nullptr) {
+            continue;
+        }
+
         // Convert float features to int8 using input quantization parameters
-        int8_t quantizedFeatures[PREPROCESSOR_FEATURE_SIZE]{};
-        for (size_t index = 0; index < PREPROCESSOR_FEATURE_SIZE && index < frame.size(); index++) {
+        for (size_t index = 0; index < PREPROCESSOR_FEATURE_SIZE; index++) {
             float quantized = (frame[index] / inputScale_) + static_cast<float>(inputZeroPoint_);
             int rounded = static_cast<int>(std::round(quantized));
             quantizedFeatures[index] = static_cast<int8_t>(std::max(-128, std::min(127, rounded)));

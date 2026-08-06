@@ -1,9 +1,9 @@
 #ifndef MICRO_FRONTEND_WRAPPER_H
 #define MICRO_FRONTEND_WRAPPER_H
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
-#include <vector>
 
 extern "C" {
 #include "tensorflow/lite/experimental/microfrontend/lib/frontend.h"
@@ -32,13 +32,17 @@ public:
     [[nodiscard]] bool isInitialized() const { return initialized_; }
 
     /**
-     * Process audio samples and extract spectrogram features.
+     * Extract the next spectrogram frame from a run of audio samples. Call in a
+     * loop, advancing by the returned sample count, until it returns 0.
      *
      * @param samples 16-bit PCM audio samples
      * @param numSamples Number of samples
-     * @return Vector of feature frames (each frame is a vector of floats)
+     * @param frameOut Receives a pointer to PREPROCESSOR_FEATURE_SIZE floats when
+     *                 a frame completed, nullptr otherwise. Points at an internal
+     *                 buffer that the next call overwrites.
+     * @return Number of samples consumed; 0 when the frontend needs more audio
      */
-    std::vector<std::vector<float>> processSamples(const int16_t* samples, size_t numSamples);
+    size_t nextFrame(const int16_t* samples, size_t numSamples, const float** frameOut);
 
     /**
      * Reset internal state (noise estimates, PCAN state, sample buffer).
@@ -47,6 +51,9 @@ public:
 
 private:
     struct FrontendState state_{};
+    // Reused across frames — the wake loop runs forever, so allocating one of
+    // these per frame is ~100 heap round-trips a second for 40 floats.
+    std::array<float, PREPROCESSOR_FEATURE_SIZE> frame_{};
     int sampleRate_;
     size_t stepSizeMs_;
     bool initialized_ = false;
