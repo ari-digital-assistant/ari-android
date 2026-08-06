@@ -19,6 +19,7 @@ import dev.heyari.ari.R
 import dev.heyari.ari.actions.CardAlarmScheduler
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.data.card.CardStateRepository
+import dev.heyari.ari.listening.ListeningMode
 import dev.heyari.ari.notifications.NotificationCoordinator
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.first
@@ -70,6 +71,15 @@ class BootReceiver : BroadcastReceiver() {
         val enabled = runBlocking { settingsRepository.startOnBoot.first() }
         if (!enabled) {
             Log.i(TAG, "Boot received but start-on-boot is disabled — ignoring")
+            return
+        }
+
+        // Never mode means the capture host would come up, immediately decide
+        // Off, and stop itself — a notification flash for nothing. Skip the
+        // whole dance.
+        val mode = runBlocking { settingsRepository.listeningMode.first() }
+        if (mode == ListeningMode.NEVER) {
+            Log.i(TAG, "Boot received but listening mode is Never — ignoring")
             return
         }
 

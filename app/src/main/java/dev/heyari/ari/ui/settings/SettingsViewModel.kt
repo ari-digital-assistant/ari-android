@@ -30,6 +30,11 @@ import dev.heyari.ari.router.loadRouterWithFloor
 import dev.heyari.ari.stt.CloudTranscriber
 import dev.heyari.ari.stt.ModelDownloadManager
 import dev.heyari.ari.stt.ModelDownloadState
+import dev.heyari.ari.listening.ListeningCondition
+import dev.heyari.ari.listening.ListeningMode
+import dev.heyari.ari.listening.ListeningPlace
+import dev.heyari.ari.listening.ListeningSchedule
+import dev.heyari.ari.listening.PlaceGeofences
 import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.stt.SttMode
 import dev.heyari.ari.stt.SttModel
@@ -137,6 +142,18 @@ data class SettingsState(
     val cloudSttModel: String = "",
     /** API key for it. Blank is legitimate — a self-hosted endpoint needs none. */
     val cloudSttApiKey: String = "",
+    /** When Ari is allowed to open the microphone. */
+    val listeningMode: ListeningMode = ListeningMode.DEFAULT,
+    /** The conditions ticked under [ListeningMode.CUSTOM]. */
+    val listeningConditions: Set<ListeningCondition> = emptySet(),
+    val listeningSchedules: List<ListeningSchedule> = emptyList(),
+    val listeningPlaces: List<ListeningPlace> = emptyList(),
+    /** Fine location — needed before background location can even be asked for. */
+    val hasFineLocation: Boolean = false,
+    /** "Allow all the time". Only obtainable from the system settings page on Android 11+. */
+    val hasBackgroundLocation: Boolean = false,
+    /** False on a de-Googled device, where geofencing simply isn't available. */
+    val geofencingAvailable: Boolean = true,
 )
 
 @HiltViewModel
@@ -154,6 +171,7 @@ class SettingsViewModel @Inject constructor(
     private val speechOutput: SpeechOutput,
     private val wakeCaptureStore: WakeCaptureStore,
     private val utteranceCaptureStore: UtteranceCaptureStore,
+    private val placeGeofences: PlaceGeofences,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
@@ -323,6 +341,30 @@ class SettingsViewModel @Inject constructor(
                         utteranceCaptureStats = stats,
                     )
                 }
+            }
+        }
+
+        viewModelScope.launch {
+            settingsRepository.listeningMode.collect { mode ->
+                _state.update { it.copy(listeningMode = mode) }
+            }
+        }
+
+        viewModelScope.launch {
+            settingsRepository.listeningConditions.collect { conditions ->
+                _state.update { it.copy(listeningConditions = conditions) }
+            }
+        }
+
+        viewModelScope.launch {
+            settingsRepository.listeningSchedules.collect { schedules ->
+                _state.update { it.copy(listeningSchedules = schedules) }
+            }
+        }
+
+        viewModelScope.launch {
+            settingsRepository.listeningPlaces.collect { places ->
+                _state.update { it.copy(listeningPlaces = places) }
             }
         }
 
@@ -621,7 +663,120 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun refreshPermissions() {
-        _state.update { it.copy(permissions = readPermissions()) }
+        _state.update {
+            it.copy(
+                permissions = readPermissions(),
+                hasFineLocation = ContextCompat.checkSelfPermission(
+                    application, Manifest.permission.ACCESS_FINE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED,
+                hasBackgroundLocation = ContextCompat.checkSelfPermission(
+                    application, Manifest.permission.ACCESS_BACKGROUND_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED,
+                geofencingAvailable = placeGeofences.playServicesAvailable(),
+            )
+        }
+    }
+
+    /**
+     * The localised name of the "Allow all the time" option, straight from the
+     * platform. Hard-coding that label would be wrong in every language and
+     * would rot the moment an OEM reworded it.
+     */
+    fun backgroundLocationOptionLabel(): CharSequence =
+        application.packageManager.backgroundPermissionOptionLabel
+
+    fun setListeningMode(mode: ListeningMode) {
+        viewModelScope.launch {
+            settingsRepository.setListeningMode(mode)
+        }
+        // Leaving Never means the capture host has to come back up, and this is
+        // the moment it legally can: we're a foreground activity. From the
+        // background, Android 14+ would refuse outright.
+        if (mode != ListeningMode.NEVER) ensureListeningHostRunning()
+    }
+
+    fun setListeningCondition(condition: ListeningCondition, enabled: Boolean) {
+        viewModelScope.launch {
+            val current = settingsRepository.listeningConditions.first()
+            val next = if (enabled) current + condition else current - condition
+            settingsRepository.setListeningConditions(next)
+            recheckPendingListeningSetup()
+        }
+        ensureListeningHostRunning()
+    }
+
+    /**
+     * Called leaving the onboarding Listening step, and after every schedule/
+     * place edit. Sets the reminder flag when Schedule or Places is ticked but
+     * nothing is actually configured yet — the wizard has no room for a time
+     * picker or a map, so "I want this, I'll set it up properly later" is a
+     * legitimate answer there — and clears it the moment that stops being
+     * true. The conversation screen nags exactly like [pendingCloudAssistantSetup] does.
+     */
+    fun checkPendingListeningSetup() {
+        viewModelScope.launch { recheckPendingListeningSetup() }
+    }
+
+    private suspend fun recheckPendingListeningSetup() {
+        val conditions = settingsRepository.listeningConditions.first()
+        val needsSchedule = ListeningCondition.SCHEDULE in conditions &&
+            settingsRepository.listeningSchedulesOnce().isEmpty()
+        val needsPlace = ListeningCondition.PLACE in conditions &&
+            settingsRepository.listeningPlacesOnce().isEmpty()
+        settingsRepository.setPendingListeningSetup(needsSchedule || needsPlace)
+    }
+
+    /** Add or replace by id, so the editor's save path is one call for both. */
+    fun saveListeningSchedule(schedule: ListeningSchedule) {
+        viewModelScope.launch {
+            val current = settingsRepository.listeningSchedulesOnce()
+            val next = current.filterNot { it.id == schedule.id } + schedule
+            settingsRepository.setListeningSchedules(next)
+            recheckPendingListeningSetup()
+        }
+    }
+
+    fun deleteListeningSchedule(id: String) {
+        viewModelScope.launch {
+            settingsRepository.setListeningSchedules(
+                settingsRepository.listeningSchedulesOnce().filterNot { it.id == id }
+            )
+            recheckPendingListeningSetup()
+        }
+    }
+
+    fun saveListeningPlace(place: ListeningPlace) {
+        viewModelScope.launch {
+            val current = settingsRepository.listeningPlacesOnce()
+            val next = current.filterNot { it.id == place.id } + place
+            settingsRepository.setListeningPlaces(next)
+            recheckPendingListeningSetup()
+        }
+    }
+
+    fun deleteListeningPlace(id: String) {
+        viewModelScope.launch {
+            settingsRepository.setListeningPlaces(
+                settingsRepository.listeningPlacesOnce().filterNot { it.id == id }
+            )
+            recheckPendingListeningSetup()
+        }
+    }
+
+    /**
+     * Start the capture host if it isn't up, so a mode or condition change takes
+     * effect now rather than the next time the user happens to open Ari.
+     */
+    private fun ensureListeningHostRunning() {
+        if (WakeWordService.isRunning) return
+        if (ContextCompat.checkSelfPermission(
+                application, Manifest.permission.RECORD_AUDIO
+            ) != PackageManager.PERMISSION_GRANTED
+        ) return
+        ContextCompat.startForegroundService(
+            application,
+            Intent(application, WakeWordService::class.java),
+        )
     }
 
     private fun readPermissions(): PermissionStatus {

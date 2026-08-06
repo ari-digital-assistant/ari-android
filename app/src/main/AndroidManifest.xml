@@ -81,14 +81,34 @@
 
     <!--
       Coarse location — needed by location-using skills (weather, "near me")
-      via the `location` host capability. Coarse only; we never request
-      ACCESS_FINE_LOCATION. Runtime-granted; the request is triggered when
-      the user installs a skill that declares the `location` capability
-      (capability-driven, never at launch / never in the first-run wizard).
-      The Settings → Permissions page also lets the user grant or revoke it
-      after the fact.
+      via the `location` host capability. Runtime-granted; the request is
+      triggered when the user installs a skill that declares the `location`
+      capability (capability-driven, never at launch / never in the first-run
+      wizard). The Settings → Permissions page also lets the user grant or
+      revoke it after the fact.
     -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!--
+      Fine + background location are for ONE feature: the "listen at certain
+      places" listening condition, which is built on geofences. Play Services
+      geofencing requires both — coarse is not accepted, and without the
+      background grant the location app-op resolves to ignored the moment we
+      leave the foreground, which is exactly when a geofence has to work.
+
+      Both are requested only when the user opens Settings → Listening →
+      Places, never at launch and never in the wizard. Background location has
+      no runtime dialog on Android 11+ at all: the user has to pick "Allow all
+      the time" on a settings page, so that screen explains why and deep-links
+      there.
+
+      Note the knock-on for skills: fine location is granted app-wide, so a
+      weather skill that asked for coarse can read a fine fix once this is on.
+      LocationProvider keeps requesting BALANCED_POWER_ACCURACY so it doesn't
+      USE the extra precision, but the grant is real and it is the honest cost
+      of place-based listening.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
     <queries>
         <intent>
@@ -298,6 +318,32 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="dev.heyari.ari.CARD_EXPIRY_FIRE" />
+            </intent-filter>
+        </receiver>
+
+        <!--
+          Listening schedule boundaries. AlarmManager fires this when a
+          schedule window opens or closes; the receiver pokes ScheduleAlarms,
+          which the listening policy is collecting. Only ever one alarm
+          outstanding — firing it arms the next boundary.
+        -->
+        <receiver
+            android:name=".listening.ListeningBoundaryReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="dev.heyari.ari.LISTENING_BOUNDARY" />
+            </intent-filter>
+        </receiver>
+
+        <!--
+          Geofence transitions for the "listen at certain places" condition.
+          Play Services delivers ENTER/EXIT here via a mutable PendingIntent.
+        -->
+        <receiver
+            android:name=".listening.GeofenceReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="dev.heyari.ari.GEOFENCE_TRANSITION" />
             </intent-filter>
         </receiver>
 

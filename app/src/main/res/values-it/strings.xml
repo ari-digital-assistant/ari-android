@@ -137,6 +137,7 @@
     <string name="settings_section_ai">IA</string>
     <string name="settings_section_debug">Debug</string>
     <string name="settings_category_debug">Debug</string>
+    <string name="settings_category_listening">Ascolto</string>
     <string name="settings_keep_everything_title">Conserva tutto</string>
     <string name="settings_keep_everything_blurb">Registrazione completa per il debug: conserva ogni attivazione della parola di attivazione — comprese quelle accettate — e ogni conversazione vocale con Ari, anche quando i due interruttori qui sotto sono spenti. Tutto resta su questo dispositivo, nella memoria privata di Ari, e non viene mai caricato online. Disattivato per impostazione predefinita; lascialo spento se non stai cercando un bug.</string>
 
@@ -166,6 +167,10 @@
     <string name="onboarding_wakeword_body">Pronunciala per attivare Ari. Scegli una frase e la sensibilità con cui Ari dovrà ascoltarla.</string>
     <string name="onboarding_wakeword_start_listening">Inizia ad ascoltare ora</string>
     <string name="onboarding_wakeword_start_listening_help">Ari inizierà ad ascoltare subito. Puoi anche scegliere di avviare Ari all\'accensione dalla schermata Generali — sono due interruttori distinti.</string>
+
+    <string name="onboarding_listening_title">Ascolto</string>
+    <string name="onboarding_listening_body">L\'ascolto sempre attivo è l\'opzione più reattiva, e di gran lunga la più costosa in termini di batteria. Scegli quando Ari deve ascoltare — puoi affinare questa scelta in qualsiasi momento dalle Impostazioni.</string>
+    <string name="onboarding_listening_custom_note">Orari e luoghi hanno bisogno di schermate dedicate per essere impostati correttamente — li trovi in Impostazioni → Ascolto una volta finito qui.</string>
 
     <string name="onboarding_stt_title">Riconoscimento vocale</string>
     <string name="onboarding_stt_blurb_lead">Per impostazione predefinita Ari trascrive la tua voce sul telefono.</string>
@@ -233,6 +238,7 @@
 
     <!-- Common buttons / labels -->
     <string name="action_cancel">Annulla</string>
+    <string name="action_save">Salva</string>
     <string name="action_delete">Elimina</string>
     <string name="action_open_settings">Apri impostazioni</string>
     <string name="action_later">Più tardi</string>
@@ -249,6 +255,9 @@
     <string name="conversation_cloud_setup_title">Scegli un assistente cloud</string>
     <string name="conversation_cloud_setup_body">Durante la configurazione hai scelto un assistente cloud, ma non ne hai ancora installato uno. Installa ChatGPT, Claude o Gemini per iniziare a usarlo — fino ad allora, Ari risponde solo tramite gli skill abbinati direttamente.</string>
     <string name="conversation_cloud_setup_button">Sfoglia assistenti cloud</string>
+    <string name="conversation_listening_setup_title">Completa la configurazione dell\'ascolto</string>
+    <string name="conversation_listening_setup_body">Hai scelto un orario o un luogo durante la configurazione ma non ne hai ancora aggiunto uno. Ari non ascolterà secondo quella condizione finché non lo fai.</string>
+    <string name="conversation_listening_setup_button">Configura l\'ascolto</string>
     <string name="conversation_downloading_header">Scaricamento in background</string>
     <string name="conversation_downloading_stt_model">Modello di riconoscimento vocale</string>
     <string name="conversation_downloading_llm_model">Modello assistente</string>
@@ -257,8 +266,9 @@
     <string name="conversation_talk">Parla con Ari</string>
     <string name="conversation_stop_dictation">Ferma la dettatura</string>
     <string name="conversation_timestamp_now">ora</string>
-    <string name="wake_switch_armed_description">Ascolto continuo di “Hey Ari”, attivo</string>
-    <string name="wake_switch_off_description">Ascolto continuo, disattivo</string>
+    <string name="listening_mode_switch_never_description">Non ascoltare mai</string>
+    <string name="listening_mode_switch_custom_description">Ascolta secondo un orario</string>
+    <string name="listening_mode_switch_always_description">Ascolta sempre</string>
 
     <!-- Voice overlay -->
     <string name="voice_overlay_title">Ari</string>
@@ -330,6 +340,63 @@
     <string name="settings_llm_none_blurb">Nessun LLM sul dispositivo. Ari risponde solo tramite skill abbinati.</string>
     <string name="settings_last_download_failed">Ultimo download fallito: %1$s</string>
 
+    <!-- Listening modes -->
+    <string name="listening_mode_always_label">Sempre</string>
+    <string name="listening_mode_always_blurb">Ari ascolta 24 ore su 24. L\'impostazione più reattiva, e la più costosa: circa il 15% della carica al giorno.</string>
+    <string name="listening_mode_never_label">Mai</string>
+    <string name="listening_mode_never_blurb">Ari non apre mai il microfono da solo. Lo richiami con il pulsante del microfono, il gesto dell\'assistente o il tasto di un auricolare.</string>
+    <string name="listening_mode_custom_label">Personalizzata</string>
+    <string name="listening_mode_custom_blurb">Ari ascolta quando è vera almeno una delle condizioni che scegli.</string>
+    <string name="listening_condition_screen_label">Schermo acceso</string>
+    <string name="listening_condition_screen_blurb">Ascolta mentre usi il telefono. Il risparmio più grande di tutti: lo schermo è spento per la maggior parte della giornata.</string>
+    <string name="listening_condition_charging_label">Sotto carica</string>
+    <string name="listening_condition_charging_blurb">Ascolta quando il telefono è collegato alla corrente. Non ti costa nulla in batteria.</string>
+    <string name="listening_condition_headset_label">Auricolari collegati</string>
+    <string name="listening_condition_headset_blurb">Ascolta quando sono collegati cuffie, auricolari o l\'impianto dell\'auto.</string>
+    <string name="listening_condition_schedule_label">Su orario</string>
+    <string name="listening_condition_schedule_blurb">Ascolta nelle ore che scegli tu.</string>
+    <string name="listening_condition_place_label">In luoghi specifici</string>
+    <string name="listening_condition_place_blurb">Ascolta quando sei a casa, al lavoro o in qualsiasi altro luogo che aggiungi.</string>
+    <string name="listening_standby_no_conditions">Nessuna condizione di ascolto impostata</string>
+    <string name="listening_standby_screen_off">Ari ascolterà quando lo schermo è acceso</string>
+    <string name="listening_standby_not_charging">Ari ascolterà quando colleghi il caricabatterie</string>
+    <string name="listening_standby_no_headset">Ari ascolterà quando colleghi un auricolare</string>
+    <string name="listening_standby_outside_schedule">Ari ascolterà nelle ore che hai impostato</string>
+    <string name="listening_standby_away_from_places">Ari ascolterà nei luoghi che hai aggiunto</string>
+    <string name="listening_standby_multiple">In attesa di una delle tue condizioni di ascolto</string>
+    <string name="settings_listening_blurb">Scegli quando Ari può aprire il microfono. L\'ascolto sempre attivo è l\'opzione più reattiva, e di gran lunga la più costosa in termini di batteria.</string>
+    <string name="settings_listening_conditions_header">Ascolta quando…</string>
+    <string name="settings_listening_no_conditions_notice">Nessuna condizione selezionata — Ari non ascolterà affatto finché non ne spunti almeno una.</string>
+    <plurals name="settings_listening_schedule_count">
+        <item quantity="one">%1$d orario</item>
+        <item quantity="other">%1$d orari</item>
+    </plurals>
+    <plurals name="settings_listening_place_count">
+        <item quantity="one">%1$d luogo</item>
+        <item quantity="other">%1$d luoghi</item>
+    </plurals>
+    <string name="settings_listening_schedules_title">Orari</string>
+    <string name="settings_listening_schedules_blurb">Ari ascolta durante uno qualsiasi di questi intervalli. Aggiungine quanti vuoi.</string>
+    <string name="settings_listening_schedules_empty">Nessun orario ancora impostato.</string>
+    <string name="settings_listening_schedule_add">Aggiungi orario</string>
+    <string name="settings_listening_schedule_edit">Modifica orario</string>
+    <string name="settings_listening_schedule_days_label">Giorni</string>
+    <string name="settings_listening_schedule_hours_label">Ore</string>
+    <string name="settings_listening_schedule_overnight_note">Questo intervallo attraversa la mezzanotte.</string>
+    <string name="settings_listening_schedule_same_time_error">L\'inizio e la fine non possono coincidere.</string>
+    <string name="settings_listening_places_title">Luoghi</string>
+    <string name="settings_listening_places_blurb">Ari ascolta ogni volta che ti trovi in uno di questi luoghi. Aggiungine quanti vuoi.</string>
+    <string name="settings_listening_places_empty">Nessun luogo ancora aggiunto.</string>
+    <string name="settings_listening_places_no_play_services">Google Play Services non è disponibile su questo dispositivo, quindi l\'ascolto basato sui luoghi non può funzionare — si basa sul geofencing di Play Services.</string>
+    <string name="settings_listening_places_need_fine_location">I luoghi richiedono la posizione precisa per capire se sei arrivato. Ari la usa solo per verificare i luoghi che aggiungi — mai per altro.</string>
+    <string name="settings_listening_places_need_background_location">I luoghi devono anche controllare la tua posizione in background — Android la chiama \"%1$s\". Tocca qui sotto, poi selezionala nella schermata successiva.</string>
+    <string name="settings_listening_place_add">Aggiungi luogo</string>
+    <string name="settings_listening_place_edit">Modifica luogo</string>
+    <string name="settings_listening_place_name_label">Nome</string>
+    <string name="settings_listening_place_map_hint">Tocca la mappa per impostare il centro, oppure trascina il cerchio.</string>
+    <string name="settings_listening_place_radius">Raggio di %1$d m</string>
+    <string name="action_grant">Consenti</string>
+
     <!-- Skill settings panel — calendar / tasks permission buttons -->
     <string name="skill_panel_allow_calendar">Consenti accesso al calendario</string>
     <string name="skill_panel_no_calendars">Nessun calendario scrivibile trovato su questo dispositivo.</string>
@@ -390,6 +457,8 @@
     <string name="notif_wake_couldnt_open_text">Tocca per consentire ad Ari di aprirsi dalla schermata di blocco</string>
     <string name="notif_wake_listening_title">Ari</string>
     <string name="notif_wake_listening_text">In ascolto della parola di attivazione…</string>
+    <string name="notif_wake_standby_title">Ari — in attesa</string>
+    <string name="notif_wake_stop_action">Smetti di ascoltare</string>
     <string name="notif_boot_couldnt_start_title">Impossibile avviare l\'ascolto</string>
     <string name="notif_boot_tap_to_fix">Tocca per risolvere: %1$s</string>
     <string name="notif_boot_tap_to_fix_big">Ari è impostato per iniziare ad ascoltare all\'accensione, ma serve la tua attenzione su: %1$s. Tocca per aprire Ari.</string>

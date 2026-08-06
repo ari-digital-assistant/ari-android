@@ -12,7 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -27,6 +27,7 @@ import dev.heyari.ari.ui.menu.MenuScreen
 import dev.heyari.ari.ui.onboarding.AssistantScreen
 import dev.heyari.ari.ui.onboarding.CompleteScreen
 import dev.heyari.ari.ui.onboarding.GeneralScreen
+import dev.heyari.ari.ui.onboarding.ListeningScreen
 import dev.heyari.ari.ui.onboarding.OnboardingViewModel
 import dev.heyari.ari.ui.onboarding.PermissionsScreen
 import dev.heyari.ari.ui.onboarding.LanguageScreen
@@ -39,6 +40,11 @@ import dev.heyari.ari.ui.settings.pages.AssistantSettingsPage
 import dev.heyari.ari.ui.settings.pages.AutoUpdateSettingsPage
 import dev.heyari.ari.ui.settings.pages.ConversationSettingsPage
 import dev.heyari.ari.ui.settings.pages.GeneralSettingsPage
+import dev.heyari.ari.ui.settings.pages.ListeningPlacesPage
+import dev.heyari.ari.ui.settings.pages.ListeningSchedulesPage
+import dev.heyari.ari.ui.settings.pages.PlaceEditorScreen
+import dev.heyari.ari.ui.settings.pages.ScheduleEditorScreen
+import dev.heyari.ari.ui.settings.pages.ListeningSettingsPage
 import dev.heyari.ari.ui.settings.pages.PermissionsSettingsPage
 import dev.heyari.ari.ui.settings.pages.SttSettingsPage
 import dev.heyari.ari.ui.settings.pages.TtsSettingsPage
@@ -59,6 +65,11 @@ object Routes {
     const val SETTINGS_GENERAL = "settings/general"
     const val SETTINGS_PERMISSIONS = "settings/permissions"
     const val SETTINGS_WAKEWORD = "settings/wakeword"
+    const val SETTINGS_LISTENING = "settings/listening"
+    const val SETTINGS_LISTENING_SCHEDULES = "settings/listening/schedules"
+    const val SETTINGS_LISTENING_PLACES = "settings/listening/places"
+    const val SETTINGS_LISTENING_SCHEDULE_EDIT = "settings/listening/schedules/edit?id={id}"
+    const val SETTINGS_LISTENING_PLACE_EDIT = "settings/listening/places/edit?id={id}"
     const val SETTINGS_STT = "settings/stt"
     const val SETTINGS_TTS = "settings/tts"
     const val SETTINGS_CONVERSATION = "settings/conversation"
@@ -74,6 +85,7 @@ object Routes {
     const val ONBOARDING_WELCOME = "onboarding/welcome"
     const val ONBOARDING_PERMISSIONS = "onboarding/permissions"
     const val ONBOARDING_WAKE_WORD = "onboarding/wakeword"
+    const val ONBOARDING_LISTENING = "onboarding/listening"
     const val ONBOARDING_STT = "onboarding/stt"
     const val ONBOARDING_ASSISTANT = "onboarding/assistant"
     const val ONBOARDING_GENERAL = "onboarding/general"
@@ -81,6 +93,10 @@ object Routes {
 
     fun skillDetail(id: String, source: String) = "skills/detail/$id?source=$source"
     fun skills(type: String? = null) = if (type != null) "skills?type=$type" else "skills"
+    fun scheduleEdit(id: String? = null) =
+        if (id != null) "settings/listening/schedules/edit?id=$id" else "settings/listening/schedules/edit"
+    fun placeEdit(id: String? = null) =
+        if (id != null) "settings/listening/places/edit?id=$id" else "settings/listening/places/edit"
 }
 
 /**
@@ -133,6 +149,9 @@ fun AriNavHost(
                         launchSingleTop = true
                     }
                 },
+                onOpenListeningSettings = {
+                    navController.navigate(Routes.SETTINGS_LISTENING) { launchSingleTop = true }
+                },
             )
         }
         composable(
@@ -156,6 +175,7 @@ fun AriNavHost(
                 onOpenGeneral = { navController.navigate(Routes.SETTINGS_GENERAL) },
                 onOpenPermissions = { navController.navigate(Routes.SETTINGS_PERMISSIONS) },
                 onOpenWakeWord = { navController.navigate(Routes.SETTINGS_WAKEWORD) },
+                onOpenListening = { navController.navigate(Routes.SETTINGS_LISTENING) },
                 onOpenStt = { navController.navigate(Routes.SETTINGS_STT) },
                 onOpenTts = { navController.navigate(Routes.SETTINGS_TTS) },
                 onOpenConversation = { navController.navigate(Routes.SETTINGS_CONVERSATION) },
@@ -172,6 +192,55 @@ fun AriNavHost(
         }
         composable(Routes.SETTINGS_WAKEWORD) {
             WakeWordSettingsPage(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.SETTINGS_LISTENING) {
+            ListeningSettingsPage(
+                onBack = { navController.popBackStack() },
+                onOpenSchedules = { navController.navigate(Routes.SETTINGS_LISTENING_SCHEDULES) },
+                onOpenPlaces = { navController.navigate(Routes.SETTINGS_LISTENING_PLACES) },
+            )
+        }
+        composable(Routes.SETTINGS_LISTENING_SCHEDULES) {
+            ListeningSchedulesPage(
+                onBack = { navController.popBackStack() },
+                onOpenEditor = { id -> navController.navigate(Routes.scheduleEdit(id)) },
+            )
+        }
+        composable(Routes.SETTINGS_LISTENING_PLACES) {
+            ListeningPlacesPage(
+                onBack = { navController.popBackStack() },
+                onOpenEditor = { id -> navController.navigate(Routes.placeEdit(id)) },
+            )
+        }
+        composable(
+            Routes.SETTINGS_LISTENING_SCHEDULE_EDIT,
+            arguments = listOf(
+                navArgument("id") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            ),
+        ) { entry ->
+            ScheduleEditorScreen(
+                scheduleId = entry.arguments?.getString("id"),
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            Routes.SETTINGS_LISTENING_PLACE_EDIT,
+            arguments = listOf(
+                navArgument("id") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            ),
+        ) { entry ->
+            PlaceEditorScreen(
+                placeId = entry.arguments?.getString("id"),
+                onBack = { navController.popBackStack() },
+            )
         }
         composable(Routes.SETTINGS_STT) {
             SttSettingsPage(onBack = { navController.popBackStack() })
@@ -346,14 +415,23 @@ fun AriNavHost(
                             val intent = Intent(context, WakeWordService::class.java)
                             ContextCompat.startForegroundService(context, intent)
                         }
-                        // Everyone sees the STT step now. It used to be skipped
-                        // for non-English locales because Whisper-turbo was
-                        // their only choice, but the step is no longer a model
-                        // picker — it is on-device vs cloud, which is a real
-                        // choice in every language. Which local model serves
-                        // on-device is still decided for them.
-                        navController.navigate(Routes.ONBOARDING_STT)
+                        navController.navigate(Routes.ONBOARDING_LISTENING)
                     },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(Routes.ONBOARDING_LISTENING) {
+                val settingsViewModel: SettingsViewModel = hiltViewModel()
+                ListeningScreen(
+                    settingsViewModel = settingsViewModel,
+                    // Everyone sees the STT step now. It used to be skipped
+                    // for non-English locales because Whisper-turbo was
+                    // their only choice, but the step is no longer a model
+                    // picker — it is on-device vs cloud, which is a real
+                    // choice in every language. Which local model serves
+                    // on-device is still decided for them.
+                    onNext = { navController.navigate(Routes.ONBOARDING_STT) },
                     onBack = { navController.popBackStack() },
                 )
             }

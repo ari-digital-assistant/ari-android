@@ -5,11 +5,11 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.os.CancellationSignal
 import android.os.Looper
 import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
-import androidx.core.os.CancellationSignal
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.location.LocationServices
@@ -60,9 +60,17 @@ object LocationLogic {
 }
 
 /**
- * Coarse device location. Returns a cached last-known fix when it's fresh
- * enough, else requests a single low-power fix with a timeout, else falls back
- * to a stale fix. Coarse only — never requests fine location.
+ * Coarse device location for skills (weather, "near me"). Returns a cached
+ * last-known fix when it's fresh enough, else requests a single low-power fix
+ * with a timeout, else falls back to a stale fix. This class itself never
+ * requests fine location and only checks [Manifest.permission.ACCESS_COARSE_LOCATION].
+ *
+ * The app may separately hold `ACCESS_FINE_LOCATION` for the listening-places
+ * geofencing feature ([dev.heyari.ari.listening.PlaceGeofences]) — that grant
+ * is app-wide, so a skill using this class could technically get a more
+ * precise fix than it asked for. This class doesn't use that precision: it
+ * keeps requesting [Priority.PRIORITY_BALANCED_POWER_ACCURACY] regardless of
+ * what's granted, so the coarse promise to skills holds either way.
  *
  * Prefers FusedLocation when Play Services is present, and the platform
  * LocationManager when it isn't, so location still works on a de-Googled
@@ -134,12 +142,14 @@ class LocationProvider @Inject constructor(
 
     /** The fused last-known fix, or null. Fetched once and reused for both the
      *  fresh-enough fast path and the stale fallback. */
+    @SuppressLint("MissingPermission") // gated on hasCoarsePermission() in current()
     private fun fusedLastKnown(): LocationLogic.Fix? =
         runCatching { Tasks.await(client.lastLocation, 2, TimeUnit.SECONDS) }
             .onFailure { e -> Log.w(TAG, "fused last-known lookup failed", e) }
             .getOrNull()
             ?.toFix()
 
+    @SuppressLint("MissingPermission") // gated on hasCoarsePermission() in current()
     private fun fusedActiveFix(timeoutMs: Long): LocationLogic.Fix? {
         val cts = CancellationTokenSource()
         val task = client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, cts.token)

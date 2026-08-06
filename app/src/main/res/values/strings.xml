@@ -131,6 +131,7 @@
     <string name="settings_section_ai">AI</string>
     <string name="settings_section_debug">Debug</string>
     <string name="settings_category_debug">Debug</string>
+    <string name="settings_category_listening">Listening</string>
     <string name="settings_keep_everything_title">Keep everything</string>
     <string name="settings_keep_everything_blurb">The debugging firehose: record every wake-word firing — including accepted ones — and every spoken conversation with Ari, even when the two switches below are off. Everything stays on this device in Ari\'s private storage and is never uploaded. Off by default; leave it off unless you\'re chasing a bug.</string>
 
@@ -160,6 +161,10 @@
     <string name="onboarding_wakeword_body">Say this to get Ari\'s attention. Choose a phrase and how eagerly Ari listens for it.</string>
     <string name="onboarding_wakeword_start_listening">Start listening now</string>
     <string name="onboarding_wakeword_start_listening_help">This starts Ari listening right away. You can also choose to start Ari on boot in the General screen — they\'re separate switches.</string>
+
+    <string name="onboarding_listening_title">Listening</string>
+    <string name="onboarding_listening_body">Always-on listening is the most responsive option, and by far the most expensive on battery. Choose when Ari should listen — you can fine-tune this anytime in Settings.</string>
+    <string name="onboarding_listening_custom_note">Schedules and places need their own screens to set up properly — you\'ll find them under Settings → Listening once you finish here.</string>
 
     <string name="onboarding_stt_title">Voice recognition</string>
     <string name="onboarding_stt_blurb_lead">Ari transcribes your voice on your phone by default.</string>
@@ -227,6 +232,7 @@
 
     <!-- Common buttons / labels -->
     <string name="action_cancel">Cancel</string>
+    <string name="action_save">Save</string>
     <string name="action_delete">Delete</string>
     <string name="action_open_settings">Open settings</string>
     <string name="action_later">Later</string>
@@ -247,15 +253,17 @@
     <!-- TODO(i18n): add values-it/ translation -->
     <string name="conversation_timestamp_now">now</string>
     <string name="conversation_open_menu">Open menu</string>
-    <!-- TODO(i18n): add values-it/ translations -->
-    <string name="wake_switch_armed_description">Always listening for Hey Ari, on</string>
-    <!-- TODO(i18n): add values-it/ translations -->
-    <string name="wake_switch_off_description">Always listening, off</string>
+    <string name="listening_mode_switch_never_description">Never listen</string>
+    <string name="listening_mode_switch_custom_description">Listen on a schedule</string>
+    <string name="listening_mode_switch_always_description">Always listen</string>
     <string name="conversation_voice_disabled_body">Voice features need a microphone permission and a downloaded speech model. You can still type queries below.</string>
     <string name="conversation_setup_needed_title">Setup needed</string>
     <string name="conversation_cloud_setup_title">Choose a cloud assistant</string>
     <string name="conversation_cloud_setup_body">You picked a cloud assistant during setup but haven\'t installed one yet. Install ChatGPT, Claude, or Gemini to start using it — until then, Ari only answers via direct skill matches.</string>
     <string name="conversation_cloud_setup_button">Browse cloud assistants</string>
+    <string name="conversation_listening_setup_title">Finish setting up listening</string>
+    <string name="conversation_listening_setup_body">You picked a schedule or a place during setup but haven\'t added one yet. Ari won\'t listen under that condition until you do.</string>
+    <string name="conversation_listening_setup_button">Set up listening</string>
     <string name="conversation_downloading_header">Downloading in the background</string>
     <string name="conversation_downloading_stt_model">Voice recognition model</string>
     <string name="conversation_downloading_llm_model">Assistant model</string>
@@ -329,6 +337,63 @@
     <string name="settings_llm_none_blurb">No on-device LLM. Ari only answers via matched skills.</string>
     <string name="settings_last_download_failed">Last download failed: %1$s</string>
 
+    <!-- Listening modes -->
+    <string name="listening_mode_always_label">Always</string>
+    <string name="listening_mode_always_blurb">Ari listens around the clock. The most responsive setting, and the most expensive — roughly 15% of a charge a day.</string>
+    <string name="listening_mode_never_label">Never</string>
+    <string name="listening_mode_never_blurb">Ari never opens the microphone on its own. Summon it with the mic button, the assist gesture, or a headset button.</string>
+    <string name="listening_mode_custom_label">Custom</string>
+    <string name="listening_mode_custom_blurb">Ari listens whenever any of the conditions you pick are true.</string>
+    <string name="listening_condition_screen_label">Screen is on</string>
+    <string name="listening_condition_screen_blurb">Listen while you\'re using your phone. The biggest saving of the lot — your screen is off for most of the day.</string>
+    <string name="listening_condition_charging_label">While charging</string>
+    <string name="listening_condition_charging_blurb">Listen whenever the phone is plugged in. Costs you nothing on the battery.</string>
+    <string name="listening_condition_headset_label">Headset connected</string>
+    <string name="listening_condition_headset_blurb">Listen while headphones, earbuds or a car stereo are connected.</string>
+    <string name="listening_condition_schedule_label">On a schedule</string>
+    <string name="listening_condition_schedule_blurb">Listen during the hours you choose.</string>
+    <string name="listening_condition_place_label">At certain places</string>
+    <string name="listening_condition_place_blurb">Listen when you\'re at home, at work, or anywhere else you add.</string>
+    <string name="listening_standby_no_conditions">No listening conditions picked yet</string>
+    <string name="listening_standby_screen_off">Ari will listen when your screen is on</string>
+    <string name="listening_standby_not_charging">Ari will listen when you plug in</string>
+    <string name="listening_standby_no_headset">Ari will listen when a headset is connected</string>
+    <string name="listening_standby_outside_schedule">Ari will listen during your scheduled hours</string>
+    <string name="listening_standby_away_from_places">Ari will listen at the places you added</string>
+    <string name="listening_standby_multiple">Waiting for one of your listening conditions</string>
+    <string name="settings_listening_blurb">Choose when Ari is allowed to open the microphone. Always-on listening is the most responsive option, and by far the most expensive one on battery.</string>
+    <string name="settings_listening_conditions_header">Listen when…</string>
+    <string name="settings_listening_no_conditions_notice">No conditions picked — Ari won\'t listen at all until you tick at least one.</string>
+    <plurals name="settings_listening_schedule_count">
+        <item quantity="one">%1$d schedule</item>
+        <item quantity="other">%1$d schedules</item>
+    </plurals>
+    <plurals name="settings_listening_place_count">
+        <item quantity="one">%1$d place</item>
+        <item quantity="other">%1$d places</item>
+    </plurals>
+    <string name="settings_listening_schedules_title">Schedules</string>
+    <string name="settings_listening_schedules_blurb">Ari listens during any of these windows. Add as many as you like.</string>
+    <string name="settings_listening_schedules_empty">No schedules yet.</string>
+    <string name="settings_listening_schedule_add">Add schedule</string>
+    <string name="settings_listening_schedule_edit">Edit schedule</string>
+    <string name="settings_listening_schedule_days_label">Days</string>
+    <string name="settings_listening_schedule_hours_label">Hours</string>
+    <string name="settings_listening_schedule_overnight_note">This window crosses midnight.</string>
+    <string name="settings_listening_schedule_same_time_error">Start and end can\'t be the same time.</string>
+    <string name="settings_listening_places_title">Places</string>
+    <string name="settings_listening_places_blurb">Ari listens whenever you\'re at any of these places. Add as many as you like.</string>
+    <string name="settings_listening_places_empty">No places yet.</string>
+    <string name="settings_listening_places_no_play_services">Google Play Services isn\'t available on this device, so place-based listening can\'t work — it relies on Play Services geofencing.</string>
+    <string name="settings_listening_places_need_fine_location">Places need precise location to tell whether you\'ve arrived. Ari only uses this to check against the places you add — never for anything else.</string>
+    <string name="settings_listening_places_need_background_location">Places also need to check your location in the background — Android calls this \"%1$s\". Tap below, then choose it on the next screen.</string>
+    <string name="settings_listening_place_add">Add place</string>
+    <string name="settings_listening_place_edit">Edit place</string>
+    <string name="settings_listening_place_name_label">Name</string>
+    <string name="settings_listening_place_map_hint">Tap the map to set the centre, or drag the circle.</string>
+    <string name="settings_listening_place_radius">%1$d m radius</string>
+    <string name="action_grant">Grant</string>
+
     <!-- Skill settings panel — calendar / tasks permission buttons -->
     <string name="skill_panel_allow_calendar">Allow calendar access</string>
     <string name="skill_panel_no_calendars">No writable calendars found on this device.</string>
@@ -390,6 +455,8 @@
     <string name="notif_wake_couldnt_open_text">Tap to allow Ari to open from the lock screen</string>
     <string name="notif_wake_listening_title">Ari</string>
     <string name="notif_wake_listening_text">Listening for wake word…</string>
+    <string name="notif_wake_standby_title">Ari — standing by</string>
+    <string name="notif_wake_stop_action">Stop listening</string>
     <string name="notif_boot_couldnt_start_title">Ari couldn\'t start listening</string>
     <string name="notif_boot_tap_to_fix">Tap to fix: %1$s</string>
     <string name="notif_boot_tap_to_fix_big">Ari is set to start listening when your device boots, but these need attention: %1$s. Tap to open Ari.</string>

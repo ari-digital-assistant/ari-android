@@ -6,6 +6,16 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.heyari.ari.listening.ListeningCondition
+import dev.heyari.ari.listening.ListeningMode
+import dev.heyari.ari.listening.ListeningPlace
+import dev.heyari.ari.listening.ListeningSchedule
+import dev.heyari.ari.listening.decodeConditions
+import dev.heyari.ari.listening.decodePlaces
+import dev.heyari.ari.listening.decodeSchedules
+import dev.heyari.ari.listening.encodeConditions
+import dev.heyari.ari.listening.encodePlaces
+import dev.heyari.ari.listening.encodeSchedules
 import dev.heyari.ari.locale.SupportedLocales
 import dev.heyari.ari.stt.CloudTranscriber
 import dev.heyari.ari.stt.SttMode
@@ -388,6 +398,72 @@ class SettingsRepository @Inject constructor(
     // rather than migrated: it never affected behaviour, so there is no state
     // worth carrying forward.
 
+    /**
+     * When Ari is allowed to open the microphone. Defaults to
+     * [ListeningMode.ALWAYS] — the behaviour every install had before modes
+     * existed, so upgrading can't silently make someone's assistant deaf.
+     */
+    val listeningMode: Flow<ListeningMode> = context.dataStore.data.map { prefs ->
+        ListeningMode.fromSlug(prefs[KEY_LISTENING_MODE])
+    }
+
+    suspend fun setListeningMode(mode: ListeningMode) {
+        context.dataStore.edit { prefs -> prefs[KEY_LISTENING_MODE] = mode.slug }
+    }
+
+    /** The conditions ticked under [ListeningMode.CUSTOM]. ORed, never ANDed. */
+    val listeningConditions: Flow<Set<ListeningCondition>> = context.dataStore.data.map { prefs ->
+        decodeConditions(prefs[KEY_LISTENING_CONDITIONS])
+    }
+
+    suspend fun setListeningConditions(conditions: Set<ListeningCondition>) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_LISTENING_CONDITIONS] = encodeConditions(conditions)
+        }
+    }
+
+    /** Recurring listening windows, as a JSON array. Empty until the user adds one. */
+    val listeningSchedules: Flow<List<ListeningSchedule>> = context.dataStore.data.map { prefs ->
+        decodeSchedules(prefs[KEY_LISTENING_SCHEDULES])
+    }
+
+    suspend fun listeningSchedulesOnce(): List<ListeningSchedule> =
+        decodeSchedules(context.dataStore.data.first()[KEY_LISTENING_SCHEDULES])
+
+    suspend fun setListeningSchedules(schedules: List<ListeningSchedule>) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_LISTENING_SCHEDULES] = encodeSchedules(schedules)
+        }
+    }
+
+    /** Geofenced places to listen at, as a JSON array. */
+    val listeningPlaces: Flow<List<ListeningPlace>> = context.dataStore.data.map { prefs ->
+        decodePlaces(prefs[KEY_LISTENING_PLACES])
+    }
+
+    suspend fun listeningPlacesOnce(): List<ListeningPlace> =
+        decodePlaces(context.dataStore.data.first()[KEY_LISTENING_PLACES])
+
+    suspend fun setListeningPlaces(places: List<ListeningPlace>) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_LISTENING_PLACES] = encodePlaces(places)
+        }
+    }
+
+    /**
+     * Set when the wizard finishes with Schedule or Places ticked but nothing
+     * configured. Drives the conversation-screen reminder card, exactly like
+     * [pendingCloudAssistantSetup] — and for the same reason: the nag has to
+     * outlive the wizard that raised it.
+     */
+    val pendingListeningSetup: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_PENDING_LISTENING_SETUP] ?: false
+    }
+
+    suspend fun setPendingListeningSetup(pending: Boolean) {
+        context.dataStore.edit { prefs -> prefs[KEY_PENDING_LISTENING_SETUP] = pending }
+    }
+
     companion object {
         private val KEY_STT_MODE = stringPreferencesKey("stt_mode")
         private val KEY_CLOUD_STT_ENDPOINT = stringPreferencesKey("cloud_stt_endpoint")
@@ -413,5 +489,10 @@ class SettingsRepository @Inject constructor(
         private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         private val KEY_ROUTER_ENABLED = booleanPreferencesKey("router_enabled")
         private val KEY_PENDING_CLOUD_ASSISTANT_SETUP = booleanPreferencesKey("pending_cloud_assistant_setup")
+        private val KEY_LISTENING_MODE = stringPreferencesKey("listening_mode")
+        private val KEY_LISTENING_CONDITIONS = stringPreferencesKey("listening_conditions")
+        private val KEY_LISTENING_SCHEDULES = stringPreferencesKey("listening_schedules")
+        private val KEY_LISTENING_PLACES = stringPreferencesKey("listening_places")
+        private val KEY_PENDING_LISTENING_SETUP = booleanPreferencesKey("pending_listening_setup")
     }
 }

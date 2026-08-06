@@ -39,6 +39,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import dev.heyari.ari.listening.ListeningMode
 import dev.heyari.ari.model.ConversationState
 import dev.heyari.ari.ui.components.AriTopBar
 import androidx.compose.runtime.Composable
@@ -53,7 +54,7 @@ import androidx.compose.ui.res.stringResource
 import dev.heyari.ari.R
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -71,6 +72,7 @@ fun ConversationScreen(
      * onboarding nudge) don't pick up the filter as a side effect.
      */
     onOpenAssistantSkills: () -> Unit = {},
+    onOpenListeningSettings: () -> Unit = {},
     viewModel: ConversationViewModel = hiltViewModel(),
     updateBannerViewModel: UpdateBannerViewModel = hiltViewModel(),
 ) {
@@ -162,13 +164,13 @@ fun ConversationScreen(
             AriTopBar(
                 onOpenMenu = onOpenMenu,
                 actions = {
-                    WakeSwitch(
-                        armed = state.isListening,
-                        onToggle = { wantsOn ->
-                            if (!wantsOn) {
-                                viewModel.setWakeWordEnabled(false)
+                    ListeningModeSwitch(
+                        mode = state.listeningMode,
+                        onSelect = { mode ->
+                            if (mode == ListeningMode.NEVER) {
+                                viewModel.setListeningMode(ListeningMode.NEVER)
                             } else {
-                                withVoicePermissions { viewModel.setWakeWordEnabled(true) }
+                                withVoicePermissions { viewModel.setListeningMode(mode) }
                             }
                         },
                         modifier = Modifier.padding(end = 8.dp),
@@ -193,6 +195,10 @@ fun ConversationScreen(
 
             if (state.needsCloudAssistantSetup) {
                 CloudAssistantSetupCard(onOpenSkills = onOpenAssistantSkills)
+            }
+
+            if (state.needsListeningSetup) {
+                ListeningSetupCard(onOpenListeningSettings = onOpenListeningSettings)
             }
 
             UpdateBanners(
@@ -413,6 +419,53 @@ private fun CloudAssistantSetupCard(onOpenSkills: () -> Unit) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onOpenSkills) {
                     Text(stringResource(R.string.conversation_cloud_setup_button))
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Reminder for a user who ticked Schedule or Places under Custom listening
+ * during onboarding but hasn't configured one yet — the wizard has no room for
+ * a time picker or a map, so this is where that setup actually happens.
+ * Cleared by [dev.heyari.ari.ui.settings.SettingsViewModel.checkPendingListeningSetup]
+ * the moment a schedule or place exists, mirroring [CloudAssistantSetupCard].
+ */
+@Composable
+private fun ListeningSetupCard(onOpenListeningSettings: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+        ),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.conversation_listening_setup_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.conversation_listening_setup_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onOpenListeningSettings) {
+                    Text(stringResource(R.string.conversation_listening_setup_button))
                 }
             }
         }

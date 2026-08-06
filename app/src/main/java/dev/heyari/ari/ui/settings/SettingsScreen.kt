@@ -13,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Hearing
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Settings
@@ -33,6 +34,7 @@ fun SettingsScreen(
     onOpenGeneral: () -> Unit,
     onOpenPermissions: () -> Unit,
     onOpenWakeWord: () -> Unit,
+    onOpenListening: () -> Unit,
     onOpenStt: () -> Unit,
     onOpenTts: () -> Unit,
     onOpenConversation: () -> Unit,
@@ -81,6 +83,11 @@ fun SettingsScreen(
                 icon = Icons.Default.Mic,
                 title = stringResource(R.string.settings_category_wakeword),
                 onClick = onOpenWakeWord,
+            )
+            SettingsCategoryRow(
+                icon = Icons.Default.Hearing,
+                title = stringResource(R.string.settings_category_listening),
+                onClick = onOpenListening,
             )
             SettingsCategoryRow(
                 icon = Icons.Default.RecordVoiceOver,

@@ -17,6 +17,7 @@ import dev.heyari.ari.actions.CardActionDispatcher
 import dev.heyari.ari.actions.CardActionVoiceIntercept
 import dev.heyari.ari.actions.CardAlarmScheduler
 import dev.heyari.ari.data.SettingsRepository
+import dev.heyari.ari.listening.ListeningMode
 import dev.heyari.ari.data.conversation.ConversationLogRepository
 import dev.heyari.ari.data.card.Card
 import dev.heyari.ari.data.card.CardAction
@@ -194,6 +195,15 @@ class ConversationViewModel @Inject constructor(
                 }
         }
 
+        // Mirror the listening-setup-needed flag, same shape as the cloud one
+        // above. Cleared from SettingsViewModel whenever a schedule/place is
+        // added or the condition is unticked — see recheckPendingListeningSetup.
+        viewModelScope.launch {
+            settingsRepository.pendingListeningSetup.collect { needs ->
+                _state.update { it.copy(needsListeningSetup = needs) }
+            }
+        }
+
         // Wake word events and STT are handled by the system overlay
         // (VoiceSession + VoiceOverlayManager) — the activity no longer
         // collects them. Keeps the activity focused on typed input + chat
@@ -210,19 +220,29 @@ class ConversationViewModel @Inject constructor(
             }
         }
 
-        // Poll the wake word service state every second. The service has its own
-        // lifecycle (notification action, OS kill, etc.) so the UI cannot rely on
-        // the last command we sent — it has to keep checking what's actually true.
-        // We skip polling for a short window after setWakeWordEnabled() to avoid
-        // a visible flicker while the FGS finishes starting up / shutting down.
+        // The listening mode is a stored preference, so it can be read properly
+        // rather than polled — unlike the mic state below, nothing outside Ari
+        // can change it behind our back.
+        viewModelScope.launch {
+            settingsRepository.listeningMode.collect { mode ->
+                _state.update { it.copy(listeningMode = mode) }
+            }
+        }
+
+        // Poll whether the microphone is actually open. The service has its own
+        // lifecycle (notification action, OS kill, a schedule boundary firing)
+        // so the UI cannot rely on the last command we sent — it has to keep
+        // checking what's actually true. We skip polling for a short window
+        // after setListeningMode() to avoid a visible flicker while the FGS
+        // finishes starting up / shutting down.
         viewModelScope.launch {
             while (isActive) {
                 if (System.currentTimeMillis() >= suppressPollUntil) {
-                    // A one-shot tap-to-talk run keeps the service alive but is
-                    // NOT always-listening, so it must not light the switch.
-                    val running = WakeWordService.isRunning && !WakeWordService.oneShotActive
-                    if (running != _state.value.isListening) {
-                        _state.update { it.copy(isListening = running) }
+                    // A one-shot tap-to-talk run opens the mic but is NOT
+                    // always-listening, so it must not light the control.
+                    val hot = WakeWordService.micHot && !WakeWordService.oneShotActive
+                    if (hot != _state.value.isListening) {
+                        _state.update { it.copy(isListening = hot) }
                     }
                 }
                 delay(1000)
@@ -675,7 +695,7 @@ class ConversationViewModel @Inject constructor(
         // Exclude a transient one-shot tap-to-talk run — it keeps the service
         // alive but is not always-listening (mirrors the poll loop above).
         _state.update {
-            it.copy(isListening = WakeWordService.isRunning && !WakeWordService.oneShotActive)
+            it.copy(isListening = WakeWordService.micHot && !WakeWordService.oneShotActive)
         }
         refreshOnboarding()
         // Re-derive the empty state so installing a skill or teaching Ari
@@ -819,23 +839,37 @@ class ConversationViewModel @Inject constructor(
     }
 
     /**
-     * Set the wake word service to a desired state. Idempotent against the
-     * actual service state, not the displayed state — so we can't get into a
-     * "switch says ON, service is OFF" feedback loop.
+     * The top-bar mode switch.
+     *
+     * Moving off [ListeningMode.NEVER] has to start the service from here, and
+     * here specifically: this is a foreground tap, and a foreground tap is one
+     * of the very few ways Android 14+ permits a `microphone` foreground
+     * service to be started at all. Moving to NEVER only writes the
+     * preference — the service is collecting the listening policy, sees the
+     * resulting Off, and stands itself down.
      */
-    fun setWakeWordEnabled(enabled: Boolean) {
-        val intent = Intent(application, WakeWordService::class.java)
-        if (enabled) {
-            if (WakeWordService.isRunning) return
-            ContextCompat.startForegroundService(application, intent)
-        } else {
-            if (!WakeWordService.isRunning) return
-            application.stopService(intent)
+    fun setListeningMode(mode: ListeningMode) {
+        viewModelScope.launch {
+            settingsRepository.setListeningMode(mode)
+        }
+        if (mode != ListeningMode.NEVER && !WakeWordService.isRunning) {
+            ContextCompat.startForegroundService(
+                application,
+                Intent(application, WakeWordService::class.java),
+            )
         }
         // Suppress the poll loop briefly while the FGS finishes its lifecycle
-        // transition, otherwise the user sees an ON → OFF → ON flicker.
+        // transition, otherwise the user sees a flicker.
         suppressPollUntil = System.currentTimeMillis() + 2500
-        _state.update { it.copy(isListening = enabled) }
+        // CUSTOM's actual hot/cold state depends on conditions we can't
+        // resolve here — leave isListening alone and let the poll loop settle
+        // it rather than flash a guess.
+        val optimisticListening = when (mode) {
+            ListeningMode.NEVER -> false
+            ListeningMode.ALWAYS -> true
+            ListeningMode.CUSTOM -> _state.value.isListening
+        }
+        _state.update { it.copy(listeningMode = mode, isListening = optimisticListening) }
     }
 
 }

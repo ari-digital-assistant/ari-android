@@ -1,5 +1,7 @@
 package dev.heyari.ari.wakeword
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.app.ActivityOptions
 import android.app.Notification
 import android.app.NotificationChannel
@@ -7,6 +9,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.media.AudioFormat
 import android.media.AudioRecord
@@ -16,13 +19,20 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.Process
 import android.provider.Settings
 import android.util.Log
+import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
 import dev.heyari.ari.MainActivity
 import dev.heyari.ari.R
 import dev.heyari.ari.audio.CaptureBus
 import dev.heyari.ari.data.SettingsRepository
+import dev.heyari.ari.listening.ConditionSignals
+import dev.heyari.ari.listening.ListeningController
+import dev.heyari.ari.listening.ListeningDecision
+import dev.heyari.ari.listening.ListeningMode
+import dev.heyari.ari.listening.decideListening
 import dev.heyari.ari.voice.CaptureMode
 import dev.heyari.ari.voice.VoiceOverlayActivity
 import dev.heyari.ari.voice.VoiceSession
@@ -49,8 +59,23 @@ class WakeWordService : Service() {
     @Inject
     lateinit var captureBus: CaptureBus
 
+    @Inject
+    lateinit var listeningController: ListeningController
+
+    /**
+     * The policy's latest word on whether the mic should be open. Seeded
+     * synchronously in [onStartCommand] from the stored preferences alone —
+     * the live condition signals haven't arrived that early, so a Custom user
+     * deliberately starts COLD and warms up a few milliseconds later if one of
+     * their conditions turns out to hold. Erring the other way would open the
+     * microphone on someone who had asked it not to be.
+     */
+    @Volatile
+    private var decision: ListeningDecision = ListeningDecision.Listen
+
     private var audioRecord: AudioRecord? = null
     private var detector: MicroWakeWord? = null
+    private var captureThread: Thread? = null
 
     // Read/mutated from both StateFlow collectors (state + captureMode) which run
     // on DIFFERENT threads of the multi-threaded Default dispatcher. @Volatile
@@ -106,9 +131,11 @@ class WakeWordService : Service() {
                     }
                     return@collect
                 }
-                if (state is VoiceState.Idle && !isListening && isRunning) {
-                    Log.i(TAG, "Voice session ended — resuming wake word listening")
-                    startListening()
+                if (state is VoiceState.Idle && isRunning) {
+                    // The turn is over — hand the microphone back to the policy,
+                    // which may well want it closed again.
+                    Log.i(TAG, "Voice session ended — re-applying listening policy")
+                    applyDecision()
                 }
             }
         }
@@ -119,14 +146,89 @@ class WakeWordService : Service() {
                 if (isRunning) applyCaptureMode(mode)
             }
         }
+        // The listening policy. Every condition source hangs off this
+        // subscription, so nothing is registered until the service is up and
+        // everything is torn down when the scope dies.
+        scope.launch {
+            listeningController.decisions.collect { next ->
+                Log.i(TAG, "Listening decision: $next")
+                decision = next
+                applyDecision()
+            }
+        }
+    }
+
+    /**
+     * Bring the microphone into line with [decision].
+     *
+     * [ListeningDecision.StandBy] releases the mic but keeps the foreground
+     * service alive, and that is load-bearing rather than lazy: Android 14+
+     * refuses to START a microphone FGS from the background, but one that is
+     * already running keeps its microphone capability for its whole life and
+     * may reopen `AudioRecord` freely. Calling `stopForeground` here would
+     * strand us — nothing could get the mic back without a visible activity.
+     */
+    @Synchronized
+    private fun applyDecision() {
+        // A one-shot capture host answers to the tap that created it, not to
+        // the policy. The user asked for this turn out loud.
+        if (oneShotActive) return
+        // Never yank the mic out from under a live turn. The state collector
+        // above re-applies the decision the moment it returns to Idle.
+        if (voiceSession.isActive) return
+
+        when (decision) {
+            is ListeningDecision.Listen -> startListening()
+            is ListeningDecision.StandBy -> releaseMic()
+            ListeningDecision.Off -> {
+                stopSelf()
+                return
+            }
+        }
+        updateNotification()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP_LISTENING -> {
+                // The notification's stop action sets the mode itself, so it
+                // has to persist like the top-bar control does. Stopping the
+                // service alone would leave the top-bar control claiming Ari
+                // was still armed, and nothing would bring it back at the next
+                // schedule boundary. This doesn't touch the stored conditions/
+                // schedules/places — switching back to Custom later restores
+                // exactly what was configured.
+                runBlocking { settingsRepository.setListeningMode(ListeningMode.NEVER) }
                 stopSelf()
                 return START_NOT_STICKY
             }
+        }
+
+        // One gate for every start path — boot, notification tap, the settings
+        // switch, tap-to-talk, dictation — instead of six callers each hoping.
+        // A14+ throws SecurityException out of startForeground when a
+        // MICROPHONE-typed FGS doesn't hold RECORD_AUDIO, and the catch below
+        // only covers IllegalStateException, so an intervening revoke would
+        // take the service down hard rather than log and stand down.
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            Log.w(TAG, "RECORD_AUDIO not granted — refusing to start")
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        // Seeded from the stored preferences before the first notification is
+        // built, so a standing-by start never flashes "Listening for Hey Ari"
+        // at someone whose screen is off. Two DataStore reads on Main, both
+        // sub-millisecond cache hits after first access — the same trade
+        // startListening() already makes below.
+        decision = runBlocking {
+            decideListening(
+                mode = settingsRepository.listeningMode.first(),
+                conditions = settingsRepository.listeningConditions.first(),
+                signals = ConditionSignals(),
+            )
         }
 
         try {
@@ -146,7 +248,18 @@ class WakeWordService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        startListening()
+        // The capture host now exists, which is what isRunning has always meant
+        // to its callers. Whether the mic is actually open is micHot's job — the
+        // two came apart the moment standing by became a state.
+        isRunning = true
+
+        val action = intent?.action
+        if (action == ACTION_START_VOICE_TURN || action == ACTION_START_DICTATION) {
+            // An explicit summon outranks the policy: the user tapped the mic.
+            startListening()
+        } else {
+            applyDecision()
+        }
 
         if (intent?.action == ACTION_START_VOICE_TURN) {
             // Tap-to-talk: the composer's mic button wants a turn NOW, with no
@@ -160,10 +273,10 @@ class WakeWordService : Service() {
             // after the turn (see the state collector in onCreate). When
             // always-listening was already ON we pass false and just keep going.
 
-            // startListening() bails via stopSelf() WITHOUT setting isRunning if
+            // startListening() bails via stopSelf() WITHOUT setting micHot if
             // the wake model fails to load. Don't launch a doomed overlay onto a
             // dead capture host — and don't come back sticky.
-            if (!isRunning) {
+            if (!micHot) {
                 Log.w(TAG, "Capture host failed to start — not launching voice turn")
                 return START_NOT_STICKY
             }
@@ -193,7 +306,7 @@ class WakeWordService : Service() {
             // streams partials to the composer and emits the final transcript;
             // reaching Idle stands this host down via the same one-shot collector
             // in onCreate.
-            if (!isRunning) {
+            if (!micHot) {
                 Log.w(TAG, "Capture host failed to start — not starting dictation")
                 return START_NOT_STICKY
             }
@@ -252,60 +365,75 @@ class WakeWordService : Service() {
             slidingWindowSize = sensitivity.slidingWindowSize,
         )
 
-        audioRecord = openAudioRecord(currentSource)
+        val record = openAudioRecord(currentSource)
+        audioRecord = record
 
-        audioRecord?.startRecording()
+        record.startRecording()
         isListening = true
-        isRunning = true
+        micHot = true
 
-        scope.launch {
-            val buffer = ShortArray(CHUNK_SIZE)
-            while (isListening) {
-                val read = audioRecord?.read(buffer, 0, buffer.size) ?: 0
-                if (read > 0) {
-                    // Feed every chunk into the shared capture bus FIRST.
-                    // Producer-side fan-out: ring buffer always; live channel
-                    // iff a consumer (sherpa) is currently armed. Cheap and
-                    // non-blocking by design — see CaptureBus.write().
-                    captureBus.write(buffer, read)
-
-                    // Mid-conversation: audio still feeds the bus (STT/AEC path)
-                    // but we do NOT run wake detection.
-                    if (wakePaused) continue
-                    val samples = if (read == buffer.size) buffer else buffer.copyOf(read)
-                    if (detector?.processAudio(samples) == true) {
-                        // Belt-and-braces: don't fire wake while STT is armed.
-                        // The debounce below covers the common case but the
-                        // mic is now permanently open, so an in-utterance fire
-                        // is theoretically possible.
-                        if (captureBus.armed) {
-                            detector?.reset()
-                            continue
-                        }
-                        val now = System.currentTimeMillis()
-                        if (now - lastDetectionAt < detectionDebounceMs) {
-                            Log.d(TAG, "Wake word detected within debounce window — ignoring")
-                            detector?.reset()
-                            continue
-                        }
-                        lastDetectionAt = now
-                        Log.i(TAG, "Wake word detected!")
-                        onWakeWordDetected()
-                        detector?.reset()
-                    }
-                }
-            }
-        }
+        // Its own thread, not a slot on the shared Default dispatcher: read()
+        // blocks for a whole buffer period, so parking it on a pool thread the
+        // detector and the rest of the app also use is a stall waiting to happen.
+        captureThread = Thread({ captureLoop(record) }, "AriMicCapture").also { it.start() }
 
         Log.i(TAG, "Wake word listening started")
     }
 
+    private fun captureLoop(record: AudioRecord) {
+        Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
+        val buffer = ShortArray(CHUNK_SIZE)
+        while (isListening) {
+            val read = record.read(buffer, 0, buffer.size)
+            if (read < 0) {
+                // Released out from under us, or the HAL died. Either way there
+                // is no audio coming — spinning on the error would burn exactly
+                // the battery this loop exists to save.
+                Log.w(TAG, "AudioRecord.read failed ($read) — ending capture loop")
+                return
+            }
+            if (read == 0) continue
+
+            // Feed every chunk into the shared capture bus FIRST.
+            // Producer-side fan-out: ring buffer always; live channel
+            // iff a consumer (sherpa) is currently armed. Cheap and
+            // non-blocking by design — see CaptureBus.write().
+            captureBus.write(buffer, read)
+
+            // Mid-conversation: audio still feeds the bus (STT/AEC path)
+            // but we do NOT run wake detection.
+            if (wakePaused) continue
+            val samples = if (read == buffer.size) buffer else buffer.copyOf(read)
+            if (detector?.processAudio(samples) != true) continue
+
+            // Belt-and-braces: don't fire wake while STT is armed.
+            // The debounce below covers the common case but the
+            // mic is now permanently open, so an in-utterance fire
+            // is theoretically possible.
+            if (captureBus.armed) {
+                detector?.reset()
+                continue
+            }
+            val now = System.currentTimeMillis()
+            if (now - lastDetectionAt < detectionDebounceMs) {
+                Log.d(TAG, "Wake word detected within debounce window — ignoring")
+                detector?.reset()
+                continue
+            }
+            lastDetectionAt = now
+            Log.i(TAG, "Wake word detected!")
+            onWakeWordDetected()
+            detector?.reset()
+        }
+    }
+
+    @SuppressLint("MissingPermission") // gated on RECORD_AUDIO in onStartCommand()
     private fun openAudioRecord(source: Int): AudioRecord {
         val bufferSize = AudioRecord.getMinBufferSize(
             SAMPLE_RATE,
             AudioFormat.CHANNEL_IN_MONO,
             AudioFormat.ENCODING_PCM_16BIT,
-        )
+        ) * BUFFER_SIZE_FACTOR
         return AudioRecord(
             source,
             SAMPLE_RATE,
@@ -313,6 +441,26 @@ class WakeWordService : Service() {
             AudioFormat.ENCODING_PCM_16BIT,
             bufferSize,
         )
+    }
+
+    /**
+     * End the read loop, wait for the capture thread to leave [AudioRecord.read],
+     * then release the mic and the detector. The join matters: tearing either one
+     * down while the loop is still inside it means native code operating on freed
+     * state.
+     */
+    private fun releaseMic() {
+        isListening = false
+        micHot = false
+        captureThread?.let { thread ->
+            thread.join(CAPTURE_JOIN_TIMEOUT_MS)
+            if (thread.isAlive) Log.w(TAG, "Capture thread still alive after ${CAPTURE_JOIN_TIMEOUT_MS}ms")
+        }
+        captureThread = null
+        audioRecord?.let { runCatching { it.stop(); it.release() } }
+        audioRecord = null
+        detector?.close()
+        detector = null
     }
 
     /**
@@ -344,38 +492,17 @@ class WakeWordService : Service() {
     private fun switchSource(source: Int) {
         if (source == currentSource && audioRecord != null) return
         val wasListening = isListening
-        // End the read-loop while() first so the old loop exits before we
-        // release the AudioRecord out from under it.
-        isListening = false
-        audioRecord?.let { runCatching { it.stop(); it.release() } }
-        audioRecord = null
-        // startListening() builds a fresh detector; close the current one so we
-        // don't leak the native handle on every source flip.
-        detector?.close()
-        detector = null
+        // Also closes the current detector — startListening() builds a fresh one,
+        // so skipping this leaks the native handle on every source flip.
+        releaseMic()
         currentSource = source
         // Reopens with currentSource and relaunches the loop. Safe because
         // isListening is now false, so its early-return guard won't trip.
         if (wasListening) startListening()
     }
 
-    /**
-     * Stop our AudioRecord without tearing down the foreground service. Used
-     * to release the mic to STT during a voice session, then resumed when the
-     * session ends.
-     */
-    @Synchronized
-    private fun pauseListening() {
-        isListening = false
-        audioRecord?.stop()
-        audioRecord?.release()
-        audioRecord = null
-        detector?.close()
-        detector = null
-    }
-
     private fun onWakeWordDetected() {
-        // NOTE: we no longer pauseListening() here. The mic stays open and is
+        // NOTE: we no longer release the mic here. It stays open and is
         // shared with sherpa via CaptureBus. VoiceSession.start() will arm the
         // bus, snapshot the pre-roll, and start consuming live chunks — all
         // without ever closing AudioRecord. This is the whole point of the
@@ -517,6 +644,16 @@ class WakeWordService : Service() {
         manager.createNotificationChannel(detectionChannel)
     }
 
+    /**
+     * Push the current [decision] into the already-posted foreground
+     * notification. `notify` with the same id updates in place — it does not
+     * re-post, so the user gets no sound and no re-appearance.
+     */
+    private fun updateNotification() {
+        getSystemService(NotificationManager::class.java)
+            .notify(NOTIFICATION_ID, createListeningNotification())
+    }
+
     private fun createListeningNotification(): Notification {
         val openAppIntent = PendingIntent.getActivity(
             this, REQUEST_OPEN_APP,
@@ -533,29 +670,38 @@ class WakeWordService : Service() {
             PendingIntent.FLAG_IMMUTABLE
         )
 
+        // Standing by is a real, honest state and the notification says so —
+        // the microphone genuinely is closed and the privacy indicator is dark,
+        // so claiming to be listening would be a lie the user could catch.
+        val standbyReason = (decision as? ListeningDecision.StandBy)?.reason
+
         return Notification.Builder(this, CHANNEL_LISTENING)
-            .setContentTitle(getString(R.string.notif_wake_listening_title))
-            .setContentText(getString(R.string.notif_wake_listening_text))
+            .setContentTitle(
+                getString(
+                    if (standbyReason == null) R.string.notif_wake_listening_title
+                    else R.string.notif_wake_standby_title
+                )
+            )
+            .setContentText(
+                if (standbyReason == null) getString(R.string.notif_wake_listening_text)
+                else getString(standbyReason.messageRes)
+            )
             .setSmallIcon(R.drawable.ic_ari_symbolic)
             .setContentIntent(openAppIntent)
             .setOngoing(true)
             .addAction(
                 Notification.Action.Builder(
-                    null, "Stop Listening", stopPendingIntent
+                    null, getString(R.string.notif_wake_stop_action), stopPendingIntent
                 ).build()
             )
             .build()
     }
 
     override fun onDestroy() {
-        isListening = false
         isRunning = false
+        micHot = false
         scope.cancel()
-        audioRecord?.stop()
-        audioRecord?.release()
-        audioRecord = null
-        detector?.close()
-        detector = null
+        releaseMic()
         // Never leave the always-on path stranded in comms mode: restore normal
         // audio routing + MIC source so the next start listens cleanly.
         runCatching {
@@ -582,7 +728,22 @@ class WakeWordService : Service() {
         private const val CHANNEL_DETECTION = "wake_word_detection"
 
         private const val SAMPLE_RATE = 16000
-        private const val CHUNK_SIZE = 160 // 10ms at 16kHz
+
+        // 30ms at 16kHz. The models step features every 10ms, so one read now
+        // yields three feature frames instead of one — same detection, a third
+        // of the thread wake-ups.
+        private const val CHUNK_SIZE = 480
+
+        // AudioRecord hands out the low-latency FAST capture path when you ask
+        // for a buffer near the minimum. That path runs a short HAL burst period
+        // to shave milliseconds a wake word does not care about, and we pay for
+        // it in wake-ups all day. Asking for well above the minimum opts out.
+        private const val BUFFER_SIZE_FACTOR = 8
+
+        // read() returns every buffer period, so a join this long only expires if
+        // the HAL has wedged — and onDestroy runs on the main thread, so we
+        // cannot wait on it forever.
+        private const val CAPTURE_JOIN_TIMEOUT_MS = 500L
 
         const val ACTION_STOP_LISTENING = "dev.heyari.ari.STOP_LISTENING"
         const val EXTRA_WAKE_WORD_DETECTED = "wake_word_detected"
@@ -603,8 +764,18 @@ class WakeWordService : Service() {
         private const val REQUEST_STOP = 1
         private const val REQUEST_WAKE_DETECTED = 2
 
+        /**
+         * The capture host exists. Says nothing about whether the microphone is
+         * open — see [micHot]. The two were the same thing until standing by
+         * became a state.
+         */
         @Volatile
         var isRunning = false
+            private set
+
+        /** The microphone is actually open and the wake detector is running. */
+        @Volatile
+        var micHot = false
             private set
 
         // True while THIS service run is a transient tap-to-talk capture host

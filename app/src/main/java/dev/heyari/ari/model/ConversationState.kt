@@ -1,5 +1,6 @@
 package dev.heyari.ari.model
 
+import dev.heyari.ari.listening.ListeningMode
 import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.stt.ModelDownloadState
 import dev.heyari.ari.stt.SttState
@@ -8,7 +9,15 @@ import dev.heyari.ari.ui.conversation.GreetingModel
 
 data class ConversationState(
     val inputText: String = "",
+    /**
+     * The microphone is genuinely open right now. Under listening modes this is
+     * no longer the same as "Ari is switched on": a service standing by for a
+     * schedule or a charger is running with the mic closed, and both the top-bar
+     * control and the ambient aura should say so.
+     */
     val isListening: Boolean = false,
+    /** Drives which segment of the top-bar [dev.heyari.ari.ui.conversation.ListeningModeSwitch] is selected. */
+    val listeningMode: ListeningMode = ListeningMode.DEFAULT,
     val wakeWordDetected: Boolean = false,
     val sttState: SttState = SttState.Idle,
     val needsSetup: Boolean = false,
@@ -25,6 +34,13 @@ data class ConversationState(
      * a non-cloud option.
      */
     val needsCloudAssistantSetup: Boolean = false,
+    /**
+     * True when the onboarding wizard finished with Schedule or Places ticked
+     * under Custom listening but nothing actually configured — the wizard has
+     * no room for a time picker or a map. Drives a reminder card, cleared once
+     * a schedule or place exists (or the condition is unticked).
+     */
+    val needsListeningSetup: Boolean = false,
     /**
      * Transient "still working" signal. Flipped true when processInput
      * blocks past [dev.heyari.ari.ui.conversation.ConversationViewModel]'s
