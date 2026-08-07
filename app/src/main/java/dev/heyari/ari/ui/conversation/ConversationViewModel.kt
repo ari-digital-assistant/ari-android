@@ -255,7 +255,7 @@ class ConversationViewModel @Inject constructor(
     }
 
     /**
-     * `/reset` — terminate the current conversation and return the screen to
+     * `/reset` / `/clear` — terminate the current conversation and return the screen to
      * the state a user sees on opening Ari: cancel any in-flight typed turn,
      * clear the conversation log (so the adaptive empty state renders again),
      * and clear the input + transient thinking indicator. Live cards/alarms
@@ -294,8 +294,9 @@ class ConversationViewModel @Inject constructor(
             handleRouterDebug(text)
             return
         }
-        // `/reset` — clear the conversation and return to the opening screen.
-        if (text.startsWith("/reset")) {
+        // `/reset` (or `/clear`) — clear the conversation and return to the
+        // opening screen.
+        if (text.startsWith("/reset") || text.startsWith("/clear")) {
             handleReset()
             return
         }
