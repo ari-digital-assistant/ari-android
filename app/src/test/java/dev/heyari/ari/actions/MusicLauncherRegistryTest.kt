@@ -1,6 +1,7 @@
 package dev.heyari.ari.actions
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -64,35 +65,45 @@ class MusicLauncherRegistryTest {
 
     // The plain MEDIA_PLAY_FROM_SEARCH intent is honoured by Apple Music (and
     // the rest bar Spotify) by merely OPENING the app — the user asked for
-    // music and got a launcher. MEDIA_BROWSER reaches the transport controls
-    // and actually plays, so it has to lead for those. Dropping it is what
-    // broke "play blinding lights".
+    // music and got a launcher. It must therefore never lead: something that
+    // can actually start playback has to be tried first.
     @Test
-    fun everyServiceExceptSpotifyLeadsWithMediaBrowser() {
+    fun onlySpotifyLeadsWithThePlainIntent() {
         for ((id, svc) in MusicLauncher.REGISTRY) {
-            if (id == "spotify") continue
+            val leadsWithIntent = svc.strategy.first() == MusicLauncher.Strategy.PLAY_FROM_SEARCH_INTENT
             assertEquals(
-                "service '$id' should lead with MEDIA_BROWSER",
-                MusicLauncher.Strategy.MEDIA_BROWSER,
-                svc.strategy.first(),
+                "service '$id': only Spotify may lead with the plain intent",
+                id == "spotify",
+                leadsWithIntent,
             )
         }
     }
 
-    // Apple Music refuses MediaBrowser connections (confirmed on device:
-    // "MediaBrowser connection refused by com.apple.android.music"), so the
-    // browser alone can't carry it. Its live session does advertise
-    // PLAY_FROM_SEARCH, so MEDIA_SESSION has to follow the browser and come
-    // before the intent that merely opens the app.
+    // Apple Music refuses MediaBrowser connections every time, and the attempt
+    // costs more than nothing: binding its MediaPlaybackService starts the app
+    // headless, and the session that process publishes looks identical to a
+    // working one while ignoring everything sent to it. Confirmed on device —
+    // ActivityManager logged "Start proc … for bound-service
+    // {…MediaPlaybackService}" 0.6s before the refusal. Never bind it.
     @Test
-    fun browserRefusingServicesFallThroughToTheLiveSession() {
+    fun appleMusicNeverAttemptsMediaBrowser() {
+        val apple = MusicLauncher.REGISTRY["apple_music"]!!
+        assertFalse(
+            "binding Apple Music's browser spawns a phantom session that swallows playback",
+            apple.strategy.contains(MusicLauncher.Strategy.MEDIA_BROWSER),
+        )
+        assertEquals(MusicLauncher.Strategy.MEDIA_SESSION, apple.strategy.first())
+    }
+
+    // The live session is what actually plays on the apps that ignore the
+    // intent, so it must be tried before the intent that merely opens them.
+    @Test
+    fun sessionIsTriedBeforeTheIntentThatOnlyOpensTheApp() {
         for ((id, svc) in MusicLauncher.REGISTRY) {
             if (id == "spotify") continue
-            val browser = svc.strategy.indexOf(MusicLauncher.Strategy.MEDIA_BROWSER)
             val session = svc.strategy.indexOf(MusicLauncher.Strategy.MEDIA_SESSION)
             val intent = svc.strategy.indexOf(MusicLauncher.Strategy.PLAY_FROM_SEARCH_INTENT)
             assertTrue("service '$id' must offer MEDIA_SESSION", session >= 0)
-            assertTrue("service '$id': MEDIA_SESSION must follow MEDIA_BROWSER", session > browser)
             assertTrue("service '$id': MEDIA_SESSION must precede the plain intent", session < intent)
         }
     }

@@ -250,9 +250,16 @@ class MusicLauncher @Inject constructor(
     }
 
     /**
-     * Send the query to [controller]. Refuses when the session doesn't
-     * advertise ACTION_PLAY_FROM_SEARCH: dispatching anyway is silently
-     * dropped by the app, and we'd report success for nothing.
+     * Send the query to [controller] and wait for the session to actually
+     * start playing.
+     *
+     * Advertising ACTION_PLAY_FROM_SEARCH is necessary but not sufficient: a
+     * session belonging to a process that was woken headless advertises the
+     * full action set and then drops the command on the floor. Nothing
+     * distinguishes it beforehand — it reports PAUSED with the same mask a
+     * working session does — so the only honest test is whether playback
+     * starts. Returning false lets the caller fall through to a strategy that
+     * at least opens the app.
      */
     private fun dispatchPlayFromSearch(
         controller: MediaController,
@@ -264,13 +271,31 @@ class MusicLauncher @Inject constructor(
             Log.w(TAG, "$pkg's session does not advertise PLAY_FROM_SEARCH (actions=$actions)")
             return false
         }
-        return try {
+        try {
             controller.transportControls.playFromSearch(query, Bundle())
-            true
         } catch (t: Throwable) {
             Log.e(TAG, "playFromSearch failed on $pkg's session", t)
-            false
+            return false
         }
+
+        val deadline = SystemClock.uptimeMillis() + PLAYBACK_CONFIRM_TIMEOUT_MS
+        while (SystemClock.uptimeMillis() < deadline) {
+            when (controller.playbackState?.state) {
+                PlaybackState.STATE_PLAYING,
+                PlaybackState.STATE_BUFFERING,
+                PlaybackState.STATE_CONNECTING,
+                -> return true
+                else -> Unit
+            }
+            try {
+                Thread.sleep(SESSION_POLL_INTERVAL_MS)
+            } catch (ie: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return false
+            }
+        }
+        Log.w(TAG, "$pkg accepted playFromSearch but never started playing")
+        return false
     }
 
     /** Discovers [pkg]'s MediaBrowserService component, or null if it has none. */
@@ -324,6 +349,7 @@ class MusicLauncher @Inject constructor(
         private const val CONNECT_TIMEOUT_MS = 3_000L
         private const val SESSION_POLL_TIMEOUT_MS = 4_000L
         private const val SESSION_POLL_INTERVAL_MS = 250L
+        private const val PLAYBACK_CONFIRM_TIMEOUT_MS = 2_000L
         private const val MEDIA_BROWSER_SERVICE_ACTION = "android.media.browse.MediaBrowserService"
 
         // Strategy order is per-service because apps differ in which one
@@ -337,9 +363,16 @@ class MusicLauncher @Inject constructor(
                 "spotify", "Spotify", listOf("com.spotify.music"),
                 listOf(Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.MEDIA_BROWSER, Strategy.SEARCH_DEEPLINK),
             ),
+            // Apple Music deliberately omits MEDIA_BROWSER. It refuses the
+            // connection every time (onGetRoot admits an allowlist we're not
+            // on), and the attempt is not free: binding its MediaPlaybackService
+            // starts the app headless, which publishes a session with no UI and
+            // no audio focus. MEDIA_SESSION then finds that phantom, dispatches
+            // into it, and nothing happens. Skipping the bind leaves no session
+            // to find, so the intent opens the app properly instead.
             Service(
                 "apple_music", "Apple Music", listOf("com.apple.android.music"),
-                listOf(Strategy.MEDIA_BROWSER, Strategy.MEDIA_SESSION, Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.SEARCH_DEEPLINK),
+                listOf(Strategy.MEDIA_SESSION, Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.SEARCH_DEEPLINK),
             ),
             Service(
                 "tidal", "Tidal", listOf("com.aspiro.tidal"),
