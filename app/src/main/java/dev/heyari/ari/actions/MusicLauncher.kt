@@ -7,12 +7,17 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.browse.MediaBrowser
 import android.media.session.MediaController
+import android.media.session.MediaSessionManager
+import android.media.session.PlaybackState
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.SystemClock
 import android.provider.MediaStore
 import android.util.Log
+import dev.heyari.ari.media.ariListenerComponent
+import dev.heyari.ari.media.hasNotificationAccess
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -45,7 +50,7 @@ import javax.inject.Singleton
 class MusicLauncher @Inject constructor(
     private val context: Context,
 ) {
-    enum class Strategy { MEDIA_BROWSER, PLAY_FROM_SEARCH_INTENT, SEARCH_DEEPLINK }
+    enum class Strategy { MEDIA_BROWSER, MEDIA_SESSION, PLAY_FROM_SEARCH_INTENT, SEARCH_DEEPLINK }
 
     data class Service(
         val id: String,
@@ -81,6 +86,7 @@ class MusicLauncher @Inject constructor(
         for (strat in svc.strategy) {
             val played = when (strat) {
                 Strategy.MEDIA_BROWSER -> tryMediaBrowserPlay(pkg, query)
+                Strategy.MEDIA_SESSION -> tryMediaSessionPlay(pkg, query)
                 Strategy.PLAY_FROM_SEARCH_INTENT -> tryPlayFromSearchIntent(pkg, query)
                 Strategy.SEARCH_DEEPLINK -> {
                     val url = svc.searchUrl?.invoke(query)
@@ -192,6 +198,81 @@ class MusicLauncher @Inject constructor(
         }
     }
 
+    /**
+     * Drive [pkg]'s live MediaSession instead of binding its browser.
+     *
+     * Apple Music refuses MediaBrowser connections from us — its onGetRoot
+     * only admits an allowlist it isn't going to add Ari to — but the session
+     * it publishes while open advertises ACTION_PLAY_FROM_SEARCH, and that we
+     * can reach. Enumerating another app's sessions needs an authorised
+     * notification listener, which Ari already has for transport control.
+     *
+     * When the app has no session yet (nothing opened it since boot) the
+     * play-from-search intent brings it up — Apple Music lands on the search
+     * results rather than the home screen — and its session appears shortly
+     * after, so we poll briefly and then command it.
+     */
+    private fun tryMediaSessionPlay(pkg: String, query: String): Boolean {
+        if (!hasNotificationAccess(context)) {
+            Log.i(TAG, "no notification access — cannot reach $pkg's session")
+            return false
+        }
+        val msm = context.getSystemService(Context.MEDIA_SESSION_SERVICE) as? MediaSessionManager
+        if (msm == null) {
+            Log.w(TAG, "MediaSessionManager unavailable")
+            return false
+        }
+
+        findController(msm, pkg)?.let { return dispatchPlayFromSearch(it, pkg, query) }
+
+        // Nothing live yet. Open the app, then wait for its session.
+        if (!tryPlayFromSearchIntent(pkg, query)) return false
+        val deadline = SystemClock.uptimeMillis() + SESSION_POLL_TIMEOUT_MS
+        while (SystemClock.uptimeMillis() < deadline) {
+            try {
+                Thread.sleep(SESSION_POLL_INTERVAL_MS)
+            } catch (ie: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return false
+            }
+            findController(msm, pkg)?.let { return dispatchPlayFromSearch(it, pkg, query) }
+        }
+        Log.w(TAG, "$pkg published no session within ${SESSION_POLL_TIMEOUT_MS}ms of opening")
+        return false
+    }
+
+    private fun findController(msm: MediaSessionManager, pkg: String): MediaController? = try {
+        msm.getActiveSessions(ariListenerComponent(context))
+            .firstOrNull { it.packageName == pkg }
+    } catch (t: Throwable) {
+        Log.w(TAG, "getActiveSessions failed", t)
+        null
+    }
+
+    /**
+     * Send the query to [controller]. Refuses when the session doesn't
+     * advertise ACTION_PLAY_FROM_SEARCH: dispatching anyway is silently
+     * dropped by the app, and we'd report success for nothing.
+     */
+    private fun dispatchPlayFromSearch(
+        controller: MediaController,
+        pkg: String,
+        query: String,
+    ): Boolean {
+        val actions = controller.playbackState?.actions ?: 0L
+        if (actions and PlaybackState.ACTION_PLAY_FROM_SEARCH == 0L) {
+            Log.w(TAG, "$pkg's session does not advertise PLAY_FROM_SEARCH (actions=$actions)")
+            return false
+        }
+        return try {
+            controller.transportControls.playFromSearch(query, Bundle())
+            true
+        } catch (t: Throwable) {
+            Log.e(TAG, "playFromSearch failed on $pkg's session", t)
+            false
+        }
+    }
+
     /** Discovers [pkg]'s MediaBrowserService component, or null if it has none. */
     private fun browseServiceComponent(pkg: String): ComponentName? {
         val intent = Intent(MEDIA_BROWSER_SERVICE_ACTION).setPackage(pkg)
@@ -241,12 +322,16 @@ class MusicLauncher @Inject constructor(
     companion object {
         private const val TAG = "MusicLauncher"
         private const val CONNECT_TIMEOUT_MS = 3_000L
+        private const val SESSION_POLL_TIMEOUT_MS = 4_000L
+        private const val SESSION_POLL_INTERVAL_MS = 250L
         private const val MEDIA_BROWSER_SERVICE_ACTION = "android.media.browse.MediaBrowserService"
 
         // Strategy order is per-service because apps differ in which one
         // actually starts playback. Spotify honours the plain intent, so it
-        // leads with the cheaper path; the rest only open a search screen on
-        // the intent and need the browser session to play.
+        // leads with the cheapest path. The rest only open a search screen on
+        // the intent, so they try the browser first and then the live session
+        // — Apple Music refuses the browser outright but does accept
+        // playFromSearch on the session it publishes while open.
         val REGISTRY: Map<String, Service> = listOf(
             Service(
                 "spotify", "Spotify", listOf("com.spotify.music"),
@@ -254,19 +339,19 @@ class MusicLauncher @Inject constructor(
             ),
             Service(
                 "apple_music", "Apple Music", listOf("com.apple.android.music"),
-                listOf(Strategy.MEDIA_BROWSER, Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.SEARCH_DEEPLINK),
+                listOf(Strategy.MEDIA_BROWSER, Strategy.MEDIA_SESSION, Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.SEARCH_DEEPLINK),
             ),
             Service(
                 "tidal", "Tidal", listOf("com.aspiro.tidal"),
-                listOf(Strategy.MEDIA_BROWSER, Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.SEARCH_DEEPLINK),
+                listOf(Strategy.MEDIA_BROWSER, Strategy.MEDIA_SESSION, Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.SEARCH_DEEPLINK),
             ),
             Service(
                 "deezer", "Deezer", listOf("deezer.android.app"),
-                listOf(Strategy.MEDIA_BROWSER, Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.SEARCH_DEEPLINK),
+                listOf(Strategy.MEDIA_BROWSER, Strategy.MEDIA_SESSION, Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.SEARCH_DEEPLINK),
             ),
             Service(
                 "amazon_music", "Amazon Music", listOf("com.amazon.mp3"),
-                listOf(Strategy.MEDIA_BROWSER, Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.SEARCH_DEEPLINK),
+                listOf(Strategy.MEDIA_BROWSER, Strategy.MEDIA_SESSION, Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.SEARCH_DEEPLINK),
             ),
         ).associateBy { it.id }
     }

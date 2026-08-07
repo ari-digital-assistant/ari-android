@@ -79,6 +79,24 @@ class MusicLauncherRegistryTest {
         }
     }
 
+    // Apple Music refuses MediaBrowser connections (confirmed on device:
+    // "MediaBrowser connection refused by com.apple.android.music"), so the
+    // browser alone can't carry it. Its live session does advertise
+    // PLAY_FROM_SEARCH, so MEDIA_SESSION has to follow the browser and come
+    // before the intent that merely opens the app.
+    @Test
+    fun browserRefusingServicesFallThroughToTheLiveSession() {
+        for ((id, svc) in MusicLauncher.REGISTRY) {
+            if (id == "spotify") continue
+            val browser = svc.strategy.indexOf(MusicLauncher.Strategy.MEDIA_BROWSER)
+            val session = svc.strategy.indexOf(MusicLauncher.Strategy.MEDIA_SESSION)
+            val intent = svc.strategy.indexOf(MusicLauncher.Strategy.PLAY_FROM_SEARCH_INTENT)
+            assertTrue("service '$id' must offer MEDIA_SESSION", session >= 0)
+            assertTrue("service '$id': MEDIA_SESSION must follow MEDIA_BROWSER", session > browser)
+            assertTrue("service '$id': MEDIA_SESSION must precede the plain intent", session < intent)
+        }
+    }
+
     // Whichever strategy leads, the plain intent must stay as a fallback: an
     // app with no MediaBrowserService, or one that refuses our connection,
     // still has to get the user somewhere.
