@@ -74,17 +74,30 @@ class MusicLauncher @Inject constructor(
             ?: return PlayResult.Failed(if (serviceId == null) "no service" else "unknown service $serviceId")
         if (svc.packages.none { isInstalled(it) }) return PlayResult.ServiceNotInstalled(svc.displayName)
         val pkg = svc.packages.first { isInstalled(it) }
+        // One line per attempt. Which strategy answered decides whether the
+        // user hears music or just watches an app open, and from outside the
+        // two are indistinguishable — this is the only way to tell them apart
+        // after the fact.
         for (strat in svc.strategy) {
-            when (strat) {
-                Strategy.MEDIA_BROWSER -> {
-                    if (tryMediaBrowserPlay(pkg, query)) return PlayResult.Playing(query, svc.displayName)
-                }
-                Strategy.PLAY_FROM_SEARCH_INTENT -> {
-                    if (tryPlayFromSearchIntent(pkg, query)) return PlayResult.Playing(query, svc.displayName)
-                }
+            val played = when (strat) {
+                Strategy.MEDIA_BROWSER -> tryMediaBrowserPlay(pkg, query)
+                Strategy.PLAY_FROM_SEARCH_INTENT -> tryPlayFromSearchIntent(pkg, query)
                 Strategy.SEARCH_DEEPLINK -> {
                     val url = svc.searchUrl?.invoke(query)
-                    if (url != null && tryDeepLink(pkg, url)) return PlayResult.OpenedResults(query, svc.displayName)
+                    if (url == null) {
+                        Log.i(TAG, "$strat skipped for $pkg: no search URL configured")
+                        false
+                    } else {
+                        tryDeepLink(pkg, url)
+                    }
+                }
+            }
+            Log.i(TAG, "$strat on $pkg: ${if (played) "dispatched" else "declined"}")
+            if (played) {
+                return if (strat == Strategy.SEARCH_DEEPLINK) {
+                    PlayResult.OpenedResults(query, svc.displayName)
+                } else {
+                    PlayResult.Playing(query, svc.displayName)
                 }
             }
         }
@@ -101,7 +114,11 @@ class MusicLauncher @Inject constructor(
      * directly, so a cooperative app starts playing instead of just opening.
      */
     private fun tryMediaBrowserPlay(pkg: String, query: String): Boolean {
-        val component = browseServiceComponent(pkg) ?: return false
+        val component = browseServiceComponent(pkg)
+        if (component == null) {
+            Log.w(TAG, "$pkg publishes no MediaBrowserService — cannot reach its transport controls")
+            return false
+        }
         val connected = CountDownLatch(1)
         val dispatched = AtomicBoolean(false)
         var browser: MediaBrowser? = null
