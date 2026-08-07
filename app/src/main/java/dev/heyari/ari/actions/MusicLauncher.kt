@@ -1,26 +1,42 @@
 package dev.heyari.ari.actions
 
 import android.app.SearchManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.browse.MediaBrowser
+import android.media.session.MediaController
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.HandlerThread
 import android.provider.MediaStore
 import android.util.Log
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Plays a free-text query in a named music app, trying two dispatch
+ * Plays a free-text query in a named music app, trying three dispatch
  * strategies best-first with graceful fallback:
  *
- *  1. PLAY_FROM_SEARCH_INTENT — the classic MEDIA_PLAY_FROM_SEARCH activity
- *                              intent, scoped to the target package. On
- *                              cooperative apps (Spotify, Apple Music, etc.)
- *                              this auto-plays without user interaction.
- *  2. SEARCH_DEEPLINK         — fallback: ACTION_VIEW on the app's web/app
+ *  1. MEDIA_BROWSER          — connect to the app's MediaBrowserService, take
+ *                              its session token and call playFromSearch on the
+ *                              transport controls. This is how Android Auto and
+ *                              Assistant get apps to actually start playing
+ *                              rather than just open a search screen.
+ *  2. PLAY_FROM_SEARCH_INTENT — the classic MEDIA_PLAY_FROM_SEARCH activity
+ *                              intent, scoped to the target package. Cheaper,
+ *                              but an app is free to honour it by merely
+ *                              opening — we can't tell from the result.
+ *  3. SEARCH_DEEPLINK         — fallback: ACTION_VIEW on the app's web/app
  *                              search URL (opens results; user taps play).
+ *
+ * [play] blocks for up to [CONNECT_TIMEOUT_MS] on the MEDIA_BROWSER path, so
+ * every caller must reach it off the main thread.
  *
  * Generic media handler — carries no skill-specific knowledge. The canonical
  * service ids match the engine's `play_media` action.
@@ -29,7 +45,7 @@ import javax.inject.Singleton
 class MusicLauncher @Inject constructor(
     private val context: Context,
 ) {
-    enum class Strategy { PLAY_FROM_SEARCH_INTENT, SEARCH_DEEPLINK }
+    enum class Strategy { MEDIA_BROWSER, PLAY_FROM_SEARCH_INTENT, SEARCH_DEEPLINK }
 
     data class Service(
         val id: String,
@@ -60,6 +76,9 @@ class MusicLauncher @Inject constructor(
         val pkg = svc.packages.first { isInstalled(it) }
         for (strat in svc.strategy) {
             when (strat) {
+                Strategy.MEDIA_BROWSER -> {
+                    if (tryMediaBrowserPlay(pkg, query)) return PlayResult.Playing(query, svc.displayName)
+                }
                 Strategy.PLAY_FROM_SEARCH_INTENT -> {
                     if (tryPlayFromSearchIntent(pkg, query)) return PlayResult.Playing(query, svc.displayName)
                 }
@@ -73,12 +92,95 @@ class MusicLauncher @Inject constructor(
     }
 
     /**
-     * Extras for playFromSearch. The documented "play from search" contract
-     * wants EXTRA_MEDIA_FOCUS so the app's search can resolve a track.
+     * Connects to [pkg]'s MediaBrowserService, then dispatches playFromSearch
+     * on the session it hands back. Returns true if we connected AND
+     * dispatched within [CONNECT_TIMEOUT_MS]; the caller falls through to the
+     * next strategy otherwise.
+     *
+     * Unlike the activity intent, this reaches the app's transport controls
+     * directly, so a cooperative app starts playing instead of just opening.
      */
-    private fun searchExtras(query: String): Bundle = Bundle().apply {
-        putString(MediaStore.EXTRA_MEDIA_FOCUS, "vnd.android.cursor.item/*")
-        putString(SearchManager.QUERY, query)
+    private fun tryMediaBrowserPlay(pkg: String, query: String): Boolean {
+        val component = browseServiceComponent(pkg) ?: return false
+        val connected = CountDownLatch(1)
+        val dispatched = AtomicBoolean(false)
+        var browser: MediaBrowser? = null
+
+        // MediaBrowser posts its ConnectionCallback to the Handler of the
+        // thread that CONSTRUCTS it. Built on the calling thread, the callbacks
+        // would queue behind the latch we block on below and never fire, so the
+        // strategy could only ever time out. Give the browser its own looper: a
+        // dedicated HandlerThread that nothing blocks.
+        val handlerThread = HandlerThread("ari-mediabrowser-$pkg").apply { start() }
+        val handler = Handler(handlerThread.looper)
+
+        val callback = object : MediaBrowser.ConnectionCallback() {
+            override fun onConnected() {
+                try {
+                    val b = browser
+                    if (b != null && b.isConnected) {
+                        MediaController(context, b.sessionToken)
+                            .transportControls
+                            .playFromSearch(query, Bundle())
+                        dispatched.set(true)
+                    }
+                } catch (t: Throwable) {
+                    Log.e(TAG, "MediaBrowser dispatch failed for $pkg", t)
+                } finally {
+                    connected.countDown()
+                }
+            }
+
+            override fun onConnectionSuspended() {
+                connected.countDown()
+            }
+
+            override fun onConnectionFailed() {
+                Log.w(TAG, "MediaBrowser connection refused by $pkg")
+                connected.countDown()
+            }
+        }
+
+        return try {
+            // Construct + connect ON the HandlerThread so the browser binds its
+            // internal Handler to that looper. Wait for construction first, so
+            // `browser` is populated before any callback can read it.
+            val constructed = CountDownLatch(1)
+            handler.post {
+                try {
+                    browser = MediaBrowser(context, component, callback, null).also { it.connect() }
+                } catch (t: Throwable) {
+                    Log.e(TAG, "MediaBrowser connect failed for $pkg", t)
+                    connected.countDown()
+                } finally {
+                    constructed.countDown()
+                }
+            }
+            constructed.await(CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            connected.await(CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS) && dispatched.get()
+        } catch (t: Throwable) {
+            Log.e(TAG, "MediaBrowser play failed for $pkg", t)
+            false
+        } finally {
+            // disconnect() must run on the looper the browser was created on.
+            handler.post {
+                try {
+                    browser?.disconnect()
+                } catch (t: Throwable) {
+                    Log.w(TAG, "MediaBrowser disconnect failed for $pkg", t)
+                } finally {
+                    handlerThread.quitSafely()
+                }
+            }
+        }
+    }
+
+    /** Discovers [pkg]'s MediaBrowserService component, or null if it has none. */
+    private fun browseServiceComponent(pkg: String): ComponentName? {
+        val intent = Intent(MEDIA_BROWSER_SERVICE_ACTION).setPackage(pkg)
+        val info = context.packageManager.queryIntentServices(intent, 0)
+            .firstOrNull()?.serviceInfo ?: return null
+        return ComponentName(info.packageName, info.name)
     }
 
     /** Classic MEDIA_PLAY_FROM_SEARCH activity intent, scoped to [pkg]. */
@@ -121,27 +223,33 @@ class MusicLauncher @Inject constructor(
 
     companion object {
         private const val TAG = "MusicLauncher"
+        private const val CONNECT_TIMEOUT_MS = 3_000L
+        private const val MEDIA_BROWSER_SERVICE_ACTION = "android.media.browse.MediaBrowserService"
 
+        // Strategy order is per-service because apps differ in which one
+        // actually starts playback. Spotify honours the plain intent, so it
+        // leads with the cheaper path; the rest only open a search screen on
+        // the intent and need the browser session to play.
         val REGISTRY: Map<String, Service> = listOf(
             Service(
                 "spotify", "Spotify", listOf("com.spotify.music"),
-                listOf(Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.SEARCH_DEEPLINK),
+                listOf(Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.MEDIA_BROWSER, Strategy.SEARCH_DEEPLINK),
             ),
             Service(
                 "apple_music", "Apple Music", listOf("com.apple.android.music"),
-                listOf(Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.SEARCH_DEEPLINK),
+                listOf(Strategy.MEDIA_BROWSER, Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.SEARCH_DEEPLINK),
             ),
             Service(
                 "tidal", "Tidal", listOf("com.aspiro.tidal"),
-                listOf(Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.SEARCH_DEEPLINK),
+                listOf(Strategy.MEDIA_BROWSER, Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.SEARCH_DEEPLINK),
             ),
             Service(
                 "deezer", "Deezer", listOf("deezer.android.app"),
-                listOf(Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.SEARCH_DEEPLINK),
+                listOf(Strategy.MEDIA_BROWSER, Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.SEARCH_DEEPLINK),
             ),
             Service(
                 "amazon_music", "Amazon Music", listOf("com.amazon.mp3"),
-                listOf(Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.SEARCH_DEEPLINK),
+                listOf(Strategy.MEDIA_BROWSER, Strategy.PLAY_FROM_SEARCH_INTENT, Strategy.SEARCH_DEEPLINK),
             ),
         ).associateBy { it.id }
     }

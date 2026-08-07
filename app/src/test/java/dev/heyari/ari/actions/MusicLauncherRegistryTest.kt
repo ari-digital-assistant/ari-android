@@ -62,13 +62,32 @@ class MusicLauncherRegistryTest {
         }
     }
 
+    // The plain MEDIA_PLAY_FROM_SEARCH intent is honoured by Apple Music (and
+    // the rest bar Spotify) by merely OPENING the app — the user asked for
+    // music and got a launcher. MEDIA_BROWSER reaches the transport controls
+    // and actually plays, so it has to lead for those. Dropping it is what
+    // broke "play blinding lights".
     @Test
-    fun everyServiceFirstStrategyIsPlayFromSearchIntent() {
+    fun everyServiceExceptSpotifyLeadsWithMediaBrowser() {
         for ((id, svc) in MusicLauncher.REGISTRY) {
+            if (id == "spotify") continue
             assertEquals(
-                "service '$id' should lead with PLAY_FROM_SEARCH_INTENT",
-                MusicLauncher.Strategy.PLAY_FROM_SEARCH_INTENT,
+                "service '$id' should lead with MEDIA_BROWSER",
+                MusicLauncher.Strategy.MEDIA_BROWSER,
                 svc.strategy.first(),
+            )
+        }
+    }
+
+    // Whichever strategy leads, the plain intent must stay as a fallback: an
+    // app with no MediaBrowserService, or one that refuses our connection,
+    // still has to get the user somewhere.
+    @Test
+    fun everyServiceKeepsPlayFromSearchIntentAsAFallback() {
+        for ((id, svc) in MusicLauncher.REGISTRY) {
+            assertTrue(
+                "service '$id' must keep PLAY_FROM_SEARCH_INTENT in its chain",
+                svc.strategy.contains(MusicLauncher.Strategy.PLAY_FROM_SEARCH_INTENT),
             )
         }
     }

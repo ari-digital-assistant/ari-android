@@ -8,6 +8,8 @@ import dev.heyari.ari.model.Attachment
 import dev.heyari.ari.di.EngineHolder
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import uniffi.ari_ffi.FfiResponse
 
 /**
@@ -51,13 +53,22 @@ class CardActionDispatcher @Inject constructor(
         ) : Outcome
     }
 
-    suspend fun dispatch(cardId: String, action: CardAction): Outcome {
-        return when (action.id) {
-            "stop_alert" -> dispatchStopAlert(cardId)
-            "cancel" -> dispatchCancel(cardId, action)
-            else -> dispatchGeneric(cardId, action)
+    /**
+     * Dispatch decides its own thread, the way [EngineHolder.processInput]
+     * does, rather than trusting each caller: the voice path calls this from
+     * Dispatchers.Main, and [ActionHandler] can block (the media path connects
+     * a MediaBrowser and waits up to 3s), which would ANR there. Nothing below
+     * touches UI — envelopes drive Intents and StateFlow-backed repos, both
+     * safe off Main.
+     */
+    suspend fun dispatch(cardId: String, action: CardAction): Outcome =
+        withContext(Dispatchers.Default) {
+            when (action.id) {
+                "stop_alert" -> dispatchStopAlert(cardId)
+                "cancel" -> dispatchCancel(cardId, action)
+                else -> dispatchGeneric(cardId, action)
+            }
         }
-    }
 
     private fun dispatchStopAlert(cardId: String): Outcome {
         val card = cardRepository.state.value.firstOrNull { it.id == cardId }
