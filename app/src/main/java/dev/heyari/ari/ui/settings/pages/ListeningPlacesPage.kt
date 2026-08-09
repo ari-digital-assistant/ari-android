@@ -115,11 +115,16 @@ fun ListeningPlacesPage(
                     onClick = { fineLocationLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) },
                 )
             } else if (!state.hasBackgroundLocation) {
+                val optionLabel = viewModel.backgroundLocationOptionLabel()
                 PermissionCard(
-                    body = stringResource(
-                        R.string.settings_listening_places_need_background_location,
-                        viewModel.backgroundLocationOptionLabel(),
-                    ),
+                    body = if (optionLabel == null) {
+                        stringResource(R.string.settings_listening_places_need_background_location_unnamed)
+                    } else {
+                        stringResource(
+                            R.string.settings_listening_places_need_background_location,
+                            optionLabel,
+                        )
+                    },
                     buttonLabel = stringResource(R.string.action_open_settings),
                     onClick = { viewModel.openAppSettings() },
                 )

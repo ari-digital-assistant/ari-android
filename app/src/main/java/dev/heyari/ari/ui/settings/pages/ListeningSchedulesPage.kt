@@ -37,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -210,14 +211,17 @@ fun ScheduleEditorScreen(
                 text = stringResource(R.string.settings_listening_schedule_days_label),
                 style = MaterialTheme.typography.labelLarge,
             )
+            // Read observably so the chips reorder and relabel if the locale
+            // changes under us, rather than only on the next recreation.
+            val locale = LocalLocale.current.platformLocale
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                localeOrderedDays().forEach { day ->
+                localeOrderedDays(locale).forEach { day ->
                     FilterChip(
                         selected = day in days,
                         onClick = {
                             days = if (day in days) days - day else days + day
                         },
-                        label = { Text(day.getDisplayName(TextStyle.SHORT, Locale.getDefault())) },
+                        label = { Text(day.getDisplayName(TextStyle.SHORT, locale)) },
                     )
                 }
             }
@@ -315,8 +319,8 @@ private fun TimePickerDialog(
  * Monday in most of Europe, Sunday in the US. Hard-coding Monday would look
  * wrong to half the world.
  */
-private fun localeOrderedDays(): List<DayOfWeek> {
-    val first = WeekFields.of(Locale.getDefault()).firstDayOfWeek
+private fun localeOrderedDays(locale: Locale = Locale.getDefault()): List<DayOfWeek> {
+    val first = WeekFields.of(locale).firstDayOfWeek
     return (0L..6L).map { first.plus(it) }
 }
 

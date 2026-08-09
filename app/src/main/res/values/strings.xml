@@ -389,6 +389,8 @@
     <string name="settings_listening_places_no_play_services">Google Play Services isn\'t available on this device, so place-based listening can\'t work — it relies on Play Services geofencing.</string>
     <string name="settings_listening_places_need_fine_location">Places need precise location to tell whether you\'ve arrived. Ari only uses this to check against the places you add — never for anything else.</string>
     <string name="settings_listening_places_need_background_location">Places also need to check your location in the background — Android calls this \"%1$s\". Tap below, then choose it on the next screen.</string>
+    <!-- Same thing on Android 10, which has no API to ask what it calls the option. -->
+    <string name="settings_listening_places_need_background_location_unnamed">Places also need to check your location in the background. Tap below, then choose the option that allows location all the time.</string>
     <string name="settings_listening_place_add">Add place</string>
     <string name="settings_listening_place_edit">Edit place</string>
     <string name="settings_listening_place_name_label">Name</string>

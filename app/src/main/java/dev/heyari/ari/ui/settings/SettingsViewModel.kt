@@ -681,9 +681,17 @@ class SettingsViewModel @Inject constructor(
      * The localised name of the "Allow all the time" option, straight from the
      * platform. Hard-coding that label would be wrong in every language and
      * would rot the moment an OEM reworded it.
+     *
+     * Null on API 29, which grants background location but has no API to ask
+     * what it calls the option, and null for the empty string the platform
+     * returns when a permission has no background option at all. Callers say it
+     * without the name rather than guessing at one.
      */
-    fun backgroundLocationOptionLabel(): CharSequence =
-        application.packageManager.backgroundPermissionOptionLabel
+    fun backgroundLocationOptionLabel(): CharSequence? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
+        return application.packageManager.backgroundPermissionOptionLabel
+            .takeIf { it.isNotBlank() }
+    }
 
     fun setListeningMode(mode: ListeningMode) {
         viewModelScope.launch {

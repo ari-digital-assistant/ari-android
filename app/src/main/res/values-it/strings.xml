@@ -392,6 +392,7 @@
     <string name="settings_listening_places_no_play_services">Google Play Services non è disponibile su questo dispositivo, quindi l\'ascolto basato sui luoghi non può funzionare — si basa sul geofencing di Play Services.</string>
     <string name="settings_listening_places_need_fine_location">I luoghi richiedono la posizione precisa per capire se sei arrivato. Ari la usa solo per verificare i luoghi che aggiungi — mai per altro.</string>
     <string name="settings_listening_places_need_background_location">I luoghi devono anche controllare la tua posizione in background — Android la chiama \"%1$s\". Tocca qui sotto, poi selezionala nella schermata successiva.</string>
+    <string name="settings_listening_places_need_background_location_unnamed">I luoghi devono anche controllare la tua posizione in background. Tocca qui sotto, poi scegli l\'opzione che consente la posizione sempre.</string>
     <string name="settings_listening_place_add">Aggiungi luogo</string>
     <string name="settings_listening_place_edit">Modifica luogo</string>
     <string name="settings_listening_place_name_label">Nome</string>
