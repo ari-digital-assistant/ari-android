@@ -126,65 +126,114 @@ class BootReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun missingPrerequisites(context: Context): List<String> {
-        val missing = mutableListOf<String>()
-        if (ContextCompat.checkSelfPermission(
-                context, Manifest.permission.RECORD_AUDIO
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            missing += "Microphone"
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(
-                    context, Manifest.permission.POST_NOTIFICATIONS
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                missing += "Notifications"
-            }
-        }
-        if (!Settings.canDrawOverlays(context)) {
-            missing += "Lock screen wake word"
-        }
-        return missing
-    }
-
-    private fun postFixUpNotification(context: Context, missing: List<String>) {
-        val nm = context.getSystemService(NotificationManager::class.java) ?: return
-        createBootChannel(nm, context)
-
-        val openApp = Intent(context, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        val pi = PendingIntent.getActivity(
-            context, REQUEST_OPEN_APP, openApp,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val missingText = missing.joinToString(", ")
-        val notification = Notification.Builder(context, CHANNEL_BOOT)
-            .setContentTitle(context.getString(R.string.notif_boot_couldnt_start_title))
-            .setContentText(context.getString(R.string.notif_boot_tap_to_fix, missingText))
-            .setStyle(
-                Notification.BigTextStyle().bigText(
-                    context.getString(R.string.notif_boot_tap_to_fix_big, missingText)
-                )
-            )
-            .setSmallIcon(R.drawable.ic_ari_symbolic)
-            .setContentIntent(pi)
-            .setAutoCancel(true)
-            .build()
-
-        nm.notify(BOOT_NOTIFICATION_ID, notification)
-    }
-
     companion object {
         private const val TAG = "BootReceiver"
-        private const val REQUEST_OPEN_APP = 10
     }
+}
+
+/**
+ * Fires after the app is updated, which force-stops the process and takes the
+ * capture host with it. Nothing in the background can start a microphone FGS to
+ * put it back, so the user gets the same one-tap recovery boot uses — otherwise
+ * Ari goes quietly deaf during an overnight Play Store update and stays that
+ * way until someone happens to open the app.
+ *
+ * Deliberately not gated on start-on-boot: that setting is about what happens
+ * when the phone restarts, and says nothing about whether someone wants Ari
+ * back after an update they never asked for.
+ */
+@AndroidEntryPoint
+class PackageReplacedReceiver : BroadcastReceiver() {
+
+    @Inject
+    lateinit var settingsRepository: SettingsRepository
+
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action != Intent.ACTION_MY_PACKAGE_REPLACED) return
+        // The broadcast can land after the user has already reopened the app,
+        // whose onResume brings the host up on its own. No need to nag.
+        if (WakeWordService.isRunning) return
+
+        val mode = runBlocking { settingsRepository.listeningMode.first() }
+        if (mode == ListeningMode.NEVER) {
+            Log.i(TAG, "Updated, but listening mode is Never — nothing to restore")
+            return
+        }
+
+        val missing = missingPrerequisites(context)
+        if (missing.isNotEmpty()) {
+            Log.w(TAG, "Updated with prerequisites missing: $missing")
+            postFixUpNotification(context, missing)
+            return
+        }
+
+        // No direct start attempt, at any API level. Unlike BOOT_COMPLETED,
+        // MY_PACKAGE_REPLACED carries no background-FGS-start exemption, so
+        // below 34 it would fail just as surely as above it — only less
+        // predictably.
+        Log.i(TAG, "Updated — posting tap-to-start notification")
+        postTapToStartNotification(context)
+    }
+
+    private companion object {
+        const val TAG = "PackageReplaced"
+    }
+}
+
+internal fun missingPrerequisites(context: Context): List<String> {
+    val missing = mutableListOf<String>()
+    if (ContextCompat.checkSelfPermission(
+            context, Manifest.permission.RECORD_AUDIO
+        ) != PackageManager.PERMISSION_GRANTED
+    ) {
+        missing += "Microphone"
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        if (ContextCompat.checkSelfPermission(
+                context, Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            missing += "Notifications"
+        }
+    }
+    if (!Settings.canDrawOverlays(context)) {
+        missing += "Lock screen wake word"
+    }
+    return missing
+}
+
+internal fun postFixUpNotification(context: Context, missing: List<String>) {
+    val nm = context.getSystemService(NotificationManager::class.java) ?: return
+    createBootChannel(nm, context)
+
+    val openApp = Intent(context, MainActivity::class.java).apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    val pi = PendingIntent.getActivity(
+        context, REQUEST_OPEN_APP, openApp,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+
+    val missingText = missing.joinToString(", ")
+    val notification = Notification.Builder(context, CHANNEL_BOOT)
+        .setContentTitle(context.getString(R.string.notif_boot_couldnt_start_title))
+        .setContentText(context.getString(R.string.notif_boot_tap_to_fix, missingText))
+        .setStyle(
+            Notification.BigTextStyle().bigText(
+                context.getString(R.string.notif_boot_tap_to_fix_big, missingText)
+            )
+        )
+        .setSmallIcon(R.drawable.ic_ari_symbolic)
+        .setContentIntent(pi)
+        .setAutoCancel(true)
+        .build()
+
+    nm.notify(BOOT_NOTIFICATION_ID, notification)
 }
 
 internal const val CHANNEL_BOOT = "start_on_boot"
 internal const val BOOT_NOTIFICATION_ID = 3
+private const val REQUEST_OPEN_APP = 10
 private const val REQUEST_TAP_TO_START = 11
 
 internal fun createBootChannel(nm: NotificationManager, context: Context) {

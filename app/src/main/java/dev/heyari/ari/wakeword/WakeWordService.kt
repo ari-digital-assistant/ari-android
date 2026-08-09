@@ -254,6 +254,10 @@ class WakeWordService : Service() {
         // to its callers. Whether the mic is actually open is micHot's job — the
         // two came apart the moment standing by became a state.
         isRunning = true
+        // Whatever route got us here, the "tap to start listening" prompt has
+        // been answered. It offers to do the thing that just happened, so
+        // leaving it up would be an invitation to a no-op.
+        getSystemService(NotificationManager::class.java)?.cancel(BOOT_NOTIFICATION_ID)
 
         val action = intent?.action
         if (action == ACTION_START_VOICE_TURN || action == ACTION_START_DICTATION) {

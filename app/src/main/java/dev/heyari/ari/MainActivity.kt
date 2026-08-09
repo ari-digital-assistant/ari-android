@@ -9,9 +9,11 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.deeplink.skillDeepLinkRoute
+import dev.heyari.ari.listening.ListeningMode
 import dev.heyari.ari.models.ModelUpdateNotifier
 import dev.heyari.ari.skills.SkillUpdateNotifier
 import dev.heyari.ari.ui.AriNavHost
@@ -24,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -96,6 +99,33 @@ class MainActivity : ComponentActivity() {
         // here too so the inactive-user gate sees fresh activity on every
         // return-to-foreground.
         activityScope.launch { updatesRepository.recordLaunch() }
+        startListeningHostIfNeeded()
+    }
+
+    /**
+     * Anything short of [ListeningMode.NEVER] means the capture host should
+     * exist — standing by with the microphone shut still counts, since only a
+     * resident service can open the mic again later.
+     *
+     * It can go missing without the user doing anything: an app update
+     * force-stops the process, and Android 14+ then refuses to start a
+     * microphone-typed service from any background context, so boot receivers
+     * and broadcasts can't put it back. Ari goes quietly deaf until someone
+     * happens to poke a listening control. A resumed activity is the one
+     * context the platform always allows, so spend it.
+     */
+    private fun startListeningHostIfNeeded() {
+        if (WakeWordService.isRunning) return
+        activityScope.launch {
+            if (settingsRepository.listeningMode.first() == ListeningMode.NEVER) return@launch
+            Log.i(TAG, "Capture host missing while listening is enabled — starting it")
+            // A start that's somehow still refused lands in the service's own
+            // startForeground catch, which posts the tap-to-start recovery.
+            ContextCompat.startForegroundService(
+                this@MainActivity,
+                Intent(this@MainActivity, WakeWordService::class.java),
+            )
+        }
     }
 
     private fun handleSkillUpdatesIntent(intent: Intent?) {

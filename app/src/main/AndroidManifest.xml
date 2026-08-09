@@ -308,6 +308,19 @@
         </receiver>
 
         <!--
+          An app update force-stops us and kills the capture host. A mic FGS
+          can't be started from a broadcast, so this offers the same one-tap
+          recovery boot does rather than leaving Ari silently deaf.
+        -->
+        <receiver
+            android:name=".wakeword.PackageReplacedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!--
           Card expiry: AlarmManager fires this when a card's
           countdown_to_ts_ms is reached. The receiver kicks AlertService
           (if the card declared an on_complete.alert) and removes the
