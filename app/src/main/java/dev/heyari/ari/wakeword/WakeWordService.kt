@@ -32,6 +32,7 @@ import dev.heyari.ari.listening.ConditionSignals
 import dev.heyari.ari.listening.ListeningController
 import dev.heyari.ari.listening.ListeningDecision
 import dev.heyari.ari.listening.ListeningMode
+import dev.heyari.ari.listening.ListeningReason
 import dev.heyari.ari.listening.decideListening
 import dev.heyari.ari.voice.CaptureMode
 import dev.heyari.ari.voice.VoiceOverlayActivity
@@ -71,7 +72,8 @@ class WakeWordService : Service() {
      * microphone on someone who had asked it not to be.
      */
     @Volatile
-    private var decision: ListeningDecision = ListeningDecision.Listen
+    private var decision: ListeningDecision =
+        ListeningDecision.Listen(listOf(ListeningReason.AlwaysOn))
 
     private var audioRecord: AudioRecord? = null
     private var detector: MicroWakeWord? = null
@@ -674,6 +676,7 @@ class WakeWordService : Service() {
         // the microphone genuinely is closed and the privacy indicator is dark,
         // so claiming to be listening would be a lie the user could catch.
         val standbyReason = (decision as? ListeningDecision.StandBy)?.reason
+        val listenReasons = (decision as? ListeningDecision.Listen)?.reasons.orEmpty()
 
         return Notification.Builder(this, CHANNEL_LISTENING)
             .setContentTitle(
@@ -683,8 +686,16 @@ class WakeWordService : Service() {
                 )
             )
             .setContentText(
-                if (standbyReason == null) getString(R.string.notif_wake_listening_text)
-                else getString(standbyReason.messageRes)
+                when {
+                    standbyReason != null -> getString(standbyReason.messageRes)
+                    // Only reachable in the sliver between a Never-mode start
+                    // and applyDecision() stopping the service.
+                    listenReasons.isEmpty() -> getString(R.string.notif_wake_listening_plain)
+                    else -> getString(
+                        R.string.notif_wake_listening_reasons,
+                        listenReasons.joinToString(REASON_SEPARATOR) { describe(it) },
+                    )
+                }
             )
             .setSmallIcon(R.drawable.ic_ari_symbolic)
             .setContentIntent(openAppIntent)
@@ -695,6 +706,15 @@ class WakeWordService : Service() {
                 ).build()
             )
             .build()
+    }
+
+    private fun describe(reason: ListeningReason): String = when (reason) {
+        ListeningReason.AlwaysOn -> getString(R.string.listening_active_always)
+        ListeningReason.ScreenOn -> getString(R.string.listening_active_screen)
+        ListeningReason.Charging -> getString(R.string.listening_active_charging)
+        ListeningReason.Headset -> getString(R.string.listening_active_headset)
+        ListeningReason.Schedule -> getString(R.string.listening_active_schedule)
+        is ListeningReason.AtPlace -> getString(R.string.listening_active_place, reason.name)
     }
 
     override fun onDestroy() {
@@ -723,6 +743,8 @@ class WakeWordService : Service() {
 
         private const val NOTIFICATION_ID = 1
         private const val DETECTION_NOTIFICATION_ID = 2
+
+        private const val REASON_SEPARATOR = " | "
 
         private const val CHANNEL_LISTENING = "wake_word_listening"
         private const val CHANNEL_DETECTION = "wake_word_detection"

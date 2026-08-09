@@ -366,6 +366,15 @@
     <string name="listening_standby_outside_schedule">Ari ascolterà nelle ore che hai impostato</string>
     <string name="listening_standby_away_from_places">Ari ascolterà nei luoghi che hai aggiunto</string>
     <string name="listening_standby_multiple">In attesa di una delle tue condizioni di ascolto</string>
+    <string name="listening_active_always">Sempre attivo</string>
+    <string name="listening_active_screen">Schermo acceso</string>
+    <string name="listening_active_charging">In carica</string>
+    <string name="listening_active_headset">Auricolari</string>
+    <string name="listening_active_schedule">Su orario</string>
+    <!-- No preposition: Italian picks it from the place name ("a Casa", "al
+         Lavoro", "in Ufficio") and the name is free text, so the bracket in
+         notif_wake_listening_reasons carries the sense instead. -->
+    <string name="listening_active_place">%1$s</string>
     <string name="settings_listening_blurb">Scegli quando Ari può aprire il microfono. L\'ascolto sempre attivo è l\'opzione più reattiva, e di gran lunga la più costosa in termini di batteria.</string>
     <string name="settings_listening_conditions_header">Ascolta quando…</string>
     <string name="settings_listening_no_conditions_notice">Nessuna condizione selezionata — Ari non ascolterà affatto finché non ne spunti almeno una.</string>
@@ -459,7 +468,8 @@
     <string name="notif_wake_couldnt_open_title">Impossibile aprire Ari</string>
     <string name="notif_wake_couldnt_open_text">Tocca per consentire ad Ari di aprirsi dalla schermata di blocco</string>
     <string name="notif_wake_listening_title">Ari</string>
-    <string name="notif_wake_listening_text">In ascolto della parola di attivazione…</string>
+    <string name="notif_wake_listening_plain">In ascolto</string>
+    <string name="notif_wake_listening_reasons">In ascolto [%1$s]</string>
     <string name="notif_wake_standby_title">Ari — in attesa</string>
     <string name="notif_wake_stop_action">Smetti di ascoltare</string>
     <string name="notif_boot_couldnt_start_title">Impossibile avviare l\'ascolto</string>

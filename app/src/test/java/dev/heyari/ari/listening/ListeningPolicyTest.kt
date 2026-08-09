@@ -16,7 +16,7 @@ class ListeningPolicyTest {
         charging = true,
         headsetConnected = true,
         withinSchedule = true,
-        atPlace = true,
+        atPlaces = listOf("Home"),
     )
 
     private fun decide(
@@ -27,7 +27,10 @@ class ListeningPolicyTest {
 
     @Test
     fun `always listens`() {
-        assertEquals(ListeningDecision.Listen, decide(ListeningMode.ALWAYS))
+        assertEquals(
+            ListeningDecision.Listen(listOf(ListeningReason.AlwaysOn)),
+            decide(ListeningMode.ALWAYS),
+        )
     }
 
     @Test
@@ -50,24 +53,34 @@ class ListeningPolicyTest {
             decide(
                 ListeningMode.CUSTOM,
                 conditions = setOf(ListeningCondition.CHARGING),
-                signals = ConditionSignals(screenOn = true, headsetConnected = true, atPlace = true),
+                signals = ConditionSignals(
+                    screenOn = true,
+                    headsetConnected = true,
+                    atPlaces = listOf("Home"),
+                ),
             ),
         )
     }
 
     @Test
-    fun `each condition opens the mic on its own signal`() {
+    fun `each condition opens the mic on its own signal, and names itself`() {
         val cases = mapOf(
-            ListeningCondition.SCREEN_ON to ConditionSignals(screenOn = true),
-            ListeningCondition.CHARGING to ConditionSignals(charging = true),
-            ListeningCondition.HEADSET to ConditionSignals(headsetConnected = true),
-            ListeningCondition.SCHEDULE to ConditionSignals(withinSchedule = true),
-            ListeningCondition.PLACE to ConditionSignals(atPlace = true),
+            ListeningCondition.SCREEN_ON to
+                (ConditionSignals(screenOn = true) to ListeningReason.ScreenOn),
+            ListeningCondition.CHARGING to
+                (ConditionSignals(charging = true) to ListeningReason.Charging),
+            ListeningCondition.HEADSET to
+                (ConditionSignals(headsetConnected = true) to ListeningReason.Headset),
+            ListeningCondition.SCHEDULE to
+                (ConditionSignals(withinSchedule = true) to ListeningReason.Schedule),
+            ListeningCondition.PLACE to
+                (ConditionSignals(atPlaces = listOf("Home")) to ListeningReason.AtPlace("Home")),
         )
-        cases.forEach { (condition, signals) ->
+        cases.forEach { (condition, case) ->
+            val (signals, reason) = case
             assertEquals(
                 "$condition should listen on its own signal",
-                ListeningDecision.Listen,
+                ListeningDecision.Listen(listOf(reason)),
                 decide(ListeningMode.CUSTOM, conditions = setOf(condition), signals = signals),
             )
         }
@@ -76,7 +89,7 @@ class ListeningPolicyTest {
     @Test
     fun `conditions are ORed, so one of several is enough`() {
         assertEquals(
-            ListeningDecision.Listen,
+            ListeningDecision.Listen(listOf(ListeningReason.Charging)),
             decide(
                 ListeningMode.CUSTOM,
                 conditions = setOf(
@@ -85,6 +98,58 @@ class ListeningPolicyTest {
                     ListeningCondition.PLACE,
                 ),
                 signals = ConditionSignals(charging = true),
+            ),
+        )
+    }
+
+    @Test
+    fun `every met condition is reported, in the order they are listed`() {
+        assertEquals(
+            ListeningDecision.Listen(
+                listOf(
+                    ListeningReason.ScreenOn,
+                    ListeningReason.Charging,
+                    ListeningReason.AtPlace("Home"),
+                )
+            ),
+            decide(
+                ListeningMode.CUSTOM,
+                conditions = setOf(
+                    ListeningCondition.PLACE,
+                    ListeningCondition.CHARGING,
+                    ListeningCondition.SCREEN_ON,
+                ),
+                signals = ConditionSignals(
+                    screenOn = true,
+                    charging = true,
+                    atPlaces = listOf("Home"),
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `an unticked condition never reaches the notification, however true it is`() {
+        assertEquals(
+            ListeningDecision.Listen(listOf(ListeningReason.Charging)),
+            decide(
+                ListeningMode.CUSTOM,
+                conditions = setOf(ListeningCondition.CHARGING),
+                signals = allSignals,
+            ),
+        )
+    }
+
+    @Test
+    fun `overlapping places are each named`() {
+        assertEquals(
+            ListeningDecision.Listen(
+                listOf(ListeningReason.AtPlace("Home"), ListeningReason.AtPlace("The shed"))
+            ),
+            decide(
+                ListeningMode.CUSTOM,
+                conditions = setOf(ListeningCondition.PLACE),
+                signals = ConditionSignals(atPlaces = listOf("Home", "The shed")),
             ),
         )
     }

@@ -14,8 +14,28 @@ data class ConditionSignals(
     val charging: Boolean = false,
     val headsetConnected: Boolean = false,
     val withinSchedule: Boolean = false,
-    val atPlace: Boolean = false,
+    /** Names of the places currently around us, empty when we're at none. Names
+     *  rather than a flag because the notification says which one. */
+    val atPlaces: List<String> = emptyList(),
 )
+
+/**
+ * Why the microphone is open right now, for the notification to read out. One
+ * per thing currently true, so "Listening [Charging | at Home]" can tell the
+ * user which of their conditions is doing the work — and, when they take the
+ * charger out and Ari stays up, that the other one still holds.
+ *
+ * Not [ListeningCondition] reused: [AlwaysOn] is a mode rather than a
+ * condition, and a place has a name where the rest have only a label.
+ */
+sealed interface ListeningReason {
+    data object AlwaysOn : ListeningReason
+    data object ScreenOn : ListeningReason
+    data object Charging : ListeningReason
+    data object Headset : ListeningReason
+    data object Schedule : ListeningReason
+    data class AtPlace(val name: String) : ListeningReason
+}
 
 /**
  * Why Ari has gone quiet, in words the notification can use. One value per
@@ -38,8 +58,9 @@ enum class StandbyReason(@StringRes val messageRes: Int) {
  * at all, notification included.
  */
 sealed interface ListeningDecision {
-    /** Service resident, microphone open, detector running. */
-    data object Listen : ListeningDecision
+    /** Service resident, microphone open, detector running. [reasons] is
+     *  everything currently true that justifies it, never empty. */
+    data class Listen(val reasons: List<ListeningReason>) : ListeningDecision
 
     /** Service resident, microphone released. The FGS must stay up — see below. */
     data class StandBy(val reason: StandbyReason) : ListeningDecision
@@ -76,26 +97,38 @@ internal fun decideListening(
 ): ListeningDecision {
     return when (mode) {
         ListeningMode.NEVER -> ListeningDecision.Off
-        ListeningMode.ALWAYS -> ListeningDecision.Listen
+        ListeningMode.ALWAYS -> ListeningDecision.Listen(listOf(ListeningReason.AlwaysOn))
         ListeningMode.CUSTOM -> {
             if (conditions.isEmpty()) {
                 ListeningDecision.StandBy(StandbyReason.NO_CONDITIONS)
-            } else if (conditions.any { it.isMet(signals) }) {
-                ListeningDecision.Listen
             } else {
-                ListeningDecision.StandBy(standbyReasonFor(conditions))
+                val reasons = ListeningCondition.entries
+                    .filter { it in conditions }
+                    .flatMap { it.reasonsWhenMet(signals) }
+                if (reasons.isEmpty()) ListeningDecision.StandBy(standbyReasonFor(conditions))
+                else ListeningDecision.Listen(reasons)
             }
         }
     }
 }
 
-private fun ListeningCondition.isMet(signals: ConditionSignals): Boolean = when (this) {
-    ListeningCondition.SCREEN_ON -> signals.screenOn
-    ListeningCondition.CHARGING -> signals.charging
-    ListeningCondition.HEADSET -> signals.headsetConnected
-    ListeningCondition.SCHEDULE -> signals.withinSchedule
-    ListeningCondition.PLACE -> signals.atPlace
-}
+/**
+ * Walked in [ListeningCondition] declaration order — the same order they're
+ * listed in Settings — so the notification doesn't reshuffle itself every time
+ * one comes and goes.
+ */
+private fun ListeningCondition.reasonsWhenMet(signals: ConditionSignals): List<ListeningReason> =
+    when (this) {
+        ListeningCondition.SCREEN_ON ->
+            if (signals.screenOn) listOf(ListeningReason.ScreenOn) else emptyList()
+        ListeningCondition.CHARGING ->
+            if (signals.charging) listOf(ListeningReason.Charging) else emptyList()
+        ListeningCondition.HEADSET ->
+            if (signals.headsetConnected) listOf(ListeningReason.Headset) else emptyList()
+        ListeningCondition.SCHEDULE ->
+            if (signals.withinSchedule) listOf(ListeningReason.Schedule) else emptyList()
+        ListeningCondition.PLACE -> signals.atPlaces.map(ListeningReason::AtPlace)
+    }
 
 /**
  * Naming the one thing being waited on is useful; enumerating four of them in a

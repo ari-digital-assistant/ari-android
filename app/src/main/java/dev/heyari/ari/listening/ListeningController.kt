@@ -60,14 +60,17 @@ class ListeningController @Inject constructor(
         fun gated(condition: ListeningCondition, source: () -> Flow<Boolean>): Flow<Boolean> =
             if (condition in conditions) source() else flowOf(false)
 
+        val places =
+            if (ListeningCondition.PLACE in conditions) placeSignal() else flowOf(emptyList())
+
         return combine(
             gated(ListeningCondition.SCREEN_ON) { screenOnFlow(context) },
             gated(ListeningCondition.CHARGING) { chargingFlow(context) },
             gated(ListeningCondition.HEADSET) { headsetFlow(context) },
             gated(ListeningCondition.SCHEDULE) { scheduleSignal() },
-            gated(ListeningCondition.PLACE) { placeSignal() },
-        ) { screenOn, charging, headset, withinSchedule, atPlace ->
-            ConditionSignals(screenOn, charging, headset, withinSchedule, atPlace)
+            places,
+        ) { screenOn, charging, headset, withinSchedule, atPlaces ->
+            ConditionSignals(screenOn, charging, headset, withinSchedule, atPlaces)
         }
     }
 
@@ -85,9 +88,9 @@ class ListeningController @Inject constructor(
      * nothing could act on.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    private fun placeSignal(): Flow<Boolean> =
+    private fun placeSignal(): Flow<List<String>> =
         settingsRepository.listeningPlaces.flatMapLatest { places ->
-            placeGeofences.atAnyPlace
+            placeGeofences.insidePlaceNames
                 .onStart { placeGeofences.register(places) }
                 .onCompletion { placeGeofences.clear() }
         }

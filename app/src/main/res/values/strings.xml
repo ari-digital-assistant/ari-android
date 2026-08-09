@@ -363,6 +363,13 @@
     <string name="listening_standby_outside_schedule">Ari will listen during your scheduled hours</string>
     <string name="listening_standby_away_from_places">Ari will listen at the places you added</string>
     <string name="listening_standby_multiple">Waiting for one of your listening conditions</string>
+    <string name="listening_active_always">Always on</string>
+    <string name="listening_active_screen">Screen on</string>
+    <string name="listening_active_charging">Charging</string>
+    <string name="listening_active_headset">Headset</string>
+    <string name="listening_active_schedule">Schedule</string>
+    <!-- %1$s is the name the user gave the place, e.g. "at Home". -->
+    <string name="listening_active_place">at %1$s</string>
     <string name="settings_listening_blurb">Choose when Ari is allowed to open the microphone. Always-on listening is the most responsive option, and by far the most expensive one on battery.</string>
     <string name="settings_listening_conditions_header">Listen when…</string>
     <string name="settings_listening_no_conditions_notice">No conditions picked — Ari won\'t listen at all until you tick at least one.</string>
@@ -458,7 +465,9 @@
     <string name="notif_wake_couldnt_open_title">Ari couldn\'t open</string>
     <string name="notif_wake_couldnt_open_text">Tap to allow Ari to open from the lock screen</string>
     <string name="notif_wake_listening_title">Ari</string>
-    <string name="notif_wake_listening_text">Listening for wake word…</string>
+    <string name="notif_wake_listening_plain">Listening</string>
+    <!-- %1$s is the list of conditions currently keeping Ari awake, e.g. "Charging | at Home". -->
+    <string name="notif_wake_listening_reasons">Listening [%1$s]</string>
     <string name="notif_wake_standby_title">Ari — standing by</string>
     <string name="notif_wake_stop_action">Stop listening</string>
     <string name="notif_boot_couldnt_start_title">Ari couldn\'t start listening</string>
