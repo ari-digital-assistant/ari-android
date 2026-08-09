@@ -7,6 +7,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.Location
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.google.android.gms.common.ConnectionResult
@@ -15,6 +16,8 @@ import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingEvent
 import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -42,8 +45,11 @@ class PlaceGeofences @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
     private val client by lazy { LocationServices.getGeofencingClient(context) }
+    private val locationClient by lazy { LocationServices.getFusedLocationProviderClient(context) }
 
     private val insideIds = MutableStateFlow<Set<String>>(emptySet())
+
+    private var seedCancellation: CancellationTokenSource? = null
 
     /** True while the device is inside at least one registered place. */
     val atAnyPlace: Flow<Boolean> = insideIds.map { it.isNotEmpty() }.distinctUntilChanged()
@@ -103,9 +109,39 @@ class PlaceGeofences @Inject constructor(
 
         client.addGeofences(request, transitionPendingIntent())
             .addOnFailureListener { Log.w(TAG, "Failed to register geofences", it) }
+
+        seedFromCurrentLocation(places)
+    }
+
+    /**
+     * Work out where we are *now* instead of waiting to be told.
+     *
+     * A geofence only ever reports a crossing, and [insideIds] lives in memory,
+     * so a service or process restart while sat at home leaves us believing
+     * we're nowhere — with nothing able to correct it until the user physically
+     * walks out and back in again. INITIAL_TRIGGER_ENTER is meant to cover
+     * exactly that and doesn't do it reliably: Play Services defers the initial
+     * evaluation to its next location sample, and [RESPONSIVENESS_MS] asks for
+     * five more minutes of slack on top. One fix answers the question outright.
+     */
+    @SuppressLint("MissingPermission") // gated on hasPermissions() in register()
+    private fun seedFromCurrentLocation(places: List<ListeningPlace>) {
+        val cancellation = CancellationTokenSource()
+        seedCancellation = cancellation
+        locationClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, cancellation.token)
+            .addOnSuccessListener { location ->
+                if (location == null) {
+                    Log.w(TAG, "No fix to seed place state from — waiting for a crossing instead")
+                    return@addOnSuccessListener
+                }
+                insideIds.value = places.filter { it.contains(location) }.map { it.id }.toSet()
+            }
+            .addOnFailureListener { Log.w(TAG, "Couldn't seed place state from current location", it) }
     }
 
     fun clear() {
+        seedCancellation?.cancel()
+        seedCancellation = null
         insideIds.value = emptySet()
         if (!playServicesAvailable()) return
         client.removeGeofences(transitionPendingIntent())
@@ -142,6 +178,17 @@ class PlaceGeofences @Inject constructor(
         const val REQUEST_TRANSITION = 0
         const val RESPONSIVENESS_MS = 5 * 60 * 1000
     }
+}
+
+/**
+ * Plain containment, with no allowance for the fix's own accuracy: a loose fix
+ * near the edge should leave the microphone shut, not open it somewhere the
+ * user never marked.
+ */
+private fun ListeningPlace.contains(location: Location): Boolean {
+    val distance = FloatArray(1)
+    Location.distanceBetween(latitude, longitude, location.latitude, location.longitude, distance)
+    return distance[0] <= radiusMetres
 }
 
 @AndroidEntryPoint
