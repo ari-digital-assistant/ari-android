@@ -80,6 +80,9 @@ class EngineHolder @Inject constructor(
     private val ariFfiSettingWriter: dev.heyari.ari.settings.AriFfiSettingWriter,
     private val ariFfiAuthorizeProvider: dev.heyari.ari.oauth.AriFfiAuthorizeProvider,
     private val ariFfiMediaServicesProvider: AriFfiMediaServicesProvider,
+    private val ariFfiContactsProvider: dev.heyari.ari.contacts.AriFfiContactsProvider,
+    private val ariFfiLiveConversationsProvider:
+        dev.heyari.ari.messaging.AriFfiLiveConversationsProvider,
     private val appLauncher: dev.heyari.ari.actions.AppLauncher,
 ) {
     // SupervisorJob isolates siblings but does not swallow: an exception from
@@ -156,6 +159,8 @@ class EngineHolder @Inject constructor(
             b.settingWriter(ariFfiSettingWriter)
             b.authorize(ariFfiAuthorizeProvider)
             b.mediaServices(ariFfiMediaServicesProvider)
+            b.contacts(ariFfiContactsProvider)
+            b.liveConversations(ariFfiLiveConversationsProvider)
             b.build()
         }
 

@@ -495,6 +495,19 @@
          These follow Ari's CONVERSATION locale, not the app/system UI locale. -->
     <string name="action_reply_not_understood">I couldn\'t understand that action.</string>
     <string name="action_reply_navigate_no_maps">I couldn\'t find a maps app to do that.</string>
+    <string name="action_reply_replied_to">Sent to %1$s.</string>
+    <string name="action_reply_no_live_thread">You don\'t have a conversation open for me to reply to.</string>
+    <string name="action_reply_which_thread">You have a few open — %1$s. Who did you mean?</string>
+    <string name="action_reply_needs_notification_access">I need notification access to reply to messages.</string>
+    <string name="action_reply_reply_failed">I couldn\'t send that reply.</string>
+    <string name="action_reply_message_sent">Sent your message to %1$s.</string>
+    <string name="action_reply_message_sent_generic">Sent your message.</string>
+    <string name="action_reply_message_ready_to_send">That\'s ready for %1$s — just tap send.</string>
+    <string name="action_reply_message_prepared">Your message is ready in %1$s.</string>
+    <string name="action_reply_message_prepared_to">Your message is ready in %1$s — pick %2$s to send it.</string>
+    <string name="action_reply_message_prepared_chooser">Your message is ready — choose where to send it.</string>
+    <string name="action_reply_message_not_installed">You don\'t have %1$s installed.</string>
+    <string name="action_reply_message_failed">I couldn\'t prepare that message.</string>
     <string name="action_reply_alarm_no_clock">I couldn\'t find a clock app to set that.</string>
     <string name="action_reply_open_what">What would you like me to open?</string>
     <string name="action_reply_open_opening">Opening %1$s.</string>

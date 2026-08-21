@@ -25,7 +25,7 @@ import javax.inject.Singleton
  * underneath.
  *
  * Single-shot slots (`launch_app`, `search`, `open_url`, `media`, `navigate`,
- * `clipboard`, `alarm`) take effect immediately; rich primitives (`cards`,
+ * `message`, `reply`, `clipboard`, `alarm`) take effect immediately; rich primitives (`cards`,
  * `alerts`, `notifications`, `dismiss.*`) flow through [PresentationCoordinator].
  * Both coexist in one envelope (e.g. a media action plus a now-playing card):
  * every slot falls through to the shared presentation tail. The only early
@@ -45,6 +45,8 @@ class ActionHandler @Inject constructor(
     private val musicLauncher: MusicLauncher,
     private val alarmLauncher: AlarmLauncher,
     private val navigationLauncher: NavigationLauncher,
+    private val messageLauncher: MessageLauncher,
+    private val replyLauncher: ReplyLauncher,
     private val mediaTransportController: MediaTransportController,
     private val presentationCoordinator: PresentationCoordinator,
     private val localeProvider: AriFfiLocaleProvider,
@@ -80,6 +82,8 @@ class ActionHandler @Inject constructor(
                     return ActionResult.Spoken(say(R.string.action_reply_navigate_no_maps))
             }
         }
+        env.message?.let { spoken = env.speak ?: handleMessage(it) }
+        env.reply?.let { spoken = env.speak ?: handleReply(it) }
         env.clipboardText?.let { copyToClipboard(it) }
 
         // Alarm hand-off. On success, fall through to the shared tail below so
@@ -162,6 +166,63 @@ class ActionHandler @Inject constructor(
             }
         }
     }
+
+    /**
+     * Hands a message off, or sends it outright when the service and the
+     * permissions allow. The skill asks for one or the other but can't know
+     * which it gets, so the phrasing comes from what actually happened —
+     * never from what was requested.
+     */
+    private fun handleMessage(m: MessageAction): String =
+        when (val r = messageLauncher.send(m)) {
+            is MessageLauncher.SendResult.Sent ->
+                if (m.recipientLabel != null)
+                    say(R.string.action_reply_message_sent, m.recipientLabel)
+                else
+                    say(R.string.action_reply_message_sent_generic)
+            is MessageLauncher.SendResult.ReadyToSend ->
+                if (m.recipientLabel != null)
+                    say(R.string.action_reply_message_ready_to_send, m.recipientLabel)
+                else
+                    say(R.string.action_reply_message_prepared, r.serviceName)
+            is MessageLauncher.SendResult.Prepared ->
+                if (m.recipientLabel != null)
+                    say(R.string.action_reply_message_prepared_to, r.serviceName, m.recipientLabel)
+                else
+                    say(R.string.action_reply_message_prepared, r.serviceName)
+            MessageLauncher.SendResult.PreparedInChooser ->
+                say(R.string.action_reply_message_prepared_chooser)
+            is MessageLauncher.SendResult.ServiceNotInstalled ->
+                say(R.string.action_reply_message_not_installed, r.serviceName)
+            is MessageLauncher.SendResult.Failed -> {
+                Log.w(TAG, "message hand-off failed: ${r.reason}")
+                say(R.string.action_reply_message_failed)
+            }
+        }
+
+    /**
+     * Answers a live conversation. Every non-success outcome leaves the user
+     * able to try again another way, so none of them are phrased as dead ends.
+     */
+    private fun handleReply(r: ReplyAction): String =
+        when (val res = replyLauncher.send(r)) {
+            is ReplyLauncher.Result.Sent ->
+                say(R.string.action_reply_replied_to, res.recipient)
+            ReplyLauncher.Result.NoLiveThread ->
+                say(R.string.action_reply_no_live_thread)
+            is ReplyLauncher.Result.Ambiguous ->
+                say(R.string.action_reply_which_thread, res.names.joinToString(", "))
+            ReplyLauncher.Result.NoPermission -> {
+                // Same nudge the media transport uses — take them straight to
+                // the screen that grants it rather than describing it.
+                openNotificationListenerSettings(context)
+                say(R.string.action_reply_needs_notification_access)
+            }
+            is ReplyLauncher.Result.Failed -> {
+                Log.w(TAG, "reply failed: ${res.reason}")
+                say(R.string.action_reply_reply_failed)
+            }
+        }
 
     private fun handleOpenUrl(url: String): String {
         return runCatching {

@@ -497,6 +497,19 @@
          These follow Ari's CONVERSATION locale, not the app/system UI locale. -->
     <string name="action_reply_not_understood">Non ho capito questa azione.</string>
     <string name="action_reply_navigate_no_maps">Non ho trovato un\'app di mappe per farlo.</string>
+    <string name="action_reply_replied_to">Ho risposto a %1$s.</string>
+    <string name="action_reply_no_live_thread">Non hai nessuna conversazione aperta a cui rispondere.</string>
+    <string name="action_reply_which_thread">Ne hai più di una aperta — %1$s. Quale?</string>
+    <string name="action_reply_needs_notification_access">Mi serve l\'accesso alle notifiche per rispondere ai messaggi.</string>
+    <string name="action_reply_reply_failed">Non riesco a inviare la risposta.</string>
+    <string name="action_reply_message_sent">Ho inviato il tuo messaggio a %1$s.</string>
+    <string name="action_reply_message_sent_generic">Ho inviato il tuo messaggio.</string>
+    <string name="action_reply_message_ready_to_send">È pronto per %1$s — tocca invia.</string>
+    <string name="action_reply_message_prepared">Il tuo messaggio è pronto su %1$s.</string>
+    <string name="action_reply_message_prepared_to">Il tuo messaggio è pronto su %1$s — scegli %2$s per inviarlo.</string>
+    <string name="action_reply_message_prepared_chooser">Il tuo messaggio è pronto — scegli dove inviarlo.</string>
+    <string name="action_reply_message_not_installed">Non hai installato %1$s.</string>
+    <string name="action_reply_message_failed">Non riesco a preparare il messaggio.</string>
     <string name="action_reply_alarm_no_clock">Non ho trovato un\'app orologio per impostarlo.</string>
     <string name="action_reply_open_what">Cosa devo aprire?</string>
     <string name="action_reply_open_opening">Apro %1$s.</string>

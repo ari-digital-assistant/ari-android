@@ -31,6 +31,38 @@ data class NavigateAction(
     val mode: String?,
 )
 
+/**
+ * A message action from the engine. [text] is the body as the user said it.
+ *
+ * [delivery] is a *request*, not an instruction: "send" asks for a true send,
+ * "compose" asks to hand off to the app's own compose surface. Most services
+ * offer no way to send on a user's behalf from another app, so a "send" will
+ * often come back as a prepared message the user still has to tap. The
+ * launcher reports what actually happened; nothing here should assume.
+ *
+ * [service] may be null when the user didn't name one, in which case the user
+ * picks the app as well as the recipient. [recipientLabel] is for speaking
+ * back to the user only — [recipientId] is the one that addresses anything.
+ */
+data class MessageAction(
+    val text: String,
+    val service: String?,
+    val recipientId: String?,
+    val recipientLabel: String?,
+    val delivery: String?,
+)
+
+/**
+ * A reply into a conversation that already has a live notification.
+ *
+ * [recipientLabel] is null when the user didn't name anybody — "reply, on my
+ * way" means the newest thread, which is the hands-free case this exists for.
+ */
+data class ReplyAction(
+    val text: String,
+    val recipientLabel: String?,
+)
+
 /** An alarm action from the engine. `op` is "set" or "show". */
 data class AlarmAction(
     val op: String,
@@ -65,6 +97,8 @@ data class PresentationEnvelope(
     val media: MediaAction?,
     val alarm: AlarmAction?,
     val navigate: NavigateAction?,
+    val message: MessageAction?,
+    val reply: ReplyAction?,
     val search: String?,
     val openUrl: String?,
     val clipboardText: String?,
@@ -142,6 +176,25 @@ data class PresentationEnvelope(
                             NavigateAction(
                                 destination = dest,
                                 mode = o.optStringOrNull("mode"),
+                            )
+                        }
+                    },
+                    message = json.optJSONObject("message")?.let { o ->
+                        o.optStringOrNull("text")?.let { body ->
+                            MessageAction(
+                                text = body,
+                                service = o.optStringOrNull("service"),
+                                recipientId = o.optStringOrNull("recipient_id"),
+                                recipientLabel = o.optStringOrNull("recipient_label"),
+                                delivery = o.optStringOrNull("delivery"),
+                            )
+                        }
+                    },
+                    reply = json.optJSONObject("reply")?.let { o ->
+                        o.optStringOrNull("text")?.let { body ->
+                            ReplyAction(
+                                text = body,
+                                recipientLabel = o.optStringOrNull("recipient_label"),
                             )
                         }
                     },

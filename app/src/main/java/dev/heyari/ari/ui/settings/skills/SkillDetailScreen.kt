@@ -209,27 +209,20 @@ fun SkillDetailScreen(
     }
     val busy = skillId in state.installingIds
 
-    // Skill-install-time permission request. A skill that declares the
-    // `location` host capability (weather, "near me", …) gets coarse
-    // location asked for at the honest moment of consent — when the user
-    // installs it — rather than up front in the first-run wizard. This is
-    // capability-driven, never keyed on a skill id, so it stays
-    // frontend-independent: any skill declaring `location` trips it, and
-    // the host owns the capability → Android-permission mapping. Location
-    // is optional, so the install proceeds regardless of the grant
-    // outcome; the location capability degrades gracefully to
-    // PERMISSION_DENIED when refused.
+    // Skill-install-time permission request, driven by
+    // [CAPABILITY_PERMISSIONS]. A skill's declared capabilities are asked
+    // for at the honest moment of consent — when the user installs it —
+    // rather than up front in the first-run wizard. The install proceeds
+    // whatever the user decides; every mapped capability degrades
+    // gracefully, so a refusal costs a feature, not the installation.
     val context = LocalContext.current
-    val locationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
     ) { viewModel.installById(skillId) }
     fun startInstall() {
-        val wantsLocation = view.capabilities.any { it.equals("location", ignoreCase = true) }
-        val hasLocation = ContextCompat.checkSelfPermission(
-            context, Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-        if (wantsLocation && !hasLocation) {
-            locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+        val missing = missingPermissionsFor(view.capabilities, context)
+        if (missing.isNotEmpty()) {
+            permissionLauncher.launch(missing.toTypedArray())
         } else {
             viewModel.installById(skillId)
         }
@@ -927,6 +920,44 @@ private fun buildSubtitle(version: String, skillId: String): String {
     parts.add(skillId)
     return parts.joinToString(" · ")
 }
+
+/**
+ * Android runtime permissions each declared capability needs, requested when
+ * a skill is installed.
+ *
+ * Capability-driven and never keyed on a skill id, so the frontend owns the
+ * capability → permission mapping and skills stay portable across frontends.
+ * Only capabilities that degrade gracefully belong here — the install is not
+ * blocked on the grant, so anything that would be broken rather than merely
+ * diminished by a refusal needs a different flow.
+ */
+internal val CAPABILITY_PERMISSIONS: Map<String, List<String>> = mapOf(
+    "location" to listOf(Manifest.permission.ACCESS_COARSE_LOCATION),
+    "contacts" to listOf(Manifest.permission.READ_CONTACTS),
+    "send_message" to listOf(Manifest.permission.SEND_SMS),
+)
+
+/**
+ * Every permission [capabilities] imply, deduplicated. Unknown capability
+ * names contribute nothing, so a skill declaring something this frontend
+ * doesn't map still installs.
+ *
+ * Kept free of [Context] so the mapping can be tested directly — the grant
+ * check lives in [missingPermissionsFor].
+ */
+internal fun permissionsFor(capabilities: List<String>): List<String> =
+    capabilities
+        .flatMap { CAPABILITY_PERMISSIONS[it.lowercase()].orEmpty() }
+        .distinct()
+
+/**
+ * The permissions [capabilities] need that aren't granted yet. Empty when
+ * there's nothing to ask for, which is the common case.
+ */
+private fun missingPermissionsFor(capabilities: List<String>, context: Context): List<String> =
+    permissionsFor(capabilities).filter {
+        ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+    }
 
 /**
  * Whether full-screen-intent alerts can currently fire. Below API 34 the

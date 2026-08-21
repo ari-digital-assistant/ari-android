@@ -59,6 +59,20 @@
       the user picks a Calendar destination or opens the calendar
       picker, never at app launch.
     -->
+    <!--
+      Address book, for the `contacts` skill capability: resolve a spoken
+      name to the services that person can be reached on. Lookup only — the
+      engine exposes no way for a skill to enumerate contacts. Requested at
+      skill-install time, not up front; see CAPABILITY_PERMISSIONS.
+    -->
+    <!--
+      Sending an SMS outright, the only true send Ari has on Android. Asked
+      for when a skill declaring `send_message` is installed, and refusable:
+      without it SMS behaves like every other service and opens the messaging
+      app with the text filled in.
+    -->
+    <uses-permission android:name="android.permission.SEND_SMS" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
 
@@ -143,6 +157,29 @@
         -->
         <intent>
             <action android:name="android.media.browse.MediaBrowserService" />
+        </intent>
+        <!--
+          Messaging apps targeted by MessageLauncher (package visibility,
+          API 30+). Without these the installed-check reports false for an app
+          that's plainly there, and the share intent is scoped to a package we
+          were told doesn't exist. Anything not listed still reaches the user
+          through the system chooser.
+        -->
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+        <package android:name="org.telegram.messenger" />
+        <package android:name="org.telegram.plus" />
+        <package android:name="org.thoughtcrime.securesms" />
+        <package android:name="im.molly.app" />
+        <package android:name="com.facebook.orca" />
+        <package android:name="com.Slack" />
+        <package android:name="io.element.android.x" />
+        <package android:name="im.vector.app" />
+        <package android:name="com.google.android.apps.messaging" />
+        <package android:name="com.android.messaging" />
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="text/plain" />
         </intent>
         <!-- Music services targeted by MusicLauncher (package visibility, API 30+). -->
         <package android:name="com.spotify.music" />

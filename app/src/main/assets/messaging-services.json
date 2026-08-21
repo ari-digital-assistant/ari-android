@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "_comment": [
+    "Every messaging service Ari can target by name. Adding one is a data",
+    "change, not a code change — which matters because this list is always",
+    "wrong somewhere: LINE in Japan, KakaoTalk in Korea, Zalo in Vietnam,",
+    "Viber across eastern Europe. A service missing from here still reaches",
+    "the user through the system share chooser; an entry just saves them",
+    "picking the app.",
+    "",
+    "contact_mimetype is the row a service writes into ContactsContract when",
+    "it syncs the address book. id_column and the strip fields say where the",
+    "usable identifier lives inside that row — they differ per service, so",
+    "they are data rather than an assumption. Services with no mimetype can",
+    "still be targeted; they just can't have a recipient resolved.",
+    "",
+    "url_template opens the recipient's chat with the message already typed —",
+    "one tap instead of picking a name. Both verified on device. The scheme",
+    "form is preferred over url_fallback because an https app-link falls",
+    "through to a browser install page when the app is absent. Both templates",
+    "want bare digits, which is why the Telegram prefix strips the + too.",
+    "",
+    "can_send marks a service Ari can send itself, with nobody tapping",
+    "anything. Only SMS qualifies on Android: every other messenger keeps",
+    "sending to itself. It is also the only one that needs a confirmation,",
+    "because it is the only one where no human sees the message first.",
+    "",
+    "An entry with no packages is addressed by scheme rather than by app —",
+    "email goes to whichever client the user has set as default, which is the",
+    "whole point of mailto:. Those entries need intent_action sendto.",
+    "",
+    "contact_source says which standard contact field holds the address, for",
+    "services that use one instead of writing their own row."
+  ],
+  "services": [
+    {
+      "id": "sms",
+      "display_name": "Messages",
+      "packages": ["com.google.android.apps.messaging", "com.android.messaging"],
+      "contact_source": "phone",
+      "can_send": true
+    },
+    {
+      "id": "whatsapp",
+      "display_name": "WhatsApp",
+      "packages": ["com.whatsapp", "com.whatsapp.w4b"],
+      "contact_mimetype": "vnd.android.cursor.item/vnd.com.whatsapp.profile",
+      "id_column": "data1",
+      "id_strip_suffix": "@s.whatsapp.net",
+      "url_template": "whatsapp://send?phone={id}&text={text}",
+      "url_fallback": "https://wa.me/{id}?text={text}"
+    },
+    {
+      "id": "telegram",
+      "display_name": "Telegram",
+      "packages": ["org.telegram.messenger", "org.telegram.plus"],
+      "contact_mimetype": "vnd.android.cursor.item/vnd.org.telegram.messenger.android.profile",
+      "id_column": "data3",
+      "id_strip_prefix": "Message +",
+      "url_template": "tg://resolve?phone={id}&text={text}"
+    },
+    {
+      "id": "signal",
+      "display_name": "Signal",
+      "packages": ["org.thoughtcrime.securesms", "im.molly.app"],
+      "contact_mimetype": "vnd.android.cursor.item/vnd.org.thoughtcrime.securesms.contact",
+      "id_column": "data1"
+    },
+    {
+      "id": "email",
+      "display_name": "Email",
+      "packages": [],
+      "intent_action": "sendto",
+      "contact_source": "email",
+      "url_template": "mailto:{id}?body={text}"
+    },
+    {
+      "id": "messenger",
+      "display_name": "Messenger",
+      "packages": ["com.facebook.orca"]
+    },
+    {
+      "id": "slack",
+      "display_name": "Slack",
+      "packages": ["com.Slack"]
+    },
+    {
+      "id": "matrix",
+      "display_name": "Element",
+      "packages": ["io.element.android.x", "im.vector.app"]
+    }
+  ]
+}
