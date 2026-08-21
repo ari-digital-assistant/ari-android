@@ -609,10 +609,7 @@ class VoiceSession @Inject constructor(
                             )
                         }
                         _state.value = VoiceState.Responding(outcome.text)
-                        speechOutput.speak(outcome.text)
-                        val readMs = (outcome.text.length * 80L).coerceIn(3000L, 10_000L)
-                        delay(readMs)
-                        dismiss()
+                        speakThenDismiss(outcome.text)
                         return
                     }
                 }
@@ -801,13 +798,24 @@ class VoiceSession @Inject constructor(
             speechOutput.speakAndAwait(responseText)
             rearmForReply()
         } else {
-            speechOutput.speak(responseText)
-            // Wait long enough for the user to see the response and TTS to roughly finish.
-            // Rough-time it based on text length: ~80ms per character, clamped to 3..10 seconds.
-            val readMs = (responseText.length * 80L).coerceIn(3000L, 10_000L)
-            delay(readMs)
-            dismiss()
+            speakThenDismiss(responseText)
         }
+    }
+
+    /**
+     * Read a final answer out, hold the overlay while it plays, then close.
+     *
+     * Waits on the utterance itself rather than guessing its length from the
+     * character count: [dismiss] stops the TTS engine, so a reply that outran
+     * the guess — a full forecast easily does — got its last few words cut off.
+     */
+    private suspend fun speakThenDismiss(text: String) {
+        val spokenFrom = System.currentTimeMillis()
+        if (text.isNotBlank()) speechOutput.speakAndAwait(text)
+        // A floor, not a ceiling: "Yes" is spoken and done inside a second, and
+        // the overlay would blink out before anyone could read it.
+        delay(MIN_RESPONSE_DWELL_MS - (System.currentTimeMillis() - spokenFrom))
+        dismiss()
     }
 
     /**
@@ -1104,6 +1112,9 @@ class VoiceSession @Inject constructor(
         // are cases where Ari asked a question or the user deliberately opened
         // the mic, so waiting is legitimate.
         private const val WAKE_TURN_SILENCE_TIMEOUT_MS = 8_000L
+        // How long a spoken answer stays on the overlay at minimum, for replies
+        // short enough that TTS finishes before the user has read them.
+        private const val MIN_RESPONSE_DWELL_MS = 3_000L
         // 2 s pre-roll snapshot at session start — see the comment at the
         // capture site in start() for why this stays within the wake phrase.
         private const val PREROLL_CAPTURE_SECONDS = 2.0f

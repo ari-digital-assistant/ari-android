@@ -85,6 +85,11 @@ class SpeechOutput(
             tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                 override fun onStart(utteranceId: String?) {}
                 override fun onDone(utteranceId: String?) = finishUtterance(utteranceId)
+                // stop() and QUEUE_FLUSH interrupt an utterance without ever
+                // firing onDone. Without this, every cut-off utterance left its
+                // waiter sitting on the safety timeout below.
+                override fun onStop(utteranceId: String?, interrupted: Boolean) =
+                    finishUtterance(utteranceId)
                 @Deprecated("Deprecated in Java")
                 override fun onError(utteranceId: String?) = finishUtterance(utteranceId)
             })
@@ -124,8 +129,9 @@ class SpeechOutput(
     }
 
     /**
-     * Speak [text] and suspend until the TTS engine reports it finished (or a
-     * length-based safety timeout elapses, in case `onDone` never fires).
+     * Speak [text] and suspend until the TTS engine reports it finished,
+     * stopped or errored (or a length-based safety timeout elapses, in case the
+     * engine never reports back at all).
      * Used by the voice session before re-arming the mic for a follow-up, so
      * the mic opens only after Ari has stopped speaking — never capturing its
      * own voice. Uses QUEUE_FLUSH: the prompt is the only thing that should be
@@ -140,9 +146,13 @@ class SpeechOutput(
         val done = CompletableDeferred<Unit>()
         pendingDone[id] = done
         tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, id)
-        // Safety ceiling: ~120ms/char, clamped, so a missed callback can't
-        // hang the voice session forever.
-        val maxMs = (text.length * 120L).coerceIn(4000L, 15_000L)
+        // Last resort for an engine that goes silent on us — roughly twice
+        // how long the text takes to read at the default rate. The ceiling is
+        // deliberately far beyond any real reply: callers treat a timeout as
+        // "finished speaking", so a tight cap cuts a long answer off mid-word
+        // rather than protecting anything. Cancellation, not this, is what ends
+        // an utterance early.
+        val maxMs = (text.length * 120L).coerceIn(4_000L, 120_000L)
         if (withTimeoutOrNull(maxMs) { done.await() } == null) {
             Log.w(TAG, "speakAndAwait timed out after ${maxMs}ms for id=$id")
         }
