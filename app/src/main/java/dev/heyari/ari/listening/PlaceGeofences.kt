@@ -6,9 +6,11 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.google.android.gms.common.ConnectionResult
@@ -54,6 +56,14 @@ class PlaceGeofences @Inject constructor(
 
     private var seedCallback: LocationCallback? = null
 
+    private var wakeReceiver: BroadcastReceiver? = null
+
+    // When the geofencer or a seed last told us anything. Elapsed-realtime
+    // rather than uptime, because the Doze that silences the geofencer is
+    // exactly the time that has to count towards going stale.
+    @Volatile
+    private var lastConfirmedAt = 0L
+
     // Transitions arrive as bare geofence ids on a broadcast thread, so the
     // names have to be looked up against whatever is currently registered.
     @Volatile
@@ -84,10 +94,21 @@ class PlaceGeofences @Inject constructor(
         return fine && background
     }
 
-    @SuppressLint("MissingPermission") // gated on hasPermissions() immediately below
     fun register(places: List<ListeningPlace>) {
         clear()
         if (places.isEmpty()) return
+        arm(places.take(ListeningPlace.MAX_PLACES))
+    }
+
+    /**
+     * Hand the fences to Play Services and work out where we are right now.
+     *
+     * Re-arming with the same request ids replaces the existing fences instead
+     * of duplicating them, so [refreshIfStale] can come straight back through
+     * here without ever leaving a window with nothing registered.
+     */
+    @SuppressLint("MissingPermission") // gated on hasPermissions() immediately below
+    private fun arm(places: List<ListeningPlace>) {
         if (!playServicesAvailable()) {
             Log.w(TAG, "Play Services unavailable — place-based listening is off")
             return
@@ -97,10 +118,11 @@ class PlaceGeofences @Inject constructor(
             return
         }
 
-        val fenced = places.take(ListeningPlace.MAX_PLACES)
-        registered = fenced
+        registered = places
+        lastConfirmedAt = SystemClock.elapsedRealtime()
+        watchForWake()
 
-        val fences = fenced.map { place ->
+        val fences = places.map { place ->
             Geofence.Builder()
                 .setRequestId(place.id)
                 .setCircularRegion(place.latitude, place.longitude, place.radiusMetres)
@@ -123,7 +145,58 @@ class PlaceGeofences @Inject constructor(
         client.addGeofences(request, transitionPendingIntent())
             .addOnFailureListener { Log.w(TAG, "Failed to register geofences", it) }
 
-        seedFromCurrentLocation(fenced)
+        seedFromCurrentLocation(places)
+    }
+
+    /**
+     * Re-arm and re-check once the place state has gone quiet for too long.
+     *
+     * [insideIds] only moves when a crossing is delivered, so anything that
+     * stops them arriving — Doze parking the geofencer, Play Services
+     * restarting underneath us, a fence quietly lost — freezes it on whatever
+     * it last knew, with nothing able to correct it. That is the shade still
+     * saying "you're at Home" hours after leaving, and it is why switching the
+     * mode off and back on clears it: that path re-registers.
+     *
+     * So do what that workaround does, on a trigger the user doesn't have to
+     * think about. The current state stays standing until the new fences or the
+     * seed say otherwise — blanking it first would close the microphone and
+     * reopen it seconds later for nothing.
+     */
+    private fun refreshIfStale() {
+        val places = registered
+        if (places.isEmpty()) return
+        val quietMs = SystemClock.elapsedRealtime() - lastConfirmedAt
+        if (quietMs < STALE_AFTER_MS) return
+        Log.i(TAG, "No place news for ${quietMs / 60_000} min — re-arming")
+        arm(places)
+    }
+
+    /**
+     * Screen-on is the cheap way to ask whether this device has been sat in a
+     * drawer. A repair pass wants a moment when the device is awake anyway and
+     * someone is about to read the notification, and wants to cost nothing the
+     * rest of the time — a poll or a repeating alarm would spend battery on
+     * every idle hour to catch a case that only shows when someone looks.
+     */
+    private fun watchForWake() {
+        if (wakeReceiver != null) return
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(receiverContext: Context?, intent: Intent?) = refreshIfStale()
+        }
+        // A protected system broadcast — it cannot be declared in the manifest.
+        ContextCompat.registerReceiver(
+            context,
+            receiver,
+            IntentFilter(Intent.ACTION_SCREEN_ON),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        wakeReceiver = receiver
+    }
+
+    private fun stopWatchingForWake() {
+        wakeReceiver?.let { context.unregisterReceiver(it) }
+        wakeReceiver = null
     }
 
     /**
@@ -174,6 +247,7 @@ class PlaceGeofences @Inject constructor(
                         "inside ${inside.size} of ${places.size} place(s)",
                 )
                 insideIds.value = inside.map { it.id }.toSet()
+                lastConfirmedAt = SystemClock.elapsedRealtime()
                 stopSeed()
             }
         }
@@ -190,6 +264,7 @@ class PlaceGeofences @Inject constructor(
 
     fun clear() {
         stopSeed()
+        stopWatchingForWake()
         registered = emptyList()
         insideIds.value = emptySet()
         if (!playServicesAvailable()) return
@@ -203,6 +278,9 @@ class PlaceGeofences @Inject constructor(
             return
         }
         val ids = event.triggeringGeofences?.map { it.requestId }?.toSet() ?: return
+        // Anything at all from the geofencer proves it is still watching, which
+        // is the only question [refreshIfStale] is asking.
+        lastConfirmedAt = SystemClock.elapsedRealtime()
         // The thing the seed was standing in for has spoken, and it is the
         // better authority — Play Services has been watching continuously,
         // where we get one burst. Let it go before a late fix overwrites this.
@@ -233,6 +311,11 @@ class PlaceGeofences @Inject constructor(
 
         const val SEED_INTERVAL_MS = 1000L
         const val SEED_TIMEOUT_MS = 30 * 1000L
+
+        // Generous on purpose. Silence is normal — a stationary device inside
+        // its own fence has nothing to report for a whole night — so this is
+        // the point where silence stops being explainable, not a heartbeat.
+        const val STALE_AFTER_MS = 60 * 60 * 1000L
     }
 }
 
