@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.heyari.ari.assistant.AssistantRole
 import dev.heyari.ari.messaging.MessagingService
 import dev.heyari.ari.messaging.MessagingServices
 import dev.heyari.ari.messaging.SmsSender
@@ -39,6 +40,7 @@ class MessageLauncher @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val services: MessagingServices,
     private val smsSender: SmsSender,
+    private val assistantRole: AssistantRole,
 ) {
     sealed interface SendResult {
         /** Gone. Nobody tapped anything. */
@@ -119,9 +121,29 @@ class MessageLauncher @Inject constructor(
     }
 
     /**
+     * Whether this message would have gone hands-free but for the assistant
+     * role. True only when the skill asked for a true send, the service can
+     * actually do one, we know who to send it to, and the sole thing missing
+     * is that Ari isn't the user's default assistant.
+     *
+     * Deliberately indifferent to whether [android.Manifest.permission.SEND_SMS]
+     * is granted: without the role we never asked for it, so a missing grant is
+     * a consequence of the same fact rather than a second reason. Drives the
+     * one-line offer in [ActionHandler] — see [dev.heyari.ari.messaging.HandsFreeNudge].
+     */
+    fun handsFreeBlockedByRole(action: MessageAction): Boolean {
+        if (action.delivery != DELIVERY_SEND) return false
+        val service = action.service?.let { services[it] } ?: return false
+        if (!service.canSend) return false
+        if (action.recipientId.isNullOrBlank()) return false
+        return !assistantRole.isDefaultAssistant()
+    }
+
+    /**
      * Returns non-null only when the message actually went. Every other
-     * outcome — service can't send, no recipient resolved, permission
-     * refused — returns null so the caller composes instead.
+     * outcome — service can't send, no recipient resolved, not the default
+     * assistant, permission refused — returns null so the caller composes
+     * instead.
      */
     private fun trueSend(action: MessageAction): SendResult? {
         if (action.delivery != DELIVERY_SEND) return null
@@ -131,6 +153,7 @@ class MessageLauncher @Inject constructor(
         return when (val r = smsSender.send(destination, action.text)) {
             SmsSender.Result.Sent -> SendResult.Sent(service.displayName)
             SmsSender.Result.NoPermission -> null
+            SmsSender.Result.NotDefaultAssistant -> null
             is SmsSender.Result.Failed -> {
                 Log.w(TAG, "true send failed, composing instead: ${r.reason}")
                 null

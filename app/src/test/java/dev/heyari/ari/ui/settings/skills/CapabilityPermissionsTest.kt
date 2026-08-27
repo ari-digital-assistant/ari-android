@@ -63,6 +63,42 @@ class CapabilityPermissionsTest {
     }
 
     @Test
+    fun sendMessageIsNotAskedForUntilAriIsTheDefaultAssistant() {
+        // Play forbids prompting for SEND_SMS before the app holds the
+        // assistant role. The skill still installs — SMS just hands off to the
+        // messaging app like every other service.
+        assertEquals(
+            emptyList<String>(),
+            requestablePermissions(listOf("send_message"), isDefaultAssistant = false),
+        )
+    }
+
+    @Test
+    fun sendMessageIsAskedForOnceAriIsTheDefaultAssistant() {
+        assertEquals(
+            listOf(Manifest.permission.SEND_SMS),
+            requestablePermissions(listOf("send_message"), isDefaultAssistant = true),
+        )
+    }
+
+    @Test
+    fun theRoleGateDropsOnlyTheGatedPermission() {
+        // A skill declaring both must still get its contacts prompt.
+        assertEquals(
+            listOf(Manifest.permission.READ_CONTACTS),
+            requestablePermissions(listOf("send_message", "contacts"), isDefaultAssistant = false),
+        )
+    }
+
+    @Test
+    fun ungatedCapabilitiesIgnoreTheAssistantRole() {
+        assertEquals(
+            requestablePermissions(listOf("location"), isDefaultAssistant = false),
+            requestablePermissions(listOf("location"), isDefaultAssistant = true),
+        )
+    }
+
+    @Test
     fun everyMappedCapabilityDeclaresAtLeastOnePermission() {
         CAPABILITY_PERMISSIONS.forEach { (capability, permissions) ->
             assertTrue(

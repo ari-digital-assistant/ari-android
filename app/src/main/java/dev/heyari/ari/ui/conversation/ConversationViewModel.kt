@@ -83,8 +83,16 @@ class ConversationViewModel @Inject constructor(
     private val locationProvider: LocationProvider,
     private val voiceSession: VoiceSession,
     private val skillRegistry: SkillRegistry,
+    private val reportSender: dev.heyari.ari.reporting.ReportSender,
     private val application: Application,
 ) : ViewModel() {
+
+    /**
+     * Sends a content report. Returns immediately — WorkManager owns the
+     * delivery from here, including across a dead network and a process death.
+     */
+    fun sendReport(report: dev.heyari.ari.reporting.ContentReport) = reportSender.send(report)
+
 
     private val _state = MutableStateFlow(ConversationState())
     val state: StateFlow<ConversationState> = _state.asStateFlow()
@@ -363,11 +371,15 @@ class ConversationViewModel @Inject constructor(
             }
 
             var attachments: List<Attachment> = emptyList()
+            // Only action responses carry an id; a plain Text answer is
+            // unattributable, and a report on one says so rather than guessing.
+            var skillId: String? = null
             val responseText = when (response) {
                 is FfiResponse.Text -> response.body
                 is FfiResponse.Action -> {
                     val result = actionHandler.handle(response.json, response.skillId)
                     attachments = result.attachments
+                    skillId = response.skillId.takeIf { it.isNotBlank() }
                     result.text
                 }
                 is FfiResponse.Binary -> "[Binary: ${response.mime}, ${response.data.size} bytes]"
@@ -387,6 +399,7 @@ class ConversationViewModel @Inject constructor(
                 text = responseText,
                 isFromUser = false,
                 attachments = attachments,
+                skillId = skillId,
             )
             logRepository.append(ariMessage)
 
@@ -420,6 +433,7 @@ class ConversationViewModel @Inject constructor(
             text = result.text,
             isFromUser = false,
             attachments = result.attachments,
+            skillId = skillId?.takeIf { it.isNotBlank() },
         )
         logRepository.append(message)
         if (result.text.isNotBlank()) speechOutput.speak(result.text)

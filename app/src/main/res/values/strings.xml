@@ -104,6 +104,10 @@
     <string name="skills_fsn_nudge_message">%1$s can show a full-screen alert that takes over your locked screen — like an alarm going off. Turn on full-screen alerts so it can reach you even when your phone is locked.</string>
     <string name="skills_fsn_nudge_confirm">Open settings</string>
     <string name="skills_fsn_nudge_dismiss">Not now</string>
+    <string name="skills_assistant_nudge_title">Send texts by voice?</string>
+    <string name="skills_assistant_nudge_message">%1$s can send a text without you touching the screen — but only while Ari is your default assistant. Without that, Ari opens your messaging app with the message ready and you tap send.</string>
+    <string name="skills_assistant_nudge_confirm">Open settings</string>
+    <string name="skills_assistant_nudge_dismiss">Not now</string>
     <string name="skills_media_nudge_title">Media controls</string>
     <string name="skills_media_nudge_message">%1$s can control playback — pause, skip, and more — if you allow media access.</string>
     <string name="skills_media_nudge_confirm">Open settings</string>
@@ -508,6 +512,7 @@
     <string name="action_reply_message_prepared_chooser">Your message is ready — choose where to send it.</string>
     <string name="action_reply_message_not_installed">You don\'t have %1$s installed.</string>
     <string name="action_reply_message_failed">I couldn\'t prepare that message.</string>
+    <string name="action_reply_message_hands_free_offer">Make me your default assistant and I can send texts like that without you touching anything.</string>
     <string name="action_reply_alarm_no_clock">I couldn\'t find a clock app to set that.</string>
     <string name="action_reply_open_what">What would you like me to open?</string>
     <string name="action_reply_open_opening">Opening %1$s.</string>
@@ -571,4 +576,20 @@
     <string name="model_llm_medium_desc">A good balance of performance and capability (~3.1 GB download, 6 GB+ RAM). Suitable for a wide range of tasks.</string>
     <string name="model_llm_large_name">Large (Gemma 4 E4B)</string>
     <string name="model_llm_large_desc">Most capable (~5 GB download, 8 GB+ RAM). Best for complex tasks and understanding nuanced language, but may be slower and require more resources.</string>
+    <string name="message_menu_copy">Copy</string>
+    <string name="message_menu_report">Report</string>
+    <string name="report_title">Report this response</string>
+    <string name="report_body">This goes to the people who make Ari. Nothing is sent until you tap Send, and only what you see below leaves your device.</string>
+    <string name="report_category_offensive">Offensive or upsetting</string>
+    <string name="report_category_harmful">Dangerous or harmful</string>
+    <string name="report_category_wrong">Wrong or misleading</string>
+    <string name="report_category_other">Something else</string>
+    <string name="report_note_label">Anything to add? (optional)</string>
+    <string name="report_what_is_sent">What gets sent</string>
+    <string name="report_include_prompt">Also send what I said: %1$s</string>
+    <string name="report_send">Send</string>
+    <string name="report_cancel">Cancel</string>
+    <string name="report_skill_title">Report this skill</string>
+    <string name="report_skill_what_is_sent">Which skill gets reported</string>
+    <string name="skills_report_action">Report this skill</string>
 </resources>

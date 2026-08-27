@@ -47,11 +47,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import dev.heyari.ari.R
+import dev.heyari.ari.model.Message
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -241,6 +243,29 @@ fun ConversationScreen(
                 )
             } else {
                 val rows = remember(messages) { MessageGrouping.rows(messages) }
+                // The message the user long-pressed Report on, if any.
+                var reportTarget by remember { mutableStateOf<Message?>(null) }
+
+                reportTarget?.let { target ->
+                    // The user's own words immediately before, so the reviewer
+                    // can see what was asked. Null when Ari opened the exchange.
+                    val prompt = remember(target.id, messages) {
+                        messages.asSequence()
+                            .takeWhile { it.id != target.id }
+                            .lastOrNull { it.isFromUser }
+                            ?.text
+                    }
+                    ReportDialog(
+                        reportedText = target.text,
+                        prompt = prompt,
+                        skillId = target.skillId,
+                        onDismiss = { reportTarget = null },
+                        onSend = { report ->
+                            reportTarget = null
+                            viewModel.sendReport(report)
+                        },
+                    )
+                }
                 val motion = remember { animationsEnabled(context) }
                 // Remember which bubbles have already played their entrance, so
                 // each animates once (on first appearance) and not again when it
@@ -282,6 +307,7 @@ fun ConversationScreen(
                                     cardRepository = viewModel.cardRepository,
                                     assetResolver = viewModel.assetResolver,
                                     onCardAction = viewModel::onCardAction,
+                                    onReport = { reportTarget = it },
                                 )
                             }
                         } else {
@@ -291,6 +317,7 @@ fun ConversationScreen(
                                 cardRepository = viewModel.cardRepository,
                                 assetResolver = viewModel.assetResolver,
                                 onCardAction = viewModel::onCardAction,
+                                onReport = { reportTarget = it },
                             )
                         }
                     }

@@ -110,6 +110,10 @@
     <string name="skills_fsn_nudge_message">%1$s può mostrare un avviso a schermo intero che prende il controllo della schermata di blocco — come una sveglia che suona. Attiva gli avvisi a schermo intero così può raggiungerti anche quando il telefono è bloccato.</string>
     <string name="skills_fsn_nudge_confirm">Apri impostazioni</string>
     <string name="skills_fsn_nudge_dismiss">Non ora</string>
+    <string name="skills_assistant_nudge_title">Inviare SMS con la voce?</string>
+    <string name="skills_assistant_nudge_message">%1$s può inviare un SMS senza che tu tocchi lo schermo — ma solo se Ari è il tuo assistente predefinito. Altrimenti Ari apre la tua app di messaggi con il messaggio già pronto e tocchi tu invia.</string>
+    <string name="skills_assistant_nudge_confirm">Apri impostazioni</string>
+    <string name="skills_assistant_nudge_dismiss">Non ora</string>
     <string name="skills_media_nudge_title">Controlli multimediali</string>
     <string name="skills_media_nudge_message">%1$s può controllare la riproduzione — pausa, avanti e altro — se consenti l\'accesso ai media.</string>
     <string name="skills_media_nudge_confirm">Apri impostazioni</string>
@@ -510,6 +514,7 @@
     <string name="action_reply_message_prepared_chooser">Il tuo messaggio è pronto — scegli dove inviarlo.</string>
     <string name="action_reply_message_not_installed">Non hai installato %1$s.</string>
     <string name="action_reply_message_failed">Non riesco a preparare il messaggio.</string>
+    <string name="action_reply_message_hands_free_offer">Impostami come assistente predefinito e potrò inviare SMS così senza che tu tocchi nulla.</string>
     <string name="action_reply_alarm_no_clock">Non ho trovato un\'app orologio per impostarlo.</string>
     <string name="action_reply_open_what">Cosa devo aprire?</string>
     <string name="action_reply_open_opening">Apro %1$s.</string>
@@ -570,4 +575,20 @@
     <string name="model_llm_medium_desc">Un buon equilibrio tra prestazioni e capacità (~3,1 GB di download, 6 GB+ di RAM). Adatto a un\'ampia gamma di attività.</string>
     <string name="model_llm_large_name">Grande (Gemma 4 E4B)</string>
     <string name="model_llm_large_desc">Il più capace (~5 GB di download, 8 GB+ di RAM). Ideale per attività complesse e per capire un linguaggio sfumato, ma può essere più lento e richiedere più risorse.</string>
+    <string name="message_menu_copy">Copia</string>
+    <string name="message_menu_report">Segnala</string>
+    <string name="report_title">Segnala questa risposta</string>
+    <string name="report_body">Verrà inviata a chi sviluppa Ari. Non viene inviato nulla finché non tocchi Invia, e dal tuo dispositivo esce solo quello che vedi qui sotto.</string>
+    <string name="report_category_offensive">Offensiva o sgradevole</string>
+    <string name="report_category_harmful">Pericolosa o dannosa</string>
+    <string name="report_category_wrong">Sbagliata o fuorviante</string>
+    <string name="report_category_other">Altro</string>
+    <string name="report_note_label">Vuoi aggiungere qualcosa? (facoltativo)</string>
+    <string name="report_what_is_sent">Cosa viene inviato</string>
+    <string name="report_include_prompt">Invia anche quello che ho detto: %1$s</string>
+    <string name="report_send">Invia</string>
+    <string name="report_cancel">Annulla</string>
+    <string name="report_skill_title">Segnala questa skill</string>
+    <string name="report_skill_what_is_sent">Quale skill viene segnalata</string>
+    <string name="skills_report_action">Segnala questa skill</string>
 </resources>

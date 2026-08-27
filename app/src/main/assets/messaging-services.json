@@ -38,7 +38,10 @@
       "display_name": "Messages",
       "packages": ["com.google.android.apps.messaging", "com.android.messaging"],
       "contact_source": "phone",
-      "can_send": true
+      "can_send": true,
+      "url_template": "smsto:{id}?body={text}",
+      "url_fallback": "sms:{id}?body={text}",
+      "intent_action": "sendto"
     },
     {
       "id": "whatsapp",

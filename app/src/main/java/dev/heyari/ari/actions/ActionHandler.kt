@@ -12,6 +12,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.R
 import dev.heyari.ari.locale.AriFfiLocaleProvider
 import dev.heyari.ari.media.openNotificationListenerSettings
+import dev.heyari.ari.messaging.HandsFreeNudge
 import java.util.Locale
 import org.json.JSONObject
 import javax.inject.Inject
@@ -50,6 +51,7 @@ class ActionHandler @Inject constructor(
     private val mediaTransportController: MediaTransportController,
     private val presentationCoordinator: PresentationCoordinator,
     private val localeProvider: AriFfiLocaleProvider,
+    private val handsFreeNudge: HandsFreeNudge,
 ) {
 
     fun handle(json: String, skillId: String): ActionResult.Spoken {
@@ -173,8 +175,13 @@ class ActionHandler @Inject constructor(
      * which it gets, so the phrasing comes from what actually happened —
      * never from what was requested.
      */
-    private fun handleMessage(m: MessageAction): String =
-        when (val r = messageLauncher.send(m)) {
+    private fun handleMessage(m: MessageAction): String {
+        val r = messageLauncher.send(m)
+        return spokenFor(m, r) + handsFreeOffer(m, r)
+    }
+
+    private fun spokenFor(m: MessageAction, r: MessageLauncher.SendResult): String =
+        when (r) {
             is MessageLauncher.SendResult.Sent ->
                 if (m.recipientLabel != null)
                     say(R.string.action_reply_message_sent, m.recipientLabel)
@@ -199,6 +206,22 @@ class ActionHandler @Inject constructor(
                 say(R.string.action_reply_message_failed)
             }
         }
+
+    /**
+     * One extra sentence, at most every six hours, when this message would
+     * have gone hands-free had Ari been the user's default assistant.
+     *
+     * Appended rather than substituted: what actually happened to the message
+     * is the thing the user needs to hear, and an offer that displaced it
+     * would be selling at the cost of informing.
+     */
+    private fun handsFreeOffer(m: MessageAction, r: MessageLauncher.SendResult): String {
+        if (r is MessageLauncher.SendResult.Sent) return ""
+        if (!messageLauncher.handsFreeBlockedByRole(m)) return ""
+        if (!handsFreeNudge.isDue()) return ""
+        handsFreeNudge.markShown()
+        return " " + say(R.string.action_reply_message_hands_free_offer)
+    }
 
     /**
      * Answers a live conversation. Every non-success outcome leaves the user

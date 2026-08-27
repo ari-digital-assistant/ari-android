@@ -44,6 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
@@ -73,7 +74,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.halilibo.richtext.commonmark.Markdown
 import com.halilibo.richtext.ui.material3.RichText
 import dev.heyari.ari.R
+import dev.heyari.ari.assistant.openDefaultAssistantSettings
 import dev.heyari.ari.media.hasNotificationAccess
+import dev.heyari.ari.reporting.ReportKind
+import dev.heyari.ari.ui.conversation.ReportDialog
 import dev.heyari.ari.media.openNotificationListenerSettings
 import dev.heyari.ari.skills.SkillScreenshotCache
 import dev.heyari.ari.ui.components.AriTopBar
@@ -220,7 +224,7 @@ fun SkillDetailScreen(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { viewModel.installById(skillId) }
     fun startInstall() {
-        val missing = missingPermissionsFor(view.capabilities, context)
+        val missing = missingPermissionsFor(view.capabilities, context, viewModel.isDefaultAssistant())
         if (missing.isNotEmpty()) {
             permissionLauncher.launch(missing.toTypedArray())
         } else {
@@ -263,6 +267,59 @@ fun SkillDetailScreen(
             dismissButton = {
                 TextButton(onClick = { pendingFsnNudge = false }) {
                     Text(stringResource(R.string.skills_fsn_nudge_dismiss))
+                }
+            },
+        )
+    }
+
+    var reportingSkill by remember(skillId) { mutableStateOf(false) }
+    if (reportingSkill) {
+        ReportDialog(
+            reportedText = "${view.title} (${skillId})",
+            prompt = null,
+            skillId = skillId,
+            kind = ReportKind.SKILL,
+            onDismiss = { reportingSkill = false },
+            onSend = { report ->
+                reportingSkill = false
+                viewModel.sendReport(report)
+            },
+        )
+    }
+
+    // Post-install nudge for skills that can send a message themselves (the
+    // `send_message` capability). Sending without anybody tapping is only
+    // permitted while Ari is the user's default assistant, so a skill installed
+    // without that role works — it just hands the message to the messaging app
+    // instead. Say so once, here, rather than letting the user discover it the
+    // first time they ask for a text with their hands full.
+    var pendingAssistantNudge by remember(skillId) { mutableStateOf(false) }
+    var assistantNudgeResolved by remember(skillId) { mutableStateOf(false) }
+    LaunchedEffect(isInstalledLocally, view.capabilities) {
+        if (isInstalledLocally && !wasInstalledOnEntry && !assistantNudgeResolved &&
+            view.capabilities.any { it.equals("send_message", ignoreCase = true) }
+        ) {
+            assistantNudgeResolved = true
+            if (!viewModel.isDefaultAssistant()) pendingAssistantNudge = true
+        }
+    }
+
+    if (pendingAssistantNudge) {
+        AlertDialog(
+            onDismissRequest = { pendingAssistantNudge = false },
+            title = { Text(stringResource(R.string.skills_assistant_nudge_title)) },
+            text = { Text(stringResource(R.string.skills_assistant_nudge_message, view.title)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingAssistantNudge = false
+                    openDefaultAssistantSettings(context)
+                }) {
+                    Text(stringResource(R.string.skills_assistant_nudge_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingAssistantNudge = false }) {
+                    Text(stringResource(R.string.skills_assistant_nudge_dismiss))
                 }
             },
         )
@@ -399,6 +456,16 @@ fun SkillDetailScreen(
                 title = view.title,
                 onBack = onBack,
                 actions = {
+                    // Reporting a listing is what stops a skill registry
+                    // reading as an unmoderated app store. In the top bar
+                    // rather than the facts card because a skill with no
+                    // metadata still needs to be reportable.
+                    IconButton(onClick = { reportingSkill = true }) {
+                        Icon(
+                            imageVector = Icons.Filled.Flag,
+                            contentDescription = stringResource(R.string.skills_report_action),
+                        )
+                    }
                     InstallAction(
                         busy = busy,
                         installed = view.installed,
@@ -954,10 +1021,32 @@ internal fun permissionsFor(capabilities: List<String>): List<String> =
  * The permissions [capabilities] need that aren't granted yet. Empty when
  * there's nothing to ask for, which is the common case.
  */
-private fun missingPermissionsFor(capabilities: List<String>, context: Context): List<String> =
-    permissionsFor(capabilities).filter {
+private fun missingPermissionsFor(
+    capabilities: List<String>,
+    context: Context,
+    isDefaultAssistant: Boolean,
+): List<String> =
+    requestablePermissions(capabilities, isDefaultAssistant).filter {
         ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
     }
+
+/**
+ * Permissions Play only lets Ari hold as the registered default assistant, and
+ * which it forbids us from even prompting for until we are.
+ */
+internal val ASSISTANT_ROLE_GATED: Set<String> = setOf(Manifest.permission.SEND_SMS)
+
+/**
+ * What may actually be asked for right now. A skill declaring `send_message`
+ * still installs when Ari isn't the default assistant — SMS simply behaves like
+ * every other service and opens the messaging app — so the permission is
+ * dropped from the request rather than blocking anything.
+ */
+internal fun requestablePermissions(
+    capabilities: List<String>,
+    isDefaultAssistant: Boolean,
+): List<String> =
+    permissionsFor(capabilities).filter { isDefaultAssistant || it !in ASSISTANT_ROLE_GATED }
 
 /**
  * Whether full-screen-intent alerts can currently fire. Below API 34 the

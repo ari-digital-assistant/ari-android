@@ -677,6 +677,7 @@ class VoiceSession @Inject constructor(
         }
 
         var attachments: List<Attachment> = emptyList()
+        var skillId: String? = null
         val responseText = when (response) {
             is FfiResponse.Text -> response.body
             // Voice path doesn't render attachments (the overlay is text-only);
@@ -693,6 +694,9 @@ class VoiceSession @Inject constructor(
             is FfiResponse.Action -> kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
                 val result = actionHandler.handle(response.json, response.skillId)
                 attachments = result.attachments
+                // Only action responses carry an id; a plain Text answer is
+                // unattributable, so a report on one names no skill.
+                skillId = response.skillId.takeIf { it.isNotBlank() }
                 result.text
             }
             is FfiResponse.Binary -> "[Binary: ${response.mime}, ${response.data.size} bytes]"
@@ -728,7 +732,12 @@ class VoiceSession @Inject constructor(
         logRepository.append(Message(text = usedText, isFromUser = true, source = InputSource.Voice))
         if (responseText.isNotBlank() || attachments.isNotEmpty()) {
             logRepository.append(
-                Message(text = responseText, isFromUser = false, attachments = attachments)
+                Message(
+                    text = responseText,
+                    isFromUser = false,
+                    attachments = attachments,
+                    skillId = skillId,
+                )
             )
         }
 

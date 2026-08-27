@@ -47,6 +47,8 @@ private const val SCREENSHOT_PLATFORM = "android"
 @HiltViewModel
 class SkillsViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
+    private val assistantRole: dev.heyari.ari.assistant.AssistantRole,
+    private val reportSender: dev.heyari.ari.reporting.ReportSender,
     private val skillRegistry: SkillRegistry,
     private val engineHolder: EngineHolder,
     private val assistantRegistry: AssistantRegistry,
@@ -59,6 +61,17 @@ class SkillsViewModel @Inject constructor(
     private val routerPolicy: dev.heyari.ari.router.RouterPolicy,
     @dev.heyari.ari.di.ApplicationScope private val appScope: kotlinx.coroutines.CoroutineScope,
 ) : ViewModel() {
+
+    /**
+     * Whether Ari is the user's default assistant, which gates both the
+     * `SEND_SMS` request and the post-install prompt about hands-free
+     * texting. Read live rather than cached — the user can change it in
+     * system settings while this screen is open.
+     */
+    fun isDefaultAssistant(): Boolean = assistantRole.isDefaultAssistant()
+
+    /** Sends a report about a skill in the store. WorkManager owns delivery. */
+    fun sendReport(report: dev.heyari.ari.reporting.ContentReport) = reportSender.send(report)
 
     private val skillsDirPath: String by lazy {
         File(context.filesDir, "skills").absolutePath

@@ -7,6 +7,7 @@ import android.telephony.SmsManager
 import android.util.Log
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.heyari.ari.assistant.AssistantRole
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,17 +19,29 @@ import javax.inject.Singleton
  * cannot be caught by the user looking at a compose box, which is why the
  * skill reads the message back and asks first unless told not to.
  *
- * Refusal is not failure. Without [Manifest.permission.SEND_SMS] this reports
- * [Result.NoPermission] and the caller opens the messaging app with the text
- * filled in instead — the message still gets there, it just costs a tap.
+ * Refusal is not failure. When Ari can't send outright this reports why and
+ * the caller opens the messaging app with the recipient and text filled in
+ * instead — the message still gets there, it just costs a tap.
+ *
+ * Two things have to be true to send. Ari must hold [Manifest.permission.SEND_SMS],
+ * and it must currently be the device's default assistant: that role is the
+ * grounds on which Play permits an app like this to hold the permission at all,
+ * and the policy requires we stop the moment the user picks another assistant.
+ * The role is therefore checked on every send rather than trusted from install
+ * time, and it is checked *first* — without it the permission must not be used
+ * even where an earlier grant is technically still in place.
  */
 @Singleton
 class SmsSender @Inject constructor(
     @param:ApplicationContext private val context: Context,
+    private val assistantRole: AssistantRole,
 ) {
     sealed interface Result {
         data object Sent : Result
         data object NoPermission : Result
+
+        /** Ari isn't the default assistant, so the permission may not be used. */
+        data object NotDefaultAssistant : Result
         data class Failed(val reason: String) : Result
     }
 
@@ -38,6 +51,7 @@ class SmsSender @Inject constructor(
 
     fun send(destination: String, text: String): Result {
         if (destination.isBlank() || text.isBlank()) return Result.Failed("nothing to send")
+        if (!assistantRole.isDefaultAssistant()) return Result.NotDefaultAssistant
         if (!hasPermission()) return Result.NoPermission
         // getSystemService, not the API 31-deprecated SmsManager.getDefault().
         val sms = context.getSystemService(SmsManager::class.java)

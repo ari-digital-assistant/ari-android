@@ -872,22 +872,8 @@ class SettingsViewModel @Inject constructor(
         application.startActivity(intent)
     }
 
-    fun openDefaultAssistantSettings() {
-        // ROLE_ASSISTANT is held by Google on most devices and createRequestRoleIntent
-        // typically returns null, so we deep-link into the system Settings page where
-        // the user can manually pick Ari.
-        val intent = Intent(Settings.ACTION_VOICE_INPUT_SETTINGS).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        runCatching { application.startActivity(intent) }.onFailure {
-            // Fall back to general settings if voice input page is unavailable
-            application.startActivity(
-                Intent(Settings.ACTION_SETTINGS).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-            )
-        }
-    }
+    fun openDefaultAssistantSettings() =
+        dev.heyari.ari.assistant.openDefaultAssistantSettings(application)
 
     fun downloadModel(model: SttModel) {
         downloadManager.download(model)

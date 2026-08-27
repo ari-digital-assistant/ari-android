@@ -104,6 +104,7 @@ object EngineModule {
         mediaTransportController: dev.heyari.ari.actions.MediaTransportController,
         presentationCoordinator: dev.heyari.ari.actions.PresentationCoordinator,
         localeProvider: dev.heyari.ari.locale.AriFfiLocaleProvider,
+        handsFreeNudge: dev.heyari.ari.messaging.HandsFreeNudge,
     ): ActionHandler = ActionHandler(
         context,
         appLauncher,
@@ -116,5 +117,6 @@ object EngineModule {
         mediaTransportController,
         presentationCoordinator,
         localeProvider,
+        handsFreeNudge,
     )
 }

@@ -1,6 +1,9 @@
 package dev.heyari.ari.ui.conversation
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,15 +21,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -35,6 +44,7 @@ import dev.heyari.ari.assets.AssetResolver
 import dev.heyari.ari.data.card.CardAction
 import dev.heyari.ari.data.card.CardStateRepository
 import dev.heyari.ari.model.Attachment
+import dev.heyari.ari.model.Message
 
 private val BIG = 18.dp
 private val TAIL = 4.dp
@@ -46,6 +56,7 @@ fun MessageBubble(
     cardRepository: CardStateRepository? = null,
     assetResolver: AssetResolver? = null,
     onCardAction: (cardId: String, action: CardAction) -> Unit = { _, _ -> },
+    onReport: (Message) -> Unit = {},
 ) {
     val message = row.message
     val isUser = message.isFromUser
@@ -89,12 +100,23 @@ fun MessageBubble(
                 )
             }
 
+            // Long-press menu. Copy is on every bubble because people expect it
+            // on a chat message; Report is only on Ari's, because reporting your
+            // own words to the developer is meaningless.
+            var menuOpen by remember(message.id) { mutableStateOf(false) }
+            val context = LocalContext.current
+            Box {
             Surface(
                 shape = shape,
                 color = if (isUser) MaterialTheme.colorScheme.primaryContainer
                         else MaterialTheme.colorScheme.secondaryContainer,
                 tonalElevation = if (isUser) 0.dp else 2.dp,
-                modifier = Modifier.widthIn(max = 300.dp),
+                modifier = Modifier
+                    .widthIn(max = 300.dp)
+                    .combinedClickable(
+                        onClick = {},
+                        onLongClick = { menuOpen = true },
+                    ),
             ) {
                 // IntrinsicSize.Min lets the accent bar match the text's height
                 // exactly; the enclosing Surface clips it to the bubble's shape,
@@ -117,6 +139,27 @@ fun MessageBubble(
                                 else MaterialTheme.colorScheme.onSecondaryContainer,
                     )
                 }
+            }
+
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.message_menu_copy)) },
+                    onClick = {
+                        menuOpen = false
+                        context.getSystemService(ClipboardManager::class.java)
+                            ?.setPrimaryClip(ClipData.newPlainText(null, message.text))
+                    },
+                )
+                if (!isUser) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.message_menu_report)) },
+                        onClick = {
+                            menuOpen = false
+                            onReport(message)
+                        },
+                    )
+                }
+            }
             }
 
             // Trailing modality gutter — mirror of Ari's leading avatar gutter.
