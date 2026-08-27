@@ -29,11 +29,17 @@
           normal permission, auto-granted at install, allowlisted for timer
           and reminder apps. No runtime prompt.
         - SCHEDULE_EXACT_ALARM is kept for API 31-32 where USE_EXACT_ALARM
-          isn't defined. `canScheduleExactAlarms()` returns true whenever
-          either is in effect.
+          isn't defined, and capped there with maxSdkVersion. Uncapped it
+          keeps being requested on 33+, where Play reads it as a broad
+          exact-alarm request rather than the allowlisted timer one, and
+          asks us to justify a permission we don't use at that level.
+          `canScheduleExactAlarms()` returns true whenever either is in
+          effect.
     -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission
+        android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
     <!--
         SET_ALARM is unrelated to the exact-alarm permissions above: it's the
         normal, auto-granted permission for the public AlarmClock intent family
