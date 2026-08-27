@@ -13,3 +13,8 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Upload-key credentials. app/debug.keystore is committed on purpose and stays
+# tracked; nothing that signs a release ever should be.
+/keystore.properties
+*.jks

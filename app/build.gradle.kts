@@ -1,3 +1,13 @@
+import java.util.Properties
+
+// Upload-key credentials, kept out of the repo. Absent on a machine that has
+// never needed to sign a release — `assembleRelease` there produces an
+// unsigned APK rather than failing, which is what CI and a fresh clone want.
+val uploadKeyProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -14,6 +24,14 @@ android {
         applicationId = "dev.heyari.ari"
         minSdk = 29
         targetSdk = 36
+        // Bump by hand, once per upload to Play, and never for a local build.
+        // Play refuses a versionCode it has already seen and there is no way
+        // back down, so a scheme that derives this from anything is a scheme
+        // that can silently collide: the APK is half `ari-engine`, and a
+        // commit count here would repeat itself every time only the Rust
+        // moved. Unrelated to versionName, which is the string users see —
+        // five test uploads in a week is 1..5 against a versionName that
+        // never budges.
         versionCode = 1
         versionName = "0.1.0"
 
@@ -68,6 +86,28 @@ android {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+
+        // The upload key. Play re-signs with its own app signing key before
+        // anything reaches a device, so this proves "Keith uploaded it" and
+        // nothing more — and Play Console can reset it if it's ever lost.
+        // Sideloaded release builds are a different matter: those carry THIS
+        // certificate, so its SHA-256 is what heyari.dev's assetlinks.json
+        // needs for App Links to work off-store.
+        if (uploadKeyProperties.isNotEmpty()) {
+            create("release") {
+                storeFile = file(uploadKeyProperties.getProperty("storeFile"))
+                storePassword = uploadKeyProperties.getProperty("storePassword")
+                keyAlias = uploadKeyProperties.getProperty("keyAlias")
+                keyPassword = uploadKeyProperties.getProperty("keyPassword")
+                // v3 carries a rotation lineage, so this certificate can one
+                // day vouch for its replacement instead of the new one looking
+                // like a different app. v2 is spelled out beside it because
+                // AGP only infers the scheme set while you set none of it by
+                // hand — enable v3 alone and v2 drops off silently.
+                enableV2Signing = true
+                enableV3Signing = true
+            }
+        }
     }
 
     buildTypes {
@@ -75,6 +115,7 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
         release {
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
