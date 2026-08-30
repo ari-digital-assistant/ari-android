@@ -17,11 +17,11 @@
         <exclude domain="file" path="wake-captures-accepted/" />
         <exclude domain="file" path="utterance-captures/" />
         <!--
-          API keys and OAuth tokens (SecretStore's EncryptedSharedPreferences).
-          Excluded for two reasons and either would do: they are the user's
-          credentials, and the AES key encrypting them lives in the Android
-          Keystore, which is never backed up. Restoring the file alone yields
-          ciphertext nothing can read.
+          API keys and OAuth tokens (SecretStore). Excluded for two reasons
+          and either would do: they are the user's credentials, and the
+          AES-256-GCM key encrypting them lives in the Android Keystore, which
+          is never backed up. Restoring the file alone yields ciphertext
+          nothing can read.
         -->
         <exclude domain="sharedpref" path="ari_secrets.xml" />
     </cloud-backup>
