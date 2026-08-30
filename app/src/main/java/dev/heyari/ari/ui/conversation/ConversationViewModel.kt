@@ -810,11 +810,10 @@ class ConversationViewModel @Inject constructor(
         // run that IS the one-shot host and strand a hot mic. oneShotActive kept
         // in the OR so the transient host stays flagged one-shot.
         val oneShot = !WakeWordService.isRunning || WakeWordService.oneShotActive
-        val intent = Intent(application, WakeWordService::class.java).apply {
+        WakeWordService.start(application) {
             action = WakeWordService.ACTION_START_VOICE_TURN
             putExtra(WakeWordService.EXTRA_ONE_SHOT, oneShot)
         }
-        ContextCompat.startForegroundService(application, intent)
     }
 
     /**
@@ -828,11 +827,10 @@ class ConversationViewModel @Inject constructor(
         if (!speechRecognizer.isModelLoaded) return
         _state.update { it.copy(isDictating = true) }
         val oneShot = !WakeWordService.isRunning || WakeWordService.oneShotActive
-        val intent = Intent(application, WakeWordService::class.java).apply {
+        WakeWordService.start(application) {
             action = WakeWordService.ACTION_START_DICTATION
             putExtra(WakeWordService.EXTRA_ONE_SHOT, oneShot)
         }
-        ContextCompat.startForegroundService(application, intent)
 
         // Safety net: if the host never brings the session up (FGS blocked,
         // model unloaded), no Idle transition arrives to clear the flag. Clear
@@ -868,10 +866,7 @@ class ConversationViewModel @Inject constructor(
             settingsRepository.setListeningMode(mode)
         }
         if (mode != ListeningMode.NEVER && !WakeWordService.isRunning) {
-            ContextCompat.startForegroundService(
-                application,
-                Intent(application, WakeWordService::class.java),
-            )
+            WakeWordService.start(application)
         }
         // Suppress the poll loop briefly while the FGS finishes its lifecycle
         // transition, otherwise the user sees a flicker.

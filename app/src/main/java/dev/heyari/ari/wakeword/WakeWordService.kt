@@ -8,6 +8,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
@@ -344,6 +345,21 @@ class WakeWordService : Service() {
     private fun startListening() {
         if (isListening) return
 
+        // onStartCommand's gate does not cover this path, and cannot. The
+        // decision collector started in onCreate runs on its own coroutine, so
+        // a start already refused for want of RECORD_AUDIO still arrives here
+        // milliseconds later — stopSelf() schedules a stop, it doesn't halt
+        // work in flight. Without this the app died on first launch for anyone
+        // who hadn't granted the microphone yet: AudioRecord came back
+        // uninitialised and startRecording() threw off a pool thread.
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            Log.w(TAG, "RECORD_AUDIO not granted — not opening the mic")
+            stopSelf()
+            return
+        }
+
         // Datastore read on Main is a sub-millisecond cache hit after first
         // access — fine for service startup. We need it sync because the rest
         // of startListening() is sync and there's no audio loop yet to defer
@@ -372,6 +388,19 @@ class WakeWordService : Service() {
         )
 
         val record = openAudioRecord(currentSource)
+        // The constructor reports failure through `state`, not by throwing;
+        // it is startRecording() that throws, and by then the exception is on
+        // whichever thread got here. A missing permission is the common cause
+        // and is handled above — this catches the rest, chiefly another app
+        // holding the mic exclusively.
+        if (record.state != AudioRecord.STATE_INITIALIZED) {
+            Log.e(TAG, "AudioRecord would not initialise — standing down")
+            record.release()
+            detector?.close()
+            detector = null
+            stopSelf()
+            return
+        }
         audioRecord = record
 
         record.startRecording()
@@ -433,7 +462,7 @@ class WakeWordService : Service() {
         }
     }
 
-    @SuppressLint("MissingPermission") // gated on RECORD_AUDIO in onStartCommand()
+    @SuppressLint("MissingPermission") // gated on RECORD_AUDIO in startListening()
     private fun openAudioRecord(source: Int): AudioRecord {
         val bufferSize = AudioRecord.getMinBufferSize(
             SAMPLE_RATE,
@@ -744,6 +773,38 @@ class WakeWordService : Service() {
 
     companion object {
         private const val TAG = "WakeWordService"
+
+        /**
+         * Start the service, but only when the microphone is actually
+         * available to it. Returns false when the start was declined.
+         *
+         * This gate cannot live in `onStartCommand`. `startForegroundService`
+         * is a promise that `startForeground` will follow within seconds, and
+         * Android kills the whole app with
+         * `ForegroundServiceDidNotStartInTimeException` when it doesn't — so
+         * standing down inside the service breaks the contract rather than
+         * honouring it. A MICROPHONE-typed service can't keep the promise
+         * without RECORD_AUDIO either, because `startForeground` throws
+         * SecurityException on A14+. The only safe way to decline is to never
+         * make the promise, which means checking out here, before the start.
+         *
+         * Every caller goes through this rather than each remembering: boot,
+         * package-replaced, the notification, the settings switch, onboarding,
+         * tap-to-talk, dictation and the assist gesture.
+         */
+        fun start(context: Context, configure: Intent.() -> Unit = {}): Boolean {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                Log.w(TAG, "RECORD_AUDIO not granted — not starting the service")
+                return false
+            }
+            ContextCompat.startForegroundService(
+                context,
+                Intent(context, WakeWordService::class.java).apply(configure),
+            )
+            return true
+        }
 
         private const val NOTIFICATION_ID = 1
         private const val DETECTION_NOTIFICATION_ID = 2

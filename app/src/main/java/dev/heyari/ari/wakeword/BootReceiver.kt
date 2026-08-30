@@ -97,9 +97,8 @@ class BootReceiver : BroadcastReceiver() {
         }
 
         Log.i(TAG, "Boot received — auto-starting wake word service")
-        val serviceIntent = Intent(context, WakeWordService::class.java)
         try {
-            ContextCompat.startForegroundService(context, serviceIntent)
+            WakeWordService.start(context)
         } catch (t: Throwable) {
             Log.e(TAG, "Failed to start WakeWordService on boot", t)
             postTapToStartNotification(context)

@@ -119,12 +119,9 @@ class MainActivity : ComponentActivity() {
         activityScope.launch {
             if (settingsRepository.listeningMode.first() == ListeningMode.NEVER) return@launch
             Log.i(TAG, "Capture host missing while listening is enabled — starting it")
-            // A start that's somehow still refused lands in the service's own
-            // startForeground catch, which posts the tap-to-start recovery.
-            ContextCompat.startForegroundService(
-                this@MainActivity,
-                Intent(this@MainActivity, WakeWordService::class.java),
-            )
+            // Declined outright when the microphone isn't granted, which is
+            // the normal state on a fresh install before onboarding finishes.
+            WakeWordService.start(this@MainActivity)
         }
     }
 

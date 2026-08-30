@@ -22,10 +22,7 @@ class StartListeningActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.i(TAG, "Tap-to-start trampoline — launching WakeWordService")
-        ContextCompat.startForegroundService(
-            this,
-            Intent(this, WakeWordService::class.java)
-        )
+        WakeWordService.start(this)
         finish()
         suppressCloseAnimation()
     }

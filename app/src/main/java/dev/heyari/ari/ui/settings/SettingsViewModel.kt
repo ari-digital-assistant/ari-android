@@ -777,14 +777,7 @@ class SettingsViewModel @Inject constructor(
      */
     private fun ensureListeningHostRunning() {
         if (WakeWordService.isRunning) return
-        if (ContextCompat.checkSelfPermission(
-                application, Manifest.permission.RECORD_AUDIO
-            ) != PackageManager.PERMISSION_GRANTED
-        ) return
-        ContextCompat.startForegroundService(
-            application,
-            Intent(application, WakeWordService::class.java),
-        )
+        WakeWordService.start(application)
     }
 
     private fun readPermissions(): PermissionStatus {
@@ -944,9 +937,8 @@ class SettingsViewModel @Inject constructor(
 
     private fun bounceWakeWordService() {
         if (WakeWordService.isRunning) {
-            val intent = Intent(application, WakeWordService::class.java)
-            application.stopService(intent)
-            ContextCompat.startForegroundService(application, intent)
+            application.stopService(Intent(application, WakeWordService::class.java))
+            WakeWordService.start(application)
         }
     }
 

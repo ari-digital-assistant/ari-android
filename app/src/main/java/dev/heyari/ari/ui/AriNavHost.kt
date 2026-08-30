@@ -412,8 +412,7 @@ fun AriNavHost(
                     onboardingViewModel = onboardingViewModel,
                     onNext = {
                         if (wizardState.startListeningNow) {
-                            val intent = Intent(context, WakeWordService::class.java)
-                            ContextCompat.startForegroundService(context, intent)
+                            WakeWordService.start(context)
                         }
                         navController.navigate(Routes.ONBOARDING_LISTENING)
                     },
