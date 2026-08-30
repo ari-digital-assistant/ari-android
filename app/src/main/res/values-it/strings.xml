@@ -282,6 +282,14 @@
     <string name="voice_overlay_thinking">Ci sto pensando…</string>
     <string name="voice_overlay_dismiss">Chiudi</string>
 
+    <!-- Prominent disclosure shown before Android's microphone prompt. -->
+    <string name="mic_disclosure_title">Ari ascolta per sentire \"Hey Ari\"</string>
+    <string name="mic_disclosure_background">Per risponderti quando pronunci la parola di attivazione, Ari usa il microfono in secondo piano, anche quando l\'app è chiusa e lo schermo è spento. Una notifica permanente compare ogni volta che è in ascolto, e sei tu a decidere quando ascolta, dalle Impostazioni.</string>
+    <string name="mic_disclosure_on_device">Quell\'audio viene analizzato su questo dispositivo alla ricerca della parola di attivazione e scartato via via. Non viene salvato nulla a meno che tu non attivi le opzioni di registrazione nelle Impostazioni, disattivate per impostazione predefinita. Anche quello che dici dopo viene trascritto su questo dispositivo, a meno che non scelga tu un servizio di trascrizione nel cloud.</string>
+    <string name="mic_disclosure_next">Android ti chiederà ora il permesso per il microfono.</string>
+    <string name="mic_disclosure_continue">Continua</string>
+    <string name="mic_disclosure_not_now">Non ora</string>
+
     <!-- Permissions section (used by onboarding + settings) -->
     <string name="permission_microphone_label">Microfono</string>
     <string name="permission_microphone_description">Necessario per la parola di attivazione e l\'input vocale</string>

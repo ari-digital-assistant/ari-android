@@ -28,6 +28,10 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -44,6 +48,7 @@ import dev.heyari.ari.stt.ModelDownloadState
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import dev.heyari.ari.stt.SttMode
 import dev.heyari.ari.stt.SttModel
+import dev.heyari.ari.ui.components.MicDisclosureDialog
 import dev.heyari.ari.ui.settings.LlmModelStatus
 import dev.heyari.ari.ui.settings.ModelStatus
 import dev.heyari.ari.ui.settings.PermissionStatus
@@ -70,6 +75,11 @@ internal fun PermissionsSection(
     showFsn: Boolean = true,
     onOpenFsnSettings: () -> Unit = {},
 ) {
+    // Both callers of this section — onboarding and Settings — can be the
+    // first place a user is asked for the microphone, so the disclosure lives
+    // here rather than in either screen.
+    var showMicDisclosure by rememberSaveable { mutableStateOf(false) }
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         PermissionRow(
             label = stringResource(R.string.permission_microphone_label),
@@ -80,7 +90,9 @@ internal fun PermissionsSection(
                 if (permissions.recordAudio) R.string.permission_status_granted
                 else R.string.permission_status_grant
             ),
-            onAction = if (permissions.recordAudio) onOpenAppSettings else onRequestRecordAudio,
+            onAction = {
+                if (permissions.recordAudio) onOpenAppSettings() else showMicDisclosure = true
+            },
         )
 
         PermissionRow(
@@ -134,6 +146,16 @@ internal fun PermissionsSection(
                 onAction = onOpenFsnSettings,
             )
         }
+    }
+
+    if (showMicDisclosure) {
+        MicDisclosureDialog(
+            onDismiss = { showMicDisclosure = false },
+            onContinue = {
+                showMicDisclosure = false
+                onRequestRecordAudio()
+            },
+        )
     }
 }
 

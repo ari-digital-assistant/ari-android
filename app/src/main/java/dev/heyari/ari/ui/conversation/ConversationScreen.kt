@@ -42,6 +42,7 @@ import androidx.compose.material3.TextButton
 import dev.heyari.ari.listening.ListeningMode
 import dev.heyari.ari.model.ConversationState
 import dev.heyari.ari.ui.components.AriTopBar
+import dev.heyari.ari.ui.components.MicDisclosureDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -102,6 +103,12 @@ fun ConversationScreen(
         onVoicePermissionsGranted.value = {}
     }
 
+    // Permissions a request is waiting on while the microphone disclosure is
+    // up; null when nothing is being disclosed. Plain `remember` to match
+    // [onVoicePermissionsGranted] — the stashed callback can't survive process
+    // death either, so there's nothing to be gained by outliving it here.
+    var pendingVoicePermissions by remember { mutableStateOf<List<String>?>(null) }
+
     // Runs [onGranted] immediately if the voice permissions are already held,
     // otherwise stashes it and launches the request; the launcher callback runs
     // it once RECORD_AUDIO is granted. Shared by the wake switch and the mic tap
@@ -127,8 +134,25 @@ fun ConversationScreen(
             if (!hasNotifications && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 needed.add(Manifest.permission.POST_NOTIFICATIONS)
             }
-            permissionLauncher.launch(needed.toTypedArray())
+            // The microphone is the one that has to be explained before
+            // Android asks. A request for notifications alone — the mic
+            // already granted — goes straight through.
+            if (hasAudio) permissionLauncher.launch(needed.toTypedArray())
+            else pendingVoicePermissions = needed
         }
+    }
+
+    pendingVoicePermissions?.let { needed ->
+        MicDisclosureDialog(
+            onDismiss = {
+                pendingVoicePermissions = null
+                onVoicePermissionsGranted.value = {}
+            },
+            onContinue = {
+                pendingVoicePermissions = null
+                permissionLauncher.launch(needed.toTypedArray())
+            },
+        )
     }
 
     // Refresh on every entry into RESUMED (handles activity resume) AND on every

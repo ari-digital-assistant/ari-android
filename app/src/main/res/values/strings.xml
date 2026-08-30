@@ -280,6 +280,18 @@
     <string name="voice_overlay_thinking">Thinking…</string>
     <string name="voice_overlay_dismiss">Dismiss</string>
 
+    <!-- Prominent disclosure shown before Android's microphone prompt. Play
+         requires background microphone use to be explained in the app itself,
+         ahead of the request. Keep these truthful: the recording options and
+         the cloud transcription services they mention are both off by default,
+         and if that ever changes this text has to change with it. -->
+    <string name="mic_disclosure_title">Ari listens for \"Hey Ari\"</string>
+    <string name="mic_disclosure_background">To answer when you say the wake word, Ari uses the microphone in the background — while the app is closed and your screen is off. An ongoing notification appears whenever it is listening, and you choose when it listens in Settings.</string>
+    <string name="mic_disclosure_on_device">That audio is checked for the wake word on this device and discarded as it goes. Nothing is saved unless you switch on the recording options in Settings, which are off by default. What you say afterwards is transcribed on this device too, unless you pick a cloud transcription service yourself.</string>
+    <string name="mic_disclosure_next">Android will ask for the microphone next.</string>
+    <string name="mic_disclosure_continue">Continue</string>
+    <string name="mic_disclosure_not_now">Not now</string>
+
     <!-- Permissions section (used by onboarding + settings) -->
     <string name="permission_microphone_label">Microphone</string>
     <string name="permission_microphone_description">Required for wake word and speech input</string>
