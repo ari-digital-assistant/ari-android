@@ -25,7 +25,13 @@ class AriFfiAuthorizeProvider @Inject constructor(
 ) : FfiAuthorizeProvider {
 
     override fun authorize(req: FfiAuthorizeRequest): FfiAuthorizeResult {
-        val handle = coordinator.begin(timeoutMs = req.timeoutMs.toLong())
+        // The skill names a timeout, but only the host knows what waiting
+        // costs — this parks a thread, and the Home Assistant skill asks for
+        // five minutes. Nobody who is going to finish an OAuth flow takes
+        // longer than the ceiling, and returning to Ari cancels it sooner
+        // anyway (see AuthorizeCoordinator.onResumed).
+        val timeout = req.timeoutMs.toLong().coerceAtMost(MAX_TIMEOUT_MS)
+        val handle = coordinator.begin(timeoutMs = timeout)
         return try {
             val customTabs = CustomTabsIntent.Builder().build()
             customTabs.intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -49,5 +55,8 @@ class AriFfiAuthorizeProvider @Inject constructor(
     companion object {
         /** The verified App Link this app intercepts; must match AndroidManifest. */
         const val OAUTH_REDIRECT_URI = "https://heyari.dev/oauth/callback"
+
+        /** Two minutes. The skills ask for more; they don't pay for it. */
+        private const val MAX_TIMEOUT_MS = 120_000L
     }
 }
