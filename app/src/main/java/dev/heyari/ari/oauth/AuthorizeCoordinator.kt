@@ -38,11 +38,17 @@ class AuthorizeCoordinator @Inject constructor() {
     private val lock = Any()
     private var pending: CompletableDeferred<Map<String, String>>? = null
 
+    /** Set once Ari has actually gone to the background for this attempt, so
+     *  resuming can tell "the user came back without finishing" apart from the
+     *  moment before the browser has covered us. */
+    private var leftForBrowser = false
+
     fun begin(timeoutMs: Long): AuthorizeHandle {
         val d = CompletableDeferred<Map<String, String>>()
         synchronized(lock) {
             pending?.completeExceptionally(CancelledAuthorize())
             pending = d
+            leftForBrowser = false
         }
         return AuthorizeHandle(d, timeoutMs)
     }
@@ -52,6 +58,38 @@ class AuthorizeCoordinator @Inject constructor() {
         synchronized(lock) {
             pending?.complete(params)
             pending = null
+        }
+    }
+
+    /** Ari went to the background — the browser is presumably up. */
+    fun onBackgrounded() {
+        synchronized(lock) {
+            if (pending != null) leftForBrowser = true
+        }
+    }
+
+    /**
+     * Ari is in front again. If an authorization is still waiting and we had
+     * gone away for the browser, the user came back without finishing it.
+     *
+     * Abandoning it matters far more than it looks. The engine call that is
+     * blocked on this holds the engine-wide mutex, the same one `process_input`
+     * takes — so a sign-in walked away from left Ari deaf to everything, not
+     * just this button, until the skill's five-minute timeout expired. Closing
+     * and reopening the app didn't help because the process, and therefore the
+     * held lock, survived.
+     *
+     * Ordering makes this safe against the success path: the callback Activity
+     * delivers and clears `pending` before we are resumed, so there is nothing
+     * left here to cancel.
+     */
+    fun onResumed(): Boolean {
+        synchronized(lock) {
+            val d = pending
+            if (d == null || !leftForBrowser) return false
+            pending = null
+            leftForBrowser = false
+            return d.completeExceptionally(CancelledAuthorize())
         }
     }
 }

@@ -12,6 +12,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
 import dev.heyari.ari.data.SettingsRepository
+import dev.heyari.ari.oauth.AuthorizeCoordinator
 import dev.heyari.ari.deeplink.skillDeepLinkRoute
 import dev.heyari.ari.listening.ListeningMode
 import dev.heyari.ari.models.ModelUpdateNotifier
@@ -34,6 +35,7 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    @Inject lateinit var authorizeCoordinator: AuthorizeCoordinator
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var updatesRepository: UpdatesRepository
 
@@ -100,6 +102,17 @@ class MainActivity : ComponentActivity() {
         // return-to-foreground.
         activityScope.launch { updatesRepository.recordLaunch() }
         startListeningHostIfNeeded()
+        // Back from the browser without finishing a sign-in. The engine thread
+        // waiting on it holds the engine-wide mutex, so leaving it to time out
+        // makes Ari deaf to everything for five minutes.
+        if (authorizeCoordinator.onResumed()) {
+            Log.i(TAG, "sign-in abandoned — released the engine")
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        authorizeCoordinator.onBackgrounded()
     }
 
     /**

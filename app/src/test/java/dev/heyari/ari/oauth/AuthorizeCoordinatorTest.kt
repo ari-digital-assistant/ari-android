@@ -1,33 +1,83 @@
 package dev.heyari.ari.oauth
 
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
+/**
+ * Abandoning a sign-in has to release the engine thread waiting on it.
+ *
+ * That thread holds the engine-wide mutex — the same one `process_input` takes
+ * — so an authorization left hanging made Ari deaf to everything until the
+ * skill's five-minute timeout, and surviving the app being closed and reopened
+ * because the process, and the held lock, survived too.
+ */
 class AuthorizeCoordinatorTest {
-    @Test fun deliver_completes_a_pending_await() = runBlocking {
-        val c = AuthorizeCoordinator()
-        val handle = c.begin(timeoutMs = 5_000)
-        launch { c.deliver(mapOf("code" to "xyz", "state" to "s1")) }
-        val outcome = handle.await()
-        assertEquals(AuthorizeOutcome.Success(mapOf("code" to "xyz", "state" to "s1")), outcome)
+
+    private val coordinator = AuthorizeCoordinator()
+
+    @Test
+    fun comingBackWithoutFinishingCancelsTheWait() {
+        val handle = coordinator.begin(timeoutMs = 300_000)
+        coordinator.onBackgrounded()
+        assertTrue(coordinator.onResumed())
+        assertEquals(AuthorizeOutcome.Cancelled, runBlocking { handle.await() })
     }
 
-    @Test fun timeout_yields_timeout_outcome() = runBlocking {
-        val c = AuthorizeCoordinator()
-        val handle = c.begin(timeoutMs = 50)
-        val outcome = handle.await() // nothing delivered
-        assertEquals(AuthorizeOutcome.Timeout, outcome)
+    @Test
+    fun resumingBeforeWeEverLeftDoesNothing() {
+        // The browser takes a moment to cover us. Cancelling in that window
+        // would kill the sign-in the user just asked for.
+        coordinator.begin(timeoutMs = 300_000)
+        assertFalse(coordinator.onResumed())
     }
 
-    @Test fun new_begin_cancels_a_stale_pending() = runBlocking {
-        val c = AuthorizeCoordinator()
-        val first = c.begin(timeoutMs = 5_000)
-        val second = c.begin(timeoutMs = 5_000) // supersedes
-        val firstOutcome = first.await()
-        assertEquals(AuthorizeOutcome.Cancelled, firstOutcome)
-        launch { c.deliver(mapOf("code" to "ok")) }
-        assertEquals(AuthorizeOutcome.Success(mapOf("code" to "ok")), second.await())
+    @Test
+    fun aDeliveredCallbackIsNotCancelledByTheResumeThatFollowsIt() {
+        // The success path: the callback Activity delivers and clears the
+        // pending wait before MainActivity is resumed behind it.
+        val handle = coordinator.begin(timeoutMs = 300_000)
+        coordinator.onBackgrounded()
+        coordinator.deliver(mapOf("code" to "abc123", "state" to "s"))
+        assertFalse(coordinator.onResumed())
+        val outcome = runBlocking { handle.await() }
+        assertEquals(AuthorizeOutcome.Success(mapOf("code" to "abc123", "state" to "s")), outcome)
+    }
+
+    @Test
+    fun resumingTwiceOnlyCancelsOnce() {
+        coordinator.begin(timeoutMs = 300_000)
+        coordinator.onBackgrounded()
+        assertTrue(coordinator.onResumed())
+        assertFalse(coordinator.onResumed())
+    }
+
+    @Test
+    fun nothingPendingIsNotSomethingToCancel() {
+        coordinator.onBackgrounded()
+        assertFalse(coordinator.onResumed())
+    }
+
+    @Test
+    fun aFreshAttemptSupersedesOneLeftHanging() {
+        val first = coordinator.begin(timeoutMs = 300_000)
+        val second = coordinator.begin(timeoutMs = 300_000)
+        assertEquals(AuthorizeOutcome.Cancelled, runBlocking { first.await() })
+        coordinator.deliver(mapOf("code" to "z"))
+        assertEquals(
+            AuthorizeOutcome.Success(mapOf("code" to "z")),
+            runBlocking { second.await() },
+        )
+    }
+
+    @Test
+    fun aNewAttemptClearsTheBackgroundedFlagFromTheLastOne() {
+        // Otherwise the first thing that resumes after a retry cancels it.
+        coordinator.begin(timeoutMs = 300_000)
+        coordinator.onBackgrounded()
+        coordinator.begin(timeoutMs = 300_000)
+        assertFalse(coordinator.onResumed())
     }
 }
