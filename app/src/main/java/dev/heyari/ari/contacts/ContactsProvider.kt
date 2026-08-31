@@ -140,20 +140,51 @@ class ContactsProvider @Inject constructor(
         return address?.takeIf { it.isNotBlank() }
     }
 
+    /**
+     * The number to text this person on.
+     *
+     * Everything hangs on the ordering. This used to take whichever row the
+     * provider happened to return first, which sent a text to a contact's
+     * "Other" number — a landline — while their mobile sat two rows down, and
+     * reported success because the send itself worked fine. A person with one
+     * number is unaffected; a person with three is the whole problem.
+     *
+     * `IS_SUPER_PRIMARY` comes first because it is the number the user picked
+     * as the default on the contact card: an explicit answer beats any guess
+     * we could make. `IS_PRIMARY` is the same idea scoped to one account's
+     * copy of the contact. Only then do we fall back to preferring a mobile,
+     * because a landline cannot receive SMS at all.
+     */
     private fun phoneFor(contactId: Long): String? {
-        var number: String? = null
+        var best: String? = null
+        var bestRank = Int.MAX_VALUE
         query(
             ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-            arrayOf(ContactsContract.CommonDataKinds.Phone.NORMALIZED_NUMBER,
-                    ContactsContract.CommonDataKinds.Phone.NUMBER),
+            arrayOf(
+                ContactsContract.CommonDataKinds.Phone.NORMALIZED_NUMBER,
+                ContactsContract.CommonDataKinds.Phone.NUMBER,
+                ContactsContract.CommonDataKinds.Phone.IS_SUPER_PRIMARY,
+                ContactsContract.CommonDataKinds.Phone.IS_PRIMARY,
+                ContactsContract.CommonDataKinds.Phone.TYPE,
+            ),
             "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
             arrayOf(contactId.toString()),
         ) { c ->
-            if (c.moveToFirst()) {
-                number = c.getString(0) ?: c.getString(1)
+            while (c.moveToNext()) {
+                val number = (c.getString(0) ?: c.getString(1))?.takeIf { it.isNotBlank() }
+                    ?: continue
+                val rank = phoneRank(
+                    superPrimary = c.getInt(2) != 0,
+                    primary = c.getInt(3) != 0,
+                    type = c.getInt(4),
+                )
+                if (rank < bestRank) {
+                    best = number
+                    bestRank = rank
+                }
             }
         }
-        return number?.takeIf { it.isNotBlank() }
+        return best
     }
 
     private inline fun query(
@@ -177,5 +208,13 @@ class ContactsProvider @Inject constructor(
     companion object {
         private const val TAG = "ContactsProvider"
         private const val MAX_MATCHES = 10
+
+        /** Lower is better. See [phoneFor] for why this order. */
+        internal fun phoneRank(superPrimary: Boolean, primary: Boolean, type: Int): Int = when {
+            superPrimary -> 0
+            primary -> 1
+            type == ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE -> 2
+            else -> 3
+        }
     }
 }
