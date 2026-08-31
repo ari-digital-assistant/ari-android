@@ -154,6 +154,14 @@ class MessageLauncher @Inject constructor(
             SmsSender.Result.Sent -> SendResult.Sent(service.displayName)
             SmsSender.Result.NoPermission -> null
             SmsSender.Result.NotDefaultAssistant -> null
+            is SmsSender.Result.NotSent -> {
+                // The network refused it, so falling through to compose is the
+                // right answer for the same reason it is everywhere else here:
+                // the user keeps what they dictated and can retry with a tap.
+                // What must not happen is Ari saying "sent".
+                Log.w(TAG, "network refused the send, composing instead: ${r.reason}")
+                null
+            }
             is SmsSender.Result.Failed -> {
                 Log.w(TAG, "true send failed, composing instead: ${r.reason}")
                 null
