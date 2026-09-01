@@ -820,7 +820,7 @@ class VoiceSession @Inject constructor(
      */
     private suspend fun speakThenDismiss(text: String) {
         val spokenFrom = System.currentTimeMillis()
-        if (text.isNotBlank()) speechOutput.speakAndAwait(text)
+        speechOutput.speakAndAwait(text)
         // A floor, not a ceiling: "Yes" is spoken and done inside a second, and
         // the overlay would blink out before anyone could read it.
         delay(MIN_RESPONSE_DWELL_MS - (System.currentTimeMillis() - spokenFrom))

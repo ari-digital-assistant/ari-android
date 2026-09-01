@@ -142,6 +142,11 @@ class SpeechOutput(
             Log.w(TAG, "TTS not ready, dropping: $text")
             return
         }
+        // QUEUE_FLUSH on nothing is not a no-op: it cancels whatever is
+        // already playing or queued. A Layer C phase-1 turn is deliberately
+        // silent, and speaking its empty reply here killed the phase-2 answer
+        // the conversation viewmodel had just queued.
+        if (text.isBlank()) return
         val id = "ari-${utteranceId.incrementAndGet()}"
         val done = CompletableDeferred<Unit>()
         pendingDone[id] = done
