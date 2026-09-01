@@ -970,13 +970,9 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_current_locale(
     ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_debug_route(
-    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_load_llm_model(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_load_model_catalog(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_load_router_model(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_process_input(
     ): Short
@@ -994,13 +990,9 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_set_remembered_facts(
     ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_set_router_confidence_floor(
-    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_settings_action(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_unload_llm_model(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_unload_router_model(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_arienginebuilder_authorize(
     ): Short
@@ -1172,13 +1164,9 @@ external fun uniffi_ari_ffi_fn_method_ariengine_cancel_pending_reply(`ptr`: Long
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_current_locale(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
-external fun uniffi_ari_ffi_fn_method_ariengine_debug_route(`ptr`: Long,`input`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ariengine_load_llm_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
 external fun uniffi_ari_ffi_fn_method_ariengine_load_model_catalog(`ptr`: Long,`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-): Byte
-external fun uniffi_ari_ffi_fn_method_ariengine_load_router_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
 external fun uniffi_ari_ffi_fn_method_ariengine_process_input(`ptr`: Long,`input`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1196,13 +1184,9 @@ external fun uniffi_ari_ffi_fn_method_ariengine_set_installed_apps(`ptr`: Long,`
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_set_remembered_facts(`ptr`: Long,`facts`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
-external fun uniffi_ari_ffi_fn_method_ariengine_set_router_confidence_floor(`ptr`: Long,`floor`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_settings_action(`ptr`: Long,`skillId`: RustBuffer.ByValue,`action`: RustBuffer.ByValue,`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ariengine_unload_llm_model(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
-): Unit
-external fun uniffi_ari_ffi_fn_method_ariengine_unload_router_model(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_clone_arienginebuilder(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
@@ -1541,16 +1525,10 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_current_locale() != 7320.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_ariengine_debug_route() != 61667.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_llm_model() != 22848.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_model_catalog() != 21577.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_router_model() != 5512.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_process_input() != 44833.toShort()) {
@@ -1577,16 +1555,10 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_remembered_facts() != 53816.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_router_confidence_floor() != 18562.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_settings_action() != 45712.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_unload_llm_model() != 46360.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_ari_ffi_checksum_method_ariengine_unload_router_model() != 1304.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_arienginebuilder_authorize() != 22452.toShort()) {
@@ -2087,29 +2059,6 @@ public object FfiConverterLong: FfiConverter<Long, Long> {
 /**
  * @suppress
  */
-public object FfiConverterFloat: FfiConverter<Float, Float> {
-    override fun lift(value: Float): Float {
-        return value
-    }
-
-    override fun read(buf: ByteBuffer): Float {
-        return buf.getFloat()
-    }
-
-    override fun lower(value: Float): Float {
-        return value
-    }
-
-    override fun allocationSize(value: Float) = 4UL
-
-    override fun write(value: Float, buf: ByteBuffer) {
-        buf.putFloat(value)
-    }
-}
-
-/**
- * @suppress
- */
 public object FfiConverterDouble: FfiConverter<Double, Double> {
     override fun lift(value: Double): Double {
         return value
@@ -2352,16 +2301,6 @@ public interface AriEngineInterface {
     fun `currentLocale`(): kotlin.String
     
     /**
-     * Run ONLY the on-device FunctionGemma router against `input` and return
-     * a human-readable summary of its pick (skill + confidence, or NoMatch),
-     * bypassing the keyword scorer and the assistant. Backs the `/router`
-     * chat debug command — useful because a cloud-assistant user's normal
-     * routing never reaches FunctionGemma, so there's otherwise no way to
-     * see what the on-device router would have done.
-     */
-    fun `debugRoute`(`input`: kotlin.String): kotlin.String
-    
-    /**
      * Set the GGUF model path for the LLM fallback. The model is NOT
      * loaded immediately — it loads on demand when the first unmatched
      * query arrives, and unloads after 60 seconds of idle to free RAM.
@@ -2385,16 +2324,6 @@ public interface AriEngineInterface {
      * skills keep working, just on ageing pinned models.
      */
     fun `loadModelCatalog`(`path`: kotlin.String): kotlin.Boolean
-    
-    /**
-     * Set the FunctionGemma router model path. Like the LLM fallback,
-     * the model loads lazily on first use and unloads after 60s idle.
-     * `locale` is the language this model was trained for — the engine
-     * only routes with it while that matches the active locale, so a
-     * model left over from a language switch can't route the wrong
-     * language. Returns `true` if the path exists, `false` otherwise.
-     */
-    fun `loadRouterModel`(`modelPath`: kotlin.String, `locale`: kotlin.String): kotlin.Boolean
     
     fun `processInput`(`input`: kotlin.String): FfiResponse
     
@@ -2469,18 +2398,6 @@ public interface AriEngineInterface {
     fun `setRememberedFacts`(`facts`: List<kotlin.String>)
     
     /**
-     * Set the confidence floor router picks must clear, from the INSTALLED
-     * MODEL's manifest (`min_confidence` — derived per-model by CI's floor
-     * sweep). `None` reverts to the compiled default, which is also the
-     * right call for models whose manifest lacks the field. The floor
-     * belongs to the model, not the device: call it whenever
-     * `load_router_model` is called, with whatever the sidecar recorded.
-     * Not `llm`-gated on purpose — the gate lives in engine core, and a
-     * floor set with no router loaded is simply inert.
-     */
-    fun `setRouterConfidenceFloor`(`floor`: kotlin.Float?)
-    
-    /**
      * Effectful settings-time skill invocation: run `skill_id`'s `settings_action`
      * for `action`, passing the current `values` (sibling field values the
      * skill reads during the action — e.g. `base_url`/`token` for HA sign-in).
@@ -2494,12 +2411,6 @@ public interface AriEngineInterface {
      * it is dropped and the memory is freed.
      */
     fun `unloadLlmModel`()
-    
-    /**
-     * Remove the FunctionGemma router. Keyword scoring still works;
-     * unmatched queries go straight to the assistant.
-     */
-    fun `unloadRouterModel`()
     
     companion object
 }
@@ -2655,27 +2566,6 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
 
     
     /**
-     * Run ONLY the on-device FunctionGemma router against `input` and return
-     * a human-readable summary of its pick (skill + confidence, or NoMatch),
-     * bypassing the keyword scorer and the assistant. Backs the `/router`
-     * chat debug command — useful because a cloud-assistant user's normal
-     * routing never reaches FunctionGemma, so there's otherwise no way to
-     * see what the on-device router would have done.
-     */override fun `debugRoute`(`input`: kotlin.String): kotlin.String {
-            return FfiConverterString.lift(
-    callWithHandle {
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_debug_route(
-        it,
-        FfiConverterString.lower(`input`),_status)
-}
-    }
-    )
-    }
-    
-
-    
-    /**
      * Set the GGUF model path for the LLM fallback. The model is NOT
      * loaded immediately — it loads on demand when the first unmatched
      * query arrives, and unloads after 60 seconds of idle to free RAM.
@@ -2715,27 +2605,6 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     UniffiLib.uniffi_ari_ffi_fn_method_ariengine_load_model_catalog(
         it,
         FfiConverterString.lower(`path`),_status)
-}
-    }
-    )
-    }
-    
-
-    
-    /**
-     * Set the FunctionGemma router model path. Like the LLM fallback,
-     * the model loads lazily on first use and unloads after 60s idle.
-     * `locale` is the language this model was trained for — the engine
-     * only routes with it while that matches the active locale, so a
-     * model left over from a language switch can't route the wrong
-     * language. Returns `true` if the path exists, `false` otherwise.
-     */override fun `loadRouterModel`(`modelPath`: kotlin.String, `locale`: kotlin.String): kotlin.Boolean {
-            return FfiConverterBoolean.lift(
-    callWithHandle {
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_load_router_model(
-        it,
-        FfiConverterString.lower(`modelPath`),FfiConverterString.lower(`locale`),_status)
 }
     }
     )
@@ -2900,28 +2769,6 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
 
     
     /**
-     * Set the confidence floor router picks must clear, from the INSTALLED
-     * MODEL's manifest (`min_confidence` — derived per-model by CI's floor
-     * sweep). `None` reverts to the compiled default, which is also the
-     * right call for models whose manifest lacks the field. The floor
-     * belongs to the model, not the device: call it whenever
-     * `load_router_model` is called, with whatever the sidecar recorded.
-     * Not `llm`-gated on purpose — the gate lives in engine core, and a
-     * floor set with no router loaded is simply inert.
-     */override fun `setRouterConfidenceFloor`(`floor`: kotlin.Float?)
-        = 
-    callWithHandle {
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_set_router_confidence_floor(
-        it,
-        FfiConverterOptionalFloat.lower(`floor`),_status)
-}
-    }
-    
-    
-
-    
-    /**
      * Effectful settings-time skill invocation: run `skill_id`'s `settings_action`
      * for `action`, passing the current `values` (sibling field values the
      * skill reads during the action — e.g. `base_url`/`token` for HA sign-in).
@@ -2949,22 +2796,6 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     callWithHandle {
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_ari_ffi_fn_method_ariengine_unload_llm_model(
-        it,
-        _status)
-}
-    }
-    
-    
-
-    
-    /**
-     * Remove the FunctionGemma router. Keyword scoring still works;
-     * unmatched queries go straight to the assistant.
-     */override fun `unloadRouterModel`()
-        = 
-    callWithHandle {
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_unload_router_model(
         it,
         _status)
 }
@@ -10735,7 +10566,7 @@ sealed class FfiResponse {
      * `dev.heyari.timer`), used by the frontend to resolve `asset:<path>`
      * references back to the skill's bundle directory. Empty string if
      * the engine couldn't attribute the response to a specific skill
-     * (router-direct actions, fallbacks) — treat that as "no bundle,
+     * (phrase-tier actions, fallbacks) — treat that as "no bundle,
      * asset references will fail to resolve".
      * `rearm` true means the engine is awaiting a spoken reply — the host
      * should re-arm the mic without a wake word (see multi-turn design).
@@ -10996,38 +10827,6 @@ public object FfiConverterOptionalLong: FfiConverterRustBuffer<kotlin.Long?> {
         } else {
             buf.put(1)
             FfiConverterLong.write(value, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterOptionalFloat: FfiConverterRustBuffer<kotlin.Float?> {
-    override fun read(buf: ByteBuffer): kotlin.Float? {
-        if (buf.get().toInt() == 0) {
-            return null
-        }
-        return FfiConverterFloat.read(buf)
-    }
-
-    override fun allocationSize(value: kotlin.Float?): ULong {
-        if (value == null) {
-            return 1UL
-        } else {
-            return 1UL + FfiConverterFloat.allocationSize(value)
-        }
-    }
-
-    override fun write(value: kotlin.Float?, buf: ByteBuffer) {
-        if (value == null) {
-            buf.put(0)
-        } else {
-            buf.put(1)
-            FfiConverterFloat.write(value, buf)
         }
     }
 }
