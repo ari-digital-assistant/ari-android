@@ -5,6 +5,7 @@ import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.actions.AriFfiEnvelopeSink
 import dev.heyari.ari.actions.pushInstalledApps
+import dev.heyari.ari.tasks.pushTaskListVocabulary
 import dev.heyari.ari.calendar.AriFfiCalendarProvider
 import dev.heyari.ari.media.AriFfiMediaServicesProvider
 import dev.heyari.ari.clock.AriFfiLocalClock
@@ -77,6 +78,7 @@ class EngineHolder @Inject constructor(
     private val ariFfiLiveConversationsProvider:
         dev.heyari.ari.messaging.AriFfiLiveConversationsProvider,
     private val appLauncher: dev.heyari.ari.actions.AppLauncher,
+    private val tasksProvider: dev.heyari.ari.tasks.TasksProvider,
 ) {
     // SupervisorJob isolates siblings but does not swallow: an exception from
     // anything launched here otherwise reaches the default uncaught handler
@@ -134,6 +136,18 @@ class EngineHolder @Inject constructor(
      */
     fun peek(): AriEngine? = built
 
+    /**
+     * Re-read the user's task lists and push them into the engine. Called on
+     * every return-to-foreground: lists are created and renamed in a separate
+     * app, which broadcasts nothing, so a stale snapshot is the only way the
+     * `{list:tasks.lists}` slot goes wrong. No-op before the engine exists —
+     * the build pushes a fresh snapshot itself.
+     */
+    fun refreshTaskListVocabulary() {
+        val engine = built ?: return
+        scope.launch { engine.pushTaskListVocabulary(tasksProvider) }
+    }
+
     private suspend fun build(): AriEngine {
         // Build via the per-provider builder rather than one many-arg
         // constructor: passing all 11 providers in a single FFI call marshals
@@ -188,6 +202,13 @@ class EngineHolder @Inject constructor(
         // inventory keeps the legacy "any target is an app" behaviour.
         engine.pushInstalledApps(appLauncher)
         Log.i(TAG, "pushed installed-app inventory to engine")
+
+        // Task-list names, so a phrase can require a real list where an
+        // unconstrained slot would swallow anything ("add bananas to family
+        // shopping" vs "add cream to the coffee"). Refreshed on every
+        // return-to-foreground — the user creates lists in their tasks app,
+        // which broadcasts nothing we could listen for.
+        engine.pushTaskListVocabulary(tasksProvider)
 
         val skillsDir = File(context.filesDir, "skills").apply { mkdirs() }
         val storageDir = File(context.filesDir, "skill-storage").apply { mkdirs() }

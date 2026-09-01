@@ -990,6 +990,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_set_remembered_facts(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_set_vocabulary(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_settings_action(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_unload_llm_model(
@@ -1183,6 +1185,8 @@ external fun uniffi_ari_ffi_fn_method_ariengine_set_conversation_memory_enabled(
 external fun uniffi_ari_ffi_fn_method_ariengine_set_installed_apps(`ptr`: Long,`apps`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_set_remembered_facts(`ptr`: Long,`facts`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ariengine_set_vocabulary(`ptr`: Long,`name`: RustBuffer.ByValue,`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_settings_action(`ptr`: Long,`skillId`: RustBuffer.ByValue,`action`: RustBuffer.ByValue,`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1553,6 +1557,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_remembered_facts() != 53816.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_vocabulary() != 22102.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_settings_action() != 45712.toShort()) {
@@ -2398,6 +2405,14 @@ public interface AriEngineInterface {
     fun `setRememberedFacts`(`facts`: List<kotlin.String>)
     
     /**
+     * Replace one runtime vocabulary a skill's `{slot:name}` phrases can bind
+     * against — the user's task lists, rooms, contacts. The frontend re-pushes
+     * whenever the underlying set changes. Push an empty `values` when the
+     * user has none — phrases naming that vocabulary then match nothing.
+     */
+    fun `setVocabulary`(`name`: kotlin.String, `values`: List<kotlin.String>)
+    
+    /**
      * Effectful settings-time skill invocation: run `skill_id`'s `settings_action`
      * for `action`, passing the current `values` (sibling field values the
      * skill reads during the action — e.g. `base_url`/`token` for HA sign-in).
@@ -2762,6 +2777,24 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     UniffiLib.uniffi_ari_ffi_fn_method_ariengine_set_remembered_facts(
         it,
         FfiConverterSequenceString.lower(`facts`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Replace one runtime vocabulary a skill's `{slot:name}` phrases can bind
+     * against — the user's task lists, rooms, contacts. The frontend re-pushes
+     * whenever the underlying set changes. Push an empty `values` when the
+     * user has none — phrases naming that vocabulary then match nothing.
+     */override fun `setVocabulary`(`name`: kotlin.String, `values`: List<kotlin.String>)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_set_vocabulary(
+        it,
+        FfiConverterString.lower(`name`),FfiConverterSequenceString.lower(`values`),_status)
 }
     }
     

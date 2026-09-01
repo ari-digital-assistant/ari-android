@@ -38,6 +38,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var authorizeCoordinator: AuthorizeCoordinator
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var updatesRepository: UpdatesRepository
+    @Inject lateinit var engineHolder: dev.heyari.ari.di.EngineHolder
 
     // Channel, not SharedFlow: intents arrive before setContent runs, so we
     // need a buffer that survives until the NavHost collector shows up.
@@ -101,6 +102,9 @@ class MainActivity : ComponentActivity() {
         // here too so the inactive-user gate sees fresh activity on every
         // return-to-foreground.
         activityScope.launch { updatesRepository.recordLaunch() }
+        // The user may have added a task list in their tasks app while we were
+        // backgrounded; nothing broadcasts that, so re-read it here.
+        engineHolder.refreshTaskListVocabulary()
         startListeningHostIfNeeded()
         // Back from the browser without finishing a sign-in. The engine thread
         // waiting on it holds the engine-wide mutex, so leaving it to time out
