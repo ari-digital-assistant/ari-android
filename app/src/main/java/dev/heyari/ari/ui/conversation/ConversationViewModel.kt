@@ -295,13 +295,6 @@ class ConversationViewModel @Inject constructor(
             handleLocationDebug(text)
             return
         }
-        // `/router <query>` runs the on-device FunctionGemma router directly
-        // and shows its raw pick. Cloud-assistant users never hit FunctionGemma
-        // in normal routing, so this is the only way to test/debug it.
-        if (text.startsWith("/router")) {
-            handleRouterDebug(text)
-            return
-        }
         // `/reset` (or `/clear`) — clear the conversation and return to the
         // opening screen.
         if (text.startsWith("/reset") || text.startsWith("/clear")) {
@@ -624,31 +617,6 @@ class ConversationViewModel @Inject constructor(
                     "Timed out waiting for a location fix (no cached fix either)."
             }
             val ariMessage = Message(text = text, isFromUser = false)
-            logRepository.append(ariMessage)
-        }
-    }
-
-    private fun handleRouterDebug(raw: String) {
-        val query = raw.removePrefix("/router").trim()
-        val userMessage = Message(text = raw, isFromUser = true)
-        logRepository.append(userMessage)
-        _state.update { it.copy(inputText = "") }
-
-        if (query.isEmpty()) {
-            val help = Message(
-                text = "Usage: /router <query> — runs the on-device FunctionGemma " +
-                    "router on <query> and shows its pick (skill + confidence, or NoMatch).",
-                isFromUser = false,
-            )
-            logRepository.append(help)
-            return
-        }
-
-        // Router inference is CPU-bound and may lazily load the model on first
-        // use, so keep it off the main thread.
-        viewModelScope.launch(Dispatchers.Default) {
-            val result = engineHolder.engine().debugRoute(query)
-            val ariMessage = Message(text = "🧭 $result", isFromUser = false)
             logRepository.append(ariMessage)
         }
     }

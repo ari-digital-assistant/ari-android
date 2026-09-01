@@ -313,17 +313,6 @@ class SettingsRepository @Inject constructor(
         }
     }
 
-    /** Whether the FunctionGemma skill router is enabled. */
-    val routerEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
-        prefs[KEY_ROUTER_ENABLED] ?: true
-    }
-
-    suspend fun setRouterEnabled(enabled: Boolean) {
-        context.dataStore.edit { prefs ->
-            prefs[KEY_ROUTER_ENABLED] = enabled
-        }
-    }
-
     /** The user's chosen TTS voice name, or null for system default. */
     val activeTtsVoice: Flow<String?> = context.dataStore.data.map { prefs ->
         prefs[KEY_ACTIVE_TTS_VOICE]
@@ -487,7 +476,6 @@ class SettingsRepository @Inject constructor(
             booleanPreferencesKey("conversation_memory_enabled")
         private val KEY_REMEMBERED_FACTS = stringPreferencesKey("remembered_facts")
         private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
-        private val KEY_ROUTER_ENABLED = booleanPreferencesKey("router_enabled")
         private val KEY_PENDING_CLOUD_ASSISTANT_SETUP = booleanPreferencesKey("pending_cloud_assistant_setup")
         private val KEY_LISTENING_MODE = stringPreferencesKey("listening_mode")
         private val KEY_LISTENING_CONDITIONS = stringPreferencesKey("listening_conditions")

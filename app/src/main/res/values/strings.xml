@@ -35,7 +35,7 @@
 
     <!-- Auto-update settings -->
     <string name="auto_update_master_title">Auto-update on-device models</string>
-    <string name="auto_update_master_summary">Periodically check for new versions of the FunctionGemma router, on-device LLM, and speech-to-text models. Updates are never installed automatically — you\'ll get a notification.</string>
+    <string name="auto_update_master_summary">Periodically check for new versions of the on-device LLM and speech-to-text models. Updates are never installed automatically — you\'ll get a notification.</string>
     <string name="auto_update_metered_title">Use mobile data</string>
     <string name="auto_update_metered_summary">Off by default. Models can be hundreds of MB to several GB; leave this off to only check on Wi-Fi.</string>
     <string name="auto_update_check_now">Check now</string>
@@ -201,7 +201,6 @@
     <string name="onboarding_assistant_cloud_con_3">May need an API key or account</string>
     <string name="onboarding_assistant_cloud_privacy">Your voice is transcribed on-device. Only the text is sent to the cloud provider. Ari never streams audio to a third party.</string>
     <string name="onboarding_assistant_cloud_later">Cloud assistants are installed as skills. Ari supports various skill providers including ChatGPT, Claude and Gemini. You can browse and install your preferred provider from the Skills screen after onboarding.</string>
-    <string name="onboarding_assistant_router_note">Ari will also download a small (~253 MB) smart-routing model in the background, so it can understand commands phrased in different ways.</string>
 
     <string name="onboarding_general_title">Finishing touches</string>
     <string name="onboarding_general_body">A couple of options to make Ari work the way you want.</string>
@@ -581,7 +580,6 @@
     <string name="model_stt_kroko_desc">71 MB. Works offline.</string>
     <string name="model_stt_whisper_turbo_name">Multilingual speech model</string>
     <string name="model_stt_whisper_turbo_desc">1 GB. Works offline, 99 languages.</string>
-    <string name="model_router_name">FunctionGemma router</string>
     <string name="model_llm_small_name">Small (Gemma 3 1B)</string>
     <string name="model_llm_small_desc">Fast and efficient (~769 MB download, 4 GB+ RAM). Used exclusively for skill routing.</string>
     <string name="model_llm_medium_name">Medium (Gemma 4 E2B)</string>

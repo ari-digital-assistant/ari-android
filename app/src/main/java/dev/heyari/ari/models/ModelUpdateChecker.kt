@@ -2,15 +2,11 @@ package dev.heyari.ari.models
 
 import androidx.annotation.StringRes
 import android.util.Log
-import dev.heyari.ari.R
 import dev.heyari.ari.data.AutoUpdatePreferences
 import dev.heyari.ari.data.SettingsRepository
-import dev.heyari.ari.di.EngineModule
 import dev.heyari.ari.llm.LlmDownloadManager
 import dev.heyari.ari.llm.LlmModel
 import dev.heyari.ari.llm.LlmModelRegistry
-import dev.heyari.ari.router.RouterDownloadManager
-import dev.heyari.ari.router.RouterModel
 import dev.heyari.ari.stt.ModelDownloadManager
 import dev.heyari.ari.stt.SttModel
 import dev.heyari.ari.stt.SttModelRegistry
@@ -32,12 +28,6 @@ sealed interface ModelTarget {
     val key: String
     val category: String
     @get:StringRes val displayNameRes: Int
-
-    data class Router(val locale: String) : ModelTarget {
-        override val key = EngineModule.ROUTER_MODEL_KEY
-        override val category = AutoUpdatePreferences.CATEGORY_ROUTER
-        override val displayNameRes = R.string.model_router_name
-    }
 
     data class Llm(val model: LlmModel) : ModelTarget {
         override val key: String get() = model.id
@@ -68,11 +58,9 @@ sealed interface ModelTarget {
          * at the time.
          */
         @StringRes
-        fun displayNameResFor(key: String): Int? = when (key) {
-            EngineModule.ROUTER_MODEL_KEY -> R.string.model_router_name
-            else -> LlmModelRegistry.byId(key)?.displayNameRes
+        fun displayNameResFor(key: String): Int? =
+            LlmModelRegistry.byId(key)?.displayNameRes
                 ?: SttModelRegistry.byId(key)?.displayNameRes
-        }
     }
 }
 
@@ -99,12 +87,10 @@ data class ModelUpdate(
  * picked tier A — the network round-trip is wasted, and we'd surface
  * notifications for things they don't have.
  *
- * This stage covers the FunctionGemma router only. LLM and STT support
- * are layered on in stages 10 and 11.
+ * Covers the on-device LLM and STT models.
  */
 @Singleton
 class ModelUpdateChecker @Inject constructor(
-    private val routerDownloadManager: RouterDownloadManager,
     private val llmDownloadManager: LlmDownloadManager,
     private val sttDownloadManager: ModelDownloadManager,
     private val settingsRepository: SettingsRepository,
@@ -112,15 +98,6 @@ class ModelUpdateChecker @Inject constructor(
 ) {
     suspend fun checkForUpdates(): List<ModelUpdate> = withContext(Dispatchers.IO) {
         val updates = mutableListOf<ModelUpdate>()
-
-        val locale = settingsRepository.activeLocale.first()
-        if (routerDownloadManager.isDownloaded(locale)) {
-            checkOne(
-                target = ModelTarget.Router(locale),
-                manifestUrl = RouterModel.manifestUrl(locale),
-                installedVersion = routerDownloadManager.installedVersion(locale),
-            )?.let(updates::add)
-        }
 
         // Only check the *active* LLM tier — probing for updates on tiers
         // the user didn't pick wastes a network round-trip and would

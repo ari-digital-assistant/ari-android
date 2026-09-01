@@ -1,7 +1,5 @@
 package dev.heyari.ari.updates
 
-import dev.heyari.ari.R
-import dev.heyari.ari.di.EngineModule
 import dev.heyari.ari.llm.LlmModelRegistry
 import dev.heyari.ari.models.ModelManifest
 import dev.heyari.ari.models.ModelTarget
@@ -137,10 +135,6 @@ class UpdatesRepositoryCodecTest {
         assertEquals(
             LlmModelRegistry.SMALL.displayNameRes,
             ModelTarget.displayNameResFor(LlmModelRegistry.SMALL.id),
-        )
-        assertEquals(
-            R.string.model_router_name,
-            ModelTarget.displayNameResFor(EngineModule.ROUTER_MODEL_KEY),
         )
     }
 

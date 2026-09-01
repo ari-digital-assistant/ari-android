@@ -9,7 +9,7 @@ import java.security.MessageDigest
 /**
  * Per-model `version.json` sidecar living next to the model file(s).
  *
- * For single-file models (router, LLM tier), the sidecar lives in the
+ * For single-file models (LLM tier), the sidecar lives in the
  * same directory as the GGUF and records `{ version, sha256 }`. For
  * multi-file bundles (STT), it records the bundle version plus a
  * per-file sha256 list so callers can verify any individual file
@@ -42,9 +42,7 @@ object InstalledModelMetadata {
             } else {
                 listOf(InstalledFile(name = obj.optString("name", ""), sha256 = obj.getString("sha256")))
             }
-            val minConfidence =
-                if (obj.has("min_confidence")) obj.getDouble("min_confidence").toFloat() else null
-            InstalledVersion(version, files, minConfidence)
+            InstalledVersion(version, files)
         } catch (e: Exception) {
             Log.w(TAG, "failed to parse sidecar at ${sidecar.absolutePath}", e)
             null
@@ -54,25 +52,17 @@ object InstalledModelMetadata {
     /** Read just the version string; treats missing/corrupt as [UNKNOWN_VERSION]. */
     fun readVersion(modelDir: File): String = read(modelDir)?.version ?: UNKNOWN_VERSION
 
-    /**
-     * Write a single-file sidecar (router, LLM tier). [minConfidence] is the
-     * router manifest's per-model confidence floor; it travels in the sidecar
-     * because the floor belongs to the FILE on disk — reading it from
-     * whatever manifest is current at engine-load time would apply a newer
-     * model's floor to an older model.
-     */
+    /** Write a single-file sidecar (LLM tier). */
     fun writeSingle(
         modelDir: File,
         version: String,
         fileName: String,
         sha256: String,
-        minConfidence: Float? = null,
     ) {
         val obj = JSONObject().apply {
             put("version", version)
             put("name", fileName)
             put("sha256", sha256)
-            if (minConfidence != null) put("min_confidence", minConfidence.toDouble())
         }
         File(modelDir, SIDECAR_FILENAME).writeText(obj.toString())
     }
@@ -112,8 +102,6 @@ object InstalledModelMetadata {
 data class InstalledVersion(
     val version: String,
     val files: List<InstalledFile>,
-    /** Per-model router floor from the manifest that installed this model; null = compiled default. */
-    val minConfidence: Float? = null,
 )
 
 data class InstalledFile(val name: String, val sha256: String)

@@ -15,11 +15,6 @@ import dev.heyari.ari.llm.LlmDownloadManager
 import dev.heyari.ari.llm.LlmModelRegistry
 import dev.heyari.ari.locale.AriFfiLocaleProvider
 import dev.heyari.ari.location.AriFfiLocationProvider
-import dev.heyari.ari.router.LegacyMigrationResult
-import dev.heyari.ari.router.RouterDownloadManager
-import dev.heyari.ari.router.RouterDownloadState
-import dev.heyari.ari.router.RouterLegacyMigration
-import dev.heyari.ari.router.RouterModel
 import dev.heyari.ari.skills.AndroidSkillLogSink
 import dev.heyari.ari.tasks.AriFfiTasksProvider
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -66,8 +61,6 @@ class EngineHolder @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val secretStore: SecretStore,
     private val llmDownloadManager: LlmDownloadManager,
-    private val routerPolicy: dev.heyari.ari.router.RouterPolicy,
-    private val routerDownloadManager: RouterDownloadManager,
     private val autoUpdatePreferences: AutoUpdatePreferences,
     private val assistantRegistry: AssistantRegistry,
     private val skillSettingsStore: SkillSettingsStore,
@@ -280,92 +273,7 @@ class EngineHolder @Inject constructor(
         // touched assistant Settings.
         assistantRegistry.applyToEngine(engine)
 
-        // Bring the FunctionGemma router in line with the active assistant
-        // and locale: on-device / none need it, cloud doesn't, and the
-        // locale must have a published model — loading, downloading or
-        // deleting as required. Skipped until onboarding is done so a fresh
-        // install doesn't kick a 253 MB download before the user has even
-        // picked an assistant; the wizard drives router setup during
-        // onboarding.
-        if (settingsRepository.onboardingCompleted.first()) {
-            // RouterLegacyMigration.migrate is total, but the DataStore calls
-            // bracketing it are not: a corrupt or unwritable prefs file throws
-            // IOException from either, and disk-full is exactly the condition
-            // that also breaks a 253 MB move. An escape here fails build(),
-            // which is awaited once and cached, so every later engine() call
-            // would rethrow for the life of the process — the user loses the
-            // whole assistant over a preferences write. Dropping the marker
-            // instead costs only the silent forced upgrade: the adopted model
-            // still reads as stale, so the ordinary tap-to-update path offers
-            // the real -en- model on the next check.
-            try {
-                val locale = settingsRepository.activeLocale.first()
-                val migration = withContext(Dispatchers.IO) {
-                    RouterLegacyMigration.migrate(routerDownloadManager.routerRootDir, locale)
-                }
-                if (migration == LegacyMigrationResult.ADOPTED) {
-                    // Arm the one-shot forced upgrade against the EXACT
-                    // artifact adopted — the marker disarms if anything
-                    // else replaces this version first.
-                    autoUpdatePreferences.setAdoptedRouterVersion(
-                        routerDownloadManager.installedVersion(RouterModel.LEGACY_LOCALE),
-                    )
-                }
-                Log.i(TAG, "Router legacy migration at startup: $migration")
-            } catch (e: Exception) {
-                Log.e(TAG, "Router legacy migration step failed; retrying next start", e)
-            }
-
-            // Reconcile probes the network for locale availability and can kick
-            // a 253 MB download, so it must not gate engine readiness — every
-            // consumer awaits this same build. The router is a fallback tier:
-            // keyword scoring and the LLM arbiter answer fine until it loads.
-            // The migration above stays inline because it is local file I/O and
-            // must finish before anything can load the router.
-            reconcileRouterAsync()
-        }
-
-        // Armed unconditionally (the onboarding gate lives inside
-        // reconcileRouterAsync): an install that completes while the wizard
-        // is still up is skipped here and picked up by the wizard's own
-        // completion call; one that completes after gets hot-loaded now.
-        // Without this, a model installed mid-session sat on disk unloaded
-        // until the next app start — Task 9 found the router dead on a
-        // fresh install until restarted.
-        scope.launch {
-            routerDownloadManager.state.collect { st ->
-                if (st is RouterDownloadState.Completed) reconcileRouterAsync()
-            }
-        }
-
         return engine
-    }
-
-    /**
-     * Reconcile the router against current settings on the holder's own
-     * scope, which outlives any one screen — safe to call from a ViewModel
-     * that is about to be destroyed (onboarding completion) or from a
-     * lifetime collector (install completion above).
-     *
-     * Gated on onboarding: mid-wizard, `requiredFromState` reflects choices
-     * the user hasn't finished making, and reconcile's not-required branch
-     * deletes model directories — it must never race a wizard download.
-     */
-    fun reconcileRouterAsync() {
-        scope.launch {
-            if (!settingsRepository.onboardingCompleted.first()) return@launch
-            try {
-                routerPolicy.reconcileFromState(engine())
-                Log.i(TAG, "Router reconciled from state")
-            } catch (e: Exception) {
-                // A truncated GGUF crossing FFI, a dead network, a failed
-                // DataStore write — none of it is worth the app. Leaving
-                // the router unloaded costs a fallback tier that keyword
-                // scoring and the LLM arbiter cover, and the next start
-                // (or the next assistant/locale change) reconciles again.
-                Log.e(TAG, "Router reconcile failed; router left unloaded", e)
-            }
-        }
     }
 
     private companion object {

@@ -25,14 +25,6 @@ data class ModelManifest(
     val version: String,
     val releasedAt: String?,
     val files: List<ManifestFile>,
-    /**
-     * Per-model router confidence floor, derived by CI's floor sweep and
-     * published as `min_confidence` (router manifests only, and only since
-     * Gate v4 — absent means "use the engine's compiled default"). Carried
-     * into the install sidecar so the floor travels with the model file it
-     * was derived FOR, not with whatever manifest is current at load time.
-     */
-    val minConfidence: Float? = null,
 ) {
     val totalSizeBytes: Long get() = files.sumOf { it.sizeBytes }
 
@@ -41,8 +33,6 @@ data class ModelManifest(
             val root = JSONObject(json)
             val version = root.getString("version")
             val releasedAt = root.optString("released_at").takeIf { it.isNotEmpty() }
-            val minConfidence =
-                if (root.has("min_confidence")) root.getDouble("min_confidence").toFloat() else null
             val files = if (root.has("files")) {
                 val arr = root.getJSONArray("files")
                 List(arr.length()) { i ->
@@ -66,7 +56,7 @@ data class ModelManifest(
                 )
             }
             require(files.isNotEmpty()) { "manifest has no files" }
-            return ModelManifest(version, releasedAt, files, minConfidence)
+            return ModelManifest(version, releasedAt, files)
         }
     }
 }

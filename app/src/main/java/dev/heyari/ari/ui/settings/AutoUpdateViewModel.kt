@@ -17,7 +17,6 @@ import dev.heyari.ari.models.ModelUpdateApplier
 import dev.heyari.ari.models.ModelUpdateChecker
 import dev.heyari.ari.models.ModelUpdateNotifier
 import dev.heyari.ari.models.ModelUpdateWorker
-import dev.heyari.ari.router.RouterDownloadManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,7 +56,6 @@ class AutoUpdateViewModel @Inject constructor(
     private val checker: ModelUpdateChecker,
     private val notifier: ModelUpdateNotifier,
     private val applier: ModelUpdateApplier,
-    private val routerDownloadManager: RouterDownloadManager,
     private val llmDownloadManager: LlmDownloadManager,
     private val sttDownloadManager: ModelDownloadManager,
     private val settingsRepository: dev.heyari.ari.data.SettingsRepository,
@@ -78,7 +76,7 @@ class AutoUpdateViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            preferences.lastChecked(AutoUpdatePreferences.CATEGORY_ROUTER).collect { instant ->
+            preferences.lastChecked(AutoUpdatePreferences.CATEGORY_LLM).collect { instant ->
                 _state.update { it.copy(lastCheckedAt = instant) }
             }
         }
@@ -117,7 +115,7 @@ class AutoUpdateViewModel @Inject constructor(
             _state.update { it.copy(checking = true) }
             try {
                 val updates = withContext(Dispatchers.IO) { checker.checkForUpdates() }
-                preferences.setLastChecked(AutoUpdatePreferences.CATEGORY_ROUTER, Instant.now())
+                preferences.setLastChecked(AutoUpdatePreferences.CATEGORY_LLM, Instant.now())
                 _state.update { it.copy(pendingUpdates = updates) }
                 notifier.showOrUpdate(updates)
                 if (updates.isEmpty()) {
@@ -216,13 +214,6 @@ class AutoUpdateViewModel @Inject constructor(
     private fun refreshInstalledModels() {
         viewModelScope.launch(Dispatchers.IO) {
             val rows = mutableListOf<InstalledModelRow>()
-            val routerLocale = settingsRepository.activeLocale.first()
-            if (routerDownloadManager.isDownloaded(routerLocale)) {
-                rows += InstalledModelRow(
-                    target = ModelTarget.Router(routerLocale),
-                    installedVersion = routerDownloadManager.installedVersion(routerLocale),
-                )
-            }
             val activeLlmId = settingsRepository.activeLlmModelId.first()
             val activeLlm = LlmModelRegistry.byId(activeLlmId)
             if (activeLlm != null && llmDownloadManager.isDownloaded(activeLlm)) {

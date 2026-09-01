@@ -41,7 +41,7 @@
 
     <!-- Auto-update settings -->
     <string name="auto_update_master_title">Aggiorna automaticamente i modelli sul dispositivo</string>
-    <string name="auto_update_master_summary">Controlla periodicamente le nuove versioni del router FunctionGemma, dell\'LLM su dispositivo e dei modelli per il riconoscimento vocale. Gli aggiornamenti non vengono mai installati automaticamente — riceverai una notifica.</string>
+    <string name="auto_update_master_summary">Controlla periodicamente le nuove versioni dell\'LLM su dispositivo e dei modelli per il riconoscimento vocale. Gli aggiornamenti non vengono mai installati automaticamente — riceverai una notifica.</string>
     <string name="auto_update_metered_title">Usa la rete dati</string>
     <string name="auto_update_metered_summary">Disattivato di default. I modelli possono pesare da centinaia di MB a diversi GB; lascia disattivato per controllare solo via Wi-Fi.</string>
     <string name="auto_update_check_now">Controlla ora</string>
@@ -207,7 +207,6 @@
     <string name="onboarding_assistant_cloud_con_3">Può richiedere una API key o un account</string>
     <string name="onboarding_assistant_cloud_privacy">La tua voce viene trascritta sul dispositivo. Solo il testo viene inviato al servizio cloud. Ari non invia mai audio a terzi.</string>
     <string name="onboarding_assistant_cloud_later">Gli assistenti cloud si installano come skill. Ari supporta vari provider come ChatGPT, Claude e Gemini. Puoi sfogliarli e installare quello che preferisci dalla schermata Skill dopo la configurazione.</string>
-    <string name="onboarding_assistant_router_note">Ari scaricherà anche un piccolo modello di routing intelligente (~253 MB) in background, in modo da poter comprendere i comandi formulati in modi diversi.</string>
 
     <string name="onboarding_general_title">Ultimi ritocchi</string>
     <string name="onboarding_general_body">Un paio di opzioni per personalizzare il funzionamento di Ari.</string>
@@ -576,7 +575,6 @@
     <string name="model_stt_kroko_desc">71 MB. Funziona offline.</string>
     <string name="model_stt_whisper_turbo_name">Modello vocale multilingue</string>
     <string name="model_stt_whisper_turbo_desc">1 GB. Funziona offline, 99 lingue.</string>
-    <string name="model_router_name">Router FunctionGemma</string>
     <string name="model_llm_small_name">Piccolo (Gemma 3 1B)</string>
     <string name="model_llm_small_desc">Veloce ed efficiente (~769 MB di download, 4 GB+ di RAM). Usato esclusivamente per il routing delle skill.</string>
     <string name="model_llm_medium_name">Medio (Gemma 4 E2B)</string>

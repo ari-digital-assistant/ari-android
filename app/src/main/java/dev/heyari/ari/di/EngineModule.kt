@@ -12,7 +12,6 @@ import dev.heyari.ari.actions.AppLauncher
 import dev.heyari.ari.actions.WebSearchLauncher
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.llm.LlmDownloadManager
-import dev.heyari.ari.router.RouterDownloadManager
 import dev.heyari.ari.stt.ModelDownloadManager
 import dev.heyari.ari.tts.SpeechOutput
 import uniffi.ari_ffi.AssistantRegistry
@@ -45,9 +44,6 @@ object EngineModule {
     // engine from their own coroutine instead.
 
     const val BUILTIN_ASSISTANT_ID = "dev.heyari.assistant.local"
-    const val ROUTER_MODEL_BYTES = 253_000_000L
-    /** Stable identifier for the router across DataStore keys + sidecars. */
-    const val ROUTER_MODEL_KEY = "router"
 
     // SpeechRecognizer is constructed by Hilt via its own @Inject constructor —
     // no @Provides needed. It depends on CaptureBus + AriFfiLocaleProvider,
@@ -69,11 +65,6 @@ object EngineModule {
     @Singleton
     fun provideLlmDownloadManager(@ApplicationContext context: Context): LlmDownloadManager =
         LlmDownloadManager(context)
-
-    @Provides
-    @Singleton
-    fun provideRouterDownloadManager(@ApplicationContext context: Context): RouterDownloadManager =
-        RouterDownloadManager(context)
 
     @Provides
     @Singleton

@@ -23,10 +23,6 @@ import dev.heyari.ari.llm.LlmDownloadManager
 import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.llm.LlmModel
 import dev.heyari.ari.llm.LlmModelRegistry
-import dev.heyari.ari.router.RouterDownloadManager
-import dev.heyari.ari.router.RouterDownloadState
-import dev.heyari.ari.router.RouterPolicy
-import dev.heyari.ari.router.loadRouterWithFloor
 import dev.heyari.ari.stt.CloudTranscriber
 import dev.heyari.ari.stt.ModelDownloadManager
 import dev.heyari.ari.stt.ModelDownloadState
@@ -166,8 +162,6 @@ class SettingsViewModel @Inject constructor(
     private val secretStore: SecretStore,
     private val engineHolder: EngineHolder,
     private val assistantRegistry: AssistantRegistry,
-    private val routerDownloadManager: RouterDownloadManager,
-    private val routerPolicy: RouterPolicy,
     private val speechOutput: SpeechOutput,
     private val wakeCaptureStore: WakeCaptureStore,
     private val utteranceCaptureStore: UtteranceCaptureStore,
@@ -468,22 +462,6 @@ class SettingsViewModel @Inject constructor(
             )
         }
 
-        // Load the router into the engine once its background download
-        // lands, while it's still wanted. The download itself is kicked by
-        // [RouterPolicy] whenever the active assistant or locale makes the
-        // router necessary — it's no longer a user toggle.
-        viewModelScope.launch {
-            routerDownloadManager.state.collect { dlState ->
-                if (dlState is RouterDownloadState.Completed
-                    && settingsRepository.routerEnabled.first()
-                    && dlState.locale == settingsRepository.activeLocale.first()
-                ) {
-                    withContext(Dispatchers.IO) {
-                        engineHolder.engine().loadRouterWithFloor(routerDownloadManager, dlState.locale)
-                    }
-                }
-            }
-        }
     }
 
     fun setStartOnBoot(enabled: Boolean) {
@@ -569,24 +547,6 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
-     * Onboarding commit point. The chosen language isn't persisted yet at
-     * this point in the wizard, so the assistant screen passes the decision
-     * in directly: a model published for that language → router required.
-     * The assistant choice doesn't enter into it — see [RouterPolicy].
-     * Outside onboarding the router is reconciled automatically from
-     * persisted state — see [reconcileRouter].
-     */
-    fun setRouterRequired(required: Boolean) {
-        viewModelScope.launch {
-            routerPolicy.reconcile(engineHolder.engine(), required)
-        }
-    }
-
-    private suspend fun reconcileRouter() {
-        routerPolicy.reconcileFromState(engineHolder.engine())
-    }
-
-    /**
      * Persist the user's chosen language and apply it to the running
      * app. The DataStore flow fans out to the engine (via
      * `AriFfiLocaleProvider`'s subscription for assistant replies + skill
@@ -601,10 +561,6 @@ class SettingsViewModel @Inject constructor(
             runCatching {
                 settingsRepository.setActiveLocale(code)
                 applyAppLocale(code)
-                // Each language has its own router model, and some have none
-                // at all, so a language change can flip whether the router is
-                // wanted and always changes which file it wants.
-                reconcileRouter()
             }.onFailure { Log.w(TAG, "setActiveLocale($code) failed", it) }
         }
     }
@@ -1070,10 +1026,6 @@ class SettingsViewModel @Inject constructor(
             viewModelScope.launch(Dispatchers.IO) {
                 assistantRegistry.applyToEngine(engineHolder.engine())
             }
-            // On-device / none need FunctionGemma; cloud doesn't. Switching
-            // to cloud unloads + deletes the 253 MB model; switching back
-            // re-downloads it.
-            reconcileRouter()
         }
     }
 

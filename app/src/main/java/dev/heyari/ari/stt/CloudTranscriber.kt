@@ -32,7 +32,7 @@ class CloudSttException(val failure: CloudSttFailure, message: String) : Excepti
  * option and taking a dependency on one vendor.
  *
  * Uses [HttpURLConnection] because that is what the rest of the app already
- * uses (see `RouterDownloadManager`, `ModelUpdateChecker`) — a transcription
+ * uses (see `ModelUpdateChecker`) — a transcription
  * POST does not justify adding an HTTP client to the dependency tree.
  */
 @Singleton
