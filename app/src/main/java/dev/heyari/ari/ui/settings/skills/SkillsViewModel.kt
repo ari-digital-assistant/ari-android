@@ -346,8 +346,6 @@ class SkillsViewModel @Inject constructor(
             withContext(Dispatchers.IO) {
                 assistantRegistry.applyToEngine(engineHolder.engine())
             }
-            // A cloud assistant now does the NLU, so FunctionGemma is
-            // redundant — unload + delete it (a built-in pick keeps it).
             _state.update {
                 it.copy(pendingAssistantPromptId = null, pendingAssistantPromptName = "")
             }
