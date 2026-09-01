@@ -12,7 +12,9 @@ import dev.heyari.ari.model.Attachment
 sealed class ActionResult {
     /**
      * A bubble with [text] for display + TTS, plus an optional list of
-     * [attachments] rendered below the bubble. [followupUtterance] is
+     * [attachments] rendered below the bubble. [displayText] overrides what
+     * the bubble shows when the skill wants the written and spoken wording
+     * to differ; null means the bubble shows [text]. [followupUtterance] is
      * populated when the envelope carried a `run_utterance` primitive —
      * the ViewModel should re-dispatch it through the engine after
      * rendering the spoken text. Used for skill-round-trip flows
@@ -22,5 +24,9 @@ sealed class ActionResult {
         val text: String,
         val attachments: List<Attachment> = emptyList(),
         val followupUtterance: String? = null,
-    ) : ActionResult()
+        val displayText: String? = null,
+    ) : ActionResult() {
+        /** What the bubble renders: [displayText] when set, else [text]. */
+        val bubbleText: String get() = displayText ?: text
+    }
 }

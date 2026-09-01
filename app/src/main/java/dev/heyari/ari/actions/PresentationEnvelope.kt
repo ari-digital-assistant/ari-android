@@ -90,6 +90,11 @@ data class AlarmAction(
  */
 data class PresentationEnvelope(
     val speak: String?,
+    /**
+     * Bubble text, when the skill wants it to differ from what is spoken.
+     * Null means the bubble shows [speak].
+     */
+    val display: String?,
     val cards: List<Card>,
     val alerts: List<AlertSpec>,
     val notifications: List<NotificationPrimitive>,
@@ -142,6 +147,7 @@ data class PresentationEnvelope(
             return runCatching {
                 PresentationEnvelope(
                     speak = json.optStringOrNull("speak"),
+                    display = json.optStringOrNull("display"),
                     cards = json.optJSONArray("cards")?.let { parseCards(it, skillId) }.orEmpty(),
                     alerts = json.optJSONArray("alerts")?.let { parseAlerts(it, skillId) }.orEmpty(),
                     notifications = json.optJSONArray("notifications")

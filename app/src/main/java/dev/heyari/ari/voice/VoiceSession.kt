@@ -678,6 +678,9 @@ class VoiceSession @Inject constructor(
 
         var attachments: List<Attachment> = emptyList()
         var skillId: String? = null
+        // Set when a skill wants the conversation log worded differently from
+        // what gets read out; the overlay and TTS always use responseText.
+        var bubbleText: String? = null
         val responseText = when (response) {
             is FfiResponse.Text -> response.body
             // Voice path doesn't render attachments (the overlay is text-only);
@@ -697,6 +700,7 @@ class VoiceSession @Inject constructor(
                 // Only action responses carry an id; a plain Text answer is
                 // unattributable, so a report on one names no skill.
                 skillId = response.skillId.takeIf { it.isNotBlank() }
+                bubbleText = result.displayText
                 result.text
             }
             is FfiResponse.Binary -> "[Binary: ${response.mime}, ${response.data.size} bytes]"
@@ -733,7 +737,7 @@ class VoiceSession @Inject constructor(
         if (responseText.isNotBlank() || attachments.isNotEmpty()) {
             logRepository.append(
                 Message(
-                    text = responseText,
+                    text = bubbleText ?: responseText,
                     isFromUser = false,
                     attachments = attachments,
                     skillId = skillId,

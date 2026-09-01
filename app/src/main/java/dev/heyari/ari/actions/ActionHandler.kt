@@ -103,7 +103,7 @@ class ActionHandler @Inject constructor(
         } else {
             emptyList()
         }
-        return ActionResult.Spoken(spoken ?: env.speak ?: "", attachments, env.runUtterance)
+        return ActionResult.Spoken(spoken ?: env.speak ?: "", attachments, env.runUtterance, env.display)
     }
 
     private fun handleOpen(target: String): String {

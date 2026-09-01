@@ -367,12 +367,16 @@ class ConversationViewModel @Inject constructor(
             // Only action responses carry an id; a plain Text answer is
             // unattributable, and a report on one says so rather than guessing.
             var skillId: String? = null
+            // What the bubble shows, when a skill wants it worded differently
+            // from what Ari says out loud. Null everywhere else.
+            var bubbleText: String? = null
             val responseText = when (response) {
                 is FfiResponse.Text -> response.body
                 is FfiResponse.Action -> {
                     val result = actionHandler.handle(response.json, response.skillId)
                     attachments = result.attachments
                     skillId = response.skillId.takeIf { it.isNotBlank() }
+                    bubbleText = result.displayText
                     result.text
                 }
                 is FfiResponse.Binary -> "[Binary: ${response.mime}, ${response.data.size} bytes]"
@@ -389,7 +393,7 @@ class ConversationViewModel @Inject constructor(
             if (responseText.isBlank() && attachments.isEmpty()) return@launch
 
             val ariMessage = Message(
-                text = responseText,
+                text = bubbleText ?: responseText,
                 isFromUser = false,
                 attachments = attachments,
                 skillId = skillId,
@@ -423,7 +427,7 @@ class ConversationViewModel @Inject constructor(
     private suspend fun handlePushedEnvelope(envelopeJson: String, skillId: String?) {
         val result = actionHandler.handle(envelopeJson, skillId ?: "")
         val message = Message(
-            text = result.text,
+            text = result.bubbleText,
             isFromUser = false,
             attachments = result.attachments,
             skillId = skillId?.takeIf { it.isNotBlank() },
