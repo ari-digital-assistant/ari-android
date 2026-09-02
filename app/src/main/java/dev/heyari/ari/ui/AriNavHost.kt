@@ -131,9 +131,25 @@ fun AriNavHost(
         }
     }
 
+    // Navigation-compose defaults to a crossfade, which leaves both screens
+    // semi-transparent mid-animation and lets the window background flash
+    // through. Slide is what Android does everywhere else anyway: forward
+    // pushes in from the right, back returns from the left.
     NavHost(
         navController = navController,
         startDestination = startDestination,
+        enterTransition = {
+            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left)
+        },
+        exitTransition = {
+            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left)
+        },
+        popEnterTransition = {
+            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right)
+        },
+        popExitTransition = {
+            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right)
+        },
     ) {
         composable(Routes.CONVERSATION) {
             ConversationScreen(
