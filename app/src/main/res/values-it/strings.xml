@@ -672,4 +672,19 @@
     </plurals>
     <string name="onboarding_testing_build_warning">Stai usando una versione di prova di Ari. Aspettati dei bug e segnalali per contribuire a migliorare l\'app. Usa il pulsante di segnalazione nell\'app, oppure segnalali su GitHub.</string>
     <string name="onboarding_testing_build_data">In questa versione di prova, le informazioni di debug vengono conservate sul tuo dispositivo. Comprendono i registri delle conversazioni e le registrazioni audio. Questi dati non vengono MAI inviati automaticamente da nessuna parte e vengono inviati solo con il tuo consenso esplicito quando invii una segnalazione, e anche in quel caso non sono selezionati per impostazione predefinita. Puoi eliminarli in qualsiasi momento da Impostazioni \u203a Debug.</string>
+    <string name="my_reports_title">Le mie segnalazioni</string>
+    <string name="my_reports_empty">Non hai inviato nessuna segnalazione da questo telefono.</string>
+    <string name="my_reports_untitled">Segnalazione</string>
+    <string name="my_reports_meta">#%1$d · inviata il %2$s · file eliminati il %3$s</string>
+    <string name="my_reports_meta_expired">#%1$d · inviata il %2$s · file già eliminati</string>
+    <string name="my_reports_view">Apri su GitHub</string>
+    <string name="my_reports_delete">Elimina</string>
+    <string name="my_reports_confirm_title">Eliminare questa segnalazione?</string>
+    <string name="my_reports_confirm_body">I file che hai inviato verranno cancellati e la tua descrizione rimossa dalla segnalazione pubblica. La segnalazione resta: fa parte della cronologia dei bug di Ari e altre persone potrebbero aver risposto.</string>
+    <string name="my_reports_confirm_delete">Elimina</string>
+    <string name="my_reports_confirm_keep">Mantieni</string>
+    <string name="my_reports_withdraw_failed">Impossibile raggiungere il server di Ari, quindi non è stato eliminato nulla. Controlla la connessione e riprova.</string>
+    <string name="my_reports_footnote">Questo elenco esiste solo su questo telefono. Se disinstalli Ari non potrai più eliminare da qui, e ciò che è ancora conservato viene rimosso automaticamente 90 giorni dopo l\'invio.</string>
+    <string name="settings_my_reports_title">Le mie segnalazioni</string>
+    <string name="settings_my_reports_blurb">Le segnalazioni che hai inviato da questo telefono. Aprine una su GitHub oppure elimina i file allegati.</string>
 </resources>

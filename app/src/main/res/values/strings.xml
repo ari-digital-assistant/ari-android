@@ -678,4 +678,19 @@
     </plurals>
     <string name="onboarding_testing_build_warning">You are running a testing build of Ari. Expect bugs, and please report them to help improve the app. Use the bug report button in the app, or report them on GitHub.</string>
     <string name="onboarding_testing_build_data">For this testing build, debugging information is stored on your device. This includes conversation logs and audio recordings. This data is NEVER automatically sent anywhere, and is only sent with your explicit consent when you submit a bug report — and even then these items are unticked by default. You can delete this data at any time in Settings \u203a Debug.</string>
+    <string name="my_reports_title">My Reports</string>
+    <string name="my_reports_empty">You haven\'t sent any bug reports from this phone.</string>
+    <string name="my_reports_untitled">Bug report</string>
+    <string name="my_reports_meta">#%1$d · sent %2$s · files deleted %3$s</string>
+    <string name="my_reports_meta_expired">#%1$d · sent %2$s · files already deleted</string>
+    <string name="my_reports_view">View on GitHub</string>
+    <string name="my_reports_delete">Delete</string>
+    <string name="my_reports_confirm_title">Delete this report?</string>
+    <string name="my_reports_confirm_body">The files you sent will be erased and your description removed from the public issue. The issue itself stays — it\'s part of Ari\'s bug history, and other people may have replied to it.</string>
+    <string name="my_reports_confirm_delete">Delete</string>
+    <string name="my_reports_confirm_keep">Keep it</string>
+    <string name="my_reports_withdraw_failed">Couldn\'t reach Ari\'s server, so nothing was deleted. Check your connection and try again.</string>
+    <string name="my_reports_footnote">This list lives on this phone only. Uninstalling Ari means you can no longer delete from here, and anything still stored is removed automatically 90 days after you sent it.</string>
+    <string name="settings_my_reports_title">My Reports</string>
+    <string name="settings_my_reports_blurb">Bug reports you\'ve sent from this phone. View one on GitHub, or delete the files that went with it.</string>
 </resources>

@@ -8,6 +8,9 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.BuildConfig
+import dev.heyari.ari.bugreport.FiledReportRecord
+import dev.heyari.ari.bugreport.decodeReports
+import dev.heyari.ari.bugreport.encodeReports
 import dev.heyari.ari.listening.ListeningCondition
 import dev.heyari.ari.listening.ListeningMode
 import dev.heyari.ari.listening.ListeningPlace
@@ -344,6 +347,34 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    /**
+     * Bug reports filed from this phone, newest first.
+     *
+     * Local only, and deliberately so: it holds the delete tokens, which are
+     * the one thing that can withdraw a report. Nothing on the server can
+     * rebuild this list, which is exactly what the consent text warns about.
+     */
+    val filedReports: Flow<List<FiledReportRecord>> = context.dataStore.data.map { prefs ->
+        decodeReports(prefs[KEY_FILED_REPORTS])
+    }.distinctUntilChanged()
+
+    suspend fun addFiledReport(report: FiledReportRecord) {
+        context.dataStore.edit { prefs ->
+            val existing = decodeReports(prefs[KEY_FILED_REPORTS])
+                .filterNot { it.reportId == report.reportId }
+            prefs[KEY_FILED_REPORTS] =
+                encodeReports((listOf(report) + existing).take(FiledReportRecord.MAX_RECORDS))
+        }
+    }
+
+    suspend fun removeFiledReport(reportId: String) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_FILED_REPORTS] = encodeReports(
+                decodeReports(prefs[KEY_FILED_REPORTS]).filterNot { it.reportId == reportId }
+            )
+        }
+    }
+
     /** Whether the first-run onboarding wizard has been completed (or skipped). */
     val onboardingCompleted: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_ONBOARDING_COMPLETED] ?: false
@@ -519,6 +550,7 @@ class SettingsRepository @Inject constructor(
         private val KEY_REMEMBERED_FACTS = stringPreferencesKey("remembered_facts")
         private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         private val KEY_INSTALL_ID = stringPreferencesKey("install_id")
+        private val KEY_FILED_REPORTS = stringPreferencesKey("filed_bug_reports")
         private val KEY_FAB_X = floatPreferencesKey("bug_report_fab_x")
         private val KEY_FAB_Y = floatPreferencesKey("bug_report_fab_y")
         private val KEY_PENDING_CLOUD_ASSISTANT_SETUP = booleanPreferencesKey("pending_cloud_assistant_setup")

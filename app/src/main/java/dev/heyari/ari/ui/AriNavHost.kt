@@ -34,6 +34,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import dev.heyari.ari.BuildConfig
 import dev.heyari.ari.ui.about.AboutScreen
 import dev.heyari.ari.ui.bugreport.BugReportFab
+import dev.heyari.ari.ui.bugreport.MyReportsPage
 import dev.heyari.ari.ui.bugreport.BugReportScreen
 import dev.heyari.ari.ui.conversation.ConversationScreen
 import dev.heyari.ari.ui.menu.MenuScreen
@@ -91,6 +92,7 @@ object Routes {
     const val SETTINGS_AUTO_UPDATE = "settings/auto-update"
     const val SETTINGS_DEBUG = "settings/debug"
     const val BUG_REPORT = "bug-report"
+    const val MY_REPORTS = "settings/debug/my-reports"
     const val SKILLS = "skills?type={type}"
     const val SKILL_DETAIL = "skills/detail/{skillId}?source={source}"
     const val ABOUT = "about"
@@ -305,7 +307,19 @@ fun AriNavHost(
             AutoUpdateSettingsPage(onBack = { navController.popBackStack() })
         }
         composable(Routes.SETTINGS_DEBUG) {
-            DebugSettingsPage(onBack = { navController.popBackStack() })
+            DebugSettingsPage(
+                onBack = { navController.popBackStack() },
+                onOpenMyReports = { navController.navigate(Routes.MY_REPORTS) },
+            )
+        }
+        composable(Routes.MY_REPORTS) {
+            val context = LocalContext.current
+            MyReportsPage(
+                onBack = { navController.popBackStack() },
+                onOpenIssue = { url ->
+                    context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+                },
+            )
         }
         composable(Routes.BUG_REPORT) {
             val context = LocalContext.current

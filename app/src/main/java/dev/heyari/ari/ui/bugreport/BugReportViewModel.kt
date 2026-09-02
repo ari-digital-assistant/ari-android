@@ -9,6 +9,7 @@ import dev.heyari.ari.bugreport.BugReport
 import dev.heyari.ari.bugreport.BugReportClient
 import dev.heyari.ari.bugreport.BugReportCollector
 import dev.heyari.ari.bugreport.FiledReport
+import dev.heyari.ari.bugreport.FiledReportRecord
 import dev.heyari.ari.bugreport.SendOutcome
 import dev.heyari.ari.data.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -128,6 +129,19 @@ class BugReportViewModel @Inject constructor(
             when (val outcome = client.send(report)) {
                 is SendOutcome.Filed -> {
                     collector.clearStaging()
+                    // Written before the screen changes: the delete token
+                    // exists nowhere else, and losing it here would leave a
+                    // report the reporter can never withdraw.
+                    settings.addFiledReport(
+                        FiledReportRecord(
+                            reportId = outcome.report.reportId,
+                            deleteToken = outcome.report.deleteToken,
+                            issueNumber = outcome.report.issueNumber,
+                            issueUrl = outcome.report.issueUrl,
+                            title = current.description.trim().lineSequence().first().take(80),
+                            filedAtMillis = System.currentTimeMillis(),
+                        )
+                    )
                     _state.update { it.copy(step = BugReportStep.SENT, filed = outcome.report) }
                 }
                 is SendOutcome.Rejected -> _state.update {
