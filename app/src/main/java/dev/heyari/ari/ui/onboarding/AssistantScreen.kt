@@ -27,7 +27,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontStyle
@@ -39,6 +38,7 @@ import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.llm.LlmModel
 import dev.heyari.ari.llm.LlmModelRegistry
 import dev.heyari.ari.ui.settings.SettingsViewModel
+import dev.heyari.ari.ui.theme.LocalAriSemanticColors
 import java.util.Locale
 
 @Composable
@@ -258,11 +258,12 @@ private fun AssistantChoiceCard(
 
 @Composable
 private fun ProConRow(text: String, isPro: Boolean) {
+    val semantic = LocalAriSemanticColors.current
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(
             imageVector = if (isPro) Icons.Default.AddCircle else Icons.Default.RemoveCircle,
             contentDescription = null,
-            tint = if (isPro) Color(0xFF2E7D32) else Color(0xFFC62828),
+            tint = if (isPro) semantic.success else semantic.danger,
             modifier = Modifier.size(18.dp),
         )
         Spacer(Modifier.width(6.dp))
@@ -315,7 +316,11 @@ private fun LlmTierRow(
                 Text(
                     text = stringResource(R.string.model_status_downloaded),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
+                    // The card swaps its container when selected, so the label
+                    // has to swap with it — `primary` on `primaryContainer` is
+                    // one hue at two strengths.
+                    color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
+                    else MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(start = 48.dp),
                 )
             }

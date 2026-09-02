@@ -42,6 +42,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -57,6 +59,7 @@ import dev.heyari.ari.data.card.Card as CardModel
 import androidx.compose.ui.res.stringResource
 import dev.heyari.ari.R
 import dev.heyari.ari.data.card.CardAction
+import dev.heyari.ari.ui.theme.readableOn
 import dev.heyari.ari.notifications.AlertRegistry
 import kotlinx.coroutines.delay
 import kotlin.math.max
@@ -110,7 +113,8 @@ fun GenericCard(
 
     val container = accentContainer(card.accent)
     val onContainer = accentOnContainer(card.accent)
-    val accentBar = accentBar(card.accent)
+    val accentBar = readableOn(container, accentBar(card.accent), onContainer)
+    val urgentColor = readableOn(container, MaterialTheme.colorScheme.error, onContainer)
 
     Card(
         modifier = modifier
@@ -126,6 +130,7 @@ fun GenericCard(
                     card = card,
                     onContainer = onContainer,
                     accentBar = accentBar,
+                    urgentColor = urgentColor,
                     isRinging = isRinging,
                 )
                 card.progress != null -> ProgressBody(card, onContainer, accentBar)
@@ -135,7 +140,7 @@ fun GenericCard(
                 actionsForState(card, isRinging, stringResource(R.string.card_action_stop))
             if (renderedActions.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))
-                ActionsRow(renderedActions, onAction, onContainer)
+                ActionsRow(renderedActions, onAction, container, onContainer, card.accent)
             }
         }
     }
@@ -150,9 +155,9 @@ private fun Header(card: CardModel, onContainer: Color, assetResolver: AssetReso
     ) {
         val icon = rememberAsset(card.skillId, card.icon, assetResolver)
         if (icon != null) {
-            Image(
+            SkillIcon(
                 bitmap = icon,
-                contentDescription = null,
+                onContainer = onContainer,
                 modifier = Modifier.size(40.dp),
             )
             Spacer(Modifier.size(12.dp))
@@ -181,6 +186,7 @@ private fun CountdownBody(
     card: CardModel,
     onContainer: Color,
     accentBar: Color,
+    urgentColor: Color,
     isRinging: Boolean,
 ) {
     val end = card.countdownToTsMs ?: return
@@ -194,8 +200,8 @@ private fun CountdownBody(
     // the digits. Gives the card a visible "about to fire" signal.
     val urgent = !expired && remaining < 10_000L
     val criticalTint = expired || remaining < 3_000L
-    val barColor = if (urgent || isRinging) MaterialTheme.colorScheme.error else accentBar
-    val digitsColor = if (criticalTint || isRinging) MaterialTheme.colorScheme.error else onContainer
+    val barColor = if (urgent || isRinging) urgentColor else accentBar
+    val digitsColor = if (criticalTint || isRinging) urgentColor else onContainer
 
     val label = when {
         isRinging -> stringResource(R.string.card_status_ringing)
@@ -205,7 +211,7 @@ private fun CountdownBody(
     Text(
         text = label.uppercase(),
         style = MaterialTheme.typography.labelSmall,
-        color = (if (isRinging) MaterialTheme.colorScheme.error else onContainer).copy(alpha = 0.75f),
+        color = (if (isRinging) urgentColor else onContainer).copy(alpha = 0.75f),
         modifier = Modifier.fillMaxWidth(),
         textAlign = TextAlign.Center,
     )
@@ -329,31 +335,59 @@ private fun actionsForState(
 }
 
 @Composable
-private fun ActionsRow(actions: List<CardAction>, onAction: (CardAction) -> Unit, tint: Color) {
+private fun ActionsRow(
+    actions: List<CardAction>,
+    onAction: (CardAction) -> Unit,
+    container: Color,
+    onContainer: Color,
+    accent: CardModel.Accent,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.End,
     ) {
         for ((index, action) in actions.withIndex()) {
             if (index > 0) Spacer(Modifier.size(8.dp))
-            ActionButton(action = action, onClick = { onAction(action) }, defaultTint = tint)
+            ActionButton(
+                action = action,
+                onClick = { onAction(action) },
+                container = container,
+                onContainer = onContainer,
+                accent = accent,
+            )
         }
     }
 }
 
 @Composable
-private fun ActionButton(action: CardAction, onClick: () -> Unit, defaultTint: Color) {
-    val error = MaterialTheme.colorScheme.error
-    val (contentColor, borderBrushColor) = when (action.style) {
-        CardAction.Style.DESTRUCTIVE -> error to error
-        CardAction.Style.PRIMARY -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.primary
-        CardAction.Style.DEFAULT -> defaultTint to defaultTint.copy(alpha = 0.4f)
+private fun ActionButton(
+    action: CardAction,
+    onClick: () -> Unit,
+    container: Color,
+    onContainer: Color,
+    accent: CardModel.Accent,
+) {
+    // Emphasis wants a colour of its own, but only where that colour survives
+    // the container it lands on. A destructive button used to paint itself
+    // `error` unconditionally, which is light pink in a dynamic dark scheme —
+    // fine on a dark card, invisible on the light yellow one this device hands
+    // back for `tertiaryContainer`. Fall back to the container's own on* role
+    // whenever the expressive choice doesn't contrast.
+    val contentColor = when (action.style) {
+        CardAction.Style.DESTRUCTIVE ->
+            readableOn(container, MaterialTheme.colorScheme.error, onContainer)
+        CardAction.Style.PRIMARY ->
+            readableOn(container, accentBar(accent), onContainer)
+        CardAction.Style.DEFAULT -> onContainer
     }
+    val borderColor =
+        if (action.style == CardAction.Style.DEFAULT) contentColor.copy(alpha = 0.4f)
+        else contentColor
     OutlinedButton(
         onClick = onClick,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = contentColor),
-        border = androidx.compose.foundation.BorderStroke(1.dp, borderBrushColor),
+        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor),
     ) { Text(action.label) }
 }
 
@@ -418,14 +452,17 @@ private fun accentOnContainer(accent: CardModel.Accent): Color = when (accent) {
 
 /**
  * Bar colour for the progress indicator. Separate from `accentOnContainer`
- * because the bar wants a saturated fill, not a text tint. Default/Success
- * map to `primary`; Warning/Critical to `error`.
+ * because the bar wants a saturated fill, not a text tint — but it has to be
+ * the saturated role from the *same* family as the container, not whichever
+ * one looks vivid. Default used to reach for `primary` while sitting on
+ * `tertiaryContainer`; under dynamic colour those are unrelated hues, which
+ * is how the timer card ended up pink-on-yellow.
  */
 @Composable
 private fun accentBar(accent: CardModel.Accent): Color = when (accent) {
     CardModel.Accent.WARNING, CardModel.Accent.CRITICAL -> MaterialTheme.colorScheme.error
     CardModel.Accent.SUCCESS -> MaterialTheme.colorScheme.primary
-    CardModel.Accent.DEFAULT -> MaterialTheme.colorScheme.primary
+    CardModel.Accent.DEFAULT -> MaterialTheme.colorScheme.tertiary
 }
 
 /** Decode a skill asset to an ImageBitmap once, cached across recompositions. */
@@ -441,6 +478,61 @@ private fun rememberAsset(
             runCatching { BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap() }.getOrNull()
         }
     }
+}
+
+/**
+ * Whether every visible pixel of an icon is grey, i.e. it is a silhouette
+ * rather than a picture.
+ *
+ * Skills ship their card icons as ordinary bitmaps and cannot know what colour
+ * the card will be — the container comes from the user's dynamic palette. Both
+ * icons in the registry today are pale grey glyphs drawn for a dark card, which
+ * all but vanish on the light yellow one this device produces for
+ * `tertiaryContainer`. A silhouette can be tinted to the card's own content
+ * colour and be legible on any container; a picture cannot, and tinting one
+ * would flatten it. So ask the bitmap which it is.
+ */
+private fun ImageBitmap.isSilhouette(): Boolean {
+    // A coarse grid is plenty — an icon that mixes grey and colour is a
+    // picture either way, and this runs once per asset, not per frame.
+    val step = max(1, max(width, height) / 24)
+    val pixels = IntArray(width * height)
+    runCatching { readPixels(pixels) }.getOrElse { return false }
+    var sawVisiblePixel = false
+    var y = 0
+    while (y < height) {
+        var x = 0
+        while (x < width) {
+            val p = pixels[y * width + x]
+            if ((p ushr 24 and 0xFF) > 32) {
+                sawVisiblePixel = true
+                val r = p ushr 16 and 0xFF
+                val g = p ushr 8 and 0xFF
+                val b = p and 0xFF
+                if (max(r, max(g, b)) - min(r, min(g, b)) > 24) return false
+            }
+            x += step
+        }
+        y += step
+    }
+    return sawVisiblePixel
+}
+
+/**
+ * A skill icon drawn so it reads on whatever container it landed on: tinted to
+ * [onContainer] when it is a silhouette, left alone when it is a picture.
+ */
+@Composable
+private fun SkillIcon(bitmap: ImageBitmap, onContainer: Color, modifier: Modifier) {
+    val tint = remember(bitmap, onContainer) {
+        if (bitmap.isSilhouette()) ColorFilter.tint(onContainer) else null
+    }
+    Image(
+        bitmap = bitmap,
+        contentDescription = null,
+        colorFilter = tint,
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -509,7 +601,7 @@ private fun StatCard(
                 }
                 if (card.actions.isNotEmpty()) {
                     Spacer(Modifier.height(12.dp))
-                    ActionsRow(card.actions, onAction, onContainer)
+                    ActionsRow(card.actions, onAction, container, onContainer, card.accent)
                 }
             }
         }
@@ -522,7 +614,7 @@ private fun FrostedChip(item: dev.heyari.ari.data.card.IconText, skillId: String
     Surface(color = Color.White.copy(alpha = 0.55f), shape = RoundedCornerShape(50)) {
         Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            AssetIcon(item.icon, skillId, assetResolver, 18.dp)
+            AssetIcon(item.icon, skillId, assetResolver, 18.dp, onContainer)
             Text(item.text, style = MaterialTheme.typography.bodyMedium, color = onContainer)
         }
     }
@@ -532,7 +624,7 @@ private fun FrostedChip(item: dev.heyari.ari.data.card.IconText, skillId: String
 private fun IconLabel(item: dev.heyari.ari.data.card.IconText, skillId: String,
     assetResolver: AssetResolver?, color: Color, small: Boolean = false) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        AssetIcon(item.icon, skillId, assetResolver, if (small) 14.dp else 20.dp)
+        AssetIcon(item.icon, skillId, assetResolver, if (small) 14.dp else 20.dp, color)
         Text(item.text,
             style = if (small) MaterialTheme.typography.labelSmall else MaterialTheme.typography.bodyMedium,
             color = color)
@@ -540,10 +632,16 @@ private fun IconLabel(item: dev.heyari.ari.data.card.IconText, skillId: String,
 }
 
 @Composable
-private fun AssetIcon(reference: String?, skillId: String, assetResolver: AssetResolver?, size: Dp) {
+private fun AssetIcon(
+    reference: String?,
+    skillId: String,
+    assetResolver: AssetResolver?,
+    size: Dp,
+    onContainer: Color,
+) {
     val bmp = rememberAsset(skillId, reference, assetResolver)
     if (bmp != null) {
-        Image(bitmap = bmp, contentDescription = null, modifier = Modifier.size(size))
+        SkillIcon(bitmap = bmp, onContainer = onContainer, modifier = Modifier.size(size))
         Spacer(Modifier.width(6.dp))
     }
 }
@@ -581,7 +679,7 @@ private fun ListVariantCard(
                 ) {
                     Text(row.leading, style = MaterialTheme.typography.titleSmall, color = onContainer,
                         modifier = Modifier.width(40.dp))
-                    AssetIcon(row.icon, card.skillId, assetResolver, 34.dp)
+                    AssetIcon(row.icon, card.skillId, assetResolver, 34.dp, onContainer)
                     Text(
                         row.text ?: "",
                         style = MaterialTheme.typography.bodyMedium,
@@ -614,7 +712,7 @@ private fun ListVariantCard(
         }
         if (card.actions.isNotEmpty()) {
             Spacer(Modifier.height(12.dp))
-            ActionsRow(card.actions, onAction, onContainer)
+            ActionsRow(card.actions, onAction, container, onContainer, card.accent)
         }
       }
     }

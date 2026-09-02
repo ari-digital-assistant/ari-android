@@ -41,7 +41,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -50,6 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.heyari.ari.R
 import dev.heyari.ari.audio.ClipStats
+import dev.heyari.ari.ui.theme.LocalAriSemanticColors
 import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.llm.LlmModel
 import dev.heyari.ari.stt.ModelDownloadState
@@ -176,6 +176,7 @@ private fun PermissionRow(
     actionLabel: String,
     onAction: () -> Unit,
 ) {
+    val semantic = LocalAriSemanticColors.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -196,7 +197,11 @@ private fun PermissionRow(
                 Icon(
                     imageVector = if (granted) Icons.Default.CheckCircle else Icons.Default.Cancel,
                     contentDescription = null,
-                    tint = if (granted) Color(0xFF2E7D32) else if (required) Color(0xFFF57C00) else MaterialTheme.colorScheme.outline,
+                    tint = when {
+                        granted -> semantic.success
+                        required -> semantic.warning
+                        else -> MaterialTheme.colorScheme.outline
+                    },
                 )
                 Text(
                     text = label,
@@ -209,7 +214,7 @@ private fun PermissionRow(
                         else R.string.permission_chip_optional
                     ),
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (required) Color(0xFFF57C00) else MaterialTheme.colorScheme.outline,
+                    color = if (required) semantic.warning else MaterialTheme.colorScheme.outline,
                 )
             }
             Text(

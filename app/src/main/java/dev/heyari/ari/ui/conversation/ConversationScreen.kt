@@ -30,6 +30,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -417,7 +418,15 @@ private fun OnboardingCard(onOpenMenu: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onOpenMenu) {
+                TextButton(
+                    onClick = onOpenMenu,
+                    // A TextButton defaults its label to `primary`, which has
+                    // nothing to do with the tertiary container it sits on —
+                    // under dynamic colour that lands pink text on a yellow card.
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    ),
+                ) {
                     Text(stringResource(R.string.conversation_open_menu))
                 }
             }
@@ -468,7 +477,15 @@ private fun CloudAssistantSetupCard(onOpenSkills: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onOpenSkills) {
+                TextButton(
+                    onClick = onOpenSkills,
+                    // A TextButton defaults its label to `primary`, which has
+                    // nothing to do with the tertiary container it sits on —
+                    // under dynamic colour that lands pink text on a yellow card.
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    ),
+                ) {
                     Text(stringResource(R.string.conversation_cloud_setup_button))
                 }
             }
@@ -515,7 +532,15 @@ private fun ListeningSetupCard(onOpenListeningSettings: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onOpenListeningSettings) {
+                TextButton(
+                    onClick = onOpenListeningSettings,
+                    // A TextButton defaults its label to `primary`, which has
+                    // nothing to do with the tertiary container it sits on —
+                    // under dynamic colour that lands pink text on a yellow card.
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    ),
+                ) {
                     Text(stringResource(R.string.conversation_listening_setup_button))
                 }
             }
