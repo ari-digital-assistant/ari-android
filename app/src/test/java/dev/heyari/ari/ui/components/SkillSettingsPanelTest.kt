@@ -1,5 +1,8 @@
 package dev.heyari.ari.ui.components
 
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import uniffi.ari_ffi.FfiConfigField
@@ -20,6 +23,7 @@ class SkillSettingsPanelTest {
         key: String,
         currentValue: String? = null,
         defaultValue: String? = null,
+        keyboard: String? = null,
     ) = FfiConfigField(
         key = key,
         label = key,
@@ -34,7 +38,27 @@ class SkillSettingsPanelTest {
         validate = false,
         helpText = null,
         collapsedGroup = null,
+        keyboard = keyboard,
     )
+
+    @Test
+    fun `url hint gives a URI keyboard with no autocorrect`() {
+        val opts = field("base_url", keyboard = "url").keyboardOptions()
+        assertEquals(KeyboardType.Uri, opts.keyboardType)
+        assertEquals(false, opts.autoCorrectEnabled)
+        assertEquals(KeyboardCapitalization.None, opts.capitalization)
+    }
+
+    @Test
+    fun `absent or unknown hint falls back to the plain text keyboard`() {
+        // A manifest written against a newer schema must still render here,
+        // so an unrecognised hint degrades rather than being rejected.
+        assertEquals(KeyboardOptions.Default, field("base_url").keyboardOptions())
+        assertEquals(
+            KeyboardOptions.Default,
+            field("base_url", keyboard = "telephone").keyboardOptions(),
+        )
+    }
 
     @Test
     fun `draft beats the persisted value`() {

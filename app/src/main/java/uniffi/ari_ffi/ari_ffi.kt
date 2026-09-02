@@ -9493,6 +9493,13 @@ data class FfiConfigField (
      * always shown at top level.
      */
     var `collapsedGroup`: kotlin.String?
+    , 
+    /**
+     * Optional soft-keyboard hint for text entry — currently only `"url"`.
+     * Null means an ordinary text keyboard. A frontend that doesn't know a
+     * value here must fall back to plain text rather than hide the field.
+     */
+    var `keyboard`: kotlin.String?
     
 ){
     
@@ -9522,6 +9529,7 @@ public object FfiConverterTypeFfiConfigField: FfiConverterRustBuffer<FfiConfigFi
             FfiConverterBoolean.read(buf),
             FfiConverterOptionalString.read(buf),
             FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
         )
     }
 
@@ -9538,7 +9546,8 @@ public object FfiConverterTypeFfiConfigField: FfiConverterRustBuffer<FfiConfigFi
             FfiConverterSequenceString.allocationSize(value.`dependsOn`) +
             FfiConverterBoolean.allocationSize(value.`validate`) +
             FfiConverterOptionalString.allocationSize(value.`helpText`) +
-            FfiConverterOptionalString.allocationSize(value.`collapsedGroup`)
+            FfiConverterOptionalString.allocationSize(value.`collapsedGroup`) +
+            FfiConverterOptionalString.allocationSize(value.`keyboard`)
     )
 
     override fun write(value: FfiConfigField, buf: ByteBuffer) {
@@ -9555,6 +9564,7 @@ public object FfiConverterTypeFfiConfigField: FfiConverterRustBuffer<FfiConfigFi
             FfiConverterBoolean.write(value.`validate`, buf)
             FfiConverterOptionalString.write(value.`helpText`, buf)
             FfiConverterOptionalString.write(value.`collapsedGroup`, buf)
+            FfiConverterOptionalString.write(value.`keyboard`, buf)
     }
 }
 

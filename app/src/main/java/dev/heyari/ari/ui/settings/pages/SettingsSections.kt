@@ -3,6 +3,7 @@ package dev.heyari.ari.ui.settings.pages
 import android.text.format.Formatter
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -53,6 +54,8 @@ import dev.heyari.ari.ui.theme.LocalAriSemanticColors
 import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.llm.LlmModel
 import dev.heyari.ari.stt.ModelDownloadState
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import dev.heyari.ari.stt.SttMode
 import dev.heyari.ari.stt.SttModel
@@ -751,6 +754,13 @@ internal fun CloudSttSection(
                     value = endpoint,
                     onValueChange = onEndpointChange,
                     label = { Text(stringResource(R.string.settings_stt_cloud_endpoint_label)) },
+                    // A prose keyboard capitalises the first letter and puts a
+                    // space after every dot, which is no way to type a hostname.
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Uri,
+                        autoCorrectEnabled = false,
+                        capitalization = KeyboardCapitalization.None,
+                    ),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
