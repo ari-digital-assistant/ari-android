@@ -37,6 +37,14 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        // Whether this build went to a human who might file a bug report, as
+        // opposed to a human who just wants to use Ari. Gates the bug-report
+        // FAB, the onboarding testing-build warning, and the capture defaults.
+        // Deliberately NOT BuildConfig.DEBUG: the build testers get is
+        // release-signed and not debuggable, so DEBUG is false there and
+        // gating on it would hide all three from the only people who need them.
+        buildConfigField("boolean", "ARI_TESTING", "false")
+
         ndk {
             // Must match the Rust targets built by `androidRust` below
             // (arm64 + x86_64). Advertising an ABI we don't build a Rust
@@ -113,6 +121,7 @@ android {
     buildTypes {
         debug {
             signingConfig = signingConfigs.getByName("debug")
+            buildConfigField("boolean", "ARI_TESTING", "true")
         }
         release {
             signingConfig = signingConfigs.findByName("release")
@@ -121,6 +130,18 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        // What testers get. Release-signed and not debuggable, so it behaves
+        // like the shipped app and Play would accept it — but NOT minified,
+        // because an R8-mangled stack trace in a bug report is worth nothing
+        // and retracing it server-side is work we don't need yet. The price:
+        // this is not byte-identical to what ships, so it is a build for
+        // finding bugs, not for final performance numbers.
+        create("beta") {
+            initWith(getByName("release"))
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("release")
+            buildConfigField("boolean", "ARI_TESTING", "true")
         }
     }
 
@@ -148,6 +169,12 @@ androidRust {
             targets = listOf("arm64", "x86_64")
         }
         buildType("release") {
+            profile = "release"
+            targets = listOf("arm64", "x86_64")
+        }
+        // Optimised Rust, same as release — the readable-stack-trace argument
+        // is about R8 on the Kotlin side and says nothing about the native lib.
+        buildType("beta") {
             profile = "release"
             targets = listOf("arm64", "x86_64")
         }
