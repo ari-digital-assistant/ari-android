@@ -128,7 +128,7 @@ fun AssistantScreen(
         AnimatedVisibility(visible = wizardState.assistantChoice == AssistantChoice.ON_DEVICE) {
             Column(modifier = Modifier.padding(top = 8.dp)) {
                 Text(
-                    text = "Choose a model size. You can change this later in Settings.",
+                    text = stringResource(R.string.onboarding_assistant_model_size_blurb),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -313,7 +313,7 @@ private fun LlmTierRow(
             }
             if (downloaded) {
                 Text(
-                    text = "Downloaded",
+                    text = stringResource(R.string.model_status_downloaded),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(start = 48.dp),

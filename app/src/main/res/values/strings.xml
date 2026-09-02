@@ -201,6 +201,7 @@
     <string name="onboarding_assistant_cloud_con_3">May need an API key or account</string>
     <string name="onboarding_assistant_cloud_privacy">Your voice is transcribed on-device. Only the text is sent to the cloud provider. Ari never streams audio to a third party.</string>
     <string name="onboarding_assistant_cloud_later">Cloud assistants are installed as skills. Ari supports various skill providers including ChatGPT, Claude and Gemini. You can browse and install your preferred provider from the Skills screen after onboarding.</string>
+    <string name="onboarding_assistant_model_size_blurb">Choose a model size. You can change this later in Settings.</string>
 
     <string name="onboarding_general_title">Finishing touches</string>
     <string name="onboarding_general_body">A couple of options to make Ari work the way you want.</string>
@@ -352,6 +353,11 @@
     <string name="settings_llm_blurb">Choose an on-device language model. When enabled, Ari can answer general questions and reroute misheard commands to the right skill. Larger models give better answers but use more storage and RAM.</string>
     <string name="settings_llm_none_title">None</string>
     <string name="settings_llm_none_blurb">No on-device LLM. Ari only answers via matched skills.</string>
+    <string name="settings_llm_choice_blurb">Choose how Ari answers general questions when no skill matches.</string>
+    <string name="settings_llm_cloud_nudge_title">Want a cloud assistant?</string>
+    <string name="settings_llm_cloud_nudge_body">Install a cloud assistant skill (ChatGPT, Claude, Gemini, etc.) from the skill browser to add it as an option here.</string>
+    <string name="settings_llm_cloud_privacy">Your questions will be sent to a third-party server.</string>
+    <string name="settings_llm_model_picker_blurb">Choose a model to download. Smaller models are faster but less capable.</string>
     <string name="settings_last_download_failed">Last download failed: %1$s</string>
 
     <!-- Listening modes -->
@@ -440,6 +446,10 @@
     <string name="skill_panel_no_options">No options found.</string>
     <string name="skill_panel_query_failed">Couldn\'t complete the request.</string>
     <string name="skill_panel_action_failed">Action failed</string>
+    <string name="skill_panel_calendar_permission_blurb">Calendar access is needed to list your calendars and save events to them.</string>
+    <string name="skill_panel_tasks_permission_blurb">Access to your tasks app is needed to list your task lists and save tasks to them.</string>
+    <string name="skill_panel_no_tasks_app_title">No compatible tasks app</string>
+    <string name="skill_panel_no_tasks_app_body">Skills that create tasks go through the OpenTasks bridge. OpenTasks is recommended — Tasks.org works too but only exposes its CalDAV-synced lists, not local-only ones.</string>
 
     <!-- TTS settings page -->
     <string name="tts_language_label">Language</string>
@@ -447,6 +457,10 @@
     <string name="tts_chip_cloud">Cloud</string>
     <string name="tts_chip_cloud_only">Cloud only</string>
     <string name="tts_preview_voice_description">Preview voice</string>
+    <string name="tts_blurb">Choose which voice Ari uses to speak. Pick a language, then select a voice. Tap the speaker icon to preview.</string>
+    <string name="tts_system_default_title">System default</string>
+    <string name="tts_system_default_desc">Uses your device\u2019s default voice</string>
+    <string name="tts_no_voices">No voices available yet. They should appear shortly.</string>
 
     <!-- Assistant settings page -->
     <string name="assistant_browse_skills">Browse skills</string>
@@ -458,6 +472,12 @@
     <string name="notif_channel_background_name">Background updates</string>
     <string name="notif_channel_background_description">Persistent skill-driven status (timers, downloads, …)</string>
     <string name="notif_channel_important_name">Important updates</string>
+    <string name="card_status_remaining">Remaining</string>
+    <string name="card_status_ringing">Ringing</string>
+    <string name="card_status_done">Done</string>
+    <string name="card_action_stop">Stop</string>
+    <string name="alert_fired_at">Alerted at %1$s</string>
+    <string name="alert_action_dismiss">Dismiss</string>
     <string name="notif_channel_important_description">Higher-priority skill-driven status the user should see</string>
     <string name="notif_channel_alerts_name">Alerts</string>
     <string name="notif_channel_alerts_description">Skill-fired alerts (timer done, alarm clock, etc.)</string>
@@ -586,6 +606,8 @@
     <string name="model_llm_medium_desc">A good balance of performance and capability (~3.1 GB download, 6 GB+ RAM). Suitable for a wide range of tasks.</string>
     <string name="model_llm_large_name">Large (Gemma 4 E4B)</string>
     <string name="model_llm_large_desc">Most capable (~5 GB download, 8 GB+ RAM). Best for complex tasks and understanding nuanced language, but may be slower and require more resources.</string>
+    <!-- Shown on a model row once its files are on disk. -->
+    <string name="model_status_downloaded">Downloaded</string>
     <string name="message_menu_copy">Copy</string>
     <string name="message_menu_report">Report</string>
     <string name="report_title">Report this response</string>

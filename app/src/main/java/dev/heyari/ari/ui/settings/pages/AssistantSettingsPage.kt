@@ -98,7 +98,7 @@ fun AssistantSettingsPage(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = "Choose how Ari answers general questions when no skill matches.",
+                text = stringResource(R.string.settings_llm_choice_blurb),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -165,12 +165,12 @@ fun AssistantSettingsPage(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = "Want a cloud assistant?",
+                            text = stringResource(R.string.settings_llm_cloud_nudge_title),
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
-                            text = "Install a cloud assistant skill (ChatGPT, Claude, Gemini, etc.) from the skill browser to add it as an option here.",
+                            text = stringResource(R.string.settings_llm_cloud_nudge_body),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 4.dp),
@@ -276,7 +276,7 @@ private fun AssistantCard(
 
             if (selected && privacy == "cloud") {
                 Text(
-                    text = "Your questions will be sent to a third-party server.",
+                    text = stringResource(R.string.settings_llm_cloud_privacy),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(start = 40.dp, top = 4.dp),
@@ -296,7 +296,7 @@ private fun BuiltinModelSection(
     onSelect: (dev.heyari.ari.llm.LlmModel) -> Unit,
 ) {
     Text(
-        text = "Choose a model to download. Smaller models are faster but less capable.",
+        text = stringResource(R.string.settings_llm_model_picker_blurb),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(start = 40.dp),

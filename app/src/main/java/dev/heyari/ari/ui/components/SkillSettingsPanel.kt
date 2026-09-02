@@ -797,7 +797,7 @@ private fun DeviceCalendarField(
 
         if (!hasPerm) {
             Text(
-                text = "Calendar access is needed to list your calendars and save events to them.",
+                text = stringResource(R.string.skill_panel_calendar_permission_blurb),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 8.dp),
@@ -929,7 +929,7 @@ private fun DeviceTaskListField(
             val read = provider.requiredReadPermission()
             val write = provider.requiredWritePermission()
             Text(
-                text = "Access to your tasks app is needed to list your task lists and save tasks to them.",
+                text = stringResource(R.string.skill_panel_tasks_permission_blurb),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 8.dp),
@@ -1022,13 +1022,12 @@ private fun NoTasksAppCard(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = "No compatible tasks app",
+                text = stringResource(R.string.skill_panel_no_tasks_app_title),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "Skills that create tasks go through the OpenTasks bridge. OpenTasks is recommended — " +
-                    "Tasks.org works too but only exposes its CalDAV-synced lists, not local-only ones.",
+                text = stringResource(R.string.skill_panel_no_tasks_app_body),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

@@ -54,6 +54,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.heyari.ari.assets.AssetResolver
 import dev.heyari.ari.data.card.Card as CardModel
+import androidx.compose.ui.res.stringResource
+import dev.heyari.ari.R
 import dev.heyari.ari.data.card.CardAction
 import dev.heyari.ari.notifications.AlertRegistry
 import kotlinx.coroutines.delay
@@ -90,7 +92,7 @@ fun GenericCard(
     modifier: Modifier = Modifier,
 ) {
     if (card == null) {
-        FinishedChip(label = "Done", modifier = modifier)
+        FinishedChip(label = stringResource(R.string.card_status_done), modifier = modifier)
         return
     }
 
@@ -129,7 +131,8 @@ fun GenericCard(
                 card.progress != null -> ProgressBody(card, onContainer, accentBar)
                 else -> PlainBody(card, onContainer)
             }
-            val renderedActions = actionsForState(card, isRinging)
+            val renderedActions =
+                actionsForState(card, isRinging, stringResource(R.string.card_action_stop))
             if (renderedActions.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))
                 ActionsRow(renderedActions, onAction, onContainer)
@@ -195,9 +198,9 @@ private fun CountdownBody(
     val digitsColor = if (criticalTint || isRinging) MaterialTheme.colorScheme.error else onContainer
 
     val label = when {
-        isRinging -> "Ringing"
-        expired -> "Done"
-        else -> "Remaining"
+        isRinging -> stringResource(R.string.card_status_ringing)
+        expired -> stringResource(R.string.card_status_done)
+        else -> stringResource(R.string.card_status_remaining)
     }
     Text(
         text = label.uppercase(),
@@ -308,12 +311,16 @@ private fun PlainBody(card: CardModel, onContainer: Color) {
  * ringing alert the skill's declared actions are replaced with a single
  * Stop button — the user wants to silence the alert, nothing else.
  */
-private fun actionsForState(card: CardModel, isRinging: Boolean): List<CardAction> {
+private fun actionsForState(
+    card: CardModel,
+    isRinging: Boolean,
+    stopLabel: String,
+): List<CardAction> {
     if (!isRinging) return card.actions
     return listOf(
         CardAction(
             id = "stop_alert",
-            label = "Stop",
+            label = stopLabel,
             utterance = null,
             speak = null,
             style = CardAction.Style.DESTRUCTIVE,

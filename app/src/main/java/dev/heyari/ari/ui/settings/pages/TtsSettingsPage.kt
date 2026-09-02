@@ -115,7 +115,7 @@ private fun TtsVoicesSection(
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "Choose which voice Ari uses to speak. Pick a language, then select a voice. Tap the speaker icon to preview.",
+            text = stringResource(R.string.tts_blurb),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -143,12 +143,12 @@ private fun TtsVoicesSection(
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "System default",
+                        text = stringResource(R.string.tts_system_default_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        text = "Uses your device\u2019s default voice",
+                        text = stringResource(R.string.tts_system_default_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -158,7 +158,7 @@ private fun TtsVoicesSection(
 
         if (locales.isEmpty()) {
             Text(
-                text = "No voices available yet. They should appear shortly.",
+                text = stringResource(R.string.tts_no_voices),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
