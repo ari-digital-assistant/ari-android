@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
@@ -21,7 +22,19 @@ import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dev.heyari.ari.data.SettingsRepository
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
+import androidx.navigation.compose.currentBackStackEntryAsState
+import dev.heyari.ari.BuildConfig
 import dev.heyari.ari.ui.about.AboutScreen
+import dev.heyari.ari.ui.bugreport.BugReportFab
+import dev.heyari.ari.ui.bugreport.BugReportScreen
 import dev.heyari.ari.ui.conversation.ConversationScreen
 import dev.heyari.ari.ui.menu.MenuScreen
 import dev.heyari.ari.ui.onboarding.AssistantScreen
@@ -56,6 +69,7 @@ import dev.heyari.ari.ui.settings.skills.SkillsScreen
 import dev.heyari.ari.wakeword.WakeWordService
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 object Routes {
@@ -76,6 +90,7 @@ object Routes {
     const val SETTINGS_LLM = "settings/llm"
     const val SETTINGS_AUTO_UPDATE = "settings/auto-update"
     const val SETTINGS_DEBUG = "settings/debug"
+    const val BUG_REPORT = "bug-report"
     const val SKILLS = "skills?type={type}"
     const val SKILL_DETAIL = "skills/detail/{skillId}?source={source}"
     const val ABOUT = "about"
@@ -135,6 +150,17 @@ fun AriNavHost(
     // semi-transparent mid-animation and lets the window background flash
     // through. Slide is what Android does everywhere else anyway: forward
     // pushes in from the right, back returns from the left.
+    // The graph sits in a Box so the bug-report button can float over every
+    // destination rather than being re-added to each one.
+    var container by remember { mutableStateOf(IntSize.Zero) }
+    val fabPosition by settingsRepository.bugReportFabPosition.collectAsStateWithLifecycle(null)
+    val scope = rememberCoroutineScope()
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .onSizeChanged { container = it },
+    ) {
     NavHost(
         navController = navController,
         startDestination = startDestination,
@@ -280,6 +306,18 @@ fun AriNavHost(
         }
         composable(Routes.SETTINGS_DEBUG) {
             DebugSettingsPage(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.BUG_REPORT) {
+            val context = LocalContext.current
+            BugReportScreen(
+                onClose = { navController.popBackStack() },
+                // The filed issue opens in a browser rather than in-app: it is
+                // a public page on somebody else's site, and pretending
+                // otherwise is how a webview ends up owning a login flow.
+                onOpenIssue = { url ->
+                    context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+                },
+            )
         }
         composable(
             route = Routes.SKILLS,
@@ -520,6 +558,23 @@ fun AriNavHost(
                     },
                 )
             }
+        }
+    }
+
+        // Testing builds only. Hidden while the reporter itself is open —
+        // offering to report a bug from inside the bug reporter is noise.
+        val route = navController.currentBackStackEntryAsState().value?.destination?.route
+        if (BuildConfig.ARI_TESTING && route != Routes.BUG_REPORT) {
+            BugReportFab(
+                container = container,
+                position = fabPosition,
+                onMoved = { x, y ->
+                    scope.launch { settingsRepository.setBugReportFabPosition(x, y) }
+                },
+                onClick = {
+                    navController.navigate(Routes.BUG_REPORT) { launchSingleTop = true }
+                },
+            )
         }
     }
 }

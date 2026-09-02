@@ -139,7 +139,7 @@
     <string name="settings_category_debug">Debug</string>
     <string name="settings_category_listening">Listening</string>
     <string name="settings_keep_everything_title">Keep everything</string>
-    <string name="settings_keep_everything_blurb">The debugging firehose: record every wake-word firing — including accepted ones — and every spoken conversation with Ari, even when the two switches below are off. Everything stays on this device in Ari\'s private storage and is never uploaded. Off by default; leave it off unless you\'re chasing a bug.</string>
+    <string name="settings_keep_everything_blurb">The debugging firehose: record every wake-word firing — including accepted ones — and every spoken conversation with Ari, even when the two switches below are off. Everything stays on this device in Ari\'s private storage and is never sent anywhere on its own — a bug report can include it, but only if you tick it and agree. Only worth having on while you\'re chasing a bug.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_language_title">Choose your language</string>
@@ -319,7 +319,7 @@
     <string name="wakeword_sensitivity_low_label">Low</string>
     <string name="wakeword_sensitivity_low_description">Stricter. Use if Ari wakes when it shouldn\'t.</string>
     <string name="settings_wake_capture_title">Keep false-trigger audio</string>
-    <string name="settings_wake_capture_blurb">When Ari wakes for something you didn\'t say, keep the recording so the wake word can be improved. Audio stays on this device in Ari\'s private storage, is never uploaded, and is capped at 50 clips per capture category. Off by default.</string>
+    <string name="settings_wake_capture_blurb">When Ari wakes for something you didn\'t say, keep the recording so the wake word can be improved. Audio stays on this device in Ari\'s private storage, is never sent anywhere on its own, and is capped at 50 clips per capture category.</string>
     <plurals name="settings_capture_stats">
         <item quantity="one">%1$d clip · %2$s</item>
         <item quantity="other">%1$d clips · %2$s</item>
@@ -329,7 +329,7 @@
     <string name="settings_capture_export">Export clips</string>
     <string name="settings_wake_capture_export_chooser">Export wake-word clips</string>
     <string name="settings_utterance_capture_title">Keep command recordings</string>
-    <string name="settings_utterance_capture_blurb">Keep a recording of everything you say to Ari, next to every transcript the recogniser produced for it, so mis-hearings can be traced back to the audio. Recordings stay on this device in Ari\'s private storage, are never uploaded, and are capped at 100 clips. Off by default.</string>
+    <string name="settings_utterance_capture_blurb">Keep a recording of everything you say to Ari, next to every transcript the recogniser produced for it, so mis-hearings can be traced back to the audio. Recordings stay on this device in Ari\'s private storage, are never sent anywhere on their own, and are capped at 100 clips.</string>
     <string name="settings_utterance_capture_export_chooser">Export command recordings</string>
     <string name="settings_stt_models_blurb">The speech model for your language. Downloaded once, then it works offline.</string>
     <string name="settings_language_blurb">The language Ari listens and speaks in. Changing this updates the assistant\'s replies and the app\'s chrome — you may need to swap your speech-to-text model below if it doesn\'t support the new language.</string>
@@ -624,4 +624,58 @@
     <string name="report_skill_title">Report this skill</string>
     <string name="report_skill_what_is_sent">Which skill gets reported</string>
     <string name="skills_report_action">Report this skill</string>
+
+    <!-- Bug reporter -->
+    <string name="bug_report_fab_description">Report a bug</string>
+    <string name="bug_report_title">Report a bug</string>
+    <string name="bug_report_review_title">Before you send</string>
+    <string name="bug_report_sent_title">Report sent</string>
+    <string name="bug_report_what_happened">What happened?</string>
+    <string name="bug_report_public_warning">Posted publicly on GitHub, where anyone can read it.</string>
+    <string name="bug_report_private_label">Anything you\'d rather not make public?</string>
+    <string name="bug_report_optional">Optional</string>
+    <string name="bug_report_private_helper">Only Ari\'s maintainers can see this. Deleted after 90 days.</string>
+    <string name="bug_report_always_title">Always included</string>
+    <string name="bug_report_always_blurb">Your Ari and Android versions, your device model, which assistant and models you use, and which skills you have installed. None of it identifies you, and Ari can\'t diagnose anything without it.</string>
+    <string name="bug_report_files_title">Diagnostic files</string>
+    <string name="bug_report_files_blurb">Optional, and never posted publicly.</string>
+    <string name="bug_report_consent">Send the files I tick below</string>
+    <string name="bug_report_consent_blurb">They\'re stored privately on Ari\'s server, encrypted in transit and at rest, and visible only to Ari\'s maintainers. Deleted automatically after 90 days. You can delete them sooner in Settings › Debug › My Reports — but only from this phone, so if you uninstall Ari the 90-day deletion is what\'s left.</string>
+    <string name="bug_report_file_logcat">Scrubbed log</string>
+    <string name="bug_report_file_logcat_note">Keys and addresses removed</string>
+    <string name="bug_report_file_screenshot">Screenshot</string>
+    <string name="bug_report_file_screenshot_note">The screen you were on</string>
+    <string name="bug_report_file_conversation">This session\'s conversation</string>
+    <string name="bug_report_file_commands">Command recordings</string>
+    <string name="bug_report_file_wake_audio">False-trigger audio</string>
+    <string name="bug_report_file_all_audio">All recordings</string>
+    <string name="bug_report_file_count_size">%1$s · %2$s</string>
+    <string name="bug_report_review_action">Review and send</string>
+    <string name="bug_report_send_action">Send report</string>
+    <string name="bug_report_review_blurb">This is exactly what leaves your phone. Nothing else goes with it.</string>
+    <string name="bug_report_public_section">Goes on GitHub</string>
+    <string name="bug_report_public_section_blurb">Anyone can read this, forever.</string>
+    <string name="bug_report_private_section">Sent privately</string>
+    <string name="bug_report_private_section_blurb">Maintainers only, deleted after 90 days.</string>
+    <string name="bug_report_nothing_private">Nothing private is being sent.</string>
+    <string name="bug_report_your_private_note">Your private note</string>
+    <string name="bug_report_error_rejected">That report wasn\'t accepted: %1$s. Change it and try again.</string>
+    <string name="bug_report_error_offline">Couldn\'t reach Ari\'s server. Check your connection and try again.</string>
+    <string name="bug_report_thanks">Thanks — that helps</string>
+    <string name="bug_report_thanks_blurb">Your report is on GitHub. You can follow it there without an account.</string>
+    <string name="bug_report_issue_number">Issue #%1$d</string>
+    <string name="bug_report_open_on_github">Open on GitHub</string>
+    <string name="bug_report_done">Done</string>
+    <string name="bug_report_retention_note">Your diagnostic files are stored privately and deleted automatically after 90 days. To remove them sooner, or to find this report again, go to Settings › Debug › My Reports.</string>
+
+    <plurals name="bug_report_recordings">
+        <item quantity="one">%1$d recording</item>
+        <item quantity="other">%1$d recordings</item>
+    </plurals>
+    <plurals name="bug_report_turns">
+        <item quantity="one">%1$d message</item>
+        <item quantity="other">%1$d messages</item>
+    </plurals>
+    <string name="onboarding_testing_build_warning">You are running a testing build of Ari. Expect bugs, and please report them to help improve the app. Use the bug report button in the app, or report them on GitHub.</string>
+    <string name="onboarding_testing_build_data">For this testing build, debugging information is stored on your device. This includes conversation logs and audio recordings. This data is NEVER automatically sent anywhere, and is only sent with your explicit consent when you submit a bug report — and even then these items are unticked by default. You can delete this data at any time in Settings \u203a Debug.</string>
 </resources>

@@ -3,21 +3,33 @@ package dev.heyari.ari.ui.onboarding
 import android.graphics.ImageDecoder
 import android.graphics.drawable.AnimatedImageDrawable
 import android.widget.ImageView
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.heyari.ari.BuildConfig
 import dev.heyari.ari.R
+import dev.heyari.ari.ui.theme.LocalAriSemanticColors
 
 @Composable
 fun WelcomeScreen(
@@ -83,5 +95,52 @@ fun WelcomeScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.fillMaxWidth(),
         )
+
+        if (BuildConfig.ARI_TESTING) {
+            Spacer(Modifier.height(24.dp))
+            TestingBuildWarning()
+        }
+    }
+}
+
+/**
+ * What a tester needs to know before they start, in a testing build only.
+ *
+ * The weight comes from a rule down the side rather than from red body text.
+ * Red type at body size on a light surface is a contrast fight before dynamic
+ * colour gets involved, and dynamic colour is exactly what decides the surface
+ * here — so the colour is the semantic `danger` role, which is measured to
+ * read on both themes, and the rule does the shouting.
+ */
+@Composable
+private fun TestingBuildWarning() {
+    val danger = LocalAriSemanticColors.current.danger
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min),
+    ) {
+        Box(
+            Modifier
+                .width(3.dp)
+                .fillMaxHeight()
+                .background(danger),
+        )
+        Column(
+            modifier = Modifier.padding(start = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.onboarding_testing_build_warning),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = danger,
+            )
+            Text(
+                text = stringResource(R.string.onboarding_testing_build_data),
+                style = MaterialTheme.typography.bodySmall,
+                color = danger,
+            )
+        }
     }
 }

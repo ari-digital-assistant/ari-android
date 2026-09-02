@@ -10,6 +10,7 @@ import android.util.Log
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
+import dev.heyari.ari.bugreport.CrashRecorder
 import dev.heyari.ari.data.AutoUpdatePreferences
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.models.ModelUpdateWorker
@@ -43,6 +44,9 @@ class AriApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        // First thing, before anything else can crash: a handler that outlives
+        // the process is no use if it is installed after the failure.
+        CrashRecorder.install(this)
         // Kick the engine build on a background thread right away so it's
         // ready before the first interaction — WITHOUT blocking onCreate.
         // Building it on the main thread (the old @Inject AriEngine field

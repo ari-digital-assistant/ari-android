@@ -145,7 +145,7 @@
     <string name="settings_category_debug">Debug</string>
     <string name="settings_category_listening">Ascolto</string>
     <string name="settings_keep_everything_title">Conserva tutto</string>
-    <string name="settings_keep_everything_blurb">Registrazione completa per il debug: conserva ogni attivazione della parola di attivazione — comprese quelle accettate — e ogni conversazione vocale con Ari, anche quando i due interruttori qui sotto sono spenti. Tutto resta su questo dispositivo, nella memoria privata di Ari, e non viene mai caricato online. Disattivato per impostazione predefinita; lascialo spento se non stai cercando un bug.</string>
+    <string name="settings_keep_everything_blurb">Registrazione completa per il debug: conserva ogni attivazione della parola di attivazione — comprese quelle accettate — e ogni conversazione vocale con Ari, anche quando i due interruttori qui sotto sono spenti. Tutto resta su questo dispositivo, nella memoria privata di Ari, e non viene mai inviato altrove da solo: una segnalazione di bug può includerlo, ma solo se lo selezioni e acconsenti. Vale la pena tenerlo attivo solo mentre stai cercando un bug.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_language_title">Scegli la tua lingua</string>
@@ -317,7 +317,7 @@
     <string name="wakeword_sensitivity_low_label">Bassa</string>
     <string name="wakeword_sensitivity_low_description">Più rigorosa. Usa se Ari si attiva quando non dovrebbe.</string>
     <string name="settings_wake_capture_title">Conserva l\'audio delle attivazioni errate</string>
-    <string name="settings_wake_capture_blurb">Quando Ari si attiva per qualcosa che non hai detto, conserva la registrazione per migliorare la parola di attivazione. L\'audio resta su questo dispositivo, nella memoria privata di Ari, non viene mai caricato online ed è limitato a 50 clip per categoria di registrazione. Disattivato per impostazione predefinita.</string>
+    <string name="settings_wake_capture_blurb">Quando Ari si attiva per qualcosa che non hai detto, conserva la registrazione per migliorare la parola di attivazione. L\'audio resta su questo dispositivo, nella memoria privata di Ari, non viene mai inviato altrove da solo ed è limitato a 50 clip per categoria di registrazione.</string>
     <!-- "clip" is invariant in the Italian plural, so both quantities match. -->
     <plurals name="settings_capture_stats">
         <item quantity="one">%1$d clip · %2$s</item>
@@ -328,7 +328,7 @@
     <string name="settings_capture_export">Esporta le clip</string>
     <string name="settings_wake_capture_export_chooser">Esporta le clip della parola di attivazione</string>
     <string name="settings_utterance_capture_title">Conserva le registrazioni dei comandi</string>
-    <string name="settings_utterance_capture_blurb">Conserva una registrazione di tutto ciò che dici ad Ari, insieme a ogni trascrizione prodotta dal riconoscimento vocale, per risalire dall\'audio agli errori di comprensione. Le registrazioni restano su questo dispositivo, nella memoria privata di Ari, non vengono mai caricate online e sono limitate a 100 clip. Disattivato per impostazione predefinita.</string>
+    <string name="settings_utterance_capture_blurb">Conserva una registrazione di tutto ciò che dici ad Ari, insieme a ogni trascrizione prodotta dal riconoscimento vocale, per risalire dall\'audio agli errori di comprensione. Le registrazioni restano su questo dispositivo, nella memoria privata di Ari, non vengono mai inviate altrove da sole e sono limitate a 100 clip.</string>
     <string name="settings_utterance_capture_export_chooser">Esporta le registrazioni dei comandi</string>
     <string name="settings_stt_models_blurb">Il modello vocale per la tua lingua. Si scarica una volta, poi funziona offline.</string>
     <string name="settings_language_blurb">La lingua in cui Ari ascolta e parla. Cambiarla aggiorna le risposte dell\'assistente e i testi dell\'app — potresti dover sostituire il modello di riconoscimento vocale qui sotto se non supporta la nuova lingua.</string>
@@ -618,4 +618,58 @@
     <string name="report_skill_title">Segnala questa skill</string>
     <string name="report_skill_what_is_sent">Quale skill viene segnalata</string>
     <string name="skills_report_action">Segnala questa skill</string>
+
+    <!-- Segnalazione bug -->
+    <string name="bug_report_fab_description">Segnala un problema</string>
+    <string name="bug_report_title">Segnala un problema</string>
+    <string name="bug_report_review_title">Prima di inviare</string>
+    <string name="bug_report_sent_title">Segnalazione inviata</string>
+    <string name="bug_report_what_happened">Cosa è successo?</string>
+    <string name="bug_report_public_warning">Pubblicato su GitHub, dove chiunque può leggerlo.</string>
+    <string name="bug_report_private_label">C\'è qualcosa che preferiresti non rendere pubblico?</string>
+    <string name="bug_report_optional">Facoltativo</string>
+    <string name="bug_report_private_helper">Solo i manutentori di Ari possono vederlo. Eliminato dopo 90 giorni.</string>
+    <string name="bug_report_always_title">Sempre incluso</string>
+    <string name="bug_report_always_blurb">Le versioni di Ari e Android, il modello del dispositivo, quale assistente e quali modelli usi e quali skill hai installato. Nulla di tutto questo ti identifica, e senza non è possibile diagnosticare il problema.</string>
+    <string name="bug_report_files_title">File diagnostici</string>
+    <string name="bug_report_files_blurb">Facoltativi, e mai pubblicati.</string>
+    <string name="bug_report_consent">Invia i file che seleziono qui sotto</string>
+    <string name="bug_report_consent_blurb">Vengono conservati in privato sul server di Ari, cifrati in transito e a riposo, e sono visibili solo ai manutentori di Ari. Eliminati automaticamente dopo 90 giorni. Puoi eliminarli prima da Impostazioni › Debug › Le mie segnalazioni, ma solo da questo telefono: se disinstalli Ari resta soltanto l\'eliminazione dopo 90 giorni.</string>
+    <string name="bug_report_file_logcat">Log ripulito</string>
+    <string name="bug_report_file_logcat_note">Chiavi e indirizzi rimossi</string>
+    <string name="bug_report_file_screenshot">Screenshot</string>
+    <string name="bug_report_file_screenshot_note">La schermata in cui ti trovavi</string>
+    <string name="bug_report_file_conversation">Conversazione di questa sessione</string>
+    <string name="bug_report_file_commands">Registrazioni dei comandi</string>
+    <string name="bug_report_file_wake_audio">Audio delle attivazioni errate</string>
+    <string name="bug_report_file_all_audio">Tutte le registrazioni</string>
+    <string name="bug_report_file_count_size">%1$s · %2$s</string>
+    <string name="bug_report_review_action">Controlla e invia</string>
+    <string name="bug_report_send_action">Invia segnalazione</string>
+    <string name="bug_report_review_blurb">Questo è esattamente ciò che esce dal tuo telefono. Nient\'altro viene inviato.</string>
+    <string name="bug_report_public_section">Va su GitHub</string>
+    <string name="bug_report_public_section_blurb">Chiunque può leggerlo, per sempre.</string>
+    <string name="bug_report_private_section">Inviato in privato</string>
+    <string name="bug_report_private_section_blurb">Solo ai manutentori, eliminato dopo 90 giorni.</string>
+    <string name="bug_report_nothing_private">Non viene inviato nulla di privato.</string>
+    <string name="bug_report_your_private_note">La tua nota privata</string>
+    <string name="bug_report_error_rejected">Segnalazione non accettata: %1$s. Modificala e riprova.</string>
+    <string name="bug_report_error_offline">Impossibile raggiungere il server di Ari. Controlla la connessione e riprova.</string>
+    <string name="bug_report_thanks">Grazie, è utile</string>
+    <string name="bug_report_thanks_blurb">La tua segnalazione è su GitHub. Puoi seguirla lì senza un account.</string>
+    <string name="bug_report_issue_number">Segnalazione #%1$d</string>
+    <string name="bug_report_open_on_github">Apri su GitHub</string>
+    <string name="bug_report_done">Fatto</string>
+    <string name="bug_report_retention_note">I tuoi file diagnostici sono conservati in privato ed eliminati automaticamente dopo 90 giorni. Per rimuoverli prima, o per ritrovare questa segnalazione, vai su Impostazioni › Debug › Le mie segnalazioni.</string>
+
+    <plurals name="bug_report_recordings">
+        <item quantity="one">%1$d registrazione</item>
+        <item quantity="other">%1$d registrazioni</item>
+    </plurals>
+    <plurals name="bug_report_turns">
+        <item quantity="one">%1$d messaggio</item>
+        <item quantity="other">%1$d messaggi</item>
+    </plurals>
+    <string name="onboarding_testing_build_warning">Stai usando una versione di prova di Ari. Aspettati dei bug e segnalali per contribuire a migliorare l\'app. Usa il pulsante di segnalazione nell\'app, oppure segnalali su GitHub.</string>
+    <string name="onboarding_testing_build_data">In questa versione di prova, le informazioni di debug vengono conservate sul tuo dispositivo. Comprendono i registri delle conversazioni e le registrazioni audio. Questi dati non vengono MAI inviati automaticamente da nessuna parte e vengono inviati solo con il tuo consenso esplicito quando invii una segnalazione, e anche in quel caso non sono selezionati per impostazione predefinita. Puoi eliminarli in qualsiasi momento da Impostazioni \u203a Debug.</string>
 </resources>

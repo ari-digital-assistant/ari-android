@@ -183,10 +183,10 @@ class BugReportCollector @Inject constructor(
      * refused by storage and take the whole report down with it.
      */
     suspend fun stage(
-        staging: File,
         kinds: Set<AttachmentKind>,
         screenshot: ByteArray?,
     ): List<BugAttachment> = withContext(Dispatchers.IO) {
+        val staging = stagingDir(context.cacheDir)
         staging.listFiles()?.forEach { it.delete() }
         kinds.mapNotNull { kind ->
             val file = File(staging, "${kind.wireName}.${kind.extension}")
@@ -203,6 +203,15 @@ class BugReportCollector @Inject constructor(
             }.onFailure { Log.w(TAG, "could not stage ${kind.wireName}", it) }
             if (written.isSuccess && file.length() > 0) BugAttachment(kind, file) else null
         }
+    }
+
+    /**
+     * Drops the staged copies once a report has been filed. They have served
+     * their purpose the moment the issue exists, and leaving megabytes of
+     * somebody's audio in the cache would be careless.
+     */
+    fun clearStaging() {
+        stagingDir(context.cacheDir).listFiles()?.forEach { it.delete() }
     }
 
     /**

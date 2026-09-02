@@ -3,9 +3,11 @@ package dev.heyari.ari.data
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.heyari.ari.BuildConfig
 import dev.heyari.ari.listening.ListeningCondition
 import dev.heyari.ari.listening.ListeningMode
 import dev.heyari.ari.listening.ListeningPlace
@@ -23,6 +25,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -145,7 +148,7 @@ class SettingsRepository @Inject constructor(
      * storage and must never be on unless the user asked for it.
      */
     val keepFalseTriggerAudio: Flow<Boolean> = context.dataStore.data.map { prefs ->
-        prefs[KEY_KEEP_FALSE_TRIGGER_AUDIO] ?: false
+        prefs[KEY_KEEP_FALSE_TRIGGER_AUDIO] ?: BuildConfig.ARI_TESTING
     }.distinctUntilChanged()
 
     suspend fun setKeepFalseTriggerAudio(enabled: Boolean) {
@@ -161,7 +164,7 @@ class SettingsRepository @Inject constructor(
      * more so, since this one records what the user meant to say to Ari.
      */
     val keepUtteranceAudio: Flow<Boolean> = context.dataStore.data.map { prefs ->
-        prefs[KEY_KEEP_UTTERANCE_AUDIO] ?: false
+        prefs[KEY_KEEP_UTTERANCE_AUDIO] ?: BuildConfig.ARI_TESTING
     }.distinctUntilChanged()
 
     suspend fun setKeepUtteranceAudio(enabled: Boolean) {
@@ -178,7 +181,7 @@ class SettingsRepository @Inject constructor(
      * can reconstruct a whole session's audio when chasing a bug.
      */
     val keepEverythingAudio: Flow<Boolean> = context.dataStore.data.map { prefs ->
-        prefs[KEY_KEEP_EVERYTHING_AUDIO] ?: false
+        prefs[KEY_KEEP_EVERYTHING_AUDIO] ?: BuildConfig.ARI_TESTING
     }.distinctUntilChanged()
 
     suspend fun setKeepEverythingAudio(enabled: Boolean) {
@@ -302,6 +305,44 @@ class SettingsRepository @Inject constructor(
     }
 
     data class AssistantConfigEntry(val skillId: String, val key: String, val value: String)
+
+    /**
+     * A random id for this installation, minted on first use.
+     *
+     * Attached to bug reports so several reports from the same tester can be
+     * told apart from several testers reporting once, and so the server can
+     * rate-limit one device without knowing who it belongs to. It identifies
+     * an install and nothing else: not the device, not the person, and it dies
+     * with the app's data.
+     */
+    suspend fun installId(): String {
+        context.dataStore.data.first()[KEY_INSTALL_ID]?.let { return it }
+        // Two callers racing here would each generate one; `edit` is
+        // transactional, so the second sees the first's value and keeps it.
+        return context.dataStore.edit { prefs ->
+            prefs[KEY_INSTALL_ID] = prefs[KEY_INSTALL_ID] ?: UUID.randomUUID().toString()
+        }[KEY_INSTALL_ID]!!
+    }
+
+    /**
+     * Where the tester has parked the bug-report button, as fractions of the
+     * screen rather than pixels — a rotation or a different display would make
+     * absolute coordinates point off-screen.
+     *
+     * Null until it is first dragged, which the button reads as "top right".
+     */
+    val bugReportFabPosition: Flow<Pair<Float, Float>?> = context.dataStore.data.map { prefs ->
+        val x = prefs[KEY_FAB_X]
+        val y = prefs[KEY_FAB_Y]
+        if (x != null && y != null) x to y else null
+    }.distinctUntilChanged()
+
+    suspend fun setBugReportFabPosition(x: Float, y: Float) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_FAB_X] = x
+            prefs[KEY_FAB_Y] = y
+        }
+    }
 
     /** Whether the first-run onboarding wizard has been completed (or skipped). */
     val onboardingCompleted: Flow<Boolean> = context.dataStore.data.map { prefs ->
@@ -477,6 +518,9 @@ class SettingsRepository @Inject constructor(
             booleanPreferencesKey("conversation_memory_enabled")
         private val KEY_REMEMBERED_FACTS = stringPreferencesKey("remembered_facts")
         private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
+        private val KEY_INSTALL_ID = stringPreferencesKey("install_id")
+        private val KEY_FAB_X = floatPreferencesKey("bug_report_fab_x")
+        private val KEY_FAB_Y = floatPreferencesKey("bug_report_fab_y")
         private val KEY_PENDING_CLOUD_ASSISTANT_SETUP = booleanPreferencesKey("pending_cloud_assistant_setup")
         private val KEY_LISTENING_MODE = stringPreferencesKey("listening_mode")
         private val KEY_LISTENING_CONDITIONS = stringPreferencesKey("listening_conditions")
