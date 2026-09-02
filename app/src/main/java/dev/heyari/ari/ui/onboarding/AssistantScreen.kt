@@ -1,7 +1,6 @@
 package dev.heyari.ari.ui.onboarding
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.RemoveCircle
@@ -19,6 +19,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,8 +27,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -37,6 +38,7 @@ import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.llm.LlmModel
 import dev.heyari.ari.llm.LlmModelRegistry
 import dev.heyari.ari.ui.settings.SettingsViewModel
+import dev.heyari.ari.ui.theme.LocalAriSemanticColors
 import java.util.Locale
 
 @Composable
@@ -126,7 +128,7 @@ fun AssistantScreen(
         AnimatedVisibility(visible = wizardState.assistantChoice == AssistantChoice.ON_DEVICE) {
             Column(modifier = Modifier.padding(top = 8.dp)) {
                 Text(
-                    text = "Choose a model size. You can change this later in Settings.",
+                    text = stringResource(R.string.onboarding_assistant_model_size_blurb),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -210,7 +212,7 @@ private fun AssistantChoiceCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .selectable(selected = selected, onClick = onClick, role = Role.RadioButton),
         colors = CardDefaults.cardColors(
             containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
         ),
@@ -223,7 +225,8 @@ private fun AssistantChoiceCard(
         ) {
             RadioButton(
                 selected = selected,
-                onClick = onClick,
+                onClick = null,
+                modifier = Modifier.minimumInteractiveComponentSize(),
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -255,11 +258,12 @@ private fun AssistantChoiceCard(
 
 @Composable
 private fun ProConRow(text: String, isPro: Boolean) {
+    val semantic = LocalAriSemanticColors.current
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(
             imageVector = if (isPro) Icons.Default.AddCircle else Icons.Default.RemoveCircle,
             contentDescription = null,
-            tint = if (isPro) Color(0xFF2E7D32) else Color(0xFFC62828),
+            tint = if (isPro) semantic.success else semantic.danger,
             modifier = Modifier.size(18.dp),
         )
         Spacer(Modifier.width(6.dp))
@@ -283,14 +287,18 @@ private fun LlmTierRow(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onSelect),
+            .selectable(selected = selected, onClick = onSelect, role = Role.RadioButton),
         colors = CardDefaults.cardColors(
             containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
         ),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(selected = selected, onClick = onSelect)
+                RadioButton(
+                    selected = selected,
+                    onClick = null,
+                    modifier = Modifier.minimumInteractiveComponentSize(),
+                )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = stringResource(model.displayNameRes),
@@ -306,9 +314,13 @@ private fun LlmTierRow(
             }
             if (downloaded) {
                 Text(
-                    text = "Downloaded",
+                    text = stringResource(R.string.model_status_downloaded),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
+                    // The card swaps its container when selected, so the label
+                    // has to swap with it — `primary` on `primaryContainer` is
+                    // one hue at two strengths.
+                    color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
+                    else MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(start = 48.dp),
                 )
             }

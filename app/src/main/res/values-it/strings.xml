@@ -207,6 +207,7 @@
     <string name="onboarding_assistant_cloud_con_3">Può richiedere una API key o un account</string>
     <string name="onboarding_assistant_cloud_privacy">La tua voce viene trascritta sul dispositivo. Solo il testo viene inviato al servizio cloud. Ari non invia mai audio a terzi.</string>
     <string name="onboarding_assistant_cloud_later">Gli assistenti cloud si installano come skill. Ari supporta vari provider come ChatGPT, Claude e Gemini. Puoi sfogliarli e installare quello che preferisci dalla schermata Skill dopo la configurazione.</string>
+    <string name="onboarding_assistant_model_size_blurb">Scegli la dimensione del modello. Puoi cambiarla in seguito nelle Impostazioni.</string>
 
     <string name="onboarding_general_title">Ultimi ritocchi</string>
     <string name="onboarding_general_body">Un paio di opzioni per personalizzare il funzionamento di Ari.</string>
@@ -351,6 +352,11 @@
     <string name="settings_llm_blurb">Scegli un modello linguistico sul dispositivo. Quando attivo, Ari può rispondere a domande generiche e instradare i comandi mal compresi allo skill giusto. I modelli più grandi danno risposte migliori ma occupano più spazio e RAM.</string>
     <string name="settings_llm_none_title">Nessuno</string>
     <string name="settings_llm_none_blurb">Nessun LLM sul dispositivo. Ari risponde solo tramite skill abbinati.</string>
+    <string name="settings_llm_choice_blurb">Scegli come Ari risponde alle domande generali quando nessuna skill corrisponde.</string>
+    <string name="settings_llm_cloud_nudge_title">Vuoi un assistente cloud?</string>
+    <string name="settings_llm_cloud_nudge_body">Installa una skill di assistente cloud (ChatGPT, Claude, Gemini, ecc.) dal catalogo delle skill per aggiungerla come opzione qui.</string>
+    <string name="settings_llm_cloud_privacy">Le tue domande verranno inviate a un server di terze parti.</string>
+    <string name="settings_llm_model_picker_blurb">Scegli un modello da scaricare. I modelli più piccoli sono più veloci ma meno capaci.</string>
     <string name="settings_last_download_failed">Ultimo download fallito: %1$s</string>
 
     <!-- Listening modes -->
@@ -439,6 +445,10 @@
     <string name="skill_panel_no_options">Nessuna opzione trovata.</string>
     <string name="skill_panel_query_failed">Impossibile completare la richiesta.</string>
     <string name="skill_panel_action_failed">Azione non riuscita</string>
+    <string name="skill_panel_calendar_permission_blurb">L\'accesso al calendario serve per elencare i tuoi calendari e salvarci gli eventi.</string>
+    <string name="skill_panel_tasks_permission_blurb">L\'accesso alla tua app di attività serve per elencare i tuoi elenchi e salvarci le attività.</string>
+    <string name="skill_panel_no_tasks_app_title">Nessuna app di attività compatibile</string>
+    <string name="skill_panel_no_tasks_app_body">Le skill che creano attività passano dal ponte OpenTasks. OpenTasks è consigliata — anche Tasks.org funziona, ma espone solo gli elenchi sincronizzati via CalDAV, non quelli solo locali.</string>
 
     <!-- TTS settings page -->
     <string name="tts_language_label">Lingua</string>
@@ -446,6 +456,10 @@
     <string name="tts_chip_cloud">Cloud</string>
     <string name="tts_chip_cloud_only">Solo cloud</string>
     <string name="tts_preview_voice_description">Anteprima voce</string>
+    <string name="tts_blurb">Scegli la voce con cui parla Ari. Seleziona una lingua, poi una voce. Tocca l\'icona dell\'altoparlante per l\'anteprima.</string>
+    <string name="tts_system_default_title">Predefinita di sistema</string>
+    <string name="tts_system_default_desc">Usa la voce predefinita del dispositivo</string>
+    <string name="tts_no_voices">Nessuna voce disponibile al momento. Dovrebbero comparire a breve.</string>
 
     <!-- Assistant settings page -->
     <string name="assistant_browse_skills">Sfoglia gli skill</string>
@@ -457,6 +471,12 @@
     <string name="notif_channel_background_name">Aggiornamenti in background</string>
     <string name="notif_channel_background_description">Stato persistente guidato dagli skill (timer, download, …)</string>
     <string name="notif_channel_important_name">Aggiornamenti importanti</string>
+    <string name="card_status_remaining">Rimanente</string>
+    <string name="card_status_ringing">Suona</string>
+    <string name="card_status_done">Fatto</string>
+    <string name="card_action_stop">Ferma</string>
+    <string name="alert_fired_at">Avvisato alle %1$s</string>
+    <string name="alert_action_dismiss">Chiudi</string>
     <string name="notif_channel_important_description">Stato a priorità più alta che l\'utente dovrebbe vedere</string>
     <string name="notif_channel_alerts_name">Avvisi</string>
     <string name="notif_channel_alerts_description">Avvisi attivati dagli skill (timer scaduti, sveglie, ecc.)</string>
@@ -581,6 +601,7 @@
     <string name="model_llm_medium_desc">Un buon equilibrio tra prestazioni e capacità (~3,1 GB di download, 6 GB+ di RAM). Adatto a un\'ampia gamma di attività.</string>
     <string name="model_llm_large_name">Grande (Gemma 4 E4B)</string>
     <string name="model_llm_large_desc">Il più capace (~5 GB di download, 8 GB+ di RAM). Ideale per attività complesse e per capire un linguaggio sfumato, ma può essere più lento e richiedere più risorse.</string>
+    <string name="model_status_downloaded">Scaricato</string>
     <string name="message_menu_copy">Copia</string>
     <string name="message_menu_report">Segnala</string>
     <string name="report_title">Segnala questa risposta</string>

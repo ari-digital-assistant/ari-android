@@ -54,6 +54,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -274,7 +275,7 @@ private fun AlertHero(
             )
         }
         Text(
-            text = "Alerted at ${timeFormat.format(Date(firedAtMs))}",
+            text = stringResource(R.string.alert_fired_at, timeFormat.format(Date(firedAtMs))),
             fontSize = 14.sp,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
@@ -366,7 +367,7 @@ private fun ActionButtons(spec: AlertSpec, onAction: (AlertAction) -> Unit) {
         listOf(
             AlertAction(
                 id = "stop_alert",
-                label = "Dismiss",
+                label = stringResource(R.string.alert_action_dismiss),
                 utterance = null,
                 style = AlertAction.Style.PRIMARY,
             ),

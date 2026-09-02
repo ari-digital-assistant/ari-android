@@ -20,6 +20,7 @@ import dev.heyari.ari.locale.SupportedLocales
 import dev.heyari.ari.stt.CloudTranscriber
 import dev.heyari.ari.stt.SttMode
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -40,7 +41,7 @@ class SettingsRepository @Inject constructor(
      */
     val sttMode: Flow<SttMode> = context.dataStore.data.map { prefs ->
         SttMode.fromSlug(prefs[KEY_STT_MODE])
-    }
+    }.distinctUntilChanged()
 
     suspend fun setSttMode(mode: SttMode) {
         context.dataStore.edit { prefs -> prefs[KEY_STT_MODE] = mode.slug }
@@ -52,7 +53,7 @@ class SettingsRepository @Inject constructor(
      */
     val cloudSttEndpoint: Flow<String> = context.dataStore.data.map { prefs ->
         prefs[KEY_CLOUD_STT_ENDPOINT] ?: CloudTranscriber.DEFAULT_SELF_HOSTED_ENDPOINT
-    }
+    }.distinctUntilChanged()
 
     suspend fun setCloudSttEndpoint(url: String) {
         context.dataStore.edit { prefs -> prefs[KEY_CLOUD_STT_ENDPOINT] = url.trim() }
@@ -62,7 +63,7 @@ class SettingsRepository @Inject constructor(
      *  Whisper, so it has to be editable. */
     val cloudSttModel: Flow<String> = context.dataStore.data.map { prefs ->
         prefs[KEY_CLOUD_STT_MODEL]?.takeIf { it.isNotBlank() } ?: CloudTranscriber.DEFAULT_SELF_HOSTED_MODEL
-    }
+    }.distinctUntilChanged()
 
     suspend fun setCloudSttModel(model: String) {
         context.dataStore.edit { prefs -> prefs[KEY_CLOUD_STT_MODEL] = model.trim() }
@@ -70,7 +71,7 @@ class SettingsRepository @Inject constructor(
 
     val activeSttModelId: Flow<String?> = context.dataStore.data.map { prefs ->
         prefs[KEY_ACTIVE_STT_MODEL]
-    }
+    }.distinctUntilChanged()
 
     suspend fun setActiveSttModelId(id: String?) {
         context.dataStore.edit { prefs ->
@@ -81,7 +82,7 @@ class SettingsRepository @Inject constructor(
 
     val activeWakeWordId: Flow<String?> = context.dataStore.data.map { prefs ->
         prefs[KEY_ACTIVE_WAKE_WORD]
-    }
+    }.distinctUntilChanged()
 
     suspend fun setActiveWakeWordId(id: String) {
         context.dataStore.edit { prefs ->
@@ -91,7 +92,7 @@ class SettingsRepository @Inject constructor(
 
     val wakeWordSensitivity: Flow<String?> = context.dataStore.data.map { prefs ->
         prefs[KEY_WAKE_WORD_SENSITIVITY]
-    }
+    }.distinctUntilChanged()
 
     suspend fun setWakeWordSensitivity(name: String) {
         context.dataStore.edit { prefs ->
@@ -102,7 +103,7 @@ class SettingsRepository @Inject constructor(
     /** The selected LLM tier id, or "none" / null if disabled. */
     val activeLlmModelId: Flow<String?> = context.dataStore.data.map { prefs ->
         prefs[KEY_ACTIVE_LLM_MODEL]
-    }
+    }.distinctUntilChanged()
 
     suspend fun setActiveLlmModelId(id: String?) {
         context.dataStore.edit { prefs ->
@@ -114,7 +115,7 @@ class SettingsRepository @Inject constructor(
     /** The active assistant skill ID, or null if none. */
     val activeAssistantId: Flow<String?> = context.dataStore.data.map { prefs ->
         prefs[KEY_ACTIVE_ASSISTANT]
-    }
+    }.distinctUntilChanged()
 
     suspend fun setActiveAssistantId(id: String?) {
         context.dataStore.edit { prefs ->
@@ -130,7 +131,7 @@ class SettingsRepository @Inject constructor(
      */
     val startOnBoot: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_START_ON_BOOT] ?: false
-    }
+    }.distinctUntilChanged()
 
     suspend fun setStartOnBoot(enabled: Boolean) {
         context.dataStore.edit { prefs ->
@@ -145,7 +146,7 @@ class SettingsRepository @Inject constructor(
      */
     val keepFalseTriggerAudio: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_KEEP_FALSE_TRIGGER_AUDIO] ?: false
-    }
+    }.distinctUntilChanged()
 
     suspend fun setKeepFalseTriggerAudio(enabled: Boolean) {
         context.dataStore.edit { prefs ->
@@ -161,7 +162,7 @@ class SettingsRepository @Inject constructor(
      */
     val keepUtteranceAudio: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_KEEP_UTTERANCE_AUDIO] ?: false
-    }
+    }.distinctUntilChanged()
 
     suspend fun setKeepUtteranceAudio(enabled: Boolean) {
         context.dataStore.edit { prefs ->
@@ -178,7 +179,7 @@ class SettingsRepository @Inject constructor(
      */
     val keepEverythingAudio: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_KEEP_EVERYTHING_AUDIO] ?: false
-    }
+    }.distinctUntilChanged()
 
     suspend fun setKeepEverythingAudio(enabled: Boolean) {
         context.dataStore.edit { prefs ->
@@ -194,7 +195,7 @@ class SettingsRepository @Inject constructor(
      */
     val bargeInEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_BARGE_IN_ENABLED] ?: true
-    }
+    }.distinctUntilChanged()
 
     suspend fun setBargeInEnabled(enabled: Boolean) {
         context.dataStore.edit { prefs ->
@@ -210,7 +211,7 @@ class SettingsRepository @Inject constructor(
      */
     val conversationMemoryEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_CONVERSATION_MEMORY_ENABLED] ?: true
-    }
+    }.distinctUntilChanged()
 
     suspend fun setConversationMemoryEnabled(enabled: Boolean) {
         context.dataStore.edit { prefs ->
@@ -224,7 +225,7 @@ class SettingsRepository @Inject constructor(
      */
     val rememberedFacts: Flow<List<String>> = context.dataStore.data.map { prefs ->
         decodeFacts(prefs[KEY_REMEMBERED_FACTS])
-    }
+    }.distinctUntilChanged()
 
     suspend fun rememberedFactsOnce(): List<String> =
         decodeFacts(context.dataStore.data.first()[KEY_REMEMBERED_FACTS])
@@ -258,7 +259,7 @@ class SettingsRepository @Inject constructor(
     fun assistantConfigValue(skillId: String, key: String): Flow<String?> =
         context.dataStore.data.map { prefs ->
             prefs[stringPreferencesKey("assistant_config_${skillId}_${key}")]
-        }
+        }.distinctUntilChanged()
 
     suspend fun setAssistantConfigValue(skillId: String, key: String, value: String?) {
         val prefKey = stringPreferencesKey("assistant_config_${skillId}_${key}")
@@ -305,7 +306,7 @@ class SettingsRepository @Inject constructor(
     /** Whether the first-run onboarding wizard has been completed (or skipped). */
     val onboardingCompleted: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_ONBOARDING_COMPLETED] ?: false
-    }
+    }.distinctUntilChanged()
 
     suspend fun setOnboardingCompleted(completed: Boolean) {
         context.dataStore.edit { prefs ->
@@ -316,7 +317,7 @@ class SettingsRepository @Inject constructor(
     /** The user's chosen TTS voice name, or null for system default. */
     val activeTtsVoice: Flow<String?> = context.dataStore.data.map { prefs ->
         prefs[KEY_ACTIVE_TTS_VOICE]
-    }
+    }.distinctUntilChanged()
 
     suspend fun setActiveTtsVoice(name: String?) {
         context.dataStore.edit { prefs ->
@@ -339,7 +340,7 @@ class SettingsRepository @Inject constructor(
      */
     val activeLocale: Flow<String> = context.dataStore.data.map { prefs ->
         prefs[KEY_ACTIVE_LOCALE] ?: SupportedLocales.defaultFromSystem()
-    }
+    }.distinctUntilChanged()
 
     suspend fun setActiveLocale(code: String) {
         require(SupportedLocales.isSupported(code)) {
@@ -364,7 +365,7 @@ class SettingsRepository @Inject constructor(
      */
     val pendingCloudAssistantSetup: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_PENDING_CLOUD_ASSISTANT_SETUP] ?: false
-    }
+    }.distinctUntilChanged()
 
     suspend fun setPendingCloudAssistantSetup(pending: Boolean) {
         context.dataStore.edit { prefs ->
@@ -394,7 +395,7 @@ class SettingsRepository @Inject constructor(
      */
     val listeningMode: Flow<ListeningMode> = context.dataStore.data.map { prefs ->
         ListeningMode.fromSlug(prefs[KEY_LISTENING_MODE])
-    }
+    }.distinctUntilChanged()
 
     suspend fun setListeningMode(mode: ListeningMode) {
         context.dataStore.edit { prefs -> prefs[KEY_LISTENING_MODE] = mode.slug }
@@ -403,7 +404,7 @@ class SettingsRepository @Inject constructor(
     /** The conditions ticked under [ListeningMode.CUSTOM]. ORed, never ANDed. */
     val listeningConditions: Flow<Set<ListeningCondition>> = context.dataStore.data.map { prefs ->
         decodeConditions(prefs[KEY_LISTENING_CONDITIONS])
-    }
+    }.distinctUntilChanged()
 
     suspend fun setListeningConditions(conditions: Set<ListeningCondition>) {
         context.dataStore.edit { prefs ->
@@ -414,7 +415,7 @@ class SettingsRepository @Inject constructor(
     /** Recurring listening windows, as a JSON array. Empty until the user adds one. */
     val listeningSchedules: Flow<List<ListeningSchedule>> = context.dataStore.data.map { prefs ->
         decodeSchedules(prefs[KEY_LISTENING_SCHEDULES])
-    }
+    }.distinctUntilChanged()
 
     suspend fun listeningSchedulesOnce(): List<ListeningSchedule> =
         decodeSchedules(context.dataStore.data.first()[KEY_LISTENING_SCHEDULES])
@@ -428,7 +429,7 @@ class SettingsRepository @Inject constructor(
     /** Geofenced places to listen at, as a JSON array. */
     val listeningPlaces: Flow<List<ListeningPlace>> = context.dataStore.data.map { prefs ->
         decodePlaces(prefs[KEY_LISTENING_PLACES])
-    }
+    }.distinctUntilChanged()
 
     suspend fun listeningPlacesOnce(): List<ListeningPlace> =
         decodePlaces(context.dataStore.data.first()[KEY_LISTENING_PLACES])
@@ -447,7 +448,7 @@ class SettingsRepository @Inject constructor(
      */
     val pendingListeningSetup: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_PENDING_LISTENING_SETUP] ?: false
-    }
+    }.distinctUntilChanged()
 
     suspend fun setPendingListeningSetup(pending: Boolean) {
         context.dataStore.edit { prefs -> prefs[KEY_PENDING_LISTENING_SETUP] = pending }

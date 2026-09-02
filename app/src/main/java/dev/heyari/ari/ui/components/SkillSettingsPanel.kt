@@ -18,6 +18,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
@@ -369,6 +372,27 @@ internal fun dependencyValues(
     drafts: Map<String, String>,
 ): Map<String, String> = dependsOn.associateWith { effectiveFieldValue(it, byKey, drafts) }
 
+/**
+ * Keyboard for a field, from the manifest's optional `keyboard:` hint.
+ *
+ * Nothing is a URL as far as the renderer can tell — skill fields declare
+ * `type: text` and the type alone can't say whether a value is prose or a
+ * hostname. Without the hint the IME auto-capitalises and inserts a space
+ * after each dot, which quietly mangles a typed server address.
+ *
+ * An unrecognised hint falls back to the ordinary text keyboard rather than
+ * refusing the field, so a manifest written against a newer schema still
+ * renders here.
+ */
+internal fun FfiConfigField.keyboardOptions(): KeyboardOptions = when (keyboard) {
+    "url" -> KeyboardOptions(
+        keyboardType = KeyboardType.Uri,
+        autoCorrectEnabled = false,
+        capitalization = KeyboardCapitalization.None,
+    )
+    else -> KeyboardOptions.Default
+}
+
 @Composable
 private fun TextField(
     field: FfiConfigField,
@@ -388,6 +412,7 @@ private fun TextField(
         // query that fires before the user has committed anything.
         onValueChange = { localValue = it; onDraft(field.key, it) },
         label = { Text(field.label) },
+        keyboardOptions = field.keyboardOptions(),
         modifier = Modifier
             .fillMaxWidth()
             .onFocusChanged { state ->
@@ -797,7 +822,7 @@ private fun DeviceCalendarField(
 
         if (!hasPerm) {
             Text(
-                text = "Calendar access is needed to list your calendars and save events to them.",
+                text = stringResource(R.string.skill_panel_calendar_permission_blurb),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 8.dp),
@@ -929,7 +954,7 @@ private fun DeviceTaskListField(
             val read = provider.requiredReadPermission()
             val write = provider.requiredWritePermission()
             Text(
-                text = "Access to your tasks app is needed to list your task lists and save tasks to them.",
+                text = stringResource(R.string.skill_panel_tasks_permission_blurb),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 8.dp),
@@ -1022,13 +1047,12 @@ private fun NoTasksAppCard(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = "No compatible tasks app",
+                text = stringResource(R.string.skill_panel_no_tasks_app_title),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "Skills that create tasks go through the OpenTasks bridge. OpenTasks is recommended — " +
-                    "Tasks.org works too but only exposes its CalDAV-synced lists, not local-only ones.",
+                text = stringResource(R.string.skill_panel_no_tasks_app_body),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

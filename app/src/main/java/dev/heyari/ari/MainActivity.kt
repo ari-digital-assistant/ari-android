@@ -9,6 +9,10 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
 import dev.heyari.ari.data.SettingsRepository
@@ -76,10 +80,18 @@ class MainActivity : ComponentActivity() {
         handleModelUpdatesIntent(intent)
         setContent {
             AriTheme {
-                AriNavHost(
-                    deepLinkCommands = deepLinkCommands.receiveAsFlow(),
-                    settingsRepository = settingsRepository,
-                )
+                // An opaque backdrop behind the NavHost. Without it the window
+                // background shows through wherever a screen doesn't paint,
+                // and that background is the platform's, not the theme's.
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background,
+                ) {
+                    AriNavHost(
+                        deepLinkCommands = deepLinkCommands.receiveAsFlow(),
+                        settingsRepository = settingsRepository,
+                    )
+                }
             }
         }
     }

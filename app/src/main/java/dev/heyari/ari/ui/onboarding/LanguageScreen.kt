@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.Card
@@ -112,14 +113,16 @@ fun LanguageScreen(
                         RadioButton(
                             selected = isSelected,
                             // selectable on the Card already routes the
-                            // click; the radio is purely decorative.
+                            // click; the radio is purely decorative. It keeps
+                            // the interactive size so it lines up with the
+                            // same rows everywhere else in the app — a null
+                            // callback drops that sizing.
                             onClick = null,
+                            modifier = Modifier.minimumInteractiveComponentSize(),
                         )
-                        Spacer(Modifier.height(0.dp).then(Modifier))
                         Text(
                             text = option.displayName,
                             style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(start = 12.dp),
                         )
                     }
                 }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -54,6 +55,10 @@ fun OnboardingScaffold(
     content: @Composable () -> Unit,
 ) {
     Scaffold(
+        // See SettingsScaffold: edge-to-edge means the window never resizes
+        // for the keyboard, so the scaffold has to. This also lifts the
+        // Next button clear of the keyboard instead of burying it.
+        modifier = Modifier.imePadding(),
         topBar = {
             TopAppBar(
                 title = { Text(title) },

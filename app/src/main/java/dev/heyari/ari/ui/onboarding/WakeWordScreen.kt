@@ -7,9 +7,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.heyari.ari.R
@@ -62,7 +65,13 @@ fun WakeWordScreen(
         Spacer(Modifier.height(16.dp))
 
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .toggleable(
+                    value = wizardState.startListeningNow,
+                    onValueChange = onboardingViewModel::setStartListeningNow,
+                    role = Role.Switch,
+                ),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant,
             ),
@@ -87,7 +96,8 @@ fun WakeWordScreen(
                     Spacer(Modifier.width(12.dp))
                     Switch(
                         checked = wizardState.startListeningNow,
-                        onCheckedChange = onboardingViewModel::setStartListeningNow,
+                        onCheckedChange = null,
+                        modifier = Modifier.minimumInteractiveComponentSize(),
                     )
                 }
             }

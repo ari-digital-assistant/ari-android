@@ -1,6 +1,9 @@
 package dev.heyari.ari.ui.settings.pages
 
 import android.text.format.Formatter
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +24,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -28,23 +32,30 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.heyari.ari.R
 import dev.heyari.ari.audio.ClipStats
+import dev.heyari.ari.ui.theme.LocalAriSemanticColors
 import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.llm.LlmModel
 import dev.heyari.ari.stt.ModelDownloadState
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import dev.heyari.ari.stt.SttMode
 import dev.heyari.ari.stt.SttModel
@@ -168,6 +179,7 @@ private fun PermissionRow(
     actionLabel: String,
     onAction: () -> Unit,
 ) {
+    val semantic = LocalAriSemanticColors.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -188,7 +200,11 @@ private fun PermissionRow(
                 Icon(
                     imageVector = if (granted) Icons.Default.CheckCircle else Icons.Default.Cancel,
                     contentDescription = null,
-                    tint = if (granted) Color(0xFF2E7D32) else if (required) Color(0xFFF57C00) else MaterialTheme.colorScheme.outline,
+                    tint = when {
+                        granted -> semantic.success
+                        required -> semantic.warning
+                        else -> MaterialTheme.colorScheme.outline
+                    },
                 )
                 Text(
                     text = label,
@@ -201,7 +217,7 @@ private fun PermissionRow(
                         else R.string.permission_chip_optional
                     ),
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (required) Color(0xFFF57C00) else MaterialTheme.colorScheme.outline,
+                    color = if (required) semantic.warning else MaterialTheme.colorScheme.outline,
                 )
             }
             Text(
@@ -240,7 +256,13 @@ internal fun WakeWordSection(
 
         wakeWords.forEach { option ->
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .selectable(
+                        selected = option.active,
+                        onClick = { onSelect(option.model) },
+                        role = Role.RadioButton,
+                    ),
                 colors = CardDefaults.cardColors(
                     containerColor = if (option.active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
                 ),
@@ -253,7 +275,8 @@ internal fun WakeWordSection(
                 ) {
                     RadioButton(
                         selected = option.active,
-                        onClick = { onSelect(option.model) },
+                        onClick = null,
+                        modifier = Modifier.minimumInteractiveComponentSize(),
                     )
                     Text(
                         text = option.model.displayName,
@@ -283,7 +306,13 @@ internal fun WakeWordSensitivitySection(
         WakeWordSensitivity.entries.forEach { option ->
             val active = option == current
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .selectable(
+                        selected = active,
+                        onClick = { onSelect(option) },
+                        role = Role.RadioButton,
+                    ),
                 colors = CardDefaults.cardColors(
                     containerColor = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
                 ),
@@ -296,7 +325,8 @@ internal fun WakeWordSensitivitySection(
                 ) {
                     RadioButton(
                         selected = active,
-                        onClick = { onSelect(option) },
+                        onClick = null,
+                        modifier = Modifier.minimumInteractiveComponentSize(),
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
@@ -421,7 +451,21 @@ private fun ModelRow(
     val downloadFailed = downloadState is ModelDownloadState.Failed && downloadState.modelId == status.model.id
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            // Only a model that's actually on disk can be picked. Undownloaded
+            // ones keep their own Download button and nothing else.
+            .then(
+                if (status.downloaded) {
+                    Modifier.selectable(
+                        selected = status.active,
+                        onClick = onSelect,
+                        role = Role.RadioButton,
+                    )
+                } else {
+                    Modifier
+                }
+            ),
         colors = CardDefaults.cardColors(
             containerColor = if (status.active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
         ),
@@ -431,7 +475,8 @@ private fun ModelRow(
                 if (status.downloaded) {
                     RadioButton(
                         selected = status.active,
-                        onClick = onSelect,
+                        onClick = null,
+                        modifier = Modifier.minimumInteractiveComponentSize(),
                     )
                 } else {
                     Spacer(Modifier.width(48.dp))
@@ -558,7 +603,13 @@ internal fun LanguageSection(
         LANGUAGE_OPTIONS.forEach { option ->
             val active = option.code == activeLocale
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .selectable(
+                        selected = active,
+                        onClick = { onSelect(option.code) },
+                        role = Role.RadioButton,
+                    ),
                 colors = CardDefaults.cardColors(
                     containerColor = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
                 ),
@@ -571,7 +622,8 @@ internal fun LanguageSection(
                 ) {
                     RadioButton(
                         selected = active,
-                        onClick = { onSelect(option.code) },
+                        onClick = null,
+                        modifier = Modifier.minimumInteractiveComponentSize(),
                     )
                     Text(
                         text = option.displayName,
@@ -627,18 +679,23 @@ private fun SttModeCard(
     onClick: () -> Unit,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectable(selected = selected, onClick = onClick, role = Role.RadioButton),
         colors = CardDefaults.cardColors(
             containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer
             else MaterialTheme.colorScheme.surfaceVariant,
         ),
-        onClick = onClick,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            RadioButton(selected = selected, onClick = onClick)
+            RadioButton(
+                selected = selected,
+                onClick = null,
+                modifier = Modifier.minimumInteractiveComponentSize(),
+            )
             Spacer(Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = title, style = MaterialTheme.typography.titleMedium)
@@ -697,6 +754,13 @@ internal fun CloudSttSection(
                     value = endpoint,
                     onValueChange = onEndpointChange,
                     label = { Text(stringResource(R.string.settings_stt_cloud_endpoint_label)) },
+                    // A prose keyboard capitalises the first letter and puts a
+                    // space after every dot, which is no way to type a hostname.
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Uri,
+                        autoCorrectEnabled = false,
+                        capitalization = KeyboardCapitalization.None,
+                    ),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -708,9 +772,22 @@ internal fun CloudSttSection(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
+            // The key is held locally and persisted once, on dispose —
+            // storing it means a Keystore round-trip, which is far too
+            // expensive to do per keystroke. Same deal as the secret fields
+            // in SkillSettingsPanel.
+            var typed by remember { mutableStateOf(false) }
+            var localKey by remember { mutableStateOf(apiKey) }
+            val flush = rememberUpdatedState(onApiKeyChange)
+            // The stored key is read off the main thread, so it can land
+            // after this field first composes. Take it until the user starts
+            // typing; after that the field owns the value.
+            LaunchedEffect(apiKey) {
+                if (!typed) localKey = apiKey
+            }
             OutlinedTextField(
-                value = apiKey,
-                onValueChange = onApiKeyChange,
+                value = localKey,
+                onValueChange = { typed = true; localKey = it },
                 label = { Text(stringResource(R.string.settings_stt_cloud_api_key_label)) },
                 supportingText = {
                     Text(
@@ -724,6 +801,9 @@ internal fun CloudSttSection(
                 visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(),
             )
+            DisposableEffect(Unit) {
+                onDispose { if (typed) flush.value(localKey) }
+            }
         }
     }
 }
@@ -734,7 +814,9 @@ internal fun StartOnBootSection(
     onToggle: (Boolean) -> Unit,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(value = enabled, onValueChange = onToggle, role = Role.Switch),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
         ),
@@ -759,7 +841,8 @@ internal fun StartOnBootSection(
                 Spacer(Modifier.width(12.dp))
                 Switch(
                     checked = enabled,
-                    onCheckedChange = onToggle,
+                    onCheckedChange = null,
+                    modifier = Modifier.minimumInteractiveComponentSize(),
                 )
             }
         }
@@ -872,7 +955,21 @@ private fun LlmModelRow(
     val downloadFailed = downloadState is LlmDownloadState.Failed && downloadState.modelId == status.model.id
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            // Only a model that's actually on disk can be picked. Undownloaded
+            // ones keep their own Download button and nothing else.
+            .then(
+                if (status.downloaded) {
+                    Modifier.selectable(
+                        selected = status.active,
+                        onClick = onSelect,
+                        role = Role.RadioButton,
+                    )
+                } else {
+                    Modifier
+                }
+            ),
         colors = CardDefaults.cardColors(
             containerColor = if (status.active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
         ),
@@ -882,7 +979,8 @@ private fun LlmModelRow(
                 if (status.downloaded) {
                     RadioButton(
                         selected = status.active,
-                        onClick = onSelect,
+                        onClick = null,
+                        modifier = Modifier.minimumInteractiveComponentSize(),
                     )
                 } else {
                     Spacer(Modifier.width(48.dp))

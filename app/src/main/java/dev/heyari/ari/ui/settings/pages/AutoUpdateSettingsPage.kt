@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -247,7 +248,15 @@ private fun PendingUpdateCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
             ) {
-                TextButton(onClick = onSkip, enabled = !applying) {
+                TextButton(
+                    onClick = onSkip,
+                    enabled = !applying,
+                    // `primary` against `primaryContainer` is the same hue at
+                    // two strengths; the label needs the container's on* role.
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ),
+                ) {
                     Text(stringResource(R.string.auto_update_skip))
                 }
                 Spacer(Modifier.width(8.dp))
