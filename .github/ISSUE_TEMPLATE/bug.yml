@@ -1,0 +1,134 @@
+name: Bug report
+description: Something in the Android app doesn't work
+labels: ["bug"]
+body:
+  # RESTORE WITH B7 (docs/bug-reporting.md): this block should open with
+  # "Running a testing build? Use the bug report button in the app instead —
+  # it collects all of this for you." Omitted until the button exists, so we
+  # don't send people looking for something that isn't there.
+  - type: markdown
+    attributes:
+      value: |
+        The device and build questions below matter more than they look. A lot
+        of Ari's stranger behaviour comes down to which ROM you're on and how
+        aggressively it kills background services.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what you got instead.
+      placeholder: |
+        I said "turn on the kitchen lights" and Ari replied that it couldn't
+        reach Home Assistant. It worked yesterday.
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: Ari version
+      description: Settings › About, or the version on the release you installed.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: build
+    attributes:
+      label: Which build?
+      options:
+        - Testing build (beta)
+        - Release
+        - I built it myself from source
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: "Pixel 8, Android 16"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Custom ROM, if any
+      description: >-
+        GrapheneOS, LineageOS, /e/OS and friends behave differently around
+        location, background services and Play Services, so this matters more
+        than it looks.
+      placeholder: "GrapheneOS, or leave blank for stock"
+
+  - type: dropdown
+    id: assistant
+    attributes:
+      label: Which assistant is Ari using?
+      options:
+        - Cloud
+        - On-device model
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: model
+    attributes:
+      label: Which model?
+      description: The specific one, if you know it.
+      placeholder: "claude-sonnet-5, or gemma-3-4b on device"
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of Ari?
+      options:
+        - Wake word
+        - Speech recognition
+        - Speech output
+        - A specific skill
+        - Settings or onboarding
+        - Conversation screen
+        - Notifications or alerts
+        - Something else
+    validations:
+      required: true
+
+  - type: input
+    id: skill
+    attributes:
+      label: Which skill, and which version?
+      description: Settings › Skills shows the version.
+      placeholder: "home-assistant 0.4.1"
+
+  - type: checkboxes
+    id: battery
+    attributes:
+      label: If this is about the wake word or background listening
+      description: >-
+        Battery optimisation is behind most "it just stopped working" reports.
+        Settings › Apps › Ari › Battery.
+      options:
+        - label: Ari is exempt from battery optimisation
+        - label: Ari is NOT exempt, or I don't know
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, if you have them
+      description: >-
+        Anything from `adb logcat`. Check it over before pasting — logs can
+        contain your addresses, hostnames and API keys.
+      render: text
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you file
+      options:
+        - label: I searched the existing issues
+          required: true
+        - label: I removed anything private from what I pasted above
+          required: true

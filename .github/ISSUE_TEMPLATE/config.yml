@@ -1,0 +1,22 @@
+blank_issues_enabled: false
+
+# MISSING ON PURPOSE, RESTORE WITH B7 (docs/bug-reporting.md):
+# a "Report a bug from inside Ari" link, first in the list, pointing at the
+# README's reporting section. Left out because neither exists yet — the in-app
+# reporter is unbuilt and this repo has no README, so the link would 404.
+# Put it back the moment the button ships:
+#
+#   - name: Report a bug from inside Ari
+#     url: https://github.com/ari-digital-assistant/ari-android#reporting-bugs
+#     about: >-
+#       On a testing build, the bug report button in the app collects your
+#       versions, device details and logs automatically. Much faster than
+#       filling in a form.
+
+contact_links:
+  - name: Something wrong with a skill
+    url: https://github.com/ari-digital-assistant/ari-skills/issues/new/choose
+    about: Skills live in their own repository.
+  - name: Questions and ideas
+    url: https://github.com/orgs/ari-digital-assistant/discussions
+    about: For anything that isn't a bug.

@@ -1,0 +1,35 @@
+name: Feature request
+description: Suggest something Ari should be able to do
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: >-
+        Describe the situation rather than the solution. Knowing what you're
+        actually trying to achieve often turns up a better answer than the one
+        either of us started with.
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: What did you have in mind?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Does this belong in the app, or in a skill?
+      description: >-
+        Skills are the extension point. If it's a new thing Ari can *do*, it's
+        probably a skill; if it changes how the app itself behaves, it's here.
+      options:
+        - The app
+        - A skill
+        - Not sure
+    validations:
+      required: true
