@@ -31,8 +31,12 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -753,9 +757,22 @@ internal fun CloudSttSection(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
+            // The key is held locally and persisted once, on dispose —
+            // storing it means a Keystore round-trip, which is far too
+            // expensive to do per keystroke. Same deal as the secret fields
+            // in SkillSettingsPanel.
+            var typed by remember { mutableStateOf(false) }
+            var localKey by remember { mutableStateOf(apiKey) }
+            val flush = rememberUpdatedState(onApiKeyChange)
+            // The stored key is read off the main thread, so it can land
+            // after this field first composes. Take it until the user starts
+            // typing; after that the field owns the value.
+            LaunchedEffect(apiKey) {
+                if (!typed) localKey = apiKey
+            }
             OutlinedTextField(
-                value = apiKey,
-                onValueChange = onApiKeyChange,
+                value = localKey,
+                onValueChange = { typed = true; localKey = it },
                 label = { Text(stringResource(R.string.settings_stt_cloud_api_key_label)) },
                 supportingText = {
                     Text(
@@ -769,6 +786,9 @@ internal fun CloudSttSection(
                 visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(),
             )
+            DisposableEffect(Unit) {
+                onDispose { if (typed) flush.value(localKey) }
+            }
         }
     }
 }

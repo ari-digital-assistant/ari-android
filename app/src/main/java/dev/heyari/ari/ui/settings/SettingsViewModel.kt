@@ -43,9 +43,11 @@ import dev.heyari.ari.wakeword.WakeWordRegistry
 import dev.heyari.ari.wakeword.WakeWordSensitivity
 import dev.heyari.ari.wakeword.WakeWordService
 import dev.heyari.ari.di.EngineHolder
+import dev.heyari.ari.di.ApplicationScope
 import uniffi.ari_ffi.AssistantRegistry
 import uniffi.ari_ffi.FfiConfigField
 import uniffi.ari_ffi.FfiSettingsQueryResult
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -166,6 +168,7 @@ class SettingsViewModel @Inject constructor(
     private val wakeCaptureStore: WakeCaptureStore,
     private val utteranceCaptureStore: UtteranceCaptureStore,
     private val placeGeofences: PlaceGeofences,
+    @param:ApplicationScope private val appScope: CoroutineScope,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
@@ -608,13 +611,24 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setCloudSttModel(model) }
     }
 
+    /**
+     * Persists the cloud transcriber's API key. Writing it costs a Keystore
+     * encryption plus a SharedPreferences commit, so [CloudSttSection] calls
+     * this once on dispose rather than per keystroke — which means the call
+     * arrives as the hosting screen is being popped and `viewModelScope` is
+     * about to be cancelled. Hence [appScope]: same reasoning as
+     * `SkillsViewModel.setSkillSetting`, and the same consequence if we got
+     * it wrong (the user types a key, presses back, and it silently vanishes).
+     */
     fun setCloudSttApiKey(key: String) {
         _state.update { it.copy(cloudSttApiKey = key) }
-        secretStore.set(
-            CloudTranscriber.SECRET_SCOPE,
-            CloudTranscriber.SECRET_KEY,
-            key.trim().takeIf { it.isNotEmpty() },
-        )
+        appScope.launch {
+            secretStore.set(
+                CloudTranscriber.SECRET_SCOPE,
+                CloudTranscriber.SECRET_KEY,
+                key.trim().takeIf { it.isNotEmpty() },
+            )
+        }
     }
 
     fun refreshPermissions() {
