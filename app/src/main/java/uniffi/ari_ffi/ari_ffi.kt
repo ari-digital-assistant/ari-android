@@ -966,6 +966,8 @@ internal object IntegrityCheckingUniffiLib {
         uniffiCheckContractApiVersion(this)
         uniffiCheckApiChecksums(this)
     }
+    external fun uniffi_ari_ffi_checksum_func_engine_version(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_cancel_pending_reply(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_current_locale(
@@ -1404,6 +1406,8 @@ external fun uniffi_ari_ffi_fn_method_skillregistry_set_skill_setting(`ptr`: Lon
 ): Unit
 external fun uniffi_ari_ffi_fn_method_skillregistry_uninstall_skill_by_id(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+external fun uniffi_ari_ffi_fn_func_engine_version(uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 external fun ffi_ari_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun ffi_ari_ffi_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1523,6 +1527,9 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if (lib.uniffi_ari_ffi_checksum_func_engine_version() != 10576.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_cancel_pending_reply() != 705.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -11403,4 +11410,23 @@ public object FfiConverterMapStringTypeFfiLocalizedDisplay: FfiConverterRustBuff
         }
     }
 }
+        /**
+         * The engine version a frontend should quote in a bug report.
+         *
+         * This is `ari-ffi`'s own crate version, and that is deliberate: the engine's
+         * crates are not versioned in lockstep, so there is no single number that
+         * describes "the engine". What every frontend actually links is this crate,
+         * so its version is the one that identifies the boundary a bug was reported
+         * against. Bump it when the FFI surface changes.
+         */ fun `engineVersion`(): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_engine_version(
+    
+        _status)
+}
+    )
+    }
+    
+
 
