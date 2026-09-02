@@ -1,6 +1,10 @@
 package dev.heyari.ari.ui.bugreport
 
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -28,6 +32,12 @@ private val FAB_SIZE = 56.dp
 private val EDGE_MARGIN = 12.dp
 
 /**
+ * Material's small top app bar. Not exposed as a constant anywhere public, so
+ * it is named here rather than left as a bare 64 in the middle of the maths.
+ */
+private val APP_BAR_HEIGHT = 64.dp
+
+/**
  * The bug-report button, in testing builds only.
  *
  * Round, parked top-right, and draggable. Both bottom corners are already
@@ -38,7 +48,10 @@ private val EDGE_MARGIN = 12.dp
  * is remembered.
  *
  * [container] is measured by the parent because a child cannot ask its parent
- * how big it is; the button needs it to know where the edges are.
+ * how big it is; the button needs it to know where the edges are. The app
+ * draws edge to edge, so that container includes the status and navigation
+ * bars — the insets below keep the button out from underneath them, and out
+ * of the app bar, where the listening-mode switch already lives.
  */
 @Composable
 fun BugReportFab(
@@ -51,8 +64,14 @@ fun BugReportFab(
     val fabPx = with(density) { FAB_SIZE.toPx() }
     val marginPx = with(density) { EDGE_MARGIN.toPx() }
 
-    val maxX = (container.width - fabPx - marginPx).coerceAtLeast(marginPx)
-    val maxY = (container.height - fabPx - marginPx).coerceAtLeast(marginPx)
+    val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val navBar = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val minY = with(density) { (statusBar + APP_BAR_HEIGHT + EDGE_MARGIN).toPx() }
+    val bottomPx = with(density) { navBar.toPx() }
+
+    val minX = marginPx
+    val maxX = (container.width - fabPx - marginPx).coerceAtLeast(minX)
+    val maxY = (container.height - fabPx - marginPx - bottomPx).coerceAtLeast(minY)
 
     // Pixels while dragging, fractions when stored: absolute coordinates from
     // a portrait session point off the side of a landscape one.
@@ -62,9 +81,10 @@ fun BugReportFab(
     LaunchedEffect(position, container) {
         if (container.width == 0 || container.height == 0) return@LaunchedEffect
         if (offsetX.isNaN() || offsetY.isNaN()) {
+            // Default is top right, just under the app bar.
             val (fx, fy) = position ?: (1f to 0f)
-            offsetX = marginPx + fx * (maxX - marginPx)
-            offsetY = marginPx + fy * (maxY - marginPx)
+            offsetX = minX + fx * (maxX - minX)
+            offsetY = minY + fy * (maxY - minY)
         }
     }
 
@@ -82,19 +102,19 @@ fun BugReportFab(
                 detectDragGestures(
                     onDrag = { change, dragged ->
                         change.consume()
-                        offsetX = (offsetX + dragged.x).coerceIn(marginPx, maxX)
-                        offsetY = (offsetY + dragged.y).coerceIn(marginPx, maxY)
+                        offsetX = (offsetX + dragged.x).coerceIn(minX, maxX)
+                        offsetY = (offsetY + dragged.y).coerceIn(minY, maxY)
                     },
                     onDragEnd = {
                         // Snap to the nearer side. Floating mid-screen it
                         // covers content wherever it lands; against an edge it
                         // covers a margin.
                         val snapped =
-                            if (offsetX + fabPx / 2 < container.width / 2f) marginPx else maxX
+                            if (offsetX + fabPx / 2 < container.width / 2f) minX else maxX
                         offsetX = snapped
-                        val xSpan = (maxX - marginPx).coerceAtLeast(1f)
-                        val ySpan = (maxY - marginPx).coerceAtLeast(1f)
-                        onMoved((snapped - marginPx) / xSpan, (offsetY - marginPx) / ySpan)
+                        val xSpan = (maxX - minX).coerceAtLeast(1f)
+                        val ySpan = (maxY - minY).coerceAtLeast(1f)
+                        onMoved((snapped - minX) / xSpan, (offsetY - minY) / ySpan)
                     },
                 )
             },
