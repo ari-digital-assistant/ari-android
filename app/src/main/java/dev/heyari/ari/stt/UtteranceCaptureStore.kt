@@ -2,6 +2,7 @@ package dev.heyari.ari.stt
 
 import android.content.Context
 import android.content.Intent
+import java.io.File
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.audio.AudioClipStore
 import dev.heyari.ari.audio.ClipStats
@@ -124,6 +125,9 @@ class UtteranceCaptureStore @Inject constructor(
     fun clear() = clips.clear()
 
     fun shareIntent(): Intent? = clips.shareIntent()
+
+    /** Every captured clip and its sidecar, for the share sheet or a bug report. */
+    fun files(): List<File> = clips.files()
 
     private companion object {
         const val DIR_NAME = "utterance-captures"

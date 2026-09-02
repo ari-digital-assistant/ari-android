@@ -104,11 +104,12 @@ class WakeCaptureStore internal constructor(
 
     fun shareIntent(): Intent? {
         val ctx = context ?: return null
-        return shareIntentFor(
-            ctx,
-            silentClips.files() + rejectedClips.files() + acceptedClips.files(),
-        )
+        return shareIntentFor(ctx, files())
     }
+
+    /** Every captured clip and its sidecar, for the share sheet or a bug report. */
+    fun files(): List<File> =
+        silentClips.files() + rejectedClips.files() + acceptedClips.files()
 
     private companion object {
         const val DIR_NAME = "wake-captures"
