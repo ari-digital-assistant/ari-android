@@ -192,7 +192,7 @@ class SettingsViewModel @Inject constructor(
                 _state.update { it.copy(wakeWordSensitivity = WakeWordSensitivity.fromName(name)) }
             }
         }
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             combine(
                 downloadManager.state,
                 settingsRepository.activeSttModelId,
@@ -230,7 +230,7 @@ class SettingsViewModel @Inject constructor(
         // LLM download state — track download progress for the assistant
         // settings page. When the built-in assistant is active and a model
         // finishes downloading, load it into the engine.
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             combine(
                 llmDownloadManager.state,
                 settingsRepository.activeLlmModelId,
@@ -296,7 +296,7 @@ class SettingsViewModel @Inject constructor(
         }
 
         // Assistant UI state — load entries from registry and track active selection.
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             settingsRepository.activeAssistantId.collect { activeId ->
                 refreshAssistantEntries(activeId)
             }
@@ -381,7 +381,7 @@ class SettingsViewModel @Inject constructor(
         }
 
         // TTS voice selection
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             settingsRepository.activeTtsVoice.collect { activeVoiceName ->
                 val voices = speechOutput.getAvailableVoices()
 
@@ -453,13 +453,12 @@ class SettingsViewModel @Inject constructor(
                 _state.update { it.copy(cloudSttModel = model) }
             }
         }
-        _state.update {
-            it.copy(
-                cloudSttApiKey = secretStore.get(
-                    CloudTranscriber.SECRET_SCOPE,
-                    CloudTranscriber.SECRET_KEY,
-                ).orEmpty(),
-            )
+        viewModelScope.launch(Dispatchers.IO) {
+            val stored = secretStore.get(
+                CloudTranscriber.SECRET_SCOPE,
+                CloudTranscriber.SECRET_KEY,
+            ).orEmpty()
+            _state.update { it.copy(cloudSttApiKey = stored) }
         }
 
     }

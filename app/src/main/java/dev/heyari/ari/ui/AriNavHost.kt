@@ -340,12 +340,17 @@ fun AriNavHost(
 
         // ── Onboarding wizard (nested graph for shared ViewModel) ──
         //
-        // The OnboardingViewModel is scoped to the nested "onboarding"
-        // graph so it's shared across all wizard screens. We resolve it
+        // Both view models are scoped to the nested "onboarding" graph so
+        // they're shared across all wizard screens. We resolve the entry
         // via remember { getBackStackEntry("onboarding") } so the lookup
         // happens once during initial composition, not on recomposition
         // during exit transitions (which would crash because the graph
         // entry has already been popped).
+        //
+        // The SettingsViewModel scoping matters for more than tidiness:
+        // per-destination instances meant every step of the wizard stood up
+        // a fresh one, and its constructor opens two dozen preference flows,
+        // stats the model directories and enumerates the TTS voices.
         navigation(
             startDestination = Routes.ONBOARDING_LANGUAGE,
             route = "onboarding",
@@ -387,7 +392,7 @@ fun AriNavHost(
 
             composable(Routes.ONBOARDING_PERMISSIONS) {
                 val graphEntry = remember(it) { navController.getBackStackEntry("onboarding") }
-                val settingsViewModel: SettingsViewModel = hiltViewModel()
+                val settingsViewModel: SettingsViewModel = hiltViewModel(graphEntry)
                 val onboardingViewModel: OnboardingViewModel = hiltViewModel(graphEntry)
 
                 val recordAudioLauncher = rememberLauncherForActivityResult(
@@ -419,7 +424,7 @@ fun AriNavHost(
 
             composable(Routes.ONBOARDING_WAKE_WORD) {
                 val graphEntry = remember(it) { navController.getBackStackEntry("onboarding") }
-                val settingsViewModel: SettingsViewModel = hiltViewModel()
+                val settingsViewModel: SettingsViewModel = hiltViewModel(graphEntry)
                 val onboardingViewModel: OnboardingViewModel = hiltViewModel(graphEntry)
                 val wizardState by onboardingViewModel.state.collectAsStateWithLifecycle()
 
@@ -437,7 +442,8 @@ fun AriNavHost(
             }
 
             composable(Routes.ONBOARDING_LISTENING) {
-                val settingsViewModel: SettingsViewModel = hiltViewModel()
+                val graphEntry = remember(it) { navController.getBackStackEntry("onboarding") }
+                val settingsViewModel: SettingsViewModel = hiltViewModel(graphEntry)
                 ListeningScreen(
                     settingsViewModel = settingsViewModel,
                     // Everyone sees the STT step now. It used to be skipped
@@ -452,7 +458,8 @@ fun AriNavHost(
             }
 
             composable(Routes.ONBOARDING_STT) {
-                val settingsViewModel: SettingsViewModel = hiltViewModel()
+                val graphEntry = remember(it) { navController.getBackStackEntry("onboarding") }
+                val settingsViewModel: SettingsViewModel = hiltViewModel(graphEntry)
                 SttScreen(
                     settingsViewModel = settingsViewModel,
                     onNext = { navController.navigate(Routes.ONBOARDING_ASSISTANT) },
@@ -462,7 +469,7 @@ fun AriNavHost(
 
             composable(Routes.ONBOARDING_ASSISTANT) {
                 val graphEntry = remember(it) { navController.getBackStackEntry("onboarding") }
-                val settingsViewModel: SettingsViewModel = hiltViewModel()
+                val settingsViewModel: SettingsViewModel = hiltViewModel(graphEntry)
                 val onboardingViewModel: OnboardingViewModel = hiltViewModel(graphEntry)
                 AssistantScreen(
                     settingsViewModel = settingsViewModel,
@@ -475,7 +482,8 @@ fun AriNavHost(
             }
 
             composable(Routes.ONBOARDING_GENERAL) {
-                val settingsViewModel: SettingsViewModel = hiltViewModel()
+                val graphEntry = remember(it) { navController.getBackStackEntry("onboarding") }
+                val settingsViewModel: SettingsViewModel = hiltViewModel(graphEntry)
                 GeneralScreen(
                     settingsViewModel = settingsViewModel,
                     onNext = { navController.navigate(Routes.ONBOARDING_COMPLETE) },
