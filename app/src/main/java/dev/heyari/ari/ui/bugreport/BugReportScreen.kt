@@ -53,16 +53,15 @@ import dev.heyari.ari.ui.settings.components.SettingsScaffold
 fun BugReportScreen(
     onClose: () -> Unit,
     onOpenIssue: (String) -> Unit,
-    crashTrace: String? = null,
     viewModel: BugReportViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    LaunchedEffect(crashTrace) { viewModel.start(crashTrace, screenshotPng = null) }
+    LaunchedEffect(Unit) { viewModel.start() }
 
     val title = when (state.step) {
         BugReportStep.EDITING -> stringResource(R.string.bug_report_title)
-        BugReportStep.REVIEWING, BugReportStep.SENDING ->
+        BugReportStep.STAGING, BugReportStep.REVIEWING, BugReportStep.SENDING ->
             stringResource(R.string.bug_report_review_title)
         BugReportStep.SENT -> stringResource(R.string.bug_report_sent_title)
     }
@@ -83,6 +82,7 @@ fun BugReportScreen(
         ) {
             when (state.step) {
                 BugReportStep.EDITING -> EditingStep(state, viewModel)
+                BugReportStep.STAGING -> Busy()
                 BugReportStep.REVIEWING, BugReportStep.SENDING -> ReviewStep(state, viewModel)
                 BugReportStep.SENT -> SentStep(state, onOpenIssue, onClose)
             }
@@ -278,7 +278,7 @@ private fun ReviewStep(state: BugReportUiState, viewModel: BugReportViewModel) {
         caption = stringResource(R.string.bug_report_private_section_blurb),
         border = MaterialTheme.colorScheme.outlineVariant,
     ) {
-        val sending = state.offers.filter { it.kind in state.sending }
+        val sending = state.staged
         if (sending.isEmpty() && state.privateNote.isBlank()) {
             Text(
                 text = stringResource(R.string.bug_report_nothing_private),
@@ -293,16 +293,29 @@ private fun ReviewStep(state: BugReportUiState, viewModel: BugReportViewModel) {
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
-                sending.forEach { offer ->
+                sending.forEach { attachment ->
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(
-                            text = stringResource(offer.kind.labelRes),
+                            text = stringResource(attachment.kind.labelRes),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         Text(
-                            text = formatBytes(offer.bytes),
+                            text = formatBytes(attachment.bytes),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                if (sending.isNotEmpty()) {
+                    HorizontalDivider(Modifier.padding(top = 4.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(
+                            text = stringResource(R.string.bug_report_upload_total),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            text = formatBytes(state.stagedBytes),
+                            style = MaterialTheme.typography.bodyMedium,
                         )
                     }
                 }
@@ -321,13 +334,7 @@ private fun ReviewStep(state: BugReportUiState, viewModel: BugReportViewModel) {
     Spacer(Modifier.height(4.dp))
 
     if (state.step == BugReportStep.SENDING) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            CircularProgressIndicator(Modifier.size(32.dp))
-        }
+        Busy()
     } else {
         Button(
             onClick = viewModel::send,
@@ -336,6 +343,17 @@ private fun ReviewStep(state: BugReportUiState, viewModel: BugReportViewModel) {
         ) {
             Text(stringResource(R.string.bug_report_send_action))
         }
+    }
+}
+
+@Composable
+private fun Busy() {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CircularProgressIndicator(Modifier.size(32.dp))
     }
 }
 

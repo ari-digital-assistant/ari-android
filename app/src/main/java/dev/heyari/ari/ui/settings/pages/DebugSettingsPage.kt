@@ -23,6 +23,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.heyari.ari.BuildConfig
+import dev.heyari.ari.ui.theme.LocalAriSemanticColors
 import dev.heyari.ari.R
 import dev.heyari.ari.ui.settings.SettingsViewModel
 import dev.heyari.ari.ui.settings.components.SettingsScaffold
@@ -112,6 +114,36 @@ fun DebugSettingsPage(
                 },
                 onClear = viewModel::clearUtteranceCaptures,
             )
+
+            // A deliberate crash, so the crash prompt and the trace it carries
+            // can be exercised on purpose rather than waited for. Testing
+            // builds only — the flag that gates the reporter gates this too,
+            // because a button that kills the app has no business in a release.
+            if (BuildConfig.ARI_TESTING) {
+                HorizontalDivider()
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            throw IllegalStateException(
+                                "Deliberate crash from Settings > Debug, to test the reporter"
+                            )
+                        }
+                        .padding(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_crash_now_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = LocalAriSemanticColors.current.danger,
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_crash_now_blurb),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
 
             // Last, because it is where a tester goes to undo something rather
             // than to configure anything.

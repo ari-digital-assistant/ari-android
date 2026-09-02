@@ -173,6 +173,21 @@ class BugReportCollector @Inject constructor(
         wakeCaptures.stats().takeIf { it.count > 0 }?.let {
             add(AttachmentOffer(AttachmentKind.WAKE_AUDIO, it.count, it.totalBytes, defaultOn = false))
         }
+        // Everything Ari has kept, which is the union of the two above rather
+        // than a third store. Offered alongside them because a tester chasing
+        // an intermittent bug would rather hand over the lot than pick.
+        val commands = utteranceCaptures.stats()
+        val wake = wakeCaptures.stats()
+        if (commands.count + wake.count > 0) {
+            add(
+                AttachmentOffer(
+                    kind = AttachmentKind.ALL_AUDIO,
+                    fileCount = commands.count + wake.count,
+                    bytes = commands.totalBytes + wake.totalBytes,
+                    defaultOn = false,
+                )
+            )
+        }
     }
 
     /**

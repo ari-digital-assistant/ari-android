@@ -687,4 +687,11 @@
     <string name="my_reports_footnote">Questo elenco esiste solo su questo telefono. Se disinstalli Ari non potrai più eliminare da qui, e ciò che è ancora conservato viene rimosso automaticamente 90 giorni dopo l\'invio.</string>
     <string name="settings_my_reports_title">Le mie segnalazioni</string>
     <string name="settings_my_reports_blurb">Le segnalazioni che hai inviato da questo telefono. Aprine una su GitHub oppure elimina i file allegati.</string>
+    <string name="crash_prompt_title">Ari si è chiuso in modo imprevisto</string>
+    <string name="crash_prompt_body">Inviare una segnalazione è il modo più rapido per farlo correggere. Vedrai esattamente cosa viene incluso prima di inviare qualsiasi cosa.</string>
+    <string name="crash_prompt_report">Segnala</string>
+    <string name="crash_prompt_dismiss">Non ora</string>
+    <string name="settings_crash_now_title">Fai andare in crash Ari</string>
+    <string name="settings_crash_now_blurb">Provoca di proposito un arresto anomalo per collaudare la segnalazione. Ari si chiuderà subito e ti proporrà di segnalarlo alla riapertura. Non perdi nulla di ciò che hai salvato.</string>
+    <string name="bug_report_upload_total">Caricamento</string>
 </resources>

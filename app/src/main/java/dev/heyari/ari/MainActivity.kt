@@ -41,6 +41,7 @@ class MainActivity : ComponentActivity() {
 
     @Inject lateinit var authorizeCoordinator: AuthorizeCoordinator
     @Inject lateinit var settingsRepository: SettingsRepository
+    @Inject lateinit var bugReportHandoff: dev.heyari.ari.bugreport.BugReportHandoff
     @Inject lateinit var updatesRepository: UpdatesRepository
     @Inject lateinit var engineHolder: dev.heyari.ari.di.EngineHolder
 
@@ -90,6 +91,7 @@ class MainActivity : ComponentActivity() {
                     AriNavHost(
                         deepLinkCommands = deepLinkCommands.receiveAsFlow(),
                         settingsRepository = settingsRepository,
+                        handoff = bugReportHandoff,
                     )
                 }
             }

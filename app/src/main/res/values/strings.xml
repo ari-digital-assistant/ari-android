@@ -693,4 +693,11 @@
     <string name="my_reports_footnote">This list lives on this phone only. Uninstalling Ari means you can no longer delete from here, and anything still stored is removed automatically 90 days after you sent it.</string>
     <string name="settings_my_reports_title">My Reports</string>
     <string name="settings_my_reports_blurb">Bug reports you\'ve sent from this phone. View one on GitHub, or delete the files that went with it.</string>
+    <string name="crash_prompt_title">Ari crashed last time</string>
+    <string name="crash_prompt_body">Sending a report is the fastest way to get it fixed. You\'ll see exactly what\'s included before anything is sent.</string>
+    <string name="crash_prompt_report">Report it</string>
+    <string name="crash_prompt_dismiss">Not now</string>
+    <string name="settings_crash_now_title">Crash Ari now</string>
+    <string name="settings_crash_now_blurb">Deliberately crashes the app so the crash report can be tested. Ari will close immediately and offer to report it the next time you open it. Nothing you have saved is lost.</string>
+    <string name="bug_report_upload_total">Upload</string>
 </resources>

@@ -5,9 +5,11 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.heyari.ari.bugreport.AttachmentKind
 import dev.heyari.ari.bugreport.AttachmentOffer
+import dev.heyari.ari.bugreport.BugAttachment
 import dev.heyari.ari.bugreport.BugReport
 import dev.heyari.ari.bugreport.BugReportClient
 import dev.heyari.ari.bugreport.BugReportCollector
+import dev.heyari.ari.bugreport.BugReportHandoff
 import dev.heyari.ari.bugreport.FiledReport
 import dev.heyari.ari.bugreport.FiledReportRecord
 import dev.heyari.ari.bugreport.SendOutcome
@@ -32,7 +34,7 @@ sealed interface SendError {
 }
 
 /** Where the reporter is in the flow. Each step shows a different screen. */
-enum class BugReportStep { EDITING, REVIEWING, SENDING, SENT }
+enum class BugReportStep { EDITING, STAGING, REVIEWING, SENDING, SENT }
 
 /**
  * What is about to be sent, exactly as the review screen renders it.
@@ -49,6 +51,13 @@ data class BugReportUiState(
     val consented: Boolean = false,
     val offers: List<AttachmentOffer> = emptyList(),
     val selected: Set<AttachmentKind> = emptySet(),
+    /**
+     * The files as they will actually be uploaded, written before the review
+     * screen renders. Sizes come from disk rather than from an estimate,
+     * because a review screen quoting a number it made up is worse than one
+     * that quotes nothing.
+     */
+    val staged: List<BugAttachment> = emptyList(),
     val stackTrace: String? = null,
     val filed: FiledReport? = null,
     val error: SendError? = null,
@@ -59,8 +68,7 @@ data class BugReportUiState(
     val sending: Set<AttachmentKind>
         get() = if (consented) selected else emptySet()
 
-    val sendingBytes: Long
-        get() = offers.filter { it.kind in sending }.sumOf { it.bytes }
+    val stagedBytes: Long get() = staged.sumOf { it.bytes }
 }
 
 @HiltViewModel
@@ -68,6 +76,7 @@ class BugReportViewModel @Inject constructor(
     private val collector: BugReportCollector,
     private val client: BugReportClient,
     private val settings: SettingsRepository,
+    private val handoff: BugReportHandoff,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(BugReportUiState())
@@ -76,18 +85,20 @@ class BugReportViewModel @Inject constructor(
     private var screenshot: ByteArray? = null
 
     /**
-     * [crashTrace] arrives from the crash prompt on the next launch after an
-     * uncaught exception; it is null for a report the user started themselves.
+     * Picks up the screenshot taken as the button was tapped, and the crash
+     * trace if this report was started from the crash prompt. Both are null
+     * for an ordinary report opened from a screen with nothing to capture.
      */
-    fun start(crashTrace: String?, screenshotPng: ByteArray?) {
-        screenshot = screenshotPng
+    fun start() {
+        val taken = handoff.take()
+        screenshot = taken.screenshot
         viewModelScope.launch {
-            val offers = collector.offers(hasScreenshot = screenshotPng != null)
+            val offers = collector.offers(hasScreenshot = taken.screenshot != null)
             _state.update {
                 it.copy(
                     offers = offers,
                     selected = offers.filter { offer -> offer.defaultOn }.map { o -> o.kind }.toSet(),
-                    stackTrace = crashTrace,
+                    stackTrace = taken.crashTrace,
                 )
             }
         }
@@ -99,11 +110,40 @@ class BugReportViewModel @Inject constructor(
 
     fun setConsent(given: Boolean) = _state.update { it.copy(consented = given) }
 
-    fun toggle(kind: AttachmentKind) = _state.update {
-        it.copy(selected = if (kind in it.selected) it.selected - kind else it.selected + kind)
+    /**
+     * "All recordings" is the union of the two specific audio kinds, so ticking
+     * it unticks them and vice versa. Sending both would upload every clip
+     * twice and charge the tester's daily budget for the privilege.
+     */
+    fun toggle(kind: AttachmentKind) = _state.update { state ->
+        if (kind in state.selected) {
+            state.copy(selected = state.selected - kind)
+        } else {
+            val cleared = when (kind) {
+                AttachmentKind.ALL_AUDIO ->
+                    state.selected - AttachmentKind.COMMANDS - AttachmentKind.WAKE_AUDIO
+                AttachmentKind.COMMANDS, AttachmentKind.WAKE_AUDIO ->
+                    state.selected - AttachmentKind.ALL_AUDIO
+                else -> state.selected
+            }
+            state.copy(selected = cleared + kind)
+        }
     }
 
-    fun review() = _state.update { it.copy(step = BugReportStep.REVIEWING, error = null) }
+    /**
+     * Writes the chosen files out, then shows them. Staging here rather than at
+     * send time is what lets the review screen quote real sizes — and it means
+     * a kind that produced nothing is gone from the list before anyone is asked
+     * to approve it.
+     */
+    fun review() {
+        val current = _state.value
+        _state.update { it.copy(step = BugReportStep.STAGING, error = null) }
+        viewModelScope.launch {
+            val staged = collector.stage(current.sending, screenshot)
+            _state.update { it.copy(step = BugReportStep.REVIEWING, staged = staged) }
+        }
+    }
 
     fun backToEditing() = _state.update { it.copy(step = BugReportStep.EDITING) }
 
@@ -113,7 +153,6 @@ class BugReportViewModel @Inject constructor(
         _state.update { it.copy(step = BugReportStep.SENDING, error = null) }
 
         viewModelScope.launch {
-            val attachments = collector.stage(current.sending, screenshot)
             val report = BugReport(
                 installId = settings.installId(),
                 description = current.description.trim(),
@@ -123,7 +162,7 @@ class BugReportViewModel @Inject constructor(
                 setup = collector.setupInfo(),
                 device = collector.deviceInfo(),
                 skills = collector.installedSkills(),
-                attachments = attachments,
+                attachments = current.staged,
             )
 
             when (val outcome = client.send(report)) {

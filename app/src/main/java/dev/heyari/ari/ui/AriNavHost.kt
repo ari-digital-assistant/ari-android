@@ -21,6 +21,16 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import android.app.Activity
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.res.stringResource
+import dev.heyari.ari.bugreport.BugReportHandoff
+import dev.heyari.ari.bugreport.CrashRecorder
+import dev.heyari.ari.bugreport.captureWindow
+import dev.heyari.ari.R
 import dev.heyari.ari.data.SettingsRepository
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -129,6 +139,7 @@ object Routes {
 fun AriNavHost(
     deepLinkCommands: Flow<String>? = null,
     settingsRepository: SettingsRepository,
+    handoff: BugReportHandoff,
 ) {
     val navController = rememberNavController()
     val context = LocalContext.current
@@ -157,6 +168,33 @@ fun AriNavHost(
     var container by remember { mutableStateOf(IntSize.Zero) }
     val fabPosition by settingsRepository.bugReportFabPosition.collectAsStateWithLifecycle(null)
     val scope = rememberCoroutineScope()
+
+    // Offered once, on the first launch after a crash. Reading the record
+    // consumes it: a prompt that returns every launch until it is accepted is
+    // nagging rather than helpful.
+    var pendingCrash by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        if (BuildConfig.ARI_TESTING) pendingCrash = CrashRecorder.consume(context)
+    }
+    pendingCrash?.let { trace ->
+        AlertDialog(
+            onDismissRequest = { pendingCrash = null },
+            title = { Text(stringResource(R.string.crash_prompt_title)) },
+            text = { Text(stringResource(R.string.crash_prompt_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingCrash = null
+                    handoff.offer(crashTrace = trace)
+                    navController.navigate(Routes.BUG_REPORT) { launchSingleTop = true }
+                }) { Text(stringResource(R.string.crash_prompt_report)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingCrash = null }) {
+                    Text(stringResource(R.string.crash_prompt_dismiss))
+                }
+            },
+        )
+    }
 
     Box(
         modifier = Modifier
@@ -586,7 +624,17 @@ fun AriNavHost(
                     scope.launch { settingsRepository.setBugReportFabPosition(x, y) }
                 },
                 onClick = {
-                    navController.navigate(Routes.BUG_REPORT) { launchSingleTop = true }
+                    // Captured before navigating: a moment later the screen
+                    // worth photographing is the report form.
+                    val activity = context as? Activity
+                    if (activity == null) {
+                        navController.navigate(Routes.BUG_REPORT) { launchSingleTop = true }
+                    } else {
+                        captureWindow(activity) { png ->
+                            handoff.offer(screenshot = png)
+                            navController.navigate(Routes.BUG_REPORT) { launchSingleTop = true }
+                        }
+                    }
                 },
             )
         }
