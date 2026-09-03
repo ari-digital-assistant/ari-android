@@ -4,8 +4,12 @@ Thanks for thinking of contributing to Ari. This file covers the bits
 that aren't obvious from the code: testing setup, translation policy,
 PR conventions.
 
-For project-wide context (architecture, anti-slop rules, vibe-coding
-philosophy), see [`../CLAUDE.md`](../CLAUDE.md).
+For what this repo is, how to build it and how to report a bug, see
+[README.md](README.md). Ari spans several repositories — the Rust engine
+is in [ari-engine](https://github.com/ari-digital-assistant/ari-engine)
+and the skill registry is in
+[ari-skills](https://github.com/ari-digital-assistant/ari-skills), each
+with its own contributing notes.
 
 ## Translations
 
@@ -41,11 +45,10 @@ entry — see the CI lint below for why we don't allow that to ship.
 ### Hard rule: no machine translation
 
 **Never auto-translate strings into a language you don't read.** This
-is a project-wide rule documented in
-[`../CLAUDE.md`](../CLAUDE.md#key-principles). Bad translations are
-worse than no translation: they're plausible enough to slip through
-review, but they degrade the experience of the people you're claiming
-to support.
+holds across every Ari repository, and it is not negotiable here. Bad
+translations are worse than no translation: they're plausible enough to
+slip through review, but they degrade the experience of the people
+you're claiming to support.
 
 If you don't speak the target language fluently:
 
