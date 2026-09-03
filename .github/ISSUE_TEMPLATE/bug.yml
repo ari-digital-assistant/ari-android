@@ -2,13 +2,13 @@ name: Bug report
 description: Something in the Android app doesn't work
 labels: ["bug"]
 body:
-  # RESTORE WITH B7 (docs/bug-reporting.md): this block should open with
-  # "Running a testing build? Use the bug report button in the app instead —
-  # it collects all of this for you." Omitted until the button exists, so we
-  # don't send people looking for something that isn't there.
   - type: markdown
     attributes:
       value: |
+        **Running a testing build?** Use the bug report button in the app
+        instead — it collects all of this for you, and can attach a scrubbed
+        log that this form can't.
+
         The device and build questions below matter more than they look. A lot
         of Ari's stranger behaviour comes down to which ROM you're on and how
         aggressively it kills background services.
