@@ -109,9 +109,78 @@ that's there is user-visible chrome. Don't translate:
 
 ## Testing
 
-(TODO: build/run/emulator instructions, hilt test setup,
-compose-test conventions. For now see existing test files for
-patterns.)
+```bash
+./gradlew :app:testDebugUnitTest
+```
+
+466 tests, no device, no emulator, about twelve seconds warm. The HTML
+report lands at
+`app/build/reports/tests/testDebugUnitTest/index.html`. To run one
+class:
+
+```bash
+./gradlew :app:testDebugUnitTest --tests '*LogScrubberTest'
+```
+
+The translation parity lint runs locally too, and needs nothing but
+Python:
+
+```bash
+python3 tools/check_translation_parity.py
+```
+
+### Keep the logic out of Android
+
+Unit tests run on the JVM against Android's stub `android.jar`, and
+`unitTests.isReturnDefaultValues = true` makes every stubbed API return
+a default rather than throw. That's what keeps the suite fast, and it's
+also why anything that reaches into a real Android class is effectively
+untestable here.
+
+So the convention throughout is to put the decision in plain Kotlin and
+let the Android or Compose layer do nothing but call it.
+`MessageGrouping` is the clearest example: every rule about how the
+conversation list groups bubbles is tested without rendering a pixel.
+If something feels hard to test, that's usually the design talking, not
+the tooling.
+
+One trap that follows from the same setting: it stubs `org.json` too,
+so `optString` and friends return `null` instead of `""`. The real
+`org.json:json` is therefore a test dependency. If a parser test starts
+behaving impossibly, that's the first thing to check.
+
+### No mocking framework, deliberately
+
+There's no Mockito and no MockK, and please don't add one without a
+conversation. Tests pass hand-written fakes or plain lambdas —
+`AriFfiSettingWriterTest` routes its writes through three one-line
+fakes. It keeps tests asserting on behaviour rather than on which
+methods got called in what order.
+
+Tests that need real files use JUnit's `TemporaryFolder` rule; see
+`AudioClipStoreTest`.
+
+Hilt doesn't appear in the unit tests at all. They construct what they
+need directly, which is another reason to keep constructors honest.
+
+### Instrumented tests
+
+`app/src/androidTest/` currently holds nothing but the scaffold AGP
+generated. There is **no Compose UI test suite yet** — the dependencies
+are wired up (`ui-test-junit4`, `ui-test-manifest`), so adding the first
+one needs no ceremony, but nothing has justified one so far. If you
+write it, replace this paragraph with the conventions you set.
+
+### Running it on a device
+
+```bash
+./gradlew :app:installDebug        # device or emulator attached
+```
+
+An emulator is fine for most things, but not for the parts most likely
+to break: the wake word wants a real microphone, and background
+behaviour depends heavily on the ROM's power management. If you're
+touching either, use a physical phone.
 
 ## Pull requests
 
