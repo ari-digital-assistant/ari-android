@@ -160,6 +160,7 @@
     <string name="onboarding_permissions_missing_mic">You won\'t be able to use wake word detection or voice input. You can still type.</string>
     <string name="onboarding_permissions_missing_notifications">Ari won\'t be able to show what it\'s doing when it\'s listening in the background.</string>
     <string name="onboarding_permissions_missing_overlay">The wake word will only work once per session when your phone is locked.</string>
+    <string name="onboarding_permissions_missing_battery">Android may stop Ari listening in the background, so the wake word can go quiet without warning.</string>
     <string name="onboarding_permissions_stay">Stay and grant</string>
     <string name="onboarding_permissions_continue">Continue anyway</string>
 
@@ -301,6 +302,8 @@
     <string name="permission_location_description">For weather and nearby skills</string>
     <string name="permission_lockscreen_label">Lock screen wake word</string>
     <string name="permission_lockscreen_description">Required for the wake word to keep working when your phone is locked — like how phone calls appear on the lock screen. Android calls this \"Display over other apps\", but Ari does not draw on top of your other apps. It only uses this permission to open its own voice screen when you say the wake word. Without it, the wake word will only work once per session.</string>
+    <string name="permission_battery_label">Background battery use</string>
+    <string name="permission_battery_description">Android puts unused apps to sleep to save power, which can stop Ari listening for the wake word without telling you — the usual reason it goes quiet after a while. Android will not let Ari change this itself, so this opens the settings screen where you can. Find Ari in the list and set it to unrestricted.</string>
     <string name="permission_fsn_label">Full-screen notifications</string>
     <string name="permission_fsn_description">Optional. Lets a timer or other critical alert take over the locked screen as a fallback when the direct launch is suppressed. Requested when you install a skill that needs it; not used by the wake word flow.</string>
     <string name="permission_status_granted">Granted</string>

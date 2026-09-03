@@ -509,6 +509,7 @@ fun AriNavHost(
                     },
                     onOpenOverlaySettings = settingsViewModel::openOverlaySettings,
                     onOpenAppSettings = settingsViewModel::openAppSettings,
+                    onOpenBatterySettings = settingsViewModel::openBatterySettings,
                 )
             }
 

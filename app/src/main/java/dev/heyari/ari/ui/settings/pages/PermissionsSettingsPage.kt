@@ -80,6 +80,7 @@ fun PermissionsSettingsPage(
                 onOpenFsnSettings = { viewModel.openFsnSettings() },
                 onOpenOverlaySettings = { viewModel.openOverlaySettings() },
                 onOpenAppSettings = { viewModel.openAppSettings() },
+                onOpenBatterySettings = { viewModel.openBatterySettings() },
             )
         }
     }

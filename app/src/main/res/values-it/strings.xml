@@ -166,6 +166,7 @@
     <string name="onboarding_permissions_missing_mic">Non potrai usare la parola di attivazione né l\'input vocale. Potrai comunque scrivere.</string>
     <string name="onboarding_permissions_missing_notifications">Ari non potrà mostrarti cosa sta facendo quando ascolta in background.</string>
     <string name="onboarding_permissions_missing_overlay">La parola di attivazione funzionerà solo una volta per sessione quando il telefono è bloccato.</string>
+    <string name="onboarding_permissions_missing_battery">Android potrebbe impedire ad Ari di ascoltare in background, quindi la parola di attivazione può smettere di funzionare senza preavviso.</string>
     <string name="onboarding_permissions_stay">Rimani e concedi</string>
     <string name="onboarding_permissions_continue">Continua comunque</string>
 
@@ -299,6 +300,8 @@
     <string name="permission_location_description">Per il meteo e le skill nelle vicinanze</string>
     <string name="permission_lockscreen_label">Parola di attivazione a schermo bloccato</string>
     <string name="permission_lockscreen_description">Necessario perché la parola di attivazione continui a funzionare quando il telefono è bloccato — come le chiamate appaiono sulla schermata di blocco. Android la chiama \"Visualizza sopra altre app\", ma Ari non disegna sopra le tue altre app. Usa questo permesso solo per aprire la propria schermata vocale quando pronunci la parola di attivazione. Senza questo permesso, la parola di attivazione funzionerà solo una volta per sessione.</string>
+    <string name="permission_battery_label">Uso della batteria in background</string>
+    <string name="permission_battery_description">Android mette in pausa le app inutilizzate per risparmiare energia, e questo può impedire ad Ari di ascoltare la parola di attivazione senza avvisarti — è il motivo più comune per cui smette di rispondere dopo un po\'. Android non permette ad Ari di modificare questa impostazione da sola, quindi questo pulsante apre la schermata dove puoi farlo tu. Trova Ari nell\'elenco e impostala su senza restrizioni.</string>
     <string name="permission_fsn_label">Notifiche a schermo intero</string>
     <string name="permission_fsn_description">Opzionale. Percorso legacy — non usato dal flusso attuale di parola di attivazione, ma mantenuto disponibile nel caso in cui Android inasprisca le regole sull\'overlay in futuro.</string>
     <string name="permission_status_granted">Concesso</string>

@@ -10,6 +10,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.LocaleList
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
@@ -65,6 +66,7 @@ data class PermissionStatus(
     val location: Boolean,
     val fullScreenIntent: Boolean,
     val systemAlertWindow: Boolean,
+    val batteryExempt: Boolean,
 )
 
 data class ModelStatus(
@@ -109,7 +111,7 @@ data class TtsVoiceOption(
 )
 
 data class SettingsState(
-    val permissions: PermissionStatus = PermissionStatus(false, false, false, false, false),
+    val permissions: PermissionStatus = PermissionStatus(false, false, false, false, false, false),
     val models: List<ModelStatus> = emptyList(),
     val download: ModelDownloadState = ModelDownloadState.Idle,
     val wakeWords: List<WakeWordOption> = emptyList(),
@@ -774,7 +776,19 @@ class SettingsViewModel @Inject constructor(
 
         val systemAlertWindow = Settings.canDrawOverlays(application)
 
-        return PermissionStatus(recordAudio, postNotifications, location, fullScreenIntent, systemAlertWindow)
+        // Not a permission — a per-app setting we can read but never ask for
+        // in a dialog. See openBatterySettings for why it is a row anyway.
+        val batteryExempt = application.getSystemService(PowerManager::class.java)
+            ?.isIgnoringBatteryOptimizations(application.packageName) ?: false
+
+        return PermissionStatus(
+            recordAudio,
+            postNotifications,
+            location,
+            fullScreenIntent,
+            systemAlertWindow,
+            batteryExempt,
+        )
     }
 
     /**
@@ -823,6 +837,40 @@ class SettingsViewModel @Inject constructor(
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             application.startActivity(intent)
+        }
+    }
+
+    /**
+     * Opens the system screen where battery optimisation can be turned off
+     * for Ari. The user has to do it themselves — deliberately.
+     *
+     * There IS an intent that puts the choice in a one-tap system dialog, but
+     * it needs REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, which is on Play's
+     * restricted-permissions list: declaring it means arguing our case at
+     * review, and losing that argument blocks the release rather than the
+     * feature. Two extra taps is a cheap price for never having that
+     * conversation.
+     *
+     * The optimisation list is the screen built for this, so it goes first.
+     * Some ROMs don't ship it, hence the fall back to Ari's own app info page,
+     * which has a battery entry everywhere and at least starts on the right
+     * app.
+     *
+     * Each is tried until one starts, rather than asked about first with
+     * resolveActivity: on Android 11 and up that answer goes through package
+     * visibility filtering, so a screen that exists can still report itself
+     * missing. Actually starting it is the only honest test.
+     */
+    fun openBatterySettings() {
+        val candidates = listOf(
+            Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:${application.packageName}")
+            },
+        )
+        for (intent in candidates) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (runCatching { application.startActivity(intent) }.isSuccess) return
         }
     }
 

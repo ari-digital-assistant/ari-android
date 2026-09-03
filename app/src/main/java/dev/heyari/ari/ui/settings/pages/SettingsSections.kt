@@ -75,6 +75,7 @@ internal fun PermissionsSection(
     onRequestNotifications: () -> Unit,
     onOpenOverlaySettings: () -> Unit,
     onOpenAppSettings: () -> Unit,
+    onOpenBatterySettings: () -> Unit,
     // Location and full-screen alerts are no longer core, asked-up-front
     // permissions: each is requested at skill-install time by whichever
     // skill declares the matching capability (`location` → weather etc;
@@ -142,6 +143,18 @@ internal fun PermissionsSection(
                 else R.string.permission_status_open_android_settings
             ),
             onAction = onOpenOverlaySettings,
+        )
+
+        PermissionRow(
+            label = stringResource(R.string.permission_battery_label),
+            description = stringResource(R.string.permission_battery_description),
+            granted = permissions.batteryExempt,
+            required = true,
+            actionLabel = stringResource(
+                if (permissions.batteryExempt) R.string.permission_status_granted
+                else R.string.permission_status_open_android_settings
+            ),
+            onAction = onOpenBatterySettings,
         )
 
         if (showFsn) {

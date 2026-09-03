@@ -31,6 +31,7 @@ fun PermissionsScreen(
     onRequestNotifications: () -> Unit,
     onOpenOverlaySettings: () -> Unit,
     onOpenAppSettings: () -> Unit,
+    onOpenBatterySettings: () -> Unit,
 ) {
     val state by settingsViewModel.state.collectAsStateWithLifecycle()
     var showMissingPopup by rememberSaveable { mutableStateOf(false) }
@@ -55,7 +56,8 @@ fun PermissionsScreen(
         onBack = onBack,
         onPrimary = {
             val perms = state.permissions
-            val anyRecommendedMissing = !perms.recordAudio || !perms.postNotifications || !perms.systemAlertWindow
+            val anyRecommendedMissing = !perms.recordAudio || !perms.postNotifications ||
+                !perms.systemAlertWindow || !perms.batteryExempt
             if (anyRecommendedMissing) {
                 showMissingPopup = true
             } else {
@@ -79,6 +81,7 @@ fun PermissionsScreen(
             showFsn = false,
             onOpenOverlaySettings = onOpenOverlaySettings,
             onOpenAppSettings = onOpenAppSettings,
+            onOpenBatterySettings = onOpenBatterySettings,
         )
     }
 
@@ -109,6 +112,7 @@ private fun MissingPermissionsDialog(
         if (!permissions.recordAudio) add(stringResource(R.string.onboarding_permissions_missing_mic))
         if (!permissions.postNotifications) add(stringResource(R.string.onboarding_permissions_missing_notifications))
         if (!permissions.systemAlertWindow) add(stringResource(R.string.onboarding_permissions_missing_overlay))
+        if (!permissions.batteryExempt) add(stringResource(R.string.onboarding_permissions_missing_battery))
     }
 
     AlertDialog(
