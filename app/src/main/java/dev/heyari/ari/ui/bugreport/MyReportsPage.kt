@@ -36,7 +36,7 @@ import java.time.format.FormatStyle
  *
  * The whole of a tester's ability to change their mind, which is why the
  * footnote says plainly that it lives on this phone only. An expired report
- * keeps its row but loses its Delete button: its files are already gone, and
+ * keeps its row but loses its Withdraw button: its files are already gone, and
  * the issue was never the reporter's to remove.
  */
 @Composable
@@ -72,7 +72,7 @@ fun MyReportsPage(
                     report = report,
                     busy = state.withdrawing == report.reportId,
                     onOpen = { onOpenIssue(report.issueUrl) },
-                    onDelete = { viewModel.confirm(report) },
+                    onWithdraw = { viewModel.confirm(report) },
                 )
             }
 
@@ -102,7 +102,7 @@ fun MyReportsPage(
             text = { Text(stringResource(R.string.my_reports_confirm_body)) },
             confirmButton = {
                 TextButton(onClick = { viewModel.withdraw(report) }) {
-                    Text(stringResource(R.string.my_reports_confirm_delete))
+                    Text(stringResource(R.string.my_reports_confirm_withdraw))
                 }
             },
             dismissButton = {
@@ -119,7 +119,7 @@ private fun ReportRow(
     report: FiledReportRecord,
     busy: Boolean,
     onOpen: () -> Unit,
-    onDelete: () -> Unit,
+    onWithdraw: () -> Unit,
 ) {
     val expired = report.isExpired(System.currentTimeMillis())
     Card(
@@ -161,8 +161,8 @@ private fun ReportRow(
                 if (busy) {
                     CircularProgressIndicator(Modifier.size(20.dp).padding(top = 8.dp))
                 } else if (!expired) {
-                    TextButton(onClick = onDelete) {
-                        Text(stringResource(R.string.my_reports_delete))
+                    TextButton(onClick = onWithdraw) {
+                        Text(stringResource(R.string.my_reports_withdraw))
                     }
                 }
             }
