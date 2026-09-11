@@ -40,6 +40,7 @@ import dev.heyari.ari.ui.theme.LocalAriSemanticColors
 import dev.heyari.ari.wakeword.SampleBackground
 import dev.heyari.ari.wakeword.SampleDistance
 import dev.heyari.ari.wakeword.WakeSampleRecorder
+import dev.heyari.ari.wakeword.WakeSampleSummary
 import java.util.Locale
 
 /**
@@ -105,13 +106,14 @@ fun WakeSamplesPage(
                 )
             }
 
-            if (state.stats.count > 0) {
+            if (state.segments.isNotEmpty()) {
                 HorizontalDivider()
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = stringResource(R.string.wake_samples_stored, state.stats.count),
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = stringResource(R.string.wake_samples_stored, state.segments.size),
+                        style = MaterialTheme.typography.titleSmall,
                     )
+                    state.segments.forEach { segment -> RecordedRow(segment) }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TextButton(
                             onClick = {
@@ -343,6 +345,53 @@ private fun RecorderSection(
                     Text(stringResource(R.string.wake_samples_dismiss))
                 }
             }
+        }
+    }
+}
+
+/**
+ * One recorded segment. Says who and where, because "3 files stored" answers
+ * neither of the two questions anybody has here — whose voice is captured, and
+ * which rooms and distances are still missing.
+ */
+@Composable
+private fun RecordedRow(segment: WakeSampleSummary) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = listOf(segment.setName, segment.room)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" · "),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    // Falls back to the raw slug rather than an empty gap when a
+                    // sidecar names a condition this build does not know.
+                    text = listOf(
+                        segment.distance?.labelRes?.let { stringResource(it) }
+                            ?: segment.distanceSlug,
+                        segment.background?.labelRes?.let { stringResource(it) }
+                            ?: segment.backgroundSlug,
+                    ).filter { it.isNotBlank() }.joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                text = formatElapsed(segment.durationMs),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

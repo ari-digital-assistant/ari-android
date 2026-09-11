@@ -742,7 +742,7 @@
     <string name="wake_samples_problem_mic">Ari isn\'t listening, so there\'s no microphone to record from. Turn wake word listening on and try again.</string>
     <string name="wake_samples_problem_busy">Ari is in the middle of a voice turn. Wait for it to finish and try again.</string>
     <!-- %1$d is the number of files stored, counting recordings and their notes. -->
-    <string name="wake_samples_stored">%1$d files stored</string>
+    <string name="wake_samples_stored">%1$d recordings</string>
     <string name="wake_samples_export">Export</string>
     <string name="wake_samples_clear">Delete all</string>
     <string name="wake_samples_export_chooser">Export wake word samples</string>

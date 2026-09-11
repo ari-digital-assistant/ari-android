@@ -729,7 +729,7 @@
     <string name="wake_samples_needs_conditions">Indica prima la stanza, la distanza e il rumore di fondo.</string>
     <string name="wake_samples_problem_mic">Ari non è in ascolto, quindi non c\'è alcun microfono da cui registrare. Attiva l\'ascolto della parola di attivazione e riprova.</string>
     <string name="wake_samples_problem_busy">Ari sta gestendo un comando vocale. Attendi che finisca e riprova.</string>
-    <string name="wake_samples_stored">%1$d file archiviati</string>
+    <string name="wake_samples_stored">%1$d registrazioni</string>
     <string name="wake_samples_export">Esporta</string>
     <string name="wake_samples_clear">Elimina tutto</string>
     <string name="wake_samples_export_chooser">Esporta campioni della parola di attivazione</string>

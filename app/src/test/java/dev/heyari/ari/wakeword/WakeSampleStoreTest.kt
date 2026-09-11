@@ -1,6 +1,7 @@
 package dev.heyari.ari.wakeword
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.ZoneId
 
@@ -56,5 +57,39 @@ class WakeSampleStoreTest {
     @Test
     fun `slug is capped so one long room name cannot dominate the filename`() {
         assertEquals(24, sampleSlug("a".repeat(80)).length)
+    }
+
+    @Test
+    fun `a sidecar parses back into the summary the settings list shows`() {
+        val sidecar = wakeSampleSidecar(segment, 1_000L, 94_200L, ZoneId.of("UTC"))
+
+        val summary = parseWakeSampleSidecar("sample-x", sidecar, fallbackMs = 0L)
+
+        assertEquals("Gail", summary.setName)
+        assertEquals("Living Room", summary.room)
+        assertEquals(SampleDistance.ACROSS_ROOM, summary.distance)
+        assertEquals(SampleBackground.TELEVISION, summary.background)
+        assertEquals(94_200L, summary.durationMs)
+        assertEquals(1_000L, summary.recordedAtMs)
+    }
+
+    @Test
+    fun `an unknown condition keeps its slug instead of vanishing from the list`() {
+        val sidecar = wakeSampleSidecar(segment, 1_000L, 1L, ZoneId.of("UTC"))
+            .replace("distance: across-room", "distance: from-the-garden")
+
+        val summary = parseWakeSampleSidecar("sample-x", sidecar, fallbackMs = 0L)
+
+        assertNull(summary.distance)
+        assertEquals("from-the-garden", summary.distanceSlug)
+        assertEquals("Gail", summary.setName)
+    }
+
+    @Test
+    fun `a sidecar with no timestamp falls back to the file's own time`() {
+        val summary = parseWakeSampleSidecar("sample-x", "set: Gail\n", fallbackMs = 4_242L)
+
+        assertEquals(4_242L, summary.recordedAtMs)
+        assertEquals(0L, summary.durationMs)
     }
 }

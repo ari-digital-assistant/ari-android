@@ -4,12 +4,12 @@ import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.heyari.ari.audio.ClipStats
 import dev.heyari.ari.wakeword.SampleBackground
 import dev.heyari.ari.wakeword.SampleDistance
 import dev.heyari.ari.wakeword.WakeSampleRecorder
 import dev.heyari.ari.wakeword.WakeSampleSegment
 import dev.heyari.ari.wakeword.WakeSampleStore
+import dev.heyari.ari.wakeword.WakeSampleSummary
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,7 +29,8 @@ data class WakeSamplesUiState(
     val knownRooms: List<String> = emptyList(),
     val segmentsThisSet: Int = 0,
     val recorder: WakeSampleRecorder.State = WakeSampleRecorder.State.Idle,
-    val stats: ClipStats = ClipStats(0, 0L),
+    /** Everything recorded so far, newest first. */
+    val segments: List<WakeSampleSummary> = emptyList(),
 ) {
     val canStartSet: Boolean get() = setName.isNotBlank() && phrase.isNotBlank()
 
@@ -57,7 +58,7 @@ class WakeSamplesViewModel @Inject constructor(
     val state: StateFlow<WakeSamplesUiState> = _state.asStateFlow()
 
     init {
-        _state.update { it.copy(stats = store.stats()) }
+        _state.update { it.copy(segments = store.segments()) }
         viewModelScope.launch {
             recorder.state.collect { recorderState ->
                 val wasBusy = _state.value.isBusy
@@ -67,7 +68,7 @@ class WakeSamplesViewModel @Inject constructor(
                 if (wasBusy && recorderState is WakeSampleRecorder.State.Idle) {
                     _state.update {
                         it.copy(
-                            stats = store.stats(),
+                            segments = store.segments(),
                             segmentsThisSet = it.segmentsThisSet + 1,
                             knownRooms = (it.knownRooms + it.room).distinct(),
                         )
@@ -84,7 +85,7 @@ class WakeSamplesViewModel @Inject constructor(
     fun startSet() = _state.update { it.copy(setStarted = true) }
 
     fun endSet() = _state.update {
-        WakeSamplesUiState(stats = store.stats())
+        WakeSamplesUiState(segments = store.segments())
     }
 
     fun setRoom(value: String) = _state.update { it.copy(room = value) }
@@ -113,7 +114,7 @@ class WakeSamplesViewModel @Inject constructor(
 
     fun clear() {
         store.clear()
-        _state.update { it.copy(stats = store.stats(), segmentsThisSet = 0) }
+        _state.update { it.copy(segments = store.segments(), segmentsThisSet = 0) }
     }
 
     fun shareIntent(): Intent? = store.shareIntent()

@@ -11,6 +11,7 @@ import dev.heyari.ari.audio.ClipStats
 import dev.heyari.ari.audio.clipStem
 import java.io.File
 import java.time.Instant
+import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -21,7 +22,11 @@ import javax.inject.Singleton
 enum class SampleDistance(val slug: String, @StringRes val labelRes: Int) {
     NEAR("near", R.string.wake_samples_distance_near),
     MID("mid", R.string.wake_samples_distance_mid),
-    ACROSS_ROOM("across-room", R.string.wake_samples_distance_across),
+    ACROSS_ROOM("across-room", R.string.wake_samples_distance_across);
+
+    companion object {
+        fun fromSlug(slug: String): SampleDistance? = entries.firstOrNull { it.slug == slug }
+    }
 }
 
 /** What else was making noise. Recorded in the sidecar. */
@@ -30,7 +35,11 @@ enum class SampleBackground(val slug: String, @StringRes val labelRes: Int) {
     TELEVISION("tv", R.string.wake_samples_background_tv),
     KITCHEN("kitchen", R.string.wake_samples_background_kitchen),
     CONVERSATION("conversation", R.string.wake_samples_background_conversation),
-    MUSIC("music", R.string.wake_samples_background_music),
+    MUSIC("music", R.string.wake_samples_background_music);
+
+    companion object {
+        fun fromSlug(slug: String): SampleBackground? = entries.firstOrNull { it.slug == slug }
+    }
 }
 
 /**
@@ -86,6 +95,56 @@ internal fun wakeSampleSidecar(
 }
 
 /**
+ * One recorded segment, as the settings page lists it.
+ *
+ * [distance] and [background] are null when the sidecar carries a slug this
+ * build does not know — a recording made by a later version, most likely. The
+ * raw slug is kept alongside so the row still says something true instead of
+ * vanishing from a list whose whole job is to show what has been captured.
+ */
+data class WakeSampleSummary(
+    val stem: String,
+    val setName: String,
+    val room: String,
+    val distanceSlug: String,
+    val backgroundSlug: String,
+    val distance: SampleDistance?,
+    val background: SampleBackground?,
+    val durationMs: Long,
+    val recordedAtMs: Long,
+)
+
+/**
+ * Read a sidecar back into a [WakeSampleSummary]. The inverse of
+ * [wakeSampleSidecar]; the round trip is covered by a test, because a silent
+ * drift between the two would empty the settings list without failing anything.
+ */
+internal fun parseWakeSampleSidecar(stem: String, text: String, fallbackMs: Long): WakeSampleSummary {
+    val fields = text.lineSequence()
+        .mapNotNull { line ->
+            val separator = line.indexOf(": ")
+            if (separator <= 0) null else line.take(separator) to line.substring(separator + 2)
+        }
+        .toMap()
+    val distanceSlug = fields["distance"].orEmpty()
+    val backgroundSlug = fields["background"].orEmpty()
+    val recordedAt = fields["when"]?.let {
+        runCatching { OffsetDateTime.parse(it).toInstant().toEpochMilli() }.getOrNull()
+    }
+    return WakeSampleSummary(
+        stem = stem,
+        setName = fields["set"].orEmpty(),
+        room = fields["room"].orEmpty(),
+        distanceSlug = distanceSlug,
+        backgroundSlug = backgroundSlug,
+        distance = SampleDistance.fromSlug(distanceSlug),
+        background = SampleBackground.fromSlug(backgroundSlug),
+        durationMs = fields["durationMs"]?.toLongOrNull() ?: 0L,
+        recordedAtMs = recordedAt ?: fallbackMs,
+    )
+}
+
+/**
  * Deliberately recorded wake-phrase audio, for the held-out evaluation set a
  * retrain is measured against. See
  * `docs/superpowers/specs/2026-09-10-wake-word-retrain-design.md` §4.
@@ -114,6 +173,13 @@ class WakeSampleStore @Inject constructor(
     }
 
     fun stats(): ClipStats = clips.stats()
+
+    /** Every recorded segment, newest first, for the settings list. */
+    fun segments(): List<WakeSampleSummary> =
+        clips.files()
+            .filter { it.extension == "txt" }
+            .map { parseWakeSampleSidecar(it.nameWithoutExtension, it.readText(), it.lastModified()) }
+            .sortedByDescending { it.recordedAtMs }
 
     fun clear() = clips.clear()
 
