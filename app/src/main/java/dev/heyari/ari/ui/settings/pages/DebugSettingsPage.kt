@@ -39,6 +39,7 @@ import dev.heyari.ari.ui.settings.components.SettingsScaffold
 fun DebugSettingsPage(
     onBack: () -> Unit,
     onOpenMyReports: () -> Unit,
+    onOpenWakeSamples: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -114,6 +115,28 @@ fun DebugSettingsPage(
                 },
                 onClear = viewModel::clearUtteranceCaptures,
             )
+
+            // Deliberate recording rather than passive capture, so it gets a
+            // page of its own: a session has a person in it who needs telling
+            // when to speak and where to stand.
+            HorizontalDivider()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onOpenWakeSamples)
+                    .padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_wake_samples_title),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = stringResource(R.string.settings_wake_samples_blurb),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
 
             // A deliberate crash, so the crash prompt and the trace it carries
             // can be exercised on purpose rather than waited for. Testing

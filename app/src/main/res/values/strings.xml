@@ -703,4 +703,47 @@
     <string name="settings_crash_now_title">Crash Ari now</string>
     <string name="settings_crash_now_blurb">Deliberately crashes the app so the crash report can be tested. Ari will close immediately and offer to report it the next time you open it. Nothing you have saved is lost.</string>
     <string name="bug_report_upload_total">Upload</string>
+
+    <!-- Wake sample recorder (Settings > Debug). Records the wake phrase for the
+         held-out evaluation set a retrain is measured against. A "segment" is one
+         continuous recording made from one position, split into individual takes
+         off-device. -->
+    <string name="settings_wake_samples_title">Record wake word samples</string>
+    <string name="settings_wake_samples_blurb">Record someone saying the wake phrase, so Ari can be tested against real voices rather than synthetic ones. Recordings stay on this device until you export them.</string>
+    <string name="wake_samples_title">Wake word samples</string>
+    <string name="wake_samples_blurb">Name the set, pick where you are, then record one stretch per position. Say the phrase several times at your normal speaking volume, pausing between each — don\'t shout, and don\'t touch the phone until you\'re done.</string>
+    <string name="wake_samples_set_name_label">Whose voice</string>
+    <string name="wake_samples_phrase_label">Phrase being recorded</string>
+    <string name="wake_samples_start_set">Start set</string>
+    <string name="wake_samples_end_set">End set</string>
+    <!-- %1$d is how many segments have been recorded in the current set. -->
+    <string name="wake_samples_segments_recorded">Segments recorded: %1$d</string>
+    <string name="wake_samples_room_label">Room</string>
+    <string name="wake_samples_distance_label">How far from the phone</string>
+    <string name="wake_samples_background_label">Background noise</string>
+    <string name="wake_samples_distance_near">Beside it</string>
+    <string name="wake_samples_distance_mid">A few steps away</string>
+    <string name="wake_samples_distance_across">Across the room</string>
+    <string name="wake_samples_background_quiet">Quiet</string>
+    <string name="wake_samples_background_tv">Television</string>
+    <string name="wake_samples_background_kitchen">Kitchen noise</string>
+    <string name="wake_samples_background_conversation">People talking</string>
+    <string name="wake_samples_background_music">Music</string>
+    <string name="wake_samples_record">Record a segment</string>
+    <string name="wake_samples_stop">Stop and save</string>
+    <string name="wake_samples_cancel">Cancel</string>
+    <string name="wake_samples_dismiss">OK</string>
+    <!-- %1$d is the seconds remaining before recording starts. -->
+    <string name="wake_samples_countdown">Get into position… %1$d</string>
+    <string name="wake_samples_recording_hint">Say the phrase, pause, say it again. The bar moves when Ari can hear you.</string>
+    <!-- %1$d is a rough live count of utterances heard, for reassurance only. -->
+    <string name="wake_samples_takes">Takes heard: %1$d</string>
+    <string name="wake_samples_needs_conditions">Fill in the room, the distance and the background noise first.</string>
+    <string name="wake_samples_problem_mic">Ari isn\'t listening, so there\'s no microphone to record from. Turn wake word listening on and try again.</string>
+    <string name="wake_samples_problem_busy">Ari is in the middle of a voice turn. Wait for it to finish and try again.</string>
+    <!-- %1$d is the number of files stored, counting recordings and their notes. -->
+    <string name="wake_samples_stored">%1$d files stored</string>
+    <string name="wake_samples_export">Export</string>
+    <string name="wake_samples_clear">Delete all</string>
+    <string name="wake_samples_export_chooser">Export wake word samples</string>
 </resources>

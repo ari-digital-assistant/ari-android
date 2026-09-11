@@ -73,6 +73,7 @@ import dev.heyari.ari.ui.settings.pages.PermissionsSettingsPage
 import dev.heyari.ari.ui.settings.pages.SttSettingsPage
 import dev.heyari.ari.ui.settings.pages.TtsSettingsPage
 import dev.heyari.ari.ui.settings.pages.DebugSettingsPage
+import dev.heyari.ari.ui.settings.pages.WakeSamplesPage
 import dev.heyari.ari.ui.settings.pages.WakeWordSettingsPage
 import dev.heyari.ari.ui.settings.skills.SKILLS_SHOW_INSTALLED_TAB_KEY
 import dev.heyari.ari.ui.settings.skills.SkillDetailScreen
@@ -103,6 +104,7 @@ object Routes {
     const val SETTINGS_DEBUG = "settings/debug"
     const val BUG_REPORT = "bug-report"
     const val MY_REPORTS = "settings/debug/my-reports"
+    const val WAKE_SAMPLES = "settings/debug/wake-samples"
     const val SKILLS = "skills?type={type}"
     const val SKILL_DETAIL = "skills/detail/{skillId}?source={source}"
     const val ABOUT = "about"
@@ -348,7 +350,11 @@ fun AriNavHost(
             DebugSettingsPage(
                 onBack = { navController.popBackStack() },
                 onOpenMyReports = { navController.navigate(Routes.MY_REPORTS) },
+                onOpenWakeSamples = { navController.navigate(Routes.WAKE_SAMPLES) },
             )
+        }
+        composable(Routes.WAKE_SAMPLES) {
+            WakeSamplesPage(onBack = { navController.popBackStack() })
         }
         composable(Routes.MY_REPORTS) {
             val context = LocalContext.current

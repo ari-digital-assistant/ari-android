@@ -697,4 +697,40 @@
     <string name="settings_crash_now_title">Fai andare in crash Ari</string>
     <string name="settings_crash_now_blurb">Provoca di proposito un arresto anomalo per collaudare la segnalazione. Ari si chiuderà subito e ti proporrà di segnalarlo alla riapertura. Non perdi nulla di ciò che hai salvato.</string>
     <string name="bug_report_upload_total">Caricamento</string>
+
+    <!-- Wake sample recorder (Settings > Debug). Draft translation - needs review. -->
+    <string name="settings_wake_samples_title">Registra campioni della parola di attivazione</string>
+    <string name="settings_wake_samples_blurb">Registra qualcuno che pronuncia la frase di attivazione, così Ari può essere collaudato con voci reali invece che sintetiche. Le registrazioni restano su questo dispositivo finché non le esporti.</string>
+    <string name="wake_samples_title">Campioni della parola di attivazione</string>
+    <string name="wake_samples_blurb">Dai un nome al set, indica dove ti trovi, poi registra una sequenza per ogni posizione. Pronuncia la frase più volte con il tuo tono di voce normale, facendo una pausa tra una e l\'altra: non gridare e non toccare il telefono finché non hai finito.</string>
+    <string name="wake_samples_set_name_label">Voce di chi</string>
+    <string name="wake_samples_phrase_label">Frase da registrare</string>
+    <string name="wake_samples_start_set">Avvia set</string>
+    <string name="wake_samples_end_set">Termina set</string>
+    <string name="wake_samples_segments_recorded">Sequenze registrate: %1$d</string>
+    <string name="wake_samples_room_label">Stanza</string>
+    <string name="wake_samples_distance_label">Distanza dal telefono</string>
+    <string name="wake_samples_background_label">Rumore di fondo</string>
+    <string name="wake_samples_distance_near">Accanto</string>
+    <string name="wake_samples_distance_mid">A pochi passi</string>
+    <string name="wake_samples_distance_across">Dall\'altra parte della stanza</string>
+    <string name="wake_samples_background_quiet">Silenzio</string>
+    <string name="wake_samples_background_tv">Televisione</string>
+    <string name="wake_samples_background_kitchen">Rumori di cucina</string>
+    <string name="wake_samples_background_conversation">Persone che parlano</string>
+    <string name="wake_samples_background_music">Musica</string>
+    <string name="wake_samples_record">Registra una sequenza</string>
+    <string name="wake_samples_stop">Ferma e salva</string>
+    <string name="wake_samples_cancel">Annulla</string>
+    <string name="wake_samples_dismiss">OK</string>
+    <string name="wake_samples_countdown">Mettiti in posizione… %1$d</string>
+    <string name="wake_samples_recording_hint">Pronuncia la frase, fai una pausa, ripetila. La barra si muove quando Ari ti sente.</string>
+    <string name="wake_samples_takes">Pronunce rilevate: %1$d</string>
+    <string name="wake_samples_needs_conditions">Indica prima la stanza, la distanza e il rumore di fondo.</string>
+    <string name="wake_samples_problem_mic">Ari non è in ascolto, quindi non c\'è alcun microfono da cui registrare. Attiva l\'ascolto della parola di attivazione e riprova.</string>
+    <string name="wake_samples_problem_busy">Ari sta gestendo un comando vocale. Attendi che finisca e riprova.</string>
+    <string name="wake_samples_stored">%1$d file archiviati</string>
+    <string name="wake_samples_export">Esporta</string>
+    <string name="wake_samples_clear">Elimina tutto</string>
+    <string name="wake_samples_export_chooser">Esporta campioni della parola di attivazione</string>
 </resources>
