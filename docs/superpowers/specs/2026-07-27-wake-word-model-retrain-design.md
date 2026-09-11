@@ -2,7 +2,11 @@
 
 **Date:** 2026-07-27
 **Components:** ari-tools (training), ari-android (delivery)
-**Status:** Approved in principle. **Blocked on data collection.**
+**Status:** **Superseded** by `2026-09-10-wake-word-retrain-design.md`.
+This design assumed the fault was a weak negative set alone. Evidence gathered
+2026-09-10 shows the model also discriminates on amplitude and misses quieter
+speakers entirely — a positives-and-augmentation problem this document does not
+address. Kept for its ship-gate reasoning, which the successor carries forward.
 **Depends on:** `2026-07-27-wake-word-false-accept-design.md` — specifically the
 §5 audio capture, which produces the training data this design consumes.
 
@@ -88,10 +92,31 @@ Lives in **`ari-tools/wakeword/`**, mirroring the structure already proven in
 |---|---|
 | `generate-dataset.py` | corpus assembly + augmentation |
 | `generate-eval.py` | held-out eval set construction |
-| `modal_train.py` | Modal training entrypoint |
+| `modal_train.py` | `train.py` — **local** training entrypoint (see below) |
 | `eval.py` | false-accepts-per-hour + recall against the gate |
 | `derive_floor.py` | derive the per-model operating point (see §3) |
 | `test_*.py` | unit tests for the above |
+
+**Training runs locally, not on Modal.** The `modal_train.py` row above is
+inherited from functiongemma and does not survive contact with this problem:
+that was an LLM fine-tune, this is a 64 KB int8 CNN over spectrogram features
+and it fits comfortably on the dev machine's RTX 5070 (8 GB).
+
+Three reasons, in order of weight:
+
+1. **The eval corpus is household voice recordings.** Shipping them to rented
+   silicon contradicts the project's stated position that your voice stays on
+   your device. That is a hard blocker, not a preference.
+2. **Several failed runs are expected** (see Risks §1). Local makes those free;
+   cloud multiplies them.
+3. **Iteration speed** — no upload, no queue, no cold start.
+
+The expensive step is corpus generation and augmentation, not training: Piper
+synthesis plus augmentation over thousands of clips is an overnight job that
+pins the machine. Budget wall-clock, not GPU-hours.
+
+Public negative corpora carry nobody's household audio and *may* be preprocessed
+off-machine if their size ever justifies it. Recorded positives may not.
 
 Same discipline: the eval set is generated and committed, the gate is a script,
 and the tests cover the dataset tooling — not just the model.
