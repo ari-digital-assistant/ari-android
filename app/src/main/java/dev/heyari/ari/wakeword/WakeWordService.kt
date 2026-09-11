@@ -156,7 +156,21 @@ class WakeWordService : Service() {
             listeningController.decisions.collect { next ->
                 Log.i(TAG, "Listening decision: $next")
                 decision = next
-                applyDecision()
+                // Guarded on isRunning like the captureMode collector above,
+                // and for a sharper reason than tidiness. onCreate() runs
+                // BEFORE onStartCommand(), and `decisions` is built on DataStore
+                // flows that emit as soon as their cached read lands — so on a
+                // cold start this can fire while startForeground() is still
+                // pending. A decision of Off then reaches stopSelf() with the
+                // foreground promise outstanding, which Android answers with
+                // ForegroundServiceDidNotStartInTimeException: a crash, not a
+                // clean stand-down. Reported as "I disabled listening then it
+                // crashes" (ari-android#16).
+                //
+                // Nothing is lost by waiting: onStartCommand seeds `decision`
+                // itself and calls applyDecision() once we are actually
+                // foreground. This collector exists for LATER changes.
+                if (isRunning) applyDecision()
             }
         }
     }
