@@ -60,24 +60,42 @@ eliminated:
 
 No defect found. The frontend is not the fault.
 
-### 2.3 The model learned amplitude as a proxy for the wake phrase
+### 2.3 RETRACTED: "the model learned amplitude as a proxy"
 
-One mechanism explains every row of the table above: **the model discriminates
-substantially on loudness rather than on phonetic content.**
+**This section previously asserted that `hey_ari` learned loudness as a stand-in
+for the wake phrase, because its positives were never volume-augmented. That
+explanation is wrong and is retracted. It was a hypothesis that fitted the
+symptoms, written up as though it were established.**
 
-This is a predictable artefact of how it was built. Per `assets/hey_ari.json` it
-came off a community trainer with default settings. Piper TTS positives are
-uniformly loud, clean and normalised; standard negative corpora are ambient,
-quieter and more distant. **In that training distribution amplitude genuinely is
-discriminative**, so the model took the shortcut and never had to learn the
-phrase properly.
+What actually settled it: reading the trainer that produced the model.
+`TaterTotterson/microWakeWord-Trainer-AppleSilicon`, `scripts_macos/make_features.py`,
+configures upstream's `Augmentation` with `"Gain": 0.8` and inherits the
+upstream defaults `min_gain_db=-45`, `max_gain_db=0`. So four clips in five were
+volume-augmented across a 45 dB range — wider than the range this project's own
+pipeline applies. It also mixed backgrounds from CHiME, FMA and AudioSet at
+`p=0.7`, and applied room impulse responses at `p=0.7`.
 
-The second speaker is not failing to say "Hey Ari". She is failing to sound like
-a text-to-speech engine at full output. When she shouts, she matches the
-training distribution and it fires.
+Volume augmentation was not skipped. The shortcut story cannot stand.
 
-`piper-sample-generator` ships a **random volume reduction** augmentation. The
-shortcut exists because that knob was not used.
+**What survives, because it is measured rather than reasoned:**
+
+- The sensitivity sweep does nothing for the second speaker (2.1).
+- She wakes it by shouting the stressed syllable; `ok_ari` and `hey_jarvis`
+  both work for her at a normal speaking volume, same device, same room.
+- The model is **saturated**. Sweeping the cutoff from 0.50 to 0.95 changes
+  nothing at all: identical recall, identical 15-of-16 false accepts. At 0.999
+  nine of sixteen still fire. It emits near-1.0 for a genuine wake and for
+  "spaghetti" alike. Measured 2026-09-11; see `ari-tools/wakeword/baseline/`.
+
+**The mechanism is therefore open.** Candidates worth testing rather than
+asserting: the negative set carried no non-English speech at all, which fits the
+capture review finding that Maltese and French dominate the real false accepts
+(2.5); backgrounds were mixed at only 5-10 dB SNR, so positives were never
+badly buried; and 2.4 below, which is now the strongest surviving explanation
+and is independent of any training setting.
+
+Augmenting volume remains correct practice and this project's pipeline does it
+at `p=1.0`. It is just not the diagnosis.
 
 ### 2.4 The wake phrase itself has a low ceiling
 
@@ -203,7 +221,9 @@ what was predicted.
 - **Near-misses** derived from the rejection logs' transcripts, not from
   intuition: spoken numbers, "all right", and name-adjacent words like "Addy".
 - **Loud non-speech transients** — door slams, impacts, broadband bursts. Still
-  worth including, and still what §2.3 predicts the model is weakest against.
+  worth including. Note the incumbent's trainer already mixed AudioSet and
+  CHiME backgrounds, so this class was not absent from its training — another
+  reason the §2.3 story did not survive contact with the trainer config.
   Demoted from the headline: the review found none of these in the wild, so the
   class is a known theoretical weakness rather than an observed cause.
 - Standard large-vocabulary and multi-speaker ambient corpora.
@@ -216,8 +236,9 @@ what was predicted.
   represented speakers produce artefacts.
 - Speaker-embedding blending (`--slerp-weights`) for voices between speakers.
 - `--length-scales` across a wide range.
-- **Volume reduction augmentation, mandatory.** See §2.3. This is the single
-  most important setting in this document.
+- **Volume reduction augmentation.** Correct practice, and this project applies
+  it at `p=1.0` against the incumbent trainer's `0.8`. No longer claimed as the
+  fix: see the retraction in §2.3.
 - Impulse responses for room and distance variation.
 
 ## 5. The exam — held out, and kept honest
