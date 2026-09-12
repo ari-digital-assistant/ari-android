@@ -27,6 +27,11 @@ data class WakeSamplesUiState(
     val background: SampleBackground? = null,
     /** Rooms already used in this set, offered as one-tap chips. */
     val knownRooms: List<String> = emptyList(),
+    /**
+     * Whether to wait before recording starts. Off by default: most positions
+     * are within reach of the phone, and the wait is dead air in the file.
+     */
+    val countdown: Boolean = false,
     val segmentsThisSet: Int = 0,
     val recorder: WakeSampleRecorder.State = WakeSampleRecorder.State.Idle,
     /** Everything recorded so far, newest first. */
@@ -85,7 +90,9 @@ class WakeSamplesViewModel @Inject constructor(
     fun startSet() = _state.update { it.copy(setStarted = true) }
 
     fun endSet() = _state.update {
-        WakeSamplesUiState(segments = store.segments())
+        // The countdown is a preference about how this person records, not part
+        // of the set, so it survives into the next one.
+        WakeSamplesUiState(segments = store.segments(), countdown = it.countdown)
     }
 
     fun setRoom(value: String) = _state.update { it.copy(room = value) }
@@ -93,6 +100,8 @@ class WakeSamplesViewModel @Inject constructor(
     fun setDistance(value: SampleDistance) = _state.update { it.copy(distance = value) }
 
     fun setBackground(value: SampleBackground) = _state.update { it.copy(background = value) }
+
+    fun setCountdown(value: Boolean) = _state.update { it.copy(countdown = value) }
 
     fun record() {
         val current = _state.value
@@ -104,9 +113,12 @@ class WakeSamplesViewModel @Inject constructor(
                 room = current.room.trim(),
                 distance = current.distance!!,
                 background = current.background!!,
-            )
+            ),
+            countdown = current.countdown,
         )
     }
+
+    fun mark() = recorder.mark()
 
     fun stop() = recorder.stop()
 

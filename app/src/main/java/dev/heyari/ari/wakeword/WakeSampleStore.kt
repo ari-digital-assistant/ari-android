@@ -76,11 +76,18 @@ private const val SLUG_MAX_CHARS = 24
  * field, matching the shape the other capture stores use so a directory of
  * exports greps and diffs cleanly. [zone] is a parameter rather than a
  * `systemDefault()` call so the output is deterministic under test.
+ *
+ * [marks] are milliseconds from the start of the recording, one per take the
+ * speaker flagged. They are the only record of how many times the phrase was
+ * actually said: an energy split off-device cannot tell a take from a cough,
+ * from the telly, or from somebody else in the room, so without these every
+ * recall figure has a denominator nobody can defend.
  */
 internal fun wakeSampleSidecar(
     segment: WakeSampleSegment,
     timestampMs: Long,
     durationMs: Long,
+    marks: List<Long>,
     zone: ZoneId,
 ): String = buildString {
     val at = Instant.ofEpochMilli(timestampMs).atZone(zone)
@@ -91,6 +98,9 @@ internal fun wakeSampleSidecar(
     appendLine("distance: ${segment.distance.slug}")
     appendLine("background: ${segment.background.slug}")
     appendLine("durationMs: $durationMs")
+    // Omitted rather than left empty when nobody tapped the button: absence
+    // means "no ground truth here", which is not the same claim as "zero takes".
+    if (marks.isNotEmpty()) appendLine("marks: ${marks.joinToString(",")}")
     appendLine("app: ${BuildConfig.VERSION_NAME}")
 }
 
@@ -112,6 +122,8 @@ data class WakeSampleSummary(
     val background: SampleBackground?,
     val durationMs: Long,
     val recordedAtMs: Long,
+    /** Milliseconds from the start of the recording; empty when unmarked. */
+    val marks: List<Long>,
 )
 
 /**
@@ -141,6 +153,10 @@ internal fun parseWakeSampleSidecar(stem: String, text: String, fallbackMs: Long
         background = SampleBackground.fromSlug(backgroundSlug),
         durationMs = fields["durationMs"]?.toLongOrNull() ?: 0L,
         recordedAtMs = recordedAt ?: fallbackMs,
+        marks = fields["marks"]
+            ?.split(",")
+            ?.mapNotNull { it.trim().toLongOrNull() }
+            .orEmpty(),
     )
 }
 
@@ -164,11 +180,17 @@ class WakeSampleStore @Inject constructor(
 ) {
     private val clips = AudioClipStore(context, DIR_NAME, MAX_FILES, MAX_BYTES)
 
-    fun save(pcm: ShortArray, segment: WakeSampleSegment, timestampMs: Long, durationMs: Long) {
+    fun save(
+        pcm: ShortArray,
+        segment: WakeSampleSegment,
+        timestampMs: Long,
+        durationMs: Long,
+        marks: List<Long>,
+    ) {
         clips.save(
             clipStem("sample", timestampMs, "${sampleSlug(segment.setName)}-${sampleSlug(segment.room)}"),
             pcm,
-            wakeSampleSidecar(segment, timestampMs, durationMs, ZoneId.systemDefault()),
+            wakeSampleSidecar(segment, timestampMs, durationMs, marks, ZoneId.systemDefault()),
         )
     }
 

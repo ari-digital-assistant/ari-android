@@ -15,10 +15,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -95,6 +97,8 @@ fun WakeSamplesPage(
                     state = state,
                     onRecord = viewModel::record,
                     onStop = viewModel::stop,
+                    onMark = viewModel::mark,
+                    onCountdown = viewModel::setCountdown,
                     onDismissProblem = viewModel::acknowledgeProblem,
                 )
             } else {
@@ -280,11 +284,23 @@ private fun RecorderSection(
     state: WakeSamplesUiState,
     onRecord: () -> Unit,
     onStop: () -> Unit,
+    onMark: () -> Unit,
+    onCountdown: (Boolean) -> Unit,
     onDismissProblem: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         when (val recorder = state.recorder) {
             is WakeSampleRecorder.State.Idle -> {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Checkbox(checked = state.countdown, onCheckedChange = onCountdown)
+                    Text(
+                        text = stringResource(R.string.wake_samples_countdown_option),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
                 Button(
                     onClick = onRecord,
                     enabled = state.canRecord,
@@ -324,6 +340,17 @@ private fun RecorderSection(
                 )
                 Text(
                     text = stringResource(R.string.wake_samples_recording_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedButton(
+                    onClick = onMark,
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                ) {
+                    Text(stringResource(R.string.wake_samples_mark, recorder.marks))
+                }
+                Text(
+                    text = stringResource(R.string.wake_samples_mark_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -386,6 +413,13 @@ private fun RecordedRow(segment: WakeSampleSummary) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (segment.marks.isNotEmpty()) {
+                    Text(
+                        text = stringResource(R.string.wake_samples_marked, segment.marks.size),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             Text(
                 text = formatElapsed(segment.durationMs),

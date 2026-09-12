@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.CopyOnWriteArrayList
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.log10
@@ -52,13 +53,18 @@ class WakeSampleRecorder @Inject constructor(
     sealed interface State {
         data object Idle : State
 
-        /** Armed and confirmed live, giving the speaker time to walk into position. */
+        /**
+         * Armed and confirmed live, giving the speaker time to walk into
+         * position. Skipped entirely when the countdown is switched off.
+         */
         data class CountingDown(val secondsLeft: Int, val level: Float) : State
 
         data class Recording(
             val elapsedMs: Long,
             val level: Float,
             val utterances: Int,
+            /** Takes the speaker has flagged with [mark]. */
+            val marks: Int,
         ) : State
 
         data class Problem(val problem: RecorderProblem) : State
@@ -83,16 +89,39 @@ class WakeSampleRecorder @Inject constructor(
      */
     private var owningBus = false
 
-    fun start(segment: WakeSampleSegment) {
+    /**
+     * Elapsed-realtime the recording proper began, or 0 while counting down.
+     * Read by [mark] on the main thread and written by the drain coroutine.
+     */
+    @Volatile
+    private var recordingStartedAt = 0L
+
+    private val marks = CopyOnWriteArrayList<Long>()
+
+    fun start(segment: WakeSampleSegment, countdown: Boolean) {
         if (job != null) return
         job = scope.launch {
             try {
-                record(segment)
+                record(segment, countdown)
             } finally {
                 releaseBus()
                 job = null
             }
         }
+    }
+
+    /**
+     * Flag that a take was just spoken. Optional — a segment with no marks is
+     * still usable, it just has to be split on energy alone.
+     *
+     * The mark lands where the speaker tapped, which is shortly AFTER the
+     * phrase; the off-device split reads it as "a take ended near here" rather
+     * than as a start offset.
+     */
+    fun mark() {
+        val startedAt = recordingStartedAt
+        if (startedAt == 0L) return
+        marks += SystemClock.elapsedRealtime() - startedAt
     }
 
     /** Ends the segment and writes it. Closing the channel is what stops the drain. */
@@ -117,7 +146,7 @@ class WakeSampleRecorder @Inject constructor(
         if (_state.value is State.Problem) _state.value = State.Idle
     }
 
-    private suspend fun record(segment: WakeSampleSegment) {
+    private suspend fun record(segment: WakeSampleSegment, countdown: Boolean) {
         val channel = claimBus()
         if (channel == null) {
             _state.value = State.Problem(RecorderProblem.BUS_BUSY)
@@ -131,15 +160,18 @@ class WakeSampleRecorder @Inject constructor(
             _state.value = State.Problem(RecorderProblem.MIC_NOT_RUNNING)
             return
         }
-        drain(channel, first, segment)
+        drain(channel, first, segment, countdown)
     }
 
     private suspend fun drain(
         channel: Channel<ShortArray>,
         first: ShortArray,
         segment: WakeSampleSegment,
+        countdown: Boolean,
     ) {
-        val countdownEndsAt = SystemClock.elapsedRealtime() + COUNTDOWN_MS
+        marks.clear()
+        val countdownEndsAt =
+            SystemClock.elapsedRealtime() + if (countdown) COUNTDOWN_MS else 0L
         val chunks = ArrayList<ShortArray>()
         var samples = 0
         var startedAt = 0L
@@ -160,7 +192,10 @@ class WakeSampleRecorder @Inject constructor(
                 chunk = channel.receiveCatching().getOrNull()
                 continue
             }
-            if (startedAt == 0L) startedAt = now
+            if (startedAt == 0L) {
+                startedAt = now
+                recordingStartedAt = now
+            }
 
             chunks += chunk
             samples += chunk.size
@@ -181,7 +216,7 @@ class WakeSampleRecorder @Inject constructor(
             }
 
             val elapsed = now - startedAt
-            _state.value = State.Recording(elapsed, level, utterances)
+            _state.value = State.Recording(elapsed, level, utterances, marks.size)
             if (elapsed >= MAX_SEGMENT_MS) {
                 Log.i(TAG, "Segment hit the ${MAX_SEGMENT_MS}ms ceiling — stopping")
                 break
@@ -189,6 +224,7 @@ class WakeSampleRecorder @Inject constructor(
             chunk = channel.receiveCatching().getOrNull()
         }
 
+        recordingStartedAt = 0L
         _state.value = State.Idle
         if (samples == 0) return
 
@@ -198,7 +234,13 @@ class WakeSampleRecorder @Inject constructor(
             part.copyInto(pcm, offset)
             offset += part.size
         }
-        store.save(pcm, segment, System.currentTimeMillis(), samples * 1000L / SAMPLE_RATE)
+        store.save(
+            pcm,
+            segment,
+            System.currentTimeMillis(),
+            samples * 1000L / SAMPLE_RATE,
+            marks.toList(),
+        )
     }
 
     /**

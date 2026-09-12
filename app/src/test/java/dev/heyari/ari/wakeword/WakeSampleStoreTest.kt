@@ -1,6 +1,7 @@
 package dev.heyari.ari.wakeword
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.ZoneId
@@ -17,7 +18,7 @@ class WakeSampleStoreTest {
 
     @Test
     fun `sidecar records every condition the split needs`() {
-        val sidecar = wakeSampleSidecar(segment, 1_000L, 94_200L, ZoneId.of("UTC"))
+        val sidecar = wakeSampleSidecar(segment, 1_000L, 94_200L, listOf(1_200L, 5_400L), ZoneId.of("UTC"))
 
         assertEquals(
             """
@@ -28,10 +29,31 @@ class WakeSampleStoreTest {
             distance: across-room
             background: tv
             durationMs: 94200
+            marks: 1200,5400
             app: 0.1.0
 
             """.trimIndent(),
             sidecar,
+        )
+    }
+
+    @Test
+    fun `an unmarked segment writes no marks line at all`() {
+        // Not "marks: " with nothing after it: a reader has to be able to tell
+        // "nobody tapped the button" from "the speaker said it zero times".
+        val sidecar = wakeSampleSidecar(segment, 1_000L, 94_200L, emptyList(), ZoneId.of("UTC"))
+
+        assertFalse(sidecar.contains("marks"))
+        assertEquals(emptyList<Long>(), parseWakeSampleSidecar("sample-x", sidecar, 0L).marks)
+    }
+
+    @Test
+    fun `marks survive the round trip in the order they were tapped`() {
+        val sidecar = wakeSampleSidecar(segment, 1_000L, 94_200L, listOf(9_000L, 1_200L), ZoneId.of("UTC"))
+
+        assertEquals(
+            listOf(9_000L, 1_200L),
+            parseWakeSampleSidecar("sample-x", sidecar, 0L).marks,
         )
     }
 
@@ -61,7 +83,7 @@ class WakeSampleStoreTest {
 
     @Test
     fun `a sidecar parses back into the summary the settings list shows`() {
-        val sidecar = wakeSampleSidecar(segment, 1_000L, 94_200L, ZoneId.of("UTC"))
+        val sidecar = wakeSampleSidecar(segment, 1_000L, 94_200L, emptyList(), ZoneId.of("UTC"))
 
         val summary = parseWakeSampleSidecar("sample-x", sidecar, fallbackMs = 0L)
 
@@ -75,7 +97,7 @@ class WakeSampleStoreTest {
 
     @Test
     fun `an unknown condition keeps its slug instead of vanishing from the list`() {
-        val sidecar = wakeSampleSidecar(segment, 1_000L, 1L, ZoneId.of("UTC"))
+        val sidecar = wakeSampleSidecar(segment, 1_000L, 1L, emptyList(), ZoneId.of("UTC"))
             .replace("distance: across-room", "distance: from-the-garden")
 
         val summary = parseWakeSampleSidecar("sample-x", sidecar, fallbackMs = 0L)

@@ -738,6 +738,10 @@
     <string name="wake_samples_recording_hint">Say the phrase, pause, say it again. The bar moves when Ari can hear you.</string>
     <!-- %1$d is a rough live count of utterances heard, for reassurance only. -->
     <string name="wake_samples_takes">Takes heard: %1$d</string>
+    <string name="wake_samples_countdown_option">Count down before recording starts</string>
+    <string name="wake_samples_mark">Mark a take (%1$d)</string>
+    <string name="wake_samples_mark_hint">Optional. Tap this just after each time you say the phrase, and the exported recording will say exactly how many takes it holds.</string>
+    <string name="wake_samples_marked">%1$d takes marked</string>
     <string name="wake_samples_needs_conditions">Fill in the room, the distance and the background noise first.</string>
     <string name="wake_samples_problem_mic">Ari isn\'t listening, so there\'s no microphone to record from. Turn wake word listening on and try again.</string>
     <string name="wake_samples_problem_busy">Ari is in the middle of a voice turn. Wait for it to finish and try again.</string>
