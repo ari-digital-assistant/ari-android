@@ -318,9 +318,9 @@
     <string name="wakeword_sensitivity_high_label">High</string>
     <string name="wakeword_sensitivity_high_description">Fires much more readily. Use if Ari misses someone in your household.</string>
     <string name="wakeword_sensitivity_medium_label">Medium</string>
-    <string name="wakeword_sensitivity_medium_description">Recommended for most environments.</string>
+    <string name="wakeword_sensitivity_medium_description">Recommended. Suits most voices and most rooms.</string>
     <string name="wakeword_sensitivity_low_label">Low</string>
-    <string name="wakeword_sensitivity_low_description">Stricter. Use if Ari wakes when it shouldn\'t.</string>
+    <string name="wakeword_sensitivity_low_description">Strictest. Use if Ari wakes when it shouldn\'t.</string>
     <string name="settings_wake_capture_title">Keep false-trigger audio</string>
     <string name="settings_wake_capture_blurb">When Ari wakes for something you didn\'t say, keep the recording so the wake word can be improved. Audio stays on this device in Ari\'s private storage, is never sent anywhere on its own, and is capped at 50 clips per capture category.</string>
     <plurals name="settings_capture_stats">

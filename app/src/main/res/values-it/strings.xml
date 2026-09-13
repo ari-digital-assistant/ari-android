@@ -316,9 +316,9 @@
     <string name="wakeword_sensitivity_high_label">Alta</string>
     <string name="wakeword_sensitivity_high_description">Si attiva molto più facilmente. Usala se Ari non sente qualcuno in casa.</string>
     <string name="wakeword_sensitivity_medium_label">Media</string>
-    <string name="wakeword_sensitivity_medium_description">Consigliata per la maggior parte degli ambienti.</string>
+    <string name="wakeword_sensitivity_medium_description">Consigliata. Adatta alla maggior parte delle voci e delle stanze.</string>
     <string name="wakeword_sensitivity_low_label">Bassa</string>
-    <string name="wakeword_sensitivity_low_description">Più rigorosa. Usa se Ari si attiva quando non dovrebbe.</string>
+    <string name="wakeword_sensitivity_low_description">La più restrittiva. Usala se Ari si attiva quando non dovrebbe.</string>
     <string name="settings_wake_capture_title">Conserva l\'audio delle attivazioni errate</string>
     <string name="settings_wake_capture_blurb">Quando Ari si attiva per qualcosa che non hai detto, conserva la registrazione per migliorare la parola di attivazione. L\'audio resta su questo dispositivo, nella memoria privata di Ari, non viene mai inviato altrove da solo ed è limitato a 50 clip per categoria di registrazione.</string>
     <!-- "clip" is invariant in the Italian plural, so both quantities match. -->

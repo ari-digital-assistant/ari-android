@@ -47,13 +47,32 @@ import dev.heyari.ari.R
  * | 0.995 / 5  | 56% | 33% | 20% | 19/20 |
  * | 0.9 / 5    | 88% | 60% | 47% | 20/20 |
  *
- * So HIGH is 0.9. Of the 16 false accepts that actually happened, 14 already
- * fired at the setting shipped for months and 15 fire at 0.9 — near enough the
- * rate this household already lived with, for roughly double the recall.
+ * ## Then two voices the model had never heard arrived
  *
- * MEDIUM and LOW are untouched. HIGH is the opt-in end of the ladder: a user
- * who selects it has asked to be heard more readily, which is the trade being
- * made here. Nobody gets it without choosing it.
+ * Four speakers, fifteen or twenty marked takes each, same kitchen, beside the
+ * phone. The middle column is what the app shipped as its default:
+ *
+ * Scored across each continuous recording rather than on clips cut out of it,
+ * which is the only version that matches what the phone does — see
+ * `eval_model.score_segment`. Denominators are takes the speaker marked herself.
+ *
+ * | speaker, position | 0.985 / 10 | 0.999 / 5 | 0.95 / 5 | 0.9 / 5 |
+ * |---|---|---|---|---|
+ * | B, beside phone  | 7/16 | 6/16 | 10/16 | 11/16 |
+ * | B, few steps     | 8/15 | 7/15 | 10/15 | 10/15 |
+ * | B, across room   | 3/15 | 2/15 |  4/15 |  6/15 |
+ * | C, beside phone  | 8/15 | 4/15 |  8/15 |  8/15 |
+ * | D, beside phone  | 8/15 | 6/15 | 10/15 | 10/15 |
+ *
+ * Nobody is served well. Every speaker except A is missed a third of the time
+ * standing next to the phone, and speaker B more than half the time across a
+ * quiet room. What the ladder can do is stop making it worse: the shipped
+ * default was the weakest column for four of the five positions measured.
+ *
+ * So the whole ladder moved rather than just its loose end. LOW is the old
+ * default, kept for anyone who was happy with it; MEDIUM is 0.95, which serves
+ * every speaker measured; HIGH is 0.9 for a household that still gets missed.
+ * The ten-minute kitchen recording detects nothing at any of the three.
  *
  * Caveat worth keeping: one household, and the 16 captured accepts can only
  * show false wakes that fired at the shipped setting. A lower cutoff may
@@ -78,13 +97,13 @@ enum class WakeWordSensitivity(
         descriptionRes = R.string.wakeword_sensitivity_high_description,
     ),
     MEDIUM(
-        probabilityCutoff = 0.999f,
+        probabilityCutoff = 0.95f,
         slidingWindowSize = 5,
         displayNameRes = R.string.wakeword_sensitivity_medium_label,
         descriptionRes = R.string.wakeword_sensitivity_medium_description,
     ),
     LOW(
-        probabilityCutoff = 0.999f,
+        probabilityCutoff = 0.985f,
         slidingWindowSize = 10,
         displayNameRes = R.string.wakeword_sensitivity_low_label,
         descriptionRes = R.string.wakeword_sensitivity_low_description,
