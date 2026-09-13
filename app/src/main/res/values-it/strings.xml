@@ -323,6 +323,8 @@
     <string name="sensitivity_tuning_attempt">Tentativo %1$d di %2$d</string>
     <string name="sensitivity_tuning_scoring">Sto calcolando…</string>
     <string name="sensitivity_tuning_result">Sensibilità impostata su %1$s</string>
+    <string name="sensitivity_tuning_shared">Un\'unica impostazione per tutti quelli che usano questo telefono. Aggiungi gli altri e Ari userà quella che vi sente tutti.</string>
+    <string name="sensitivity_tuning_shared_for">Un\'unica impostazione per tutti. Questa è la più restrittiva che sente ancora %1$s.</string>
     <string name="sensitivity_tuning_heard">sentito %1$d su %2$d</string>
     <string name="sensitivity_tuning_short_of_bar">Ari continua a non sentire abbastanza. Ora è al massimo della sensibilità: per migliorare davvero, registra dei campioni dalla schermata di debug.</string>
     <string name="sensitivity_tuning_manual_heading">Oppure scegli tu</string>

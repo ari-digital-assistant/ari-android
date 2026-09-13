@@ -31,6 +31,16 @@ data class SensitivityTuningUiState(
     val shortOfTheBar: Boolean = false,
     val problem: RecorderProblem? = null,
 ) {
+    /**
+     * Whoever the chosen level is being held open for: the enrolled person
+     * heard least often at it. Naming them is the difference between "Ari is
+     * set to High" reading as a per-person result and reading as one setting
+     * the household shares.
+     */
+    val constrainedBy: TunedSpeaker?
+        get() = if (speakers.size < 2) null
+        else speakers.minByOrNull { it.heardAt[chosen] ?: 0 }
+
     val canStart: Boolean
         get() = name.isNotBlank() && tuner is SensitivityTuner.State.Idle
 

@@ -212,6 +212,13 @@ private fun Result(state: SensitivityTuningUiState) {
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
+            Text(
+                text = state.constrainedBy?.let {
+                    stringResource(R.string.sensitivity_tuning_shared_for, it.name)
+                } ?: stringResource(R.string.sensitivity_tuning_shared),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             state.speakers.forEach { speaker -> SpeakerRow(speaker, state) }
             if (state.shortOfTheBar) {
                 Text(

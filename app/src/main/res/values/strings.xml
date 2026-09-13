@@ -325,6 +325,8 @@
     <string name="sensitivity_tuning_attempt">Attempt %1$d of %2$d</string>
     <string name="sensitivity_tuning_scoring">Working it out…</string>
     <string name="sensitivity_tuning_result">Sensitivity set to %1$s</string>
+    <string name="sensitivity_tuning_shared">One setting for everyone who uses this phone. Add the rest of the household and Ari will use whichever setting hears all of you.</string>
+    <string name="sensitivity_tuning_shared_for">One setting for everyone. This is the strictest one that still hears %1$s.</string>
     <string name="sensitivity_tuning_heard">heard %1$d of %2$d</string>
     <string name="sensitivity_tuning_short_of_bar">Ari still misses too many. It is now as sensitive as it goes — recording samples on the debug screen is what improves this properly.</string>
     <string name="sensitivity_tuning_manual_heading">Or choose it yourself</string>
