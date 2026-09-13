@@ -326,6 +326,75 @@ from it. User-facing semantics are unchanged.
 
 **Prerequisite of shipping any retrained model.** Not a tidy-up.
 
+## 7a. Sensitivity tuning screen
+
+The sensitivity setting has always been three words with nothing behind them.
+A user has no way to find out what LOW means for their voice in their kitchen
+short of living with it for a week, and the evidence from 2026-09-13 is that
+the wrong choice is not a nuisance but an exclusion: at the shipped default one
+household member was heard 6 times in 15 beside the phone, and 2 in 15 across a
+quiet room.
+
+### The screen
+
+One screen, two ways out of it.
+
+- **Tune it for us** — the measured route, below.
+- **Choose it myself** — LOW / MEDIUM / HIGH, each with what it actually costs
+  rather than "use in quiet rooms".
+
+It appears in the first-run wizard and is **skippable**; skipping leaves MEDIUM,
+which is what a user who never opens settings gets today. It is also reachable
+any time from Settings -> Wake word, because rooms and households change and a
+one-shot decision at install time ages badly.
+
+### The measured route
+
+1. Five prompts, one at a time: a pulsing dot, "Say Hey Ari", roughly 2.5 s of
+   listening each. Ten seconds end to end.
+2. Each attempt's audio is kept in memory.
+3. Every attempt is scored at all three levels.
+4. The chosen level is the **strictest that catches at least 4 of 5**.
+5. The result says what it measured: "Set to Medium — Ari heard you 5 times out
+   of 5."
+
+**It tunes for the household, not the owner.** *Add someone else* runs the same
+five prompts for the next person, and the setting picked is the strictest that
+clears the bar for **everyone enrolled**. This is the whole finding of
+2026-09-13 expressed as a feature: the owner is the one voice that does not need
+tuning, and a wizard that measures only him sets the phone to LOW, shows a green
+tick, and locks his wife out.
+
+If no level clears the bar, it picks HIGH and says so — "Ari struggles to hear
+Maryanne; it is set as sensitive as it goes" — and offers to keep the recordings
+for §4. That path is not a failure state to be hidden; it is the only way the
+people the model cannot hear ever reach the training set.
+
+### Constraints discovered the hard way
+
+**A native engine cannot be reused between attempts.** `MicroWakeWordEngine::
+reset()` clears the frontend and the detection window but not the TFLite
+interpreter's variable tensors, so attempt 5 inherits attempt 4. The same defect
+in the Python evaluator made a ten-minute negative open at 0.02 from cold and at
+0.9961 straight after a wake phrase. Build a fresh engine per attempt per level
+— 15 constructions, about a millisecond each.
+
+**It measures recall and nothing else.** Choosing freely between the three
+levels is safe only because all three detect nothing across ten minutes of a
+four-person kitchen conversation (`baseline/ambient-kitchen-2026-09-13.json`).
+Add a looser level and that guarantee expires silently.
+
+**Capture the audio the same way the recorder does** — read `CaptureBus` rather
+than opening `AudioRecord`, so the enrolment audio comes down the production
+path and wake detection is suppressed while it runs.
+
+### What it is not
+
+A thermostat, not a boiler. On 2026-09-13 numbers this lands on HIGH for most
+households and still reports 3 or 4 out of 5. It makes an invisible setting
+measurable and gathers the enrolment audio that fixes the underlying problem.
+It does not fix the underlying problem.
+
 ## 8. Risks
 
 1. **Overfitting to one household.** Two speakers, one home. The eval set must
