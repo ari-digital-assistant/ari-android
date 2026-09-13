@@ -315,6 +315,20 @@
     <!-- Settings section blurbs -->
     <string name="settings_wakeword_blurb">The phrase Ari listens for. \"Hey Jarvis\" is the original microWakeWord model and is included as a fallback.</string>
     <string name="settings_wakeword_sensitivity_blurb">Sensitivity — how eagerly Ari responds to your voice. If Ari activates when it shouldn\'t, lower this. If it doesn\'t activate when you want it to, raise this.</string>
+    <string name="sensitivity_tuning_title">Tune sensitivity</string>
+    <string name="sensitivity_tuning_blurb">Say the wake phrase a few times and Ari will pick the setting that hears you. Do it for everyone in the house — Ari uses whichever setting hears the person it struggles with most.</string>
+    <string name="sensitivity_tuning_name_label">Who is speaking</string>
+    <string name="sensitivity_tuning_start">Start</string>
+    <string name="sensitivity_tuning_add_person">Add someone else</string>
+    <string name="sensitivity_tuning_get_ready">Get ready…</string>
+    <string name="sensitivity_tuning_say_it">Say the wake phrase</string>
+    <string name="sensitivity_tuning_attempt">Attempt %1$d of %2$d</string>
+    <string name="sensitivity_tuning_scoring">Working it out…</string>
+    <string name="sensitivity_tuning_result">Sensitivity set to %1$s</string>
+    <string name="sensitivity_tuning_heard">heard %1$d of %2$d</string>
+    <string name="sensitivity_tuning_short_of_bar">Ari still misses too many. It is now as sensitive as it goes — recording samples on the debug screen is what improves this properly.</string>
+    <string name="sensitivity_tuning_manual_heading">Or choose it yourself</string>
+    <string name="settings_wakeword_tune">Tune sensitivity to our voices</string>
     <string name="wakeword_sensitivity_high_label">High</string>
     <string name="wakeword_sensitivity_high_description">Fires much more readily. Use if Ari misses someone in your household.</string>
     <string name="wakeword_sensitivity_medium_label">Medium</string>

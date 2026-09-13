@@ -3,9 +3,12 @@ package dev.heyari.ari.ui.settings.pages
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -20,6 +23,7 @@ import dev.heyari.ari.ui.settings.components.SettingsScaffold
 @Composable
 fun WakeWordSettingsPage(
     onBack: () -> Unit,
+    onTune: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -44,6 +48,9 @@ fun WakeWordSettingsPage(
                 current = state.wakeWordSensitivity,
                 onSelect = viewModel::selectWakeWordSensitivity,
             )
+            Button(onClick = onTune, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.settings_wakeword_tune))
+            }
             // The false-trigger capture toggle lives on the Debug page now,
             // beside the other recording switches.
         }

@@ -313,6 +313,20 @@
     <!-- Settings section blurbs -->
     <string name="settings_wakeword_blurb">La frase a cui Ari risponde. \"Hey Jarvis\" è il modello microWakeWord originale, incluso come fallback.</string>
     <string name="settings_wakeword_sensitivity_blurb">Sensibilità — quanto facilmente Ari risponde alla tua voce. Se Ari si attiva quando non dovrebbe, abbassa il valore. Se non si attiva quando vuoi, alzalo.</string>
+    <string name="sensitivity_tuning_title">Regola la sensibilità</string>
+    <string name="sensitivity_tuning_blurb">Pronuncia la frase di attivazione qualche volta e Ari sceglierà l\'impostazione che ti sente. Fallo per tutti in casa: Ari userà l\'impostazione adatta alla persona che fatica di più a farsi sentire.</string>
+    <string name="sensitivity_tuning_name_label">Chi sta parlando</string>
+    <string name="sensitivity_tuning_start">Inizia</string>
+    <string name="sensitivity_tuning_add_person">Aggiungi un\'altra persona</string>
+    <string name="sensitivity_tuning_get_ready">Preparati…</string>
+    <string name="sensitivity_tuning_say_it">Pronuncia la frase di attivazione</string>
+    <string name="sensitivity_tuning_attempt">Tentativo %1$d di %2$d</string>
+    <string name="sensitivity_tuning_scoring">Sto calcolando…</string>
+    <string name="sensitivity_tuning_result">Sensibilità impostata su %1$s</string>
+    <string name="sensitivity_tuning_heard">sentito %1$d su %2$d</string>
+    <string name="sensitivity_tuning_short_of_bar">Ari continua a non sentire abbastanza. Ora è al massimo della sensibilità: per migliorare davvero, registra dei campioni dalla schermata di debug.</string>
+    <string name="sensitivity_tuning_manual_heading">Oppure scegli tu</string>
+    <string name="settings_wakeword_tune">Regola la sensibilità sulle nostre voci</string>
     <string name="wakeword_sensitivity_high_label">Alta</string>
     <string name="wakeword_sensitivity_high_description">Si attiva molto più facilmente. Usala se Ari non sente qualcuno in casa.</string>
     <string name="wakeword_sensitivity_medium_label">Media</string>

@@ -11,6 +11,7 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -31,6 +32,7 @@ import dev.heyari.ari.ui.settings.pages.WakeWordSensitivitySection
 fun WakeWordScreen(
     settingsViewModel: SettingsViewModel,
     onboardingViewModel: OnboardingViewModel,
+    onTune: () -> Unit,
     onNext: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -61,6 +63,15 @@ fun WakeWordScreen(
             current = state.wakeWordSensitivity,
             onSelect = settingsViewModel::selectWakeWordSensitivity,
         )
+
+        Spacer(Modifier.height(8.dp))
+
+        // Skippable, and skipping leaves Medium — which is what somebody who
+        // never opens settings runs anyway. Offered here because the household
+        // is all in one room during setup, and never again afterwards.
+        OutlinedButton(onClick = onTune, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.settings_wakeword_tune))
+        }
 
         Spacer(Modifier.height(16.dp))
 

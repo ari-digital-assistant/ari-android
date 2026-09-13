@@ -73,6 +73,7 @@ import dev.heyari.ari.ui.settings.pages.PermissionsSettingsPage
 import dev.heyari.ari.ui.settings.pages.SttSettingsPage
 import dev.heyari.ari.ui.settings.pages.TtsSettingsPage
 import dev.heyari.ari.ui.settings.pages.DebugSettingsPage
+import dev.heyari.ari.ui.settings.pages.SensitivityTuningPage
 import dev.heyari.ari.ui.settings.pages.WakeSamplesPage
 import dev.heyari.ari.ui.settings.pages.WakeWordSettingsPage
 import dev.heyari.ari.ui.settings.skills.SKILLS_SHOW_INSTALLED_TAB_KEY
@@ -91,6 +92,7 @@ object Routes {
     const val SETTINGS_GENERAL = "settings/general"
     const val SETTINGS_PERMISSIONS = "settings/permissions"
     const val SETTINGS_WAKEWORD = "settings/wakeword"
+    const val SETTINGS_WAKEWORD_TUNE = "settings/wakeword/tune"
     const val SETTINGS_LISTENING = "settings/listening"
     const val SETTINGS_LISTENING_SCHEDULES = "settings/listening/schedules"
     const val SETTINGS_LISTENING_PLACES = "settings/listening/places"
@@ -275,7 +277,13 @@ fun AriNavHost(
             PermissionsSettingsPage(onBack = { navController.popBackStack() })
         }
         composable(Routes.SETTINGS_WAKEWORD) {
-            WakeWordSettingsPage(onBack = { navController.popBackStack() })
+            WakeWordSettingsPage(
+                onBack = { navController.popBackStack() },
+                onTune = { navController.navigate(Routes.SETTINGS_WAKEWORD_TUNE) },
+            )
+        }
+        composable(Routes.SETTINGS_WAKEWORD_TUNE) {
+            SensitivityTuningPage(onBack = { navController.popBackStack() })
         }
         composable(Routes.SETTINGS_LISTENING) {
             ListeningSettingsPage(
@@ -528,6 +536,7 @@ fun AriNavHost(
                 WakeWordScreen(
                     settingsViewModel = settingsViewModel,
                     onboardingViewModel = onboardingViewModel,
+                    onTune = { navController.navigate(Routes.SETTINGS_WAKEWORD_TUNE) },
                     onNext = {
                         if (wizardState.startListeningNow) {
                             WakeWordService.start(context)
