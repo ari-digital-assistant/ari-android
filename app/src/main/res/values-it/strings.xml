@@ -726,6 +726,8 @@
     <string name="wake_samples_countdown">Mettiti in posizione… %1$d</string>
     <string name="wake_samples_recording_hint">Pronuncia la frase, fai una pausa, ripetila. La barra si muove quando Ari ti sente.</string>
     <string name="wake_samples_takes">Pronunce rilevate: %1$d</string>
+    <string name="wake_samples_loudness">Suono a livello di voce: %1$d%%</string>
+    <string name="wake_samples_too_quiet">Troppo silenzioso per essere utile. Avvicinati al telefono o alza il volume.</string>
     <string name="wake_samples_countdown_option">Conto alla rovescia prima di registrare</string>
     <string name="wake_samples_mark">Segna una pronuncia (%1$d)</string>
     <string name="wake_samples_mark_hint">Facoltativo. Tocca qui subito dopo ogni volta che pronunci la frase: la registrazione esportata indicherà esattamente quante pronunce contiene.</string>

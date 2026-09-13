@@ -65,6 +65,16 @@ class WakeSampleRecorder @Inject constructor(
             val utterances: Int,
             /** Takes the speaker has flagged with [mark]. */
             val marks: Int,
+            /**
+             * Share of the recording so far at or above [UTTERANCE_LEVEL].
+             *
+             * A recording of a room too quiet to register tells nobody
+             * anything, and there is no way to tell from the level meter alone
+             * — a near-empty bar looks the same as a bar that is working. Ten
+             * minutes of a living room with the television on came back at 1%,
+             * against 15-53% for every recording that turned out to be usable.
+             */
+            val loudPercent: Int,
         ) : State
 
         data class Problem(val problem: RecorderProblem) : State
@@ -178,6 +188,8 @@ class WakeSampleRecorder @Inject constructor(
         var utterances = 0
         var inUtterance = false
         var quietSince = 0L
+        var loudChunks = 0
+        var totalChunks = 0
 
         var chunk: ShortArray? = first
         while (chunk != null) {
@@ -200,7 +212,9 @@ class WakeSampleRecorder @Inject constructor(
             chunks += chunk
             samples += chunk.size
 
+            totalChunks++
             if (level >= UTTERANCE_LEVEL) {
+                loudChunks++
                 quietSince = 0L
                 if (!inUtterance) {
                     inUtterance = true
@@ -216,7 +230,13 @@ class WakeSampleRecorder @Inject constructor(
             }
 
             val elapsed = now - startedAt
-            _state.value = State.Recording(elapsed, level, utterances, marks.size)
+            _state.value = State.Recording(
+                elapsedMs = elapsed,
+                level = level,
+                utterances = utterances,
+                marks = marks.size,
+                loudPercent = loudChunks * 100 / totalChunks,
+            )
             if (elapsed >= MAX_SEGMENT_MS) {
                 Log.i(TAG, "Segment hit the ${MAX_SEGMENT_MS}ms ceiling — stopping")
                 break

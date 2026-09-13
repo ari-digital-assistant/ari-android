@@ -738,6 +738,8 @@
     <string name="wake_samples_recording_hint">Say the phrase, pause, say it again. The bar moves when Ari can hear you.</string>
     <!-- %1$d is a rough live count of utterances heard, for reassurance only. -->
     <string name="wake_samples_takes">Takes heard: %1$d</string>
+    <string name="wake_samples_loudness">Sound at speaking level: %1$d%%</string>
+    <string name="wake_samples_too_quiet">Too quiet to be worth keeping. Move closer to the phone, or turn the noise up.</string>
     <string name="wake_samples_countdown_option">Count down before recording starts</string>
     <string name="wake_samples_mark">Mark a take (%1$d)</string>
     <string name="wake_samples_mark_hint">Optional. Tap this just after each time you say the phrase, and the exported recording will say exactly how many takes it holds.</string>

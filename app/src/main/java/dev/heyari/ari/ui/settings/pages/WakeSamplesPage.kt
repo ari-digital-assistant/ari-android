@@ -46,6 +46,14 @@ import dev.heyari.ari.wakeword.WakeSampleSummary
 import java.util.Locale
 
 /**
+ * Below this share of audio at speaking level, a recording is too quiet to tell
+ * anybody anything. Usable recordings have run 15-53%; a living room with the
+ * television on and nobody talking came back at 1%.
+ */
+private const val QUIET_PERCENT = 10
+private const val QUIET_WARNING_AFTER_MS = 20_000L
+
+/**
  * Records wake-phrase audio for the retrain evaluation set.
  *
  * The unit of work is a position, not an utterance: name the set once, pick the
@@ -338,6 +346,21 @@ private fun RecorderSection(
                     text = stringResource(R.string.wake_samples_takes, recorder.utterances),
                     style = MaterialTheme.typography.bodyMedium,
                 )
+                Text(
+                    text = stringResource(R.string.wake_samples_loudness, recorder.loudPercent),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                // Held back for the first stretch: a recording is all quiet
+                // until somebody speaks, and warning about that is just noise.
+                if (recorder.elapsedMs > QUIET_WARNING_AFTER_MS &&
+                    recorder.loudPercent < QUIET_PERCENT
+                ) {
+                    Text(
+                        text = stringResource(R.string.wake_samples_too_quiet),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = LocalAriSemanticColors.current.danger,
+                    )
+                }
                 Text(
                     text = stringResource(R.string.wake_samples_recording_hint),
                     style = MaterialTheme.typography.bodySmall,
