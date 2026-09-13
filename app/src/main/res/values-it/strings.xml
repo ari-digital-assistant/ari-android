@@ -314,7 +314,7 @@
     <string name="settings_wakeword_blurb">La frase a cui Ari risponde. \"Hey Jarvis\" è il modello microWakeWord originale, incluso come fallback.</string>
     <string name="settings_wakeword_sensitivity_blurb">Sensibilità — quanto facilmente Ari risponde alla tua voce. Se Ari si attiva quando non dovrebbe, abbassa il valore. Se non si attiva quando vuoi, alzalo.</string>
     <string name="wakeword_sensitivity_high_label">Alta</string>
-    <string name="wakeword_sensitivity_high_description">Si attiva facilmente. Usa solo in ambienti molto silenziosi.</string>
+    <string name="wakeword_sensitivity_high_description">Si attiva molto più facilmente. Usala se Ari non sente qualcuno in casa.</string>
     <string name="wakeword_sensitivity_medium_label">Media</string>
     <string name="wakeword_sensitivity_medium_description">Consigliata per la maggior parte degli ambienti.</string>
     <string name="wakeword_sensitivity_low_label">Bassa</string>

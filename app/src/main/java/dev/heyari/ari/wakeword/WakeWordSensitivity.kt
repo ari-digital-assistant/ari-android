@@ -25,22 +25,40 @@ import dev.heyari.ari.R
  * brief. Asking for persistence let the television through and shut out
  * anybody who says the phrase a little quicker or quieter than the developer.
  *
- * Measured against 20 recordings of one speaker, 15 of a second speaker, and
- * 16 real captured false accepts (`ari-tools/wakeword/baseline/`):
+ * ## HIGH moved again on 2026-09-13, once there was a real negative to price it
  *
- * | setting | was | speaker A | speaker B | false accepts |
+ * The earlier numbers were scored against 16 hand-picked false accepts, a set
+ * that saturates below 0.99 and can therefore say nothing at all about the
+ * range where the second speaker's problem is actually solved. Two measurements
+ * closed that gap (`ari-tools/wakeword/baseline/`):
+ *
+ * - Ten minutes of four people talking round a kitchen table, nobody saying the
+ *   phrase: no detection at any cutoff at or above 0.7, highest window mean in
+ *   the whole recording 0.59.
+ * - The 16 captured false accepts span 162 hours of ordinary use — about one
+ *   every ten hours, not the per-hour figure a 62-second clip set implies.
+ *
+ * Measured with take counts the speaker marked herself, rather than an energy
+ * split guessing at the denominator:
+ *
+ * | cutoff / window | speaker B near | mid | across room | speaker A |
  * |---|---|---|---|---|
- * | HIGH   | 0.95 / 5  | 100% -> 95% | 100% -> 93.3% | 15/16 -> 13/16 |
- * | MEDIUM | 0.985 / 10 | 95% -> 95%  | 66.7% -> 86.7% | 14/16 -> 10/16 |
- * | LOW    | 0.99 / 14 | 90% -> 90%  | 13.3% -> 40%   | 10/16 -> 9/16  |
+ * | 0.985 / 10 (shipped for months) | 25% | 33% | 13% | 19/20 |
+ * | 0.995 / 5  | 56% | 33% | 20% | 19/20 |
+ * | 0.9 / 5    | 88% | 60% | 47% | 20/20 |
  *
- * Every level improves or holds on both axes. The second speaker gains 20
- * points at the default while false accepts drop by four, and LOW stops being
- * the setting that ignores her entirely.
+ * So HIGH is 0.9. Of the 16 false accepts that actually happened, 14 already
+ * fired at the setting shipped for months and 15 fire at 0.9 — near enough the
+ * rate this household already lived with, for roughly double the recall.
  *
- * Caveat worth keeping: speaker B's recordings are near-field, one room, one
- * session. The direction is solid; treat the magnitudes as provisional until
- * there are across-the-room recordings to check them against.
+ * MEDIUM and LOW are untouched. HIGH is the opt-in end of the ladder: a user
+ * who selects it has asked to be heard more readily, which is the trade being
+ * made here. Nobody gets it without choosing it.
+ *
+ * Caveat worth keeping: one household, and the 16 captured accepts can only
+ * show false wakes that fired at the shipped setting. A lower cutoff may
+ * produce ones that were never recorded because they never fired. The kitchen
+ * recording is the only evidence against that, and it is ten minutes long.
  *
  * `displayNameRes` and `descriptionRes` are resource IDs rather than inline
  * strings so the labels translate alongside the rest of the chrome — see
@@ -54,7 +72,7 @@ enum class WakeWordSensitivity(
     @StringRes val descriptionRes: Int,
 ) {
     HIGH(
-        probabilityCutoff = 0.995f,
+        probabilityCutoff = 0.9f,
         slidingWindowSize = 5,
         displayNameRes = R.string.wakeword_sensitivity_high_label,
         descriptionRes = R.string.wakeword_sensitivity_high_description,
