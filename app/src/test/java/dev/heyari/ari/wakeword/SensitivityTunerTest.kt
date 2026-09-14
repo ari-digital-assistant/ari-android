@@ -69,16 +69,12 @@ class SensitivityTunerTest {
     }
 
     @Test
-    fun `strictness is read off the ladder rather than its declaration order`() {
-        // pickLevel ranks by cutoff * window because that is what the engine
-        // compares against; a level reordered in the enum must not change which
-        // one is considered strictest.
-        val byStrictness = WakeWordSensitivity.entries
-            .sortedByDescending { it.probabilityCutoff * it.slidingWindowSize }
-
+    fun `pickLevel walks the ladder from strictest to loosest`() {
+        // The numbers behind each level differ per model, so pickLevel cannot
+        // compare cutoffs — it relies on the declared order being strictest-last.
         assertEquals(
-            listOf(WakeWordSensitivity.LOW, WakeWordSensitivity.MEDIUM, WakeWordSensitivity.HIGH),
-            byStrictness,
+            listOf(WakeWordSensitivity.HIGH, WakeWordSensitivity.MEDIUM, WakeWordSensitivity.LOW),
+            WakeWordSensitivity.loosestFirst,
         )
     }
 }

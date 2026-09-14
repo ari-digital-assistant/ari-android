@@ -173,8 +173,8 @@ class SensitivityTuner @Inject constructor(
     ): Boolean = MicroWakeWord(
         modelBuffer = modelBuffer,
         featureStepSizeMs = model.featureStepSizeMs,
-        probabilityCutoff = level.probabilityCutoff,
-        slidingWindowSize = level.slidingWindowSize,
+        probabilityCutoff = model.operatingPoint(level).probabilityCutoff,
+        slidingWindowSize = model.operatingPoint(level).slidingWindowSize,
     ).use { engine ->
         var detected = false
         var offset = 0
@@ -225,7 +225,9 @@ class SensitivityTuner @Inject constructor(
 
         /**
          * The strictest level that heard every person at least [REQUIRED_HITS]
-         * times, or null when none did.
+         * times, or null when none did. Strictness is [WakeWordSensitivity]'s
+         * own order — the numbers behind it differ per model, so they cannot be
+         * compared here.
          *
          * Across everybody, not just whoever is holding the phone. The whole
          * reason this screen exists is that the owner's voice is the one voice
@@ -235,8 +237,8 @@ class SensitivityTuner @Inject constructor(
          */
         fun pickLevel(speakers: List<TunedSpeaker>): WakeWordSensitivity? {
             if (speakers.isEmpty()) return null
-            return WakeWordSensitivity.entries
-                .sortedByDescending { it.probabilityCutoff * it.slidingWindowSize }
+            return WakeWordSensitivity.loosestFirst
+                .reversed()
                 .firstOrNull { level ->
                     speakers.all { (it.heardAt[level] ?: 0) >= REQUIRED_HITS }
                 }

@@ -385,7 +385,8 @@ class WakeWordService : Service() {
         val sensitivityName = runBlocking { settingsRepository.wakeWordSensitivity.first() }
         val wakeWord = WakeWordRegistry.byId(activeId)
         val sensitivity = WakeWordSensitivity.fromName(sensitivityName)
-        Log.i(TAG, "Loading wake word model: ${wakeWord.id} @ sensitivity=${sensitivity.name} (cutoff=${sensitivity.probabilityCutoff}, window=${sensitivity.slidingWindowSize})")
+        val point = wakeWord.operatingPoint(sensitivity)
+        Log.i(TAG, "Loading wake word model: ${wakeWord.id} @ sensitivity=${sensitivity.name} (cutoff=${point.probabilityCutoff}, window=${point.slidingWindowSize})")
 
         val modelBuffer = loadModelFromAssets(wakeWord.assetFilename)
         if (modelBuffer == null) {
@@ -397,8 +398,8 @@ class WakeWordService : Service() {
         detector = MicroWakeWord(
             modelBuffer = modelBuffer,
             featureStepSizeMs = wakeWord.featureStepSizeMs,
-            probabilityCutoff = sensitivity.probabilityCutoff,
-            slidingWindowSize = sensitivity.slidingWindowSize,
+            probabilityCutoff = point.probabilityCutoff,
+            slidingWindowSize = point.slidingWindowSize,
         )
 
         val record = openAudioRecord(currentSource)
