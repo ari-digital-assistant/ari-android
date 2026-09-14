@@ -113,7 +113,7 @@ that's there is user-visible chrome. Don't translate:
 ./gradlew :app:testDebugUnitTest
 ```
 
-466 tests, no device, no emulator, about twelve seconds warm. The HTML
+499 tests, no device, no emulator, about twelve seconds warm. The HTML
 report lands at
 `app/build/reports/tests/testDebugUnitTest/index.html`. To run one
 class:

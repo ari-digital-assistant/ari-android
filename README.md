@@ -68,19 +68,39 @@ cd ari-android
 `x86_64-linux-android` targets. Gradle, AGP and Kotlin versions come from the
 wrapper and the version catalogue — don't install those by hand.
 
+**Point the Rust build at the NDK.** The engine's llama.cpp dependency needs
+`ANDROID_NDK` explicitly and panics without it, and Gradle can't pass it — its
+Rust plugin only sets `CARGO_TARGET_DIR`. So either copy
+`ari-engine/.cargo/config.toml.example` to `config.toml` and fill in your path,
+or export it:
+
+```bash
+export ANDROID_NDK="$HOME/Android/Sdk/ndk/28.0.13004108"
+```
+
+If you export it, note the Gradle daemon captures the environment it started
+with — run `./gradlew --stop` first, or the change won't be seen.
+
 Only `arm64-v8a` and `x86_64` are built. There's no 32-bit slice because there's
 no 32-bit build of the Rust engine, and shipping an ABI without one produces an
 app that installs fine and crashes on launch.
 
-### If a release or beta build dies in the Rust step
+### If a build dies in the Rust step
 
-Use the NDK's own CMake rather than whatever your system has:
+Use the SDK's own CMake rather than whatever your system has — on a
+distribution that ships no `cmake` at all, it's the only one present:
 
 ```bash
 export PATH="$HOME/Android/Sdk/cmake/3.22.1/bin:$PATH"
 ```
 
 `llama-cpp-sys` is fussy about this and the error it gives you doesn't say so.
+If it instead says the Android NDK wasn't found, that's `ANDROID_NDK` above.
+
+A stale `app/build/intermediates/rust` can also bake an old absolute cmake path
+into its generated Makefiles, which then fails as `make: /usr/bin/cmake: No such
+file or directory` no matter what's on `PATH`. Delete that directory and
+rebuild.
 
 ### Build variants
 
