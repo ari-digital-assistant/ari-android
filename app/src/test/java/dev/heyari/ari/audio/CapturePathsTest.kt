@@ -68,4 +68,32 @@ class CapturePathsTest {
             assertTrue("$it is declared in capture_paths.xml but no store writes it", it in storeDirectories)
         }
     }
+
+    /**
+     * Recordings of the user's home must not be uploaded anywhere. Both rule
+     * files default to "back everything up", so a new store is included the
+     * moment it exists and stays included until somebody remembers to exclude
+     * it. `wake-samples` shipped that way — named recordings of four people,
+     * going to Google's servers, under a settings page promising they stay on
+     * the device.
+     */
+    @Test
+    fun everyClipDirectoryIsExcludedFromBackupAndTransfer() {
+        listOf(
+            "src/main/res/xml/backup_rules.xml" to 1,
+            // cloud-backup and device-transfer are separate blocks; an exclusion
+            // in one says nothing about the other.
+            "src/main/res/xml/data_extraction_rules.xml" to 2,
+        ).forEach { (path, expectedPerDirectory) ->
+            val rules = File(path).readText()
+            storeDirectories.forEach { directory ->
+                val count = Regex("""path="$directory/"""").findAll(rules).count()
+                assertEquals(
+                    "$directory must be excluded $expectedPerDirectory time(s) in $path",
+                    expectedPerDirectory,
+                    count,
+                )
+            }
+        }
+    }
 }

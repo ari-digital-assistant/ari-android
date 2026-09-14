@@ -17,6 +17,12 @@
     <exclude domain="file" path="wake-captures-accepted/" />
     <exclude domain="file" path="utterance-captures/" />
     <!--
+      Deliberately recorded wake-phrase audio (WakeSampleStore). Named
+      recordings of the household, made for the retrain evaluation set. More
+      sensitive than the capture buffers above, not less.
+    -->
+    <exclude domain="file" path="wake-samples/" />
+    <!--
       API keys and OAuth tokens (SecretStore). Excluded for two reasons and
       either would do: they are the user's credentials, and the AES-256-GCM key
       encrypting them lives in the Android Keystore, which is never backed up.

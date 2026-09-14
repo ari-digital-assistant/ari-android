@@ -16,6 +16,13 @@
         <exclude domain="file" path="wake-captures-rejected/" />
         <exclude domain="file" path="wake-captures-accepted/" />
         <exclude domain="file" path="utterance-captures/" />
+        <!-- Same recordings, same promise. -->
+        <exclude domain="file" path="wake-samples/" />
+        <!--
+          Deliberately recorded wake-phrase audio (WakeSampleStore). Named
+          recordings of the household. More sensitive than the buffers above.
+        -->
+        <exclude domain="file" path="wake-samples/" />
         <!--
           API keys and OAuth tokens (SecretStore). Excluded for two reasons
           and either would do: they are the user's credentials, and the
