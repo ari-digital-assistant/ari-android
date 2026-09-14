@@ -40,6 +40,7 @@ data class TunedSpeaker(
 class SensitivityTuner @Inject constructor(
     @ApplicationContext private val context: Context,
     private val captureBus: CaptureBus,
+    private val samples: WakeSampleStore,
 ) {
     sealed interface State {
         data object Idle : State
@@ -137,6 +138,10 @@ class SensitivityTuner @Inject constructor(
         collect(channel, session, WARMUP_MS) { elapsed, level ->
             State.WarmingUp(((WARMUP_MS - elapsed) / 1000L).toInt() + 1, level)
         }
+        // Everything recorded before the first prompt: the room, with nobody
+        // saying the phrase. This, and not the audio immediately before each
+        // attempt, is what every attempt is warmed up on.
+        val runIn = 0 until session.sumOf { it.size }
         for (index in 1..ATTEMPTS) {
             collect(channel, session, GET_READY_MS) { _, _ -> State.GetReady(index, ATTEMPTS) }
             val start = session.sumOf { it.size }
@@ -149,12 +154,31 @@ class SensitivityTuner @Inject constructor(
 
         _state.value = State.Scoring
         val pcm = flatten(session)
+
+        // Kept, because what the tuner heard and what the same audio scores
+        // offline are two different questions, and the only way to tell them
+        // apart is to have the recording. Marks land at the end of each attempt
+        // window, which is where the off-device split expects them.
+        samples.save(
+            pcm = pcm,
+            segment = WakeSampleSegment(
+                setName = name,
+                phrase = "tuning",
+                room = "tuning",
+                distance = SampleDistance.NEAR,
+                background = SampleBackground.QUIET,
+            ),
+            timestampMs = System.currentTimeMillis(),
+            durationMs = pcm.size * 1000L / SAMPLE_RATE,
+            marks = windows.map { it.last * 1000L / SAMPLE_RATE },
+        )
+
         val buffer = loadModel(model.assetFilename) ?: return null
         return TunedSpeaker(
             name = name,
             attempts = windows.size,
             heardAt = WakeWordSensitivity.entries.associateWith { level ->
-                windows.count { heard(pcm, it, buffer, model, level) }
+                windows.count { heard(pcm, runIn, it, buffer, model, level) }
             },
         )
     }
@@ -189,13 +213,21 @@ class SensitivityTuner @Inject constructor(
     /**
      * Whether [level] would have woken Ari on the attempt at [window].
      *
-     * The audio before the window is fed first and its verdicts thrown away.
-     * MicroWakeWordEngine reports nothing for its first
-     * MIN_SLICES_BEFORE_DETECTION probabilities — three seconds on a stride-3
-     * model — so a 2.5 s attempt handed to a fresh engine on its own can never
-     * fire, whoever is speaking and however clearly. That is exactly what
-     * happened: five attempts, zero heard, from a speaker who scores 16 out of
-     * 16 offline.
+     * [runIn] is the room before the first prompt, replayed ahead of every
+     * attempt. Two reasons, and both were found the hard way.
+     *
+     * The engine reports nothing for its first MIN_SLICES_BEFORE_DETECTION
+     * probabilities — three seconds on a stride-3 model — so an attempt handed
+     * to a fresh engine on its own can never fire however clearly it was
+     * spoken: five attempts, zero heard, from a speaker who scores 16 of 16
+     * offline.
+     *
+     * And the run-in has to be speech-free. Using the audio immediately before
+     * each attempt puts the PREVIOUS attempt in it; the engine detects that,
+     * detection resets the cool-off, and the next attempt lands inside a three
+     * second blind period. It cost roughly one attempt per session and it cost
+     * it only on models with a longer stride, which is to say it looked exactly
+     * like the new model being worse than the one it replaced.
      *
      * A fresh engine per attempt, and that part is not defensive:
      * [MicroWakeWord.reset] clears the frontend and the detection window but
@@ -204,6 +236,7 @@ class SensitivityTuner @Inject constructor(
      */
     private fun heard(
         pcm: ShortArray,
+        runIn: IntRange,
         window: IntRange,
         modelBuffer: ByteBuffer,
         model: WakeWordModel,
@@ -216,8 +249,7 @@ class SensitivityTuner @Inject constructor(
             probabilityCutoff = point.probabilityCutoff,
             slidingWindowSize = point.slidingWindowSize,
         ).use { engine ->
-            val runIn = (window.first - WARMUP_SAMPLES).coerceAtLeast(0)
-            feed(engine, pcm, runIn until window.first)
+            feed(engine, pcm, runIn)
             feed(engine, pcm, window)
         }
     }
@@ -278,6 +310,7 @@ class SensitivityTuner @Inject constructor(
         private const val LISTEN_MS = 2_500L
         private const val AUDIO_TIMEOUT_MS = 1_000L
         private const val CHUNK_SIZE = 480
+        private const val SAMPLE_RATE = 16000L
         private const val FLOOR_DB = -60.0
 
         /**
