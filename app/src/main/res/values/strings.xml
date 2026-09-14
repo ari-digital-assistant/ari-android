@@ -112,6 +112,10 @@
     <string name="skills_media_nudge_message">%1$s can control playback — pause, skip, and more — if you allow media access.</string>
     <string name="skills_media_nudge_confirm">Open settings</string>
     <string name="skills_media_nudge_dismiss">Not now</string>
+    <string name="skills_reply_nudge_title">Replying to messages</string>
+    <string name="skills_reply_nudge_message">%1$s can reply to messages hands-free — but only if you allow it to see your notifications. That is how it reaches the conversation.</string>
+    <string name="skills_reply_nudge_confirm">Open settings</string>
+    <string name="skills_reply_nudge_dismiss">Not now</string>
     <string name="skills_browse_in_english_fallback">Description in English (no translation yet)</string>
 
     <!-- Skill install/registry error messages -->

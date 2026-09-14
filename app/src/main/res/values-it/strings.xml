@@ -118,6 +118,10 @@
     <string name="skills_media_nudge_message">%1$s può controllare la riproduzione — pausa, avanti e altro — se consenti l\'accesso ai media.</string>
     <string name="skills_media_nudge_confirm">Apri impostazioni</string>
     <string name="skills_media_nudge_dismiss">Non ora</string>
+    <string name="skills_reply_nudge_title">Rispondere ai messaggi</string>
+    <string name="skills_reply_nudge_message">%1$s può rispondere ai messaggi a mani libere, ma solo se gli consenti di vedere le tue notifiche. È così che raggiunge la conversazione.</string>
+    <string name="skills_reply_nudge_confirm">Apri impostazioni</string>
+    <string name="skills_reply_nudge_dismiss">Non ora</string>
     <string name="skills_browse_in_english_fallback">Descrizione in inglese (nessuna traduzione disponibile)</string>
 
     <!-- Skill install/registry error messages -->

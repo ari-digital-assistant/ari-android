@@ -9,6 +9,7 @@ import android.graphics.BitmapFactory
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.annotation.StringRes
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -326,38 +327,42 @@ fun SkillDetailScreen(
         )
     }
 
-    // Post-install nudge for skills that control media (the `media_control`
-    // capability — music and friends). Transport needs Notification access, a
-    // special-access grant reached only via system settings. Ask once, right
-    // after installing a skill that needs it. Capability-driven, never keyed on
-    // a skill id, fires on the real not-installed -> installed transition only.
-    var pendingMediaNudge by remember(skillId) { mutableStateOf(false) }
-    var mediaNudgeResolved by remember(skillId) { mutableStateOf(false) }
+    // Post-install nudge for skills needing Notification access, a
+    // special-access grant reached only via system settings. Two capabilities
+    // want it for quite different reasons — `media_control` to read other apps'
+    // media sessions, `reply` to answer into a conversation's own notification —
+    // so [NotificationNudge] picks the wording the skill actually earned. Ask
+    // once, right after install. Capability-driven, never keyed on a skill id,
+    // fires on the real not-installed -> installed transition only.
+    var pendingNotificationNudge by remember(skillId) {
+        mutableStateOf<NotificationNudge?>(null)
+    }
+    var notificationNudgeResolved by remember(skillId) { mutableStateOf(false) }
     LaunchedEffect(isInstalledLocally, view.capabilities) {
-        if (isInstalledLocally && !wasInstalledOnEntry && !mediaNudgeResolved &&
-            view.capabilities.any { it.equals("media_control", ignoreCase = true) }
-        ) {
-            mediaNudgeResolved = true
-            if (!hasNotificationAccess(context)) pendingMediaNudge = true
+        if (isInstalledLocally && !wasInstalledOnEntry && !notificationNudgeResolved) {
+            NotificationNudge.forCapabilities(view.capabilities)?.let { nudge ->
+                notificationNudgeResolved = true
+                if (!hasNotificationAccess(context)) pendingNotificationNudge = nudge
+            }
         }
     }
 
-    if (pendingMediaNudge) {
+    pendingNotificationNudge?.let { nudge ->
         AlertDialog(
-            onDismissRequest = { pendingMediaNudge = false },
-            title = { Text(stringResource(R.string.skills_media_nudge_title)) },
-            text = { Text(stringResource(R.string.skills_media_nudge_message, view.title)) },
+            onDismissRequest = { pendingNotificationNudge = null },
+            title = { Text(stringResource(nudge.title)) },
+            text = { Text(stringResource(nudge.message, view.title)) },
             confirmButton = {
                 TextButton(onClick = {
-                    pendingMediaNudge = false
+                    pendingNotificationNudge = null
                     openNotificationListenerSettings(context)
                 }) {
-                    Text(stringResource(R.string.skills_media_nudge_confirm))
+                    Text(stringResource(nudge.confirm))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingMediaNudge = false }) {
-                    Text(stringResource(R.string.skills_media_nudge_dismiss))
+                TextButton(onClick = { pendingNotificationNudge = null }) {
+                    Text(stringResource(nudge.dismiss))
                 }
             },
         )
@@ -990,6 +995,47 @@ private fun buildSubtitle(version: String, skillId: String): String {
     if (version.isNotBlank()) parts.add(version)
     parts.add(skillId)
     return parts.joinToString(" · ")
+}
+
+/**
+ * Why a skill wants Notification access, and what to say about it.
+ *
+ * It's one switch in system settings, but the two capabilities behind it are
+ * unrelated — controlling other apps' playback and replying into a live
+ * conversation — and a message vague enough to cover both would explain
+ * neither. Media wins a tie because it's the more visible of the two.
+ */
+internal enum class NotificationNudge(
+    @StringRes val title: Int,
+    @StringRes val message: Int,
+    @StringRes val confirm: Int,
+    @StringRes val dismiss: Int,
+) {
+    Media(
+        R.string.skills_media_nudge_title,
+        R.string.skills_media_nudge_message,
+        R.string.skills_media_nudge_confirm,
+        R.string.skills_media_nudge_dismiss,
+    ),
+    Reply(
+        R.string.skills_reply_nudge_title,
+        R.string.skills_reply_nudge_message,
+        R.string.skills_reply_nudge_confirm,
+        R.string.skills_reply_nudge_dismiss,
+    ),
+    ;
+
+    companion object {
+        /** The nudge [capabilities] earn, or null when none of them need it. */
+        fun forCapabilities(capabilities: List<String>): NotificationNudge? {
+            fun has(name: String) = capabilities.any { it.equals(name, ignoreCase = true) }
+            return when {
+                has("media_control") -> Media
+                has("reply") -> Reply
+                else -> null
+            }
+        }
+    }
 }
 
 /**
