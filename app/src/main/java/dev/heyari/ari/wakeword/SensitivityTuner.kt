@@ -44,6 +44,14 @@ class SensitivityTuner @Inject constructor(
     sealed interface State {
         data object Idle : State
 
+        /**
+         * Listening to the room before the first prompt. Not politeness: the
+         * engine refuses to report anything for its first
+         * MIN_SLICES_BEFORE_DETECTION frames, so an attempt with no run-in
+         * behind it cannot be heard however clearly it was spoken.
+         */
+        data class WarmingUp(val secondsLeft: Int, val level: Float) : State
+
         /** Between prompts. The pause stops two takes running together. */
         data class GetReady(val attempt: Int, val total: Int) : State
 
@@ -91,7 +99,9 @@ class SensitivityTuner @Inject constructor(
 
     @Synchronized
     private fun claimBus(): Channel<ShortArray>? {
-        val channel = captureBus.arm(0f) ?: return null
+        // Two seconds of rewind, which is everything the ring buffer holds, so
+        // the run-in starts before the user has finished tapping the button.
+        val channel = captureBus.arm(2f) ?: return null
         owningBus = true
         return channel
     }
@@ -117,36 +127,57 @@ class SensitivityTuner @Inject constructor(
             return null
         }
 
-        val attempts = ArrayList<ShortArray>(ATTEMPTS)
+        // One continuous recording for the whole session, exactly as the phone
+        // hears it. Each attempt is then scored with the audio that preceded it
+        // still in front of it, which is the only way the engine is past its
+        // warm-up by the time the phrase arrives.
+        val session = ArrayList<ShortArray>()
+        val windows = ArrayList<IntRange>()
+
+        collect(channel, session, WARMUP_MS) { elapsed, level ->
+            State.WarmingUp(((WARMUP_MS - elapsed) / 1000L).toInt() + 1, level)
+        }
         for (index in 1..ATTEMPTS) {
-            _state.value = State.GetReady(index, ATTEMPTS)
-            delay(GET_READY_MS)
-            attempts += listen(channel, index)
+            collect(channel, session, GET_READY_MS) { _, _ -> State.GetReady(index, ATTEMPTS) }
+            val start = session.sumOf { it.size }
+            collect(channel, session, LISTEN_MS) { _, level ->
+                State.Listening(index, ATTEMPTS, level)
+            }
+            windows += start until session.sumOf { it.size }
         }
         releaseBus()
 
         _state.value = State.Scoring
+        val pcm = flatten(session)
         val buffer = loadModel(model.assetFilename) ?: return null
         return TunedSpeaker(
             name = name,
-            attempts = attempts.size,
+            attempts = windows.size,
             heardAt = WakeWordSensitivity.entries.associateWith { level ->
-                attempts.count { heard(it, buffer, model, level) }
+                windows.count { heard(pcm, it, buffer, model, level) }
             },
         )
     }
 
-    private suspend fun listen(channel: Channel<ShortArray>, index: Int): ShortArray {
-        val endsAt = SystemClock.elapsedRealtime() + LISTEN_MS
-        val chunks = ArrayList<ShortArray>()
-        var samples = 0
-        while (SystemClock.elapsedRealtime() < endsAt) {
-            val chunk = channel.receiveCatching().getOrNull() ?: break
-            chunks += chunk
-            samples += chunk.size
-            _state.value = State.Listening(index, ATTEMPTS, levelOf(chunk))
+    /** Drains [channel] into [into] for [durationMs], reporting progress. */
+    private suspend fun collect(
+        channel: Channel<ShortArray>,
+        into: MutableList<ShortArray>,
+        durationMs: Long,
+        state: (elapsed: Long, level: Float) -> State,
+    ) {
+        val startedAt = SystemClock.elapsedRealtime()
+        while (true) {
+            val elapsed = SystemClock.elapsedRealtime() - startedAt
+            if (elapsed >= durationMs) return
+            val chunk = channel.receiveCatching().getOrNull() ?: return
+            into += chunk
+            _state.value = state(elapsed, levelOf(chunk))
         }
-        val pcm = ShortArray(samples)
+    }
+
+    private fun flatten(chunks: List<ShortArray>): ShortArray {
+        val pcm = ShortArray(chunks.sumOf { it.size })
         var offset = 0
         for (part in chunks) {
             part.copyInto(pcm, offset)
@@ -156,34 +187,51 @@ class SensitivityTuner @Inject constructor(
     }
 
     /**
-     * Whether [level] would have woken Ari on this attempt.
+     * Whether [level] would have woken Ari on the attempt at [window].
      *
-     * A fresh engine every time, and that is not defensive: [MicroWakeWord.reset]
-     * clears the frontend and the detection window but leaves the TFLite
-     * interpreter's variable tensors alone, so a reused engine scores attempt
-     * five with attempt four still inside it. The same defect in the offline
-     * evaluator made a ten-minute recording open at 0.02 from cold and at 0.9961
-     * straight after a wake phrase.
+     * The audio before the window is fed first and its verdicts thrown away.
+     * MicroWakeWordEngine reports nothing for its first
+     * MIN_SLICES_BEFORE_DETECTION probabilities — three seconds on a stride-3
+     * model — so a 2.5 s attempt handed to a fresh engine on its own can never
+     * fire, whoever is speaking and however clearly. That is exactly what
+     * happened: five attempts, zero heard, from a speaker who scores 16 out of
+     * 16 offline.
+     *
+     * A fresh engine per attempt, and that part is not defensive:
+     * [MicroWakeWord.reset] clears the frontend and the detection window but
+     * leaves the TFLite interpreter's variable tensors alone, so a reused engine
+     * scores attempt five with attempt four still inside it.
      */
     private fun heard(
         pcm: ShortArray,
+        window: IntRange,
         modelBuffer: ByteBuffer,
         model: WakeWordModel,
         level: WakeWordSensitivity,
-    ): Boolean = MicroWakeWord(
-        modelBuffer = modelBuffer,
-        featureStepSizeMs = model.featureStepSizeMs,
-        probabilityCutoff = model.operatingPoint(level).probabilityCutoff,
-        slidingWindowSize = model.operatingPoint(level).slidingWindowSize,
-    ).use { engine ->
+    ): Boolean {
+        val point = model.operatingPoint(level)
+        return MicroWakeWord(
+            modelBuffer = modelBuffer,
+            featureStepSizeMs = model.featureStepSizeMs,
+            probabilityCutoff = point.probabilityCutoff,
+            slidingWindowSize = point.slidingWindowSize,
+        ).use { engine ->
+            val runIn = (window.first - WARMUP_SAMPLES).coerceAtLeast(0)
+            feed(engine, pcm, runIn until window.first)
+            feed(engine, pcm, window)
+        }
+    }
+
+    /** Returns whether the engine fired anywhere in [range]. */
+    private fun feed(engine: MicroWakeWord, pcm: ShortArray, range: IntRange): Boolean {
         var detected = false
-        var offset = 0
-        while (offset < pcm.size) {
-            val end = minOf(offset + CHUNK_SIZE, pcm.size)
+        var offset = range.first
+        while (offset <= range.last) {
+            val end = minOf(offset + CHUNK_SIZE, range.last + 1)
             if (engine.processAudio(pcm.copyOfRange(offset, end))) detected = true
             offset = end
         }
-        detected
+        return detected
     }
 
     private fun loadModel(filename: String): ByteBuffer? = try {
@@ -218,6 +266,15 @@ class SensitivityTuner @Inject constructor(
         const val REQUIRED_HITS = 4
 
         private const val GET_READY_MS = 700L
+
+        /**
+         * Run-in fed to the engine before each attempt. Comfortably past
+         * MIN_SLICES_BEFORE_DETECTION (100 probabilities — 3 s on a stride-3
+         * model, more on anything slower), because the app cannot see a model's
+         * stride from this side of the JNI boundary.
+         */
+        private const val WARMUP_MS = 5_000L
+        private const val WARMUP_SAMPLES = (WARMUP_MS * 16).toInt()
         private const val LISTEN_MS = 2_500L
         private const val AUDIO_TIMEOUT_MS = 1_000L
         private const val CHUNK_SIZE = 480

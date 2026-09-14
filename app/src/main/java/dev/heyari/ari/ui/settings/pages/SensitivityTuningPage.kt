@@ -142,6 +142,14 @@ private fun TunerSection(
                 }
             }
 
+            is SensitivityTuner.State.WarmingUp -> Prompt(
+                headline = stringResource(R.string.sensitivity_tuning_warmup),
+                caption = stringResource(
+                    R.string.sensitivity_tuning_warmup_caption, tuner.secondsLeft,
+                ),
+                level = tuner.level,
+            )
+
             is SensitivityTuner.State.GetReady -> Prompt(
                 headline = stringResource(R.string.sensitivity_tuning_get_ready),
                 caption = stringResource(

@@ -318,6 +318,8 @@
     <string name="sensitivity_tuning_name_label">Chi sta parlando</string>
     <string name="sensitivity_tuning_start">Inizia</string>
     <string name="sensitivity_tuning_add_person">Aggiungi un\'altra persona</string>
+    <string name="sensitivity_tuning_warmup">Sto ascoltando la stanza…</string>
+    <string name="sensitivity_tuning_warmup_caption">Si comincia tra %1$d</string>
     <string name="sensitivity_tuning_get_ready">Preparati…</string>
     <string name="sensitivity_tuning_say_it">Pronuncia la frase di attivazione</string>
     <string name="sensitivity_tuning_attempt">Tentativo %1$d di %2$d</string>

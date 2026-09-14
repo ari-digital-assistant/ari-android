@@ -320,6 +320,8 @@
     <string name="sensitivity_tuning_name_label">Who is speaking</string>
     <string name="sensitivity_tuning_start">Start</string>
     <string name="sensitivity_tuning_add_person">Add someone else</string>
+    <string name="sensitivity_tuning_warmup">Listening to the room…</string>
+    <string name="sensitivity_tuning_warmup_caption">Starting in %1$d</string>
     <string name="sensitivity_tuning_get_ready">Get ready…</string>
     <string name="sensitivity_tuning_say_it">Say the wake phrase</string>
     <string name="sensitivity_tuning_attempt">Attempt %1$d of %2$d</string>
