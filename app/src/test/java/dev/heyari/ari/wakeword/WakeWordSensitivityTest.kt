@@ -52,9 +52,34 @@ class WakeWordSensitivityTest {
         // its predecessor's ladder.
         val model = WakeWordRegistry.byId("hey_ari")
 
-        assertEquals(OperatingPoint(0.40f, 5), model.operatingPoint(WakeWordSensitivity.HIGH))
-        assertEquals(OperatingPoint(0.50f, 5), model.operatingPoint(WakeWordSensitivity.MEDIUM))
-        assertEquals(OperatingPoint(0.60f, 5), model.operatingPoint(WakeWordSensitivity.LOW))
+        assertEquals(OperatingPoint(0.45f, 10), model.operatingPoint(WakeWordSensitivity.HIGH))
+        assertEquals(OperatingPoint(0.55f, 10), model.operatingPoint(WakeWordSensitivity.MEDIUM))
+        assertEquals(OperatingPoint(0.65f, 10), model.operatingPoint(WakeWordSensitivity.LOW))
+    }
+
+    @Test
+    fun `every hey_ari cutoff clears the loudest household ambient we have measured`() {
+        // The check that was missing when a ladder shipped with its strictest
+        // setting BELOW the noise floor of an ordinary kitchen. Twenty minutes
+        // of household ambient peaks at 0.349 as a mean across a window of 10
+        // (ari-tools/wakeword/baseline), and a cutoff at or under that does not
+        // need bad luck to false-fire — it fires on conversation, by
+        // construction, and no amount of recall makes up for it.
+        //
+        // The floor is provisional: it can only rise as we record more rooms.
+        // If it rises past a cutoff, that cutoff moves. It never sits below.
+        val ambientPeak = 0.349f
+        val minimumMargin = 0.10f
+        val model = WakeWordRegistry.byId("hey_ari")
+
+        WakeWordSensitivity.entries.forEach { level ->
+            val point = model.operatingPoint(level)
+            assertTrue(
+                "hey_ari $level sits at ${point.probabilityCutoff}, which household " +
+                    "ambient already reaches ($ambientPeak)",
+                point.probabilityCutoff >= ambientPeak + minimumMargin,
+            )
+        }
     }
 
     @Test

@@ -14,11 +14,14 @@ data class OperatingPoint(
  * A wake word model bundled in app assets.
  *
  * Each model carries its own three operating points rather than sharing one
- * ladder, because a cutoff means nothing on its own: 0.5 is the sweet spot for
- * `hey_ari` and would fire on almost anything for a model calibrated near the
- * ceiling. Running the 2026-09-14 `hey_ari` at the ladder its predecessor used
- * scores 24/76 on household recordings against 60/76 at its own — worse than
- * the model it replaced, with nothing in the app to say why.
+ * ladder, because a cutoff means nothing on its own — it is a point on one
+ * model's curve and says nothing about another's.
+ *
+ * A cutoff also means nothing without the noise it has to clear. Quote every
+ * one of these against the loudest window mean a real room ever reached, and
+ * pick it for the gap, not for how it scores on the recording you happen to
+ * have. A threshold that clears twenty minutes of kitchen by 0.002 is fitted
+ * to that kitchen's noise and will fire in the twenty-first minute.
  *
  * The numbers are measured, not guessed. See `ari-tools/wakeword/baseline/` and
  * `docs/superpowers/specs/2026-09-10-wake-word-retrain-design.md` §7.
@@ -41,20 +44,38 @@ data class WakeWordModel(
 
 object WakeWordRegistry {
     /**
-     * Measured on 92 marked takes from four speakers and ten minutes of a
-     * kitchen with four people talking, none of which the model had ever heard
-     * (`ari-tools/wakeword/baseline/`). At MEDIUM it catches 60 of 76 household
-     * takes with no false wake in that ten minutes; HIGH reaches 65 and costs
-     * one; LOW gives up 9 takes for a little more headroom.
+     * Measured on 92 marked takes from four speakers and twenty minutes of
+     * household ambient — a kitchen with four people talking and a living room
+     * — none of which this model had ever heard (`ari-tools/wakeword/baseline/`).
+     * Marks are the speaker's own tap, so the denominator is every take they
+     * meant to make rather than every take something detected.
+     *
+     * Over that ambient the highest mean across a window of 10 is 0.349, so
+     * each cutoff below is quoted by its gap above that floor: HIGH +0.10,
+     * MEDIUM +0.20, LOW +0.30. Recall runs 72% / 69% / 69% across all four
+     * speakers, and the ladder is deliberately flat — this model separates the
+     * phrase from conversation well enough that tightening it buys headroom
+     * almost for free.
+     *
+     * It replaced a ladder of 0.95 / 0.985 / 0.99 that had been here since
+     * April, inherited rather than measured. That one sat 0.64 clear of the
+     * floor and cost the quietest speaker in the household more than half her
+     * wakes — 18 of 46 against 29 — while barely touching the loudest, who
+     * went 13 of 16 to 14 of 16. A wake word that only answers the person who
+     * set it up is the failure this ladder exists to prevent, and it is
+     * invisible if you only ever test it yourself.
+     *
+     * Twenty minutes cannot price a rate of one false wake an hour. Treat the
+     * floor as provisional and raise it when longer ambient says so.
      */
     private val heyAri = WakeWordModel(
         id = "hey_ari",
         displayName = "Hey Ari",
         assetFilename = "hey_ari.tflite",
         featureStepSizeMs = 10,
-        high = OperatingPoint(0.40f, 5),
-        medium = OperatingPoint(0.50f, 5),
-        low = OperatingPoint(0.60f, 5),
+        high = OperatingPoint(0.45f, 10),
+        medium = OperatingPoint(0.55f, 10),
+        low = OperatingPoint(0.65f, 10),
     )
 
     /**
