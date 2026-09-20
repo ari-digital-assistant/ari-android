@@ -9,6 +9,8 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.location.Location
+import android.location.LocationManager
+import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
@@ -54,7 +56,11 @@ class PlaceGeofences @Inject constructor(
 
     private val insideIds = MutableStateFlow<Set<String>>(emptySet())
 
+    private val seedHandler = Handler(Looper.getMainLooper())
+
     private var seedCallback: LocationCallback? = null
+
+    private var seedBackstop: Runnable? = null
 
     private var wakeReceiver: BroadcastReceiver? = null
 
@@ -219,9 +225,53 @@ class PlaceGeofences @Inject constructor(
      * enough to decide, and stop the moment one is. Costly for a few seconds,
      * once per registration, against a feature that otherwise holds a
      * microphone open all day.
+     *
+     * When the window closes with nothing conclusive, commit on the sharpest
+     * fix seen, judged on centre distance alone. Holding out for a fix whose
+     * whole uncertainty circle clears the boundary sounds rigorous and is
+     * unsatisfiable on plenty of real phones: one reporting ±300m indoors can
+     * never prove itself inside a 100m circle, so the burst expired undecided
+     * every time and place state sat empty for good — standing in the kitchen
+     * with the microphone shut. A guess the geofencer corrects beats an answer
+     * that never arrives, and a wrong one costs at most an hour: [refreshIfStale]
+     * re-seeds once the fences go quiet.
      */
     @SuppressLint("MissingPermission") // gated on hasPermissions() in register()
     private fun seedFromCurrentLocation(places: List<ListeningPlace>) {
+        stopSeed()
+
+        var sharpest: Location? = null
+
+        fun settle(inside: List<ListeningPlace>, location: Location, how: String) {
+            Log.i(
+                TAG,
+                "Seeded from ${location.provider} ($how): " +
+                    "inside ${inside.size} of ${places.size} place(s)",
+            )
+            insideIds.value = inside.map { it.id }.toSet()
+            lastConfirmedAt = SystemClock.elapsedRealtime()
+            stopSeed()
+        }
+
+        /** Weigh one fix. True once the state is settled and no more are wanted. */
+        fun offer(location: Location): Boolean {
+            val best = sharpest
+            if (best == null || location.accuracy < best.accuracy) sharpest = location
+
+            val inside = places.filter { it.confidentlyContains(location) }
+            // "Nowhere near any of them" has to be proved too, not assumed
+            // from the absence of a positive: a ±99m fix rules you out of a
+            // 100m circle exactly as poorly as it rules you into one.
+            if (inside.isNotEmpty() || places.all { it.confidentlyExcludes(location) }) {
+                settle(inside, location, "±${location.accuracy.toInt()}m")
+                return true
+            }
+            Log.i(TAG, "Seed fix ±${location.accuracy.toInt()}m — too vague, waiting for a better one")
+            return false
+        }
+
+        if (platformLastKnown()?.let(::offer) == true) return
+
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, SEED_INTERVAL_MS)
             .setMinUpdateIntervalMillis(SEED_INTERVAL_MS)
             // Expires itself, so a seed that never converges can't leave the
@@ -231,33 +281,69 @@ class PlaceGeofences @Inject constructor(
 
         val callback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
-                val location = result.lastLocation ?: return
-                val inside = places.filter { it.confidentlyContains(location) }
-                // "Nowhere near any of them" has to be proved too, not assumed
-                // from the absence of a positive: a ±99m fix rules you out of a
-                // 100m circle exactly as poorly as it rules you into one.
-                val decided = inside.isNotEmpty() || places.all { it.confidentlyExcludes(location) }
-                if (!decided) {
-                    Log.i(TAG, "Seed fix ±${location.accuracy.toInt()}m — too vague, waiting for a better one")
-                    return
-                }
-                Log.i(
-                    TAG,
-                    "Seeded from ${location.provider} (±${location.accuracy.toInt()}m): " +
-                        "inside ${inside.size} of ${places.size} place(s)",
-                )
-                insideIds.value = inside.map { it.id }.toSet()
-                lastConfirmedAt = SystemClock.elapsedRealtime()
-                stopSeed()
+                result.lastLocation?.let(::offer)
             }
         }
-        stopSeed()
         seedCallback = callback
         locationClient.requestLocationUpdates(request, callback, Looper.getMainLooper())
             .addOnFailureListener { Log.w(TAG, "Couldn't seed place state from current location", it) }
+
+        // The burst expires in silence — no callback, no error — so the last
+        // word has to be ours or an inconclusive seed never ends.
+        val backstop = Runnable {
+            val settled = sharpest
+            if (settled == null) {
+                // Deliberately no [lastConfirmedAt] stamp: nothing confirmed
+                // anything, so the state stays stale and the next screen-on
+                // re-arms rather than sitting out the hour on a lie.
+                Log.w(TAG, "Seed window closed with no usable fix — leaving it to the geofencer")
+                stopSeed()
+            } else {
+                settle(
+                    places.filter { it.contains(settled) },
+                    settled,
+                    "best of ${SEED_TIMEOUT_MS / 1000}s, ±${settled.accuracy.toInt()}m",
+                )
+            }
+        }
+        seedBackstop = backstop
+        seedHandler.postDelayed(backstop, SEED_TIMEOUT_MS)
+    }
+
+    /**
+     * The sharpest fix the platform already has to hand, across every enabled
+     * provider, ignoring anything too old to describe where we are now.
+     *
+     * Play Services is the right geofencer and is not always the best-informed
+     * location source underneath it. Where GmsCore is sandboxed or cut off from
+     * Google's backend, its fused provider drops to cell-tower grade — ±300m,
+     * which settles nothing about a 100m circle — while the OS's own network
+     * provider sits on a ±10m fix it will hand over for free. Asking both and
+     * keeping the sharper costs one cache read and no power at all.
+     *
+     * Deliberately not shared with [dev.heyari.ari.location.LocationProvider],
+     * which sweeps the same providers: that class promises skills a coarse fix
+     * and checks only the coarse grant, where this one is gated on fine
+     * location and wants every metre of it.
+     */
+    @SuppressLint("MissingPermission") // gated on hasPermissions() in arm()
+    private fun platformLastKnown(): Location? {
+        val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return null
+        val oldestAccepted = SystemClock.elapsedRealtimeNanos() - SEED_MAX_AGE_MS * 1_000_000
+        // Asked per-provider because one throwing must not cost us the others.
+        return lm.getProviders(true)
+            .mapNotNull { provider ->
+                runCatching { lm.getLastKnownLocation(provider) }
+                    .onFailure { e -> Log.w(TAG, "last-known from $provider unavailable", e) }
+                    .getOrNull()
+            }
+            .filter { it.hasAccuracy() && it.elapsedRealtimeNanos >= oldestAccepted }
+            .minByOrNull { it.accuracy }
     }
 
     private fun stopSeed() {
+        seedBackstop?.let { seedHandler.removeCallbacks(it) }
+        seedBackstop = null
         seedCallback?.let { locationClient.removeLocationUpdates(it) }
         seedCallback = null
     }
@@ -312,6 +398,11 @@ class PlaceGeofences @Inject constructor(
         const val SEED_INTERVAL_MS = 1000L
         const val SEED_TIMEOUT_MS = 30 * 1000L
 
+        // How stale a last-known fix may be and still be taken for where we
+        // are. Generous next to the geofencer's own five minutes of slack,
+        // because the alternative is not a fresher fix but a much vaguer one.
+        const val SEED_MAX_AGE_MS = 15 * 60 * 1000L
+
         // Generous on purpose. Silence is normal — a stationary device inside
         // its own fence has nothing to report for a whole night — so this is
         // the point where silence stops being explainable, not a heartbeat.
@@ -320,19 +411,24 @@ class PlaceGeofences @Inject constructor(
 }
 
 /**
- * The two answers the seed is allowed to give, each requiring the fix's whole
- * uncertainty circle to fall on one side of the boundary.
+ * The two answers the seed prefers, each requiring the fix's whole uncertainty
+ * circle to fall on one side of the boundary.
  *
  * Ignoring accuracy reads a ±80m fix as if it were a survey peg, which is how a
- * phone sat in the kitchen gets ruled out of its own 100m home circle. Anything
- * the fix can't settle either way isn't an answer, and the geofence's own
- * crossing decides it later — the seed is a fast path, not the only one.
+ * phone sat in the kitchen gets ruled out of its own 100m home circle. So while
+ * there is still time to get a sharper fix, anything these two can't settle
+ * isn't taken for an answer — [ListeningPlace.contains] takes over once that
+ * time is up.
  */
 private fun ListeningPlace.confidentlyContains(location: Location): Boolean =
     distanceFrom(location) + location.accuracy <= radiusMetres
 
 private fun ListeningPlace.confidentlyExcludes(location: Location): Boolean =
     distanceFrom(location) - location.accuracy > radiusMetres
+
+/** Centre distance alone: the seed's last word when accuracy won't converge. */
+private fun ListeningPlace.contains(location: Location): Boolean =
+    distanceFrom(location) <= radiusMetres
 
 private fun ListeningPlace.distanceFrom(location: Location): Float {
     val metres = FloatArray(1)
