@@ -148,10 +148,40 @@
     <string name="settings_section_debug">Debug</string>
     <string name="settings_category_debug">Debug</string>
     <string name="settings_category_listening">Ascolto</string>
-    <string name="settings_keep_everything_title">Conserva tutto</string>
-    <string name="settings_keep_everything_blurb">Registrazione completa per il debug: conserva ogni attivazione della parola di attivazione — comprese quelle accettate — e ogni conversazione vocale con Ari, anche quando i due interruttori qui sotto sono spenti. Tutto resta su questo dispositivo, nella memoria privata di Ari, e non viene mai inviato altrove da solo: una segnalazione di bug può includerlo, ma solo se lo selezioni e acconsenti. Vale la pena tenerlo attivo solo mentre stai cercando un bug.</string>
+    <string name="settings_category_developer">Sviluppatore</string>
+    <string name="settings_recordings_heading">Registrazioni</string>
+    <string name="settings_what_to_record">Cosa registrare</string>
+    <string name="settings_keep_wake_title">Conserva le registrazioni della parola di attivazione</string>
+    <string name="settings_keep_wake_blurb">Quando Ari si attiva perché hai davvero pronunciato la parola di attivazione, conserva quel momento. Sono gli esempi che mostrano la parola di attivazione mentre funziona.</string>
+    <string name="settings_keep_everything_title">Conserva tutto l\'audio delle conversazioni</string>
+    <string name="settings_keep_everything_blurb">Conserva ogni attivazione della parola di attivazione e ogni conversazione vocale con Ari, qualunque cosa dicano i tre interruttori qui sopra. Vale la pena tenerlo attivo mentre cerchi un bug; il resto del tempo è pesante.</string>
+    <string name="settings_storage_wake_title">Clip della parola di attivazione su questo dispositivo</string>
+    <string name="settings_storage_command_title">Registrazioni dei comandi su questo dispositivo</string>
+    <string name="settings_why_share_title">Perché condividere?</string>
+    <string name="settings_why_share_blurb">La parola di attivazione di Ari è stata addestrata su poche voci in poche stanze. Le registrazioni fatte con telefoni veri, accenti veri e cucine vere sono l\'unica cosa che la renderà capace di sentire persone che non ha mai sentito.\n\nLa condivisione è disattivata per impostazione predefinita ed è del tutto facoltativa. Ari funziona esattamente allo stesso modo se la lasci spenta. Vengono inviate solo le categorie che attivi, solo tramite Wi-Fi e solo le registrazioni fatte dopo il tuo consenso: nulla di ciò che è già sul telefono viene inviato retroattivamente. Finiscono in un archivio privato sotto un codice anonimo, senza account, senza nome e senza alcun legame con le tue segnalazioni di bug.\n\nLe registrazioni possono contenere le voci di altre persone e ciò che si stava dicendo vicino al tuo telefono. Condividi solo ciò che non ti dispiacerebbe far ascoltare a uno sconosciuto.</string>
+    <string name="settings_what_to_share">Cosa condividere</string>
+    <string name="settings_share_wake_title">Condividi le registrazioni della parola di attivazione</string>
+    <string name="settings_share_false_trigger_title">Condividi l\'audio delle attivazioni errate</string>
+    <string name="settings_share_command_title">Condividi le registrazioni dei comandi</string>
+    <string name="settings_share_everything_title">Condividi tutto l\'audio delle conversazioni</string>
+    <string name="settings_share_needs_keep">Ari non sta conservando quelle registrazioni, quindi non c\'è nulla da condividere. Attiva prima l\'opzione corrispondente in Cosa registrare.</string>
+    <string name="settings_contributor_code_title">Il tuo codice di collaboratore</string>
+    <string name="settings_contributor_code_blurb">È l\'unico nome associato a ciò che condividi. Conservane una copia al sicuro: è così che puoi chiedere la cancellazione delle tue registrazioni se perdi questo telefono o reinstalli Ari.</string>
+    <string name="settings_contributor_code_copy">Copia</string>
+    <string name="settings_contributor_code_copied">Codice di collaboratore copiato</string>
+    <string name="settings_contributor_code_restore">Ho un codice da un\'installazione precedente</string>
+    <string name="settings_contributor_code_restore_title">Inserisci il tuo codice di collaboratore</string>
+    <string name="settings_contributor_code_restore_body">Incolla il codice che hai salvato da un\'installazione precedente. Da ora Ari condividerà con quel codice, ed Elimina i miei dati condivisi raggiungerà le registrazioni che hai inviato prima.</string>
+    <string name="settings_contributor_code_restore_invalid">Questo non sembra un codice di collaboratore.</string>
+    <string name="settings_delete_shared_title">Elimina i miei dati condivisi</string>
+    <string name="settings_delete_shared_confirm">Tutte le registrazioni che hai condiviso verranno cancellate e la condivisione verrà disattivata. Le registrazioni già usate per addestrare un modello non possono esserne rimosse. Nulla su questo telefono viene toccato.</string>
+    <string name="settings_delete_shared_action">Elimina</string>
+    <string name="settings_delete_shared_done">Le tue registrazioni condivise sono state eliminate e la condivisione è ora disattivata.</string>
+    <string name="settings_delete_shared_failed">Impossibile raggiungere il server. Non è stato eliminato nulla: riprova quando hai una connessione.</string>
 
     <!-- Onboarding -->
+    <string name="onboarding_recordings_title">Registrazioni</string>
+    <string name="onboarding_recordings_blurb">Ari può conservare le registrazioni di ciò che sente e tu puoi scegliere di condividerle, così la parola di attivazione migliora con le voci reali. Qui è tutto disattivato, e Ari funziona benissimo anche lasciandolo così.</string>
     <string name="onboarding_language_title">Scegli la tua lingua</string>
     <string name="onboarding_language_body">Scegli la lingua in cui Ari ti ascolterà e risponderà. Puoi cambiarla in qualsiasi momento dalle impostazioni.</string>
     <string name="onboarding_language_continue">Continua</string>
@@ -318,22 +348,49 @@
     <string name="settings_wakeword_blurb">La frase a cui Ari risponde. \"Hey Jarvis\" è il modello microWakeWord originale, incluso come fallback.</string>
     <string name="settings_wakeword_sensitivity_blurb">Sensibilità — quanto facilmente Ari risponde alla tua voce. Se Ari si attiva quando non dovrebbe, abbassa il valore. Se non si attiva quando vuoi, alzalo.</string>
     <string name="sensitivity_tuning_title">Regola la sensibilità</string>
-    <string name="sensitivity_tuning_blurb">Pronuncia la frase di attivazione qualche volta e Ari sceglierà l\'impostazione che ti sente. Fallo per tutti in casa: Ari userà l\'impostazione adatta alla persona che fatica di più a farsi sentire.</string>
-    <string name="sensitivity_tuning_name_label">Chi sta parlando</string>
+    <string name="sensitivity_tuning_blurb">Ari ti chiederà di dire alcune frasi: a volte la frase di attivazione, a volte no. Quelle che non sono la frase di attivazione sono la metà importante: mostrano ad Ari cosa ignorare. Fallo una volta per ognuno in casa.</string>
+    <string name="sensitivity_tuning_quiet_advice">Scegli un posto ragionevolmente silenzioso. La lavastoviglie o qualcuno che parla nella stanza accanto vanno bene; la musica accesa qui no.</string>
     <string name="sensitivity_tuning_start">Inizia</string>
-    <string name="sensitivity_tuning_add_person">Aggiungi un\'altra persona</string>
+    <string name="sensitivity_tuning_add_session">Aggiungi un\'altra persona</string>
     <string name="sensitivity_tuning_warmup">Sto ascoltando la stanza…</string>
     <string name="sensitivity_tuning_warmup_caption">Si comincia tra %1$d</string>
-    <string name="sensitivity_tuning_get_ready">Preparati…</string>
-    <string name="sensitivity_tuning_say_it">Pronuncia la frase di attivazione</string>
-    <string name="sensitivity_tuning_attempt">Tentativo %1$d di %2$d</string>
+    <string name="sensitivity_tuning_get_ready">Preparati a dire…</string>
+    <string name="sensitivity_tuning_say_it">Dillo adesso</string>
+    <string name="sensitivity_tuning_attempt">%1$d di %2$d</string>
     <string name="sensitivity_tuning_scoring">Sto calcolando…</string>
-    <string name="sensitivity_tuning_result">Sensibilità impostata su %1$s</string>
-    <string name="sensitivity_tuning_shared">Un\'unica impostazione per tutti quelli che usano questo telefono. Aggiungi gli altri e Ari userà quella che vi sente tutti.</string>
-    <string name="sensitivity_tuning_shared_for">Un\'unica impostazione per tutti. Questa è la più restrittiva che sente ancora %1$s.</string>
-    <string name="sensitivity_tuning_heard">sentito %1$d su %2$d</string>
-    <string name="sensitivity_tuning_short_of_bar">Ari continua a non sentire abbastanza. Ora è al massimo della sensibilità: per migliorare davvero, registra dei campioni dalla schermata di debug.</string>
+    <string name="sensitivity_tuning_prompt_phrase">Hey Ari</string>
+    <string name="sensitivity_tuning_decoy_hey_harry">Ehi Mario</string>
+    <string name="sensitivity_tuning_decoy_hey_there">Ehi, ciao</string>
+    <string name="sensitivity_tuning_decoy_okay_already">Va bene, ho capito</string>
+    <string name="sensitivity_tuning_decoy_hey_are_you">Ehi, sei pronto?</string>
+    <string name="sensitivity_tuning_decoy_whats_the_time">Che ore sono?</string>
+    <string name="sensitivity_tuning_decoy_put_the_kettle_on">Metti su il caffè</string>
+    <string name="sensitivity_tuning_decoy_see_you_tomorrow">Ci vediamo domani</string>
+    <string name="sensitivity_tuning_decoy_where_did_i_put">Dove ho messo le chiavi?</string>
+    <string name="sensitivity_tuning_result">Sensibilità regolata per questo telefono</string>
+    <string name="sensitivity_tuning_result_detail">Con la nuova impostazione Ari ha sentito la frase di attivazione %1$d volte su %2$d e ha ignorato tutto il resto che hai detto. Un\'unica impostazione per tutti quelli che usano questo telefono: aggiungi gli altri e Ari terrà quella abbastanza restrittiva per tutti voi.</string>
+    <string name="sensitivity_tuning_overlapping">Ari non riesce a distinguere in modo affidabile la frase di attivazione dal parlato normale. Ha impostato il valore più restrittivo che può giustificare, ma questo è un limite della parola di attivazione stessa, non dell\'impostazione: per migliorarla, registra dei campioni dalla schermata di debug.</string>
+    <string name="sensitivity_tuning_normal_use_title">Regola la sensibilità durante l\'uso normale</string>
+    <string name="sensitivity_tuning_normal_use_blurb">Consigliato. Permette ad Ari di regolare da sé la propria sensibilità mentre lo usi, così se la cava in più stanze e con più voci. Ari conta soltanto le volte in cui si attiva per sbaglio: per questo non viene conservata nessuna registrazione e non viene inviato nulla.</string>
     <string name="sensitivity_tuning_manual_heading">Oppure scegli tu</string>
+
+    <string name="false_wake_advice_title">Si attiva troppo facilmente</string>
+    <string name="false_wake_advice_step_body">Al momento Ari è impostato su %1$s. Renderlo meno sensibile è la soluzione più rapida, e puoi tornare indietro quando vuoi.</string>
+    <string name="false_wake_advice_step_action">Passa a %1$s</string>
+    <string name="false_wake_advice_tighten_body">Ari è già sull\'impostazione più restrittiva, quindi renderà un po\' più severa l\'impostazione stessa. Se questo gli impedisce di sentire qualcuno, Ari te lo chiederà fra un paio di giorni.</string>
+    <string name="false_wake_advice_tighten_action">Regolalo tu per me</string>
+    <string name="false_wake_advice_exhausted_body">Ari è al massimo della severità utile. Andare oltre non lo renderebbe più affidabile, solo più sordo: questo è un limite della parola di attivazione, non dell\'impostazione.</string>
+    <string name="false_wake_advice_ignore">Lascia com\'è</string>
+    <string name="false_wake_advice_close">Chiudi</string>
+    <string name="false_wake_advice_review_body">Il %1$s Ari si è reso un po\' meno sensibile, perché continuava ad attivarsi quando nessuno gli stava parlando. Vi sente ancora tutti?</string>
+    <string name="false_wake_advice_review_keep">Sì, va bene</string>
+    <string name="false_wake_advice_review_undo">No, rimettilo com\'era</string>
+
+    <string name="notif_channel_wake_tuning_name">Sensibilità della parola di attivazione</string>
+    <string name="notif_channel_wake_tuning_description">Ti avvisa quando Ari continua ad attivarsi senza motivo e ricontrolla dopo che si è regolato da sé.</string>
+    <string name="notif_false_wake_burst_title">Ari continua ad attivarsi da solo</string>
+    <string name="notif_ladder_review_title">Ari ti sente ancora?</string>
+    <string name="notif_ladder_review_text">Un paio di giorni fa si è reso meno sensibile. Tocca per confermare che era la scelta giusta.</string>
     <string name="settings_wakeword_tune">Regola la sensibilità sulle nostre voci</string>
     <string name="wakeword_sensitivity_high_label">Alta</string>
     <string name="wakeword_sensitivity_high_description">Si attiva molto più facilmente. Usala se Ari non sente qualcuno in casa.</string>
@@ -342,7 +399,7 @@
     <string name="wakeword_sensitivity_low_label">Bassa</string>
     <string name="wakeword_sensitivity_low_description">La più restrittiva. Usala se Ari si attiva quando non dovrebbe.</string>
     <string name="settings_wake_capture_title">Conserva l\'audio delle attivazioni errate</string>
-    <string name="settings_wake_capture_blurb">Quando Ari si attiva per qualcosa che non hai detto, conserva la registrazione per migliorare la parola di attivazione. L\'audio resta su questo dispositivo, nella memoria privata di Ari, non viene mai inviato altrove da solo ed è limitato a 50 clip per categoria di registrazione.</string>
+    <string name="settings_wake_capture_blurb">Quando Ari si attiva per qualcosa che non hai detto, conserva la registrazione per migliorare la parola di attivazione. L\'audio resta su questo dispositivo a meno che tu non lo condivida qui sotto o lo alleghi a una segnalazione di bug, ed è limitato a 50 clip per categoria.</string>
     <!-- "clip" is invariant in the Italian plural, so both quantities match. -->
     <plurals name="settings_capture_stats">
         <item quantity="one">%1$d clip · %2$s</item>
@@ -353,7 +410,7 @@
     <string name="settings_capture_export">Esporta le clip</string>
     <string name="settings_wake_capture_export_chooser">Esporta le clip della parola di attivazione</string>
     <string name="settings_utterance_capture_title">Conserva le registrazioni dei comandi</string>
-    <string name="settings_utterance_capture_blurb">Conserva una registrazione di tutto ciò che dici ad Ari, insieme a ogni trascrizione prodotta dal riconoscimento vocale, per risalire dall\'audio agli errori di comprensione. Le registrazioni restano su questo dispositivo, nella memoria privata di Ari, non vengono mai inviate altrove da sole e sono limitate a 100 clip.</string>
+    <string name="settings_utterance_capture_blurb">Conserva una registrazione di tutto ciò che dici ad Ari, insieme a ogni trascrizione prodotta dal riconoscimento vocale, per risalire dall\'audio agli errori di comprensione. Le registrazioni restano su questo dispositivo a meno che tu non le condivida qui sotto o le alleghi a una segnalazione di bug, e sono limitate a 100 clip.</string>
     <string name="settings_utterance_capture_export_chooser">Esporta le registrazioni dei comandi</string>
     <string name="settings_stt_models_blurb">Il modello vocale per la tua lingua. Si scarica una volta, poi funziona offline.</string>
     <string name="settings_language_blurb">La lingua in cui Ari ascolta e parla. Cambiarla aggiorna le risposte dell\'assistente e i testi dell\'app — potresti dover sostituire il modello di riconoscimento vocale qui sotto se non supporta la nuova lingua.</string>
@@ -761,4 +818,12 @@
     <string name="wake_samples_export">Esporta</string>
     <string name="wake_samples_clear">Elimina tutto</string>
     <string name="wake_samples_export_chooser">Esporta campioni della parola di attivazione</string>
+    <plurals name="notif_false_wake_burst_text">
+        <item quantity="one">Oggi si è attivato una volta senza che nessuno gli parlasse. Tocca per sistemare.</item>
+        <item quantity="other">Oggi si è attivato %1$d volte senza che nessuno gli parlasse. Tocca per sistemare.</item>
+    </plurals>
+    <plurals name="false_wake_advice_burst_body">
+        <item quantity="one">Nell\'ultimo giorno Ari si è attivato una volta senza che nessuno gli stesse parlando.</item>
+        <item quantity="other">Nell\'ultimo giorno Ari si è attivato %1$d volte senza che nessuno gli stesse parlando.</item>
+    </plurals>
 </resources>

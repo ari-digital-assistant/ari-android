@@ -41,6 +41,22 @@ how aggressively it kills background services.
 Something wrong with a *skill* rather than the app? That belongs in
 [ari-skills](https://github.com/ari-digital-assistant/ari-skills/issues/new/choose).
 
+## Contributing recordings
+
+Ari's wake word was trained on a handful of voices in a handful of rooms, which
+is why it hears some people better than others. **Settings › Developer ›
+Recordings** is where you can help with that, and it is two separate decisions:
+what Ari *keeps* on the phone, and what it *shares*. Everything starts off, you
+cannot share a category you are not keeping, and uploads happen over Wi-Fi only.
+
+Clips travel with the language you have Ari set to and an anonymous contributor
+code — no account, no device model, and nothing linking them to your bug
+reports. Keep a copy of that code: it is the only way to ask for your
+recordings back, and **Delete my shared data** on that screen is what uses it.
+Unlike bug reports these are kept until you ask, because a training set that
+expires every 90 days is no use. The whole story, caveats included, is on
+[heyari.dev/privacy](https://heyari.dev/privacy/#recordings).
+
 ## Build it
 
 You need a **sibling checkout of `ari-engine`**. The app compiles the Rust
@@ -117,10 +133,12 @@ byte-identical to what ships, so it's a build for finding bugs rather than for
 final performance numbers.
 
 "Testing features" means the bug report button, the crash prompt, the
-onboarding warning and the audio-capture defaults. They're gated on
-`BuildConfig.ARI_TESTING`, not on `DEBUG` — the build testers get is
+onboarding warning and the deliberate-crash row in Debug settings. They're
+gated on `BuildConfig.ARI_TESTING`, not on `DEBUG` — the build testers get is
 release-signed, so `DEBUG` is false there and gating on it would hide all four
-from exactly the people who need them.
+from exactly the people who need them. The audio-capture toggles used to be on
+this list, defaulting on in testing builds; they now default off in every build
+and are the user's to switch on, because they can leave the device.
 
 Release signing needs a `keystore.properties` at the repo root. Without one you
 get an unsigned APK rather than a failure, which is what a fresh clone wants.

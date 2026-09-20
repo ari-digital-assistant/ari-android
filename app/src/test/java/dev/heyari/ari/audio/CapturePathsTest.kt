@@ -79,21 +79,36 @@ class CapturePathsTest {
      */
     @Test
     fun everyClipDirectoryIsExcludedFromBackupAndTransfer() {
-        listOf(
-            "src/main/res/xml/backup_rules.xml" to 1,
-            // cloud-backup and device-transfer are separate blocks; an exclusion
-            // in one says nothing about the other.
-            "src/main/res/xml/data_extraction_rules.xml" to 2,
-        ).forEach { (path, expectedPerDirectory) ->
-            val rules = File(path).readText()
+        // Counted inside each block, not across the file. Counting the file as
+        // a whole and expecting two is what let `wake-samples` be excluded from
+        // cloud-backup twice and from device-transfer not at all — the rules
+        // and the test agreed, and a new-phone migration still copied named
+        // recordings of the household across.
+        val extraction = File("src/main/res/xml/data_extraction_rules.xml").readText()
+        val blocks = mapOf(
+            "backup_rules.xml" to File("src/main/res/xml/backup_rules.xml").readText(),
+            "data_extraction_rules.xml <cloud-backup>" to block(extraction, "cloud-backup"),
+            "data_extraction_rules.xml <device-transfer>" to block(extraction, "device-transfer"),
+        )
+        blocks.forEach { (name, rules) ->
             storeDirectories.forEach { directory ->
                 val count = Regex("""path="$directory/"""").findAll(rules).count()
-                assertEquals(
-                    "$directory must be excluded $expectedPerDirectory time(s) in $path",
-                    expectedPerDirectory,
-                    count,
-                )
+                assertEquals("$directory must be excluded exactly once in $name", 1, count)
             }
         }
     }
+
+    /**
+     * The contents of one `data_extraction_rules` block.
+     *
+     * Fails loudly on a missing block rather than returning "", which would
+     * make every exclusion in it look absent — a test that cannot tell "the
+     * rules are wrong" from "I could not read the rules" is not a check.
+     */
+    private fun block(xml: String, name: String): String =
+        Regex("""<$name>(.*?)</$name>""", RegexOption.DOT_MATCHES_ALL)
+            .find(xml)
+            ?.groupValues
+            ?.get(1)
+            ?: error("No <$name> block in data_extraction_rules.xml")
 }

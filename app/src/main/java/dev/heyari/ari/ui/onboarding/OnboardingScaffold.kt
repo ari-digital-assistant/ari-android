@@ -34,7 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.heyari.ari.R
 
-private const val TOTAL_STEPS = 9
+private const val TOTAL_STEPS = 10
 
 /**
  * Shared scaffold for all onboarding wizard screens. Provides a top bar

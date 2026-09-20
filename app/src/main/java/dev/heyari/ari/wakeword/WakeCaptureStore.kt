@@ -20,9 +20,9 @@ enum class WakeCaptureHook(val slug: String) {
     SILENT("silent"),
 
     /**
-     * The wake fired and the turn was accepted — a true positive. Only
-     * captured under the keep-everything debug firehose, never by the
-     * false-trigger toggle.
+     * The wake fired and the turn was accepted — a true positive. Captured by
+     * the keep-wake toggle (or the firehose), never by the false-trigger one:
+     * the two are opposite labels and must not share a switch.
      */
     ACCEPTED("accepted"),
 }
@@ -67,10 +67,9 @@ class WakeCaptureStore internal constructor(
         AudioClipStore(context, File(baseDir, REJECTED_DIR_NAME), MAX_FILES, MAX_BYTES)
 
     /**
-     * TRUE POSITIVES: accepted wakes, captured only by the keep-everything
-     * debug firehose. Kept apart from both dirs above — mixing confirmed
-     * positives into either the retrain feed or the quarantine would poison
-     * the labels in the other direction.
+     * TRUE POSITIVES: accepted wakes. Kept apart from both dirs above —
+     * mixing confirmed positives into either the retrain feed or the
+     * quarantine would poison the labels in the other direction.
      */
     private val acceptedClips =
         AudioClipStore(context, File(baseDir, ACCEPTED_DIR_NAME), MAX_FILES, MAX_BYTES)
@@ -111,7 +110,9 @@ class WakeCaptureStore internal constructor(
     fun files(): List<File> =
         silentClips.files() + rejectedClips.files() + acceptedClips.files()
 
-    private companion object {
+    // Internal rather than private: ContributionCategory names these
+    // directories too, and one definition beats two that can drift apart.
+    internal companion object {
         const val DIR_NAME = "wake-captures"
         const val REJECTED_DIR_NAME = "wake-captures-rejected"
         const val ACCEPTED_DIR_NAME = "wake-captures-accepted"

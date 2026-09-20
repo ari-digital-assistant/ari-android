@@ -16,7 +16,6 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.heyari.ari.audio.ClipStats
 import dev.heyari.ari.data.SecretStore
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.di.EngineModule
@@ -36,9 +35,7 @@ import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.stt.SttMode
 import dev.heyari.ari.stt.SttModel
 import dev.heyari.ari.stt.SttModelRegistry
-import dev.heyari.ari.stt.UtteranceCaptureStore
 import dev.heyari.ari.tts.SpeechOutput
-import dev.heyari.ari.wakeword.WakeCaptureStore
 import dev.heyari.ari.wakeword.WakeWordModel
 import dev.heyari.ari.wakeword.WakeWordRegistry
 import dev.heyari.ari.wakeword.WakeWordSensitivity
@@ -122,11 +119,6 @@ data class SettingsState(
     val activeAssistantId: String? = null,
     val assistantEntries: List<AssistantUiEntry> = emptyList(),
     val startOnBoot: Boolean = false,
-    val keepFalseTriggerAudio: Boolean = false,
-    val wakeCaptureStats: ClipStats = ClipStats(0, 0L),
-    val keepUtteranceAudio: Boolean = false,
-    val utteranceCaptureStats: ClipStats = ClipStats(0, 0L),
-    val keepEverythingAudio: Boolean = false,
     val bargeInEnabled: Boolean = true,
     val conversationMemoryEnabled: Boolean = true,
     val rememberedFacts: List<String> = emptyList(),
@@ -167,8 +159,6 @@ class SettingsViewModel @Inject constructor(
     private val engineHolder: EngineHolder,
     private val assistantRegistry: AssistantRegistry,
     private val speechOutput: SpeechOutput,
-    private val wakeCaptureStore: WakeCaptureStore,
-    private val utteranceCaptureStore: UtteranceCaptureStore,
     private val placeGeofences: PlaceGeofences,
     @param:ApplicationScope private val appScope: CoroutineScope,
 ) : ViewModel() {
@@ -313,36 +303,6 @@ class SettingsViewModel @Inject constructor(
             }
         }
 
-        viewModelScope.launch(Dispatchers.IO) {
-            settingsRepository.keepFalseTriggerAudio.collect { enabled ->
-                val stats = wakeCaptureStore.stats()
-                _state.update {
-                    it.copy(
-                        keepFalseTriggerAudio = enabled,
-                        wakeCaptureStats = stats,
-                    )
-                }
-            }
-        }
-
-        viewModelScope.launch(Dispatchers.IO) {
-            settingsRepository.keepEverythingAudio.collect { enabled ->
-                _state.update { it.copy(keepEverythingAudio = enabled) }
-            }
-        }
-
-        viewModelScope.launch(Dispatchers.IO) {
-            settingsRepository.keepUtteranceAudio.collect { enabled ->
-                val stats = utteranceCaptureStore.stats()
-                _state.update {
-                    it.copy(
-                        keepUtteranceAudio = enabled,
-                        utteranceCaptureStats = stats,
-                    )
-                }
-            }
-        }
-
         viewModelScope.launch {
             settingsRepository.listeningMode.collect { mode ->
                 _state.update { it.copy(listeningMode = mode) }
@@ -473,44 +433,6 @@ class SettingsViewModel @Inject constructor(
             settingsRepository.setStartOnBoot(enabled)
         }
     }
-
-    fun setKeepFalseTriggerAudio(enabled: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.setKeepFalseTriggerAudio(enabled)
-        }
-    }
-
-    fun clearWakeCaptures() {
-        viewModelScope.launch(Dispatchers.IO) {
-            wakeCaptureStore.clear()
-            val stats = wakeCaptureStore.stats()
-            _state.update { it.copy(wakeCaptureStats = stats) }
-        }
-    }
-
-    fun wakeCaptureShareIntent(): Intent? = wakeCaptureStore.shareIntent()
-
-    fun setKeepUtteranceAudio(enabled: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.setKeepUtteranceAudio(enabled)
-        }
-    }
-
-    fun setKeepEverythingAudio(enabled: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.setKeepEverythingAudio(enabled)
-        }
-    }
-
-    fun clearUtteranceCaptures() {
-        viewModelScope.launch(Dispatchers.IO) {
-            utteranceCaptureStore.clear()
-            val stats = utteranceCaptureStore.stats()
-            _state.update { it.copy(utteranceCaptureStats = stats) }
-        }
-    }
-
-    fun utteranceCaptureShareIntent(): Intent? = utteranceCaptureStore.shareIntent()
 
     fun setBargeInEnabled(enabled: Boolean) {
         viewModelScope.launch {

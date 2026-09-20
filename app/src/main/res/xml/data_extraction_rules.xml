@@ -9,15 +9,14 @@
     <cloud-backup>
         <!--
           Captured false-trigger audio (WakeCaptureStore) and captured commands
-          (UtteranceCaptureStore). Microphone recordings of the user's home; the
-          settings page promises they never leave the device. Never upload them.
+          (UtteranceCaptureStore). Microphone recordings of the user's home.
+          Contributing them is an explicit, per-category choice on the
+          Recordings page; a cloud backup is not that choice. Never upload them.
         -->
         <exclude domain="file" path="wake-captures/" />
         <exclude domain="file" path="wake-captures-rejected/" />
         <exclude domain="file" path="wake-captures-accepted/" />
         <exclude domain="file" path="utterance-captures/" />
-        <!-- Same recordings, same promise. -->
-        <exclude domain="file" path="wake-samples/" />
         <!--
           Deliberately recorded wake-phrase audio (WakeSampleStore). Named
           recordings of the household. More sensitive than the buffers above.
@@ -38,6 +37,7 @@
         <exclude domain="file" path="wake-captures-rejected/" />
         <exclude domain="file" path="wake-captures-accepted/" />
         <exclude domain="file" path="utterance-captures/" />
+        <exclude domain="file" path="wake-samples/" />
         <!-- Same credentials — and the Keystore key doesn't move either. -->
         <exclude domain="sharedpref" path="ari_secrets.xml" />
     </device-transfer>

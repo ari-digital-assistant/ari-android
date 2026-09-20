@@ -34,7 +34,7 @@ fun CompleteScreen(
 
     OnboardingScaffold(
         title = title,
-        currentStep = 9,
+        currentStep = 10,
         primaryLabel = stringResource(R.string.onboarding_done),
         onPrimary = {
             onboardingViewModel.completeOnboarding()

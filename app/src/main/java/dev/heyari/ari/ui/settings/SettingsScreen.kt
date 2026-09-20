@@ -13,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Hearing
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RecordVoiceOver
@@ -40,6 +41,7 @@ fun SettingsScreen(
     onOpenConversation: () -> Unit,
     onOpenLlm: () -> Unit,
     onOpenAutoUpdate: () -> Unit,
+    onOpenDeveloper: () -> Unit,
     onOpenDebug: () -> Unit,
 ) {
     SettingsScaffold(
@@ -131,6 +133,11 @@ fun SettingsScreen(
                 text = stringResource(R.string.settings_section_debug),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            SettingsCategoryRow(
+                icon = Icons.Default.Code,
+                title = stringResource(R.string.settings_category_developer),
+                onClick = onOpenDeveloper,
             )
             SettingsCategoryRow(
                 icon = Icons.Default.BugReport,

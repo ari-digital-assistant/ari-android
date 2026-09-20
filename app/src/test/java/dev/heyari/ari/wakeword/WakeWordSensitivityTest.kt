@@ -52,9 +52,9 @@ class WakeWordSensitivityTest {
         // its predecessor's ladder.
         val model = WakeWordRegistry.byId("hey_ari")
 
-        assertEquals(OperatingPoint(0.45f, 10), model.operatingPoint(WakeWordSensitivity.HIGH))
-        assertEquals(OperatingPoint(0.55f, 10), model.operatingPoint(WakeWordSensitivity.MEDIUM))
-        assertEquals(OperatingPoint(0.65f, 10), model.operatingPoint(WakeWordSensitivity.LOW))
+        assertEquals(OperatingPoint(0.65f, 10), model.operatingPoint(WakeWordSensitivity.HIGH))
+        assertEquals(OperatingPoint(0.75f, 10), model.operatingPoint(WakeWordSensitivity.MEDIUM))
+        assertEquals(OperatingPoint(0.85f, 10), model.operatingPoint(WakeWordSensitivity.LOW))
     }
 
     @Test
@@ -69,7 +69,10 @@ class WakeWordSensitivityTest {
         // The floor is provisional: it can only rise as we record more rooms.
         // If it rises past a cutoff, that cutoff moves. It never sits below.
         val ambientPeak = 0.349f
-        val minimumMargin = 0.10f
+        // Was 0.10, which is what the ladder that false-fired on LOW carried.
+        // A margin the house has already disproved is not a floor worth
+        // asserting, so this is the smallest gap still standing.
+        val minimumMargin = 0.30f
         val model = WakeWordRegistry.byId("hey_ari")
 
         WakeWordSensitivity.entries.forEach { level ->

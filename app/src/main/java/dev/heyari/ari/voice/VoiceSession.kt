@@ -185,6 +185,7 @@ class VoiceSession @Inject constructor(
     private val cardActionDispatcher: dev.heyari.ari.actions.CardActionDispatcher,
     private val settingsRepository: dev.heyari.ari.data.SettingsRepository,
     private val wakeCaptureStore: dev.heyari.ari.wakeword.WakeCaptureStore,
+    private val falseWakeMonitor: dev.heyari.ari.wakeword.FalseWakeMonitor,
     private val utteranceCaptureStore: UtteranceCaptureStore,
     private val localeProvider: dev.heyari.ari.locale.AriFfiLocaleProvider,
     private val logRepository: ConversationLogRepository,
@@ -375,6 +376,15 @@ class VoiceSession @Inject constructor(
                                     "",
                                     dev.heyari.ari.wakeword.WakeCaptureHook.SILENT,
                                 )
+                                // Counted on the same guard that decides this
+                                // is a hard negative, and for the same reason:
+                                // a pre-roll is only held for a turn a wake
+                                // phrase opened, so nothing here can count a
+                                // tap-to-talk the user simply walked away from.
+                                // The count is kept even when the audio is not
+                                // — it is the event that prices the wake word,
+                                // and the recording is only for retraining it.
+                                falseWakeMonitor.onFalseWake()
                             }
                             dismiss()
                             return@launch
@@ -969,17 +979,23 @@ class VoiceSession @Inject constructor(
     }
 
     /**
-     * Keep-everything firehose only: persist the wake moment of an ACCEPTED
-     * turn — a confirmed true positive. [pcm] is the wake pre-roll snapshot; it
-     * is null on tap-to-talk and reply turns, which have no wake moment, and
-     * the guard makes those calls a no-op. Same failure posture as
-     * [captureFalseTrigger]: an opt-in debug feature never takes the app down.
+     * Persist the wake moment of an ACCEPTED turn — a confirmed true positive.
+     * [pcm] is the wake pre-roll snapshot; it is null on tap-to-talk and reply
+     * turns, which have no wake moment, and the guard makes those calls a
+     * no-op. Same failure posture as [captureFalseTrigger]: an opt-in feature
+     * never takes the app down.
      */
     private fun captureAcceptedWake(pcm: ShortArray?, rawTranscript: String) {
         if (pcm == null || pcm.isEmpty()) return
         scope.launch(Dispatchers.IO) {
             try {
-                if (!settingsRepository.keepEverythingAudio.first()) return@launch
+                // The firehose implies this capture, exactly as it does the
+                // containment paths.
+                if (!settingsRepository.keepWakeAudio.first() &&
+                    !settingsRepository.keepEverythingAudio.first()
+                ) {
+                    return@launch
+                }
                 wakeCaptureStore.save(
                     pcm,
                     rawTranscript,

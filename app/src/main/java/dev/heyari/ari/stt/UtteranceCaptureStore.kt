@@ -129,7 +129,8 @@ class UtteranceCaptureStore @Inject constructor(
     /** Every captured clip and its sidecar, for the share sheet or a bug report. */
     fun files(): List<File> = clips.files()
 
-    private companion object {
+    // Internal rather than private: see WakeCaptureStore's companion.
+    internal companion object {
         const val DIR_NAME = "utterance-captures"
         const val MAX_FILES = 100
         const val MAX_BYTES = 50L * 1024 * 1024

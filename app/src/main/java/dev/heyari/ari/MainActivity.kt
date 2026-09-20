@@ -25,6 +25,9 @@ import dev.heyari.ari.ui.AriNavHost
 import dev.heyari.ari.ui.Routes
 import dev.heyari.ari.ui.theme.AriTheme
 import dev.heyari.ari.updates.UpdatesRepository
+import dev.heyari.ari.ui.settings.AdviceMode
+import dev.heyari.ari.wakeword.FalseWakeMonitor
+import dev.heyari.ari.wakeword.LadderReview
 import dev.heyari.ari.wakeword.WakeWordService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -107,6 +110,7 @@ class MainActivity : ComponentActivity() {
         handleSkillUpdatesIntent(intent)
         handleSkillDeepLinkIntent(intent)
         handleModelUpdatesIntent(intent)
+        handleSensitivityIntent(intent)
     }
 
     override fun onResume() {
@@ -177,6 +181,18 @@ class MainActivity : ComponentActivity() {
             deepLinkCommands.trySend(Routes.SETTINGS_AUTO_UPDATE)
             intent.removeExtra(ModelUpdateNotifier.EXTRA_OPEN_AUTO_UPDATE)
         }
+    }
+
+    /** The two sensitivity notifications, which differ only in what they ask. */
+    private fun handleSensitivityIntent(intent: Intent?) {
+        val mode = when (intent?.action) {
+            FalseWakeMonitor.ACTION_REVIEW_FALSE_WAKES -> AdviceMode.BURST
+            LadderReview.ACTION_REVIEW_TIGHTENING -> AdviceMode.REVIEW
+            else -> return
+        }
+        deepLinkCommands.trySend(Routes.wakeWordAdvice(mode))
+        // Cleared so a rotation does not re-open the screen the user just left.
+        intent.action = null
     }
 
     override fun onStop() {

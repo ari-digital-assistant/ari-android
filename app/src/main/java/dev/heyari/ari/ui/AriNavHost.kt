@@ -32,6 +32,8 @@ import dev.heyari.ari.bugreport.CrashRecorder
 import dev.heyari.ari.bugreport.captureWindow
 import dev.heyari.ari.R
 import dev.heyari.ari.data.SettingsRepository
+import dev.heyari.ari.ui.settings.AdviceMode
+import dev.heyari.ari.ui.settings.pages.FalseWakeAdvicePage
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +56,7 @@ import dev.heyari.ari.ui.onboarding.GeneralScreen
 import dev.heyari.ari.ui.onboarding.ListeningScreen
 import dev.heyari.ari.ui.onboarding.OnboardingViewModel
 import dev.heyari.ari.ui.onboarding.PermissionsScreen
+import dev.heyari.ari.ui.onboarding.RecordingsScreen
 import dev.heyari.ari.ui.onboarding.LanguageScreen
 import dev.heyari.ari.ui.onboarding.SttScreen
 import dev.heyari.ari.ui.onboarding.WakeWordScreen
@@ -73,6 +76,7 @@ import dev.heyari.ari.ui.settings.pages.PermissionsSettingsPage
 import dev.heyari.ari.ui.settings.pages.SttSettingsPage
 import dev.heyari.ari.ui.settings.pages.TtsSettingsPage
 import dev.heyari.ari.ui.settings.pages.DebugSettingsPage
+import dev.heyari.ari.ui.settings.pages.DeveloperSettingsPage
 import dev.heyari.ari.ui.settings.pages.SensitivityTuningPage
 import dev.heyari.ari.ui.settings.pages.WakeSamplesPage
 import dev.heyari.ari.ui.settings.pages.WakeWordSettingsPage
@@ -93,6 +97,7 @@ object Routes {
     const val SETTINGS_PERMISSIONS = "settings/permissions"
     const val SETTINGS_WAKEWORD = "settings/wakeword"
     const val SETTINGS_WAKEWORD_TUNE = "settings/wakeword/tune"
+    const val SETTINGS_WAKEWORD_ADVICE = "settings/wakeword/advice?mode={mode}"
     const val SETTINGS_LISTENING = "settings/listening"
     const val SETTINGS_LISTENING_SCHEDULES = "settings/listening/schedules"
     const val SETTINGS_LISTENING_PLACES = "settings/listening/places"
@@ -103,6 +108,7 @@ object Routes {
     const val SETTINGS_CONVERSATION = "settings/conversation"
     const val SETTINGS_LLM = "settings/llm"
     const val SETTINGS_AUTO_UPDATE = "settings/auto-update"
+    const val SETTINGS_DEVELOPER = "settings/developer"
     const val SETTINGS_DEBUG = "settings/debug"
     const val BUG_REPORT = "bug-report"
     const val MY_REPORTS = "settings/debug/my-reports"
@@ -120,7 +126,10 @@ object Routes {
     const val ONBOARDING_STT = "onboarding/stt"
     const val ONBOARDING_ASSISTANT = "onboarding/assistant"
     const val ONBOARDING_GENERAL = "onboarding/general"
+    const val ONBOARDING_RECORDINGS = "onboarding/recordings"
     const val ONBOARDING_COMPLETE = "onboarding/complete"
+
+    fun wakeWordAdvice(mode: AdviceMode) = "settings/wakeword/advice?mode=${mode.name}"
 
     fun skillDetail(id: String, source: String) = "skills/detail/$id?source=$source"
     fun skills(type: String? = null) = if (type != null) "skills?type=$type" else "skills"
@@ -267,6 +276,7 @@ fun AriNavHost(
                 onOpenConversation = { navController.navigate(Routes.SETTINGS_CONVERSATION) },
                 onOpenLlm = { navController.navigate(Routes.SETTINGS_LLM) },
                 onOpenAutoUpdate = { navController.navigate(Routes.SETTINGS_AUTO_UPDATE) },
+                onOpenDeveloper = { navController.navigate(Routes.SETTINGS_DEVELOPER) },
                 onOpenDebug = { navController.navigate(Routes.SETTINGS_DEBUG) },
             )
         }
@@ -280,6 +290,26 @@ fun AriNavHost(
             WakeWordSettingsPage(
                 onBack = { navController.popBackStack() },
                 onTune = { navController.navigate(Routes.SETTINGS_WAKEWORD_TUNE) },
+            )
+        }
+        composable(
+            route = Routes.SETTINGS_WAKEWORD_ADVICE,
+            arguments = listOf(
+                navArgument("mode") {
+                    type = NavType.StringType
+                    defaultValue = AdviceMode.BURST.name
+                },
+            ),
+        ) { entry ->
+            // An unrecognised mode falls back to BURST rather than crashing:
+            // this route is reached from a notification, which can outlive the
+            // build that posted it.
+            val mode = runCatching {
+                AdviceMode.valueOf(entry.arguments?.getString("mode").orEmpty())
+            }.getOrDefault(AdviceMode.BURST)
+            FalseWakeAdvicePage(
+                mode = mode,
+                onDone = { navController.popBackStack() },
             )
         }
         composable(Routes.SETTINGS_WAKEWORD_TUNE) {
@@ -353,6 +383,9 @@ fun AriNavHost(
         }
         composable(Routes.SETTINGS_AUTO_UPDATE) {
             AutoUpdateSettingsPage(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.SETTINGS_DEVELOPER) {
+            DeveloperSettingsPage(onBack = { navController.popBackStack() })
         }
         composable(Routes.SETTINGS_DEBUG) {
             DebugSettingsPage(
@@ -592,6 +625,13 @@ fun AriNavHost(
                 val settingsViewModel: SettingsViewModel = hiltViewModel(graphEntry)
                 GeneralScreen(
                     settingsViewModel = settingsViewModel,
+                    onNext = { navController.navigate(Routes.ONBOARDING_RECORDINGS) },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(Routes.ONBOARDING_RECORDINGS) {
+                RecordingsScreen(
                     onNext = { navController.navigate(Routes.ONBOARDING_COMPLETE) },
                     onBack = { navController.popBackStack() },
                 )

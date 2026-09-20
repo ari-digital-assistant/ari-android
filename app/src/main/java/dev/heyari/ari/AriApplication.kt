@@ -11,6 +11,7 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
 import dev.heyari.ari.bugreport.CrashRecorder
+import dev.heyari.ari.contrib.ContributionUploader
 import dev.heyari.ari.data.AutoUpdatePreferences
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.models.ModelUpdateWorker
@@ -33,6 +34,7 @@ class AriApplication : Application(), Configuration.Provider {
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var sttModelLoader: SttModelLoader
     @Inject lateinit var autoUpdatePreferences: AutoUpdatePreferences
+    @Inject lateinit var contributionUploader: ContributionUploader
     @Inject lateinit var appLauncher: dev.heyari.ari.actions.AppLauncher
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -67,6 +69,7 @@ class AriApplication : Application(), Configuration.Provider {
         // Idempotent — KEEP policy means reinstalls don't reset the schedule.
         SkillUpdateWorker.schedule(this)
         scheduleModelUpdateWorker()
+        scheduleContributionWorker()
         NotificationChannels.ensureAll(this)
         eagerLoadActiveSttModel()
         applyPersistedAppLocale()
@@ -126,6 +129,19 @@ class AriApplication : Application(), Configuration.Provider {
             } else {
                 ModelUpdateWorker.cancel(this@AriApplication)
             }
+        }
+    }
+
+    /**
+     * Start or stop the recording-contribution sweep to match what the user
+     * has agreed to share. Done on every cold start rather than only when a
+     * toggle moves, so an install that opted in months ago keeps contributing
+     * and one that has since opted out stops holding a schedule.
+     */
+    private fun scheduleContributionWorker() {
+        scope.launch {
+            runCatching { contributionUploader.syncSchedule() }
+                .onFailure { Log.w(TAG, "contribution schedule sync failed", it) }
         }
     }
 

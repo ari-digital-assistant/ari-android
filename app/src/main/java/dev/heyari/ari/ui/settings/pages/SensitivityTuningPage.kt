@@ -33,8 +33,9 @@ import dev.heyari.ari.ui.settings.SensitivityTuningViewModel
 import dev.heyari.ari.ui.settings.SettingsViewModel
 import dev.heyari.ari.ui.settings.components.SettingsScaffold
 import dev.heyari.ari.ui.theme.LocalAriSemanticColors
+import dev.heyari.ari.wakeword.LadderFit
 import dev.heyari.ari.wakeword.SensitivityTuner
-import dev.heyari.ari.wakeword.TunedSpeaker
+import dev.heyari.ari.wakeword.Take
 
 /**
  * Two ways to settle the sensitivity: measure it, or pick it.
@@ -73,9 +74,18 @@ fun SensitivityTuningPage(
 
             TunerSection(
                 state = state,
-                onName = viewModel::setName,
+                takes = viewModel.takes,
                 onStart = viewModel::start,
                 onDismissProblem = viewModel::dismissProblem,
+            )
+
+            HorizontalDivider()
+
+            RecordingToggleRow(
+                title = stringResource(R.string.sensitivity_tuning_normal_use_title),
+                blurb = stringResource(R.string.sensitivity_tuning_normal_use_blurb),
+                checked = state.tuneDuringNormalUse,
+                onCheckedChange = viewModel::setTuneDuringNormalUse,
             )
 
             HorizontalDivider()
@@ -96,7 +106,7 @@ fun SensitivityTuningPage(
 @Composable
 private fun TunerSection(
     state: SensitivityTuningUiState,
-    onName: (String) -> Unit,
+    takes: List<Take>,
     onStart: () -> Unit,
     onDismissProblem: () -> Unit,
 ) {
@@ -118,12 +128,10 @@ private fun TunerSection(
 
         when (val tuner = state.tuner) {
             is SensitivityTuner.State.Idle -> {
-                OutlinedTextField(
-                    value = state.name,
-                    onValueChange = onName,
-                    label = { Text(stringResource(R.string.sensitivity_tuning_name_label)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                Text(
+                    text = stringResource(R.string.sensitivity_tuning_quiet_advice),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Button(
                     onClick = onStart,
@@ -132,10 +140,10 @@ private fun TunerSection(
                 ) {
                     Text(
                         stringResource(
-                            if (state.speakers.isEmpty()) {
+                            if (state.sessions.isEmpty()) {
                                 R.string.sensitivity_tuning_start
                             } else {
-                                R.string.sensitivity_tuning_add_person
+                                R.string.sensitivity_tuning_add_session
                             },
                         ),
                     )
@@ -156,6 +164,9 @@ private fun TunerSection(
                     R.string.sensitivity_tuning_attempt, tuner.attempt, tuner.total,
                 ),
                 level = 0f,
+                // Shown a beat before the mic opens, so there is time to read a
+                // decoy line rather than discover it while being recorded.
+                prompt = stringResource(tuner.prompt.promptRes),
             )
 
             is SensitivityTuner.State.Listening -> Prompt(
@@ -164,27 +175,37 @@ private fun TunerSection(
                     R.string.sensitivity_tuning_attempt, tuner.attempt, tuner.total,
                 ),
                 level = tuner.level,
+                prompt = stringResource(tuner.prompt.promptRes),
             )
 
             is SensitivityTuner.State.Scoring -> Prompt(
                 headline = stringResource(R.string.sensitivity_tuning_scoring),
-                caption = "",
-                level = 0f,
+                caption = stringResource(
+                    R.string.sensitivity_tuning_attempt, tuner.done, tuner.total,
+                ),
+                level = if (tuner.total == 0) 0f else tuner.done.toFloat() / tuner.total,
             )
 
             is SensitivityTuner.State.Problem -> Unit
         }
 
-        if (state.speakers.isNotEmpty() && !state.isBusy) {
-            Result(state)
+        if (state.fit != null && !state.isBusy) {
+            Result(state.fit)
         }
     }
 }
 
 @Composable
-private fun Prompt(headline: String, caption: String, level: Float) {
+private fun Prompt(headline: String, caption: String, level: Float, prompt: String? = null) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(text = headline, style = MaterialTheme.typography.headlineSmall)
+        if (prompt != null) {
+            Text(
+                text = "\u201c$prompt\u201d",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+            )
+        }
         if (caption.isNotBlank()) {
             Text(
                 text = caption,
@@ -200,11 +221,10 @@ private fun Prompt(headline: String, caption: String, level: Float) {
 }
 
 @Composable
-private fun Result(state: SensitivityTuningUiState) {
-    val chosen = state.chosen ?: return
+private fun Result(fit: LadderFit) {
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = if (state.shortOfTheBar) {
+            containerColor = if (fit.overlapping) {
                 MaterialTheme.colorScheme.errorContainer
             } else {
                 MaterialTheme.colorScheme.surfaceVariant
@@ -213,44 +233,30 @@ private fun Result(state: SensitivityTuningUiState) {
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                text = stringResource(
-                    R.string.sensitivity_tuning_result,
-                    stringResource(chosen.displayNameRes),
-                ),
+                text = stringResource(R.string.sensitivity_tuning_result),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = state.constrainedBy?.let {
-                    stringResource(R.string.sensitivity_tuning_shared_for, it.name)
-                } ?: stringResource(R.string.sensitivity_tuning_shared),
+                text = stringResource(
+                    R.string.sensitivity_tuning_result_detail,
+                    fit.phrasesHeard,
+                    fit.phrasesTotal,
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            state.speakers.forEach { speaker -> SpeakerRow(speaker, state) }
-            if (state.shortOfTheBar) {
+            if (fit.overlapping) {
+                // The one result the screen must not dress up. When ordinary
+                // speech scores as high as the wake phrase there is no cutoff
+                // that separates them, and a reassuring tick over that is how
+                // somebody ends up living with a wake word nobody measured.
                 Text(
-                    text = stringResource(R.string.sensitivity_tuning_short_of_bar),
+                    text = stringResource(R.string.sensitivity_tuning_overlapping),
                     style = MaterialTheme.typography.bodyMedium,
                     color = LocalAriSemanticColors.current.danger,
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun SpeakerRow(speaker: TunedSpeaker, state: SensitivityTuningUiState) {
-    val heard = speaker.heardAt[state.chosen] ?: 0
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(text = speaker.name, modifier = Modifier.weight(1f))
-        Text(
-            text = stringResource(R.string.sensitivity_tuning_heard, heard, speaker.attempts),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }

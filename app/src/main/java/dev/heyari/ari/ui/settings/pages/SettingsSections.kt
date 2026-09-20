@@ -1,6 +1,7 @@
 package dev.heyari.ari.ui.settings.pages
 
 import android.text.format.Formatter
+import android.widget.Toast
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
@@ -50,6 +51,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.heyari.ari.R
 import dev.heyari.ari.audio.ClipStats
+import dev.heyari.ari.contrib.ContributionCategory
+import dev.heyari.ari.contrib.RecordingChoices
 import dev.heyari.ari.ui.theme.LocalAriSemanticColors
 import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.llm.LlmModel
@@ -366,32 +369,17 @@ internal fun WakeWordSensitivitySection(
  * [blurb] differ.
  */
 @Composable
-internal fun AudioCaptureSection(
+internal fun CaptureStorageSection(
     title: String,
-    blurb: String,
-    enabled: Boolean,
     stats: ClipStats,
-    onToggle: (Boolean) -> Unit,
     onExport: () -> Unit,
     onClear: () -> Unit,
 ) {
     val context = LocalContext.current
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Switch(checked = enabled, onCheckedChange = onToggle)
-        }
         Text(
-            text = blurb,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
         )
         Text(
             text = if (stats.count == 0) {
@@ -418,6 +406,186 @@ internal fun AudioCaptureSection(
                 Text(stringResource(R.string.settings_capture_delete))
             }
         }
+    }
+}
+
+/**
+ * The four capture toggles. Shared between Settings > Developer and the
+ * first-run wizard so the two can never drift into saying different things
+ * about the same switch.
+ */
+@Composable
+internal fun WhatToRecordSection(
+    keep: RecordingChoices,
+    onKeepWake: (Boolean) -> Unit,
+    onKeepFalseTrigger: (Boolean) -> Unit,
+    onKeepCommand: (Boolean) -> Unit,
+    onKeepEverything: (Boolean) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = stringResource(R.string.settings_what_to_record),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        RecordingToggleRow(
+            title = stringResource(R.string.settings_keep_wake_title),
+            blurb = stringResource(R.string.settings_keep_wake_blurb),
+            checked = keep.wake,
+            onCheckedChange = onKeepWake,
+        )
+        RecordingToggleRow(
+            title = stringResource(R.string.settings_wake_capture_title),
+            blurb = stringResource(R.string.settings_wake_capture_blurb),
+            checked = keep.falseTrigger,
+            onCheckedChange = onKeepFalseTrigger,
+        )
+        RecordingToggleRow(
+            title = stringResource(R.string.settings_utterance_capture_title),
+            blurb = stringResource(R.string.settings_utterance_capture_blurb),
+            checked = keep.command,
+            onCheckedChange = onKeepCommand,
+        )
+        RecordingToggleRow(
+            title = stringResource(R.string.settings_keep_everything_title),
+            blurb = stringResource(R.string.settings_keep_everything_blurb),
+            checked = keep.everything,
+            onCheckedChange = onKeepEverything,
+        )
+    }
+}
+
+/**
+ * Why sharing exists, and the four switches that do it.
+ *
+ * A category that is not being kept cannot be shared — there would be nothing
+ * to send — so those switches stay off and say why when tapped rather than
+ * going grey and silent.
+ */
+@Composable
+internal fun WhatToShareSection(
+    keep: RecordingChoices,
+    share: RecordingChoices,
+    onShareWake: (Boolean) -> Unit,
+    onShareFalseTrigger: (Boolean) -> Unit,
+    onShareCommand: (Boolean) -> Unit,
+    onShareEverything: (Boolean) -> Unit,
+) {
+    val blocked = stringResource(R.string.settings_share_needs_keep)
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = stringResource(R.string.settings_why_share_title),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Text(
+            text = stringResource(R.string.settings_why_share_blurb),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.settings_what_to_share),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        ShareToggleRow(
+            title = stringResource(R.string.settings_share_wake_title),
+            checked = share.wake,
+            allowed = keep.covers(ContributionCategory.WAKE),
+            blockedMessage = blocked,
+            onCheckedChange = onShareWake,
+        )
+        ShareToggleRow(
+            title = stringResource(R.string.settings_share_false_trigger_title),
+            checked = share.falseTrigger,
+            allowed = keep.covers(ContributionCategory.FALSE_TRIGGER),
+            blockedMessage = blocked,
+            onCheckedChange = onShareFalseTrigger,
+        )
+        ShareToggleRow(
+            title = stringResource(R.string.settings_share_command_title),
+            checked = share.command,
+            allowed = keep.covers(ContributionCategory.COMMAND),
+            blockedMessage = blocked,
+            onCheckedChange = onShareCommand,
+        )
+        ShareToggleRow(
+            title = stringResource(R.string.settings_share_everything_title),
+            checked = share.everything,
+            allowed = keep.everything,
+            blockedMessage = blocked,
+            onCheckedChange = onShareEverything,
+        )
+    }
+}
+
+@Composable
+internal fun RecordingToggleRow(
+    title: String,
+    blurb: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = blurb,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.width(16.dp))
+        // Null handler: the row owns the gesture, so the switch is a readout
+        // and never competes with it for the tap.
+        Switch(checked = checked, onCheckedChange = null)
+    }
+}
+
+@Composable
+private fun ShareToggleRow(
+    title: String,
+    checked: Boolean,
+    allowed: Boolean,
+    blockedMessage: String,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    val context = LocalContext.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(
+                value = checked,
+                role = Role.Switch,
+                onValueChange = { wanted ->
+                    if (allowed) {
+                        onCheckedChange(wanted)
+                    } else {
+                        Toast.makeText(context, blockedMessage, Toast.LENGTH_SHORT).show()
+                    }
+                },
+            )
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (allowed) {
+                MaterialTheme.colorScheme.onSurface
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(16.dp))
+        Switch(checked = checked, onCheckedChange = null, enabled = allowed)
     }
 }
 

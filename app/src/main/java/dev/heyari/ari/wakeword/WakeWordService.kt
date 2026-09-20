@@ -383,7 +383,12 @@ class WakeWordService : Service() {
         // startListening() is sync and there's no audio loop yet to defer into.
         val activeId = runBlocking { settingsRepository.activeWakeWordId.first() }
         val sensitivityName = runBlocking { settingsRepository.wakeWordSensitivity.first() }
-        val wakeWord = WakeWordRegistry.byId(activeId)
+        val storedLadder = runBlocking { settingsRepository.wakeLadder.first() }
+        // The ladder this phone measured for itself, where there is one. Read
+        // here rather than held as a field so a tuning session or a self-
+        // tightening takes effect on the next mic cycle without the service
+        // needing to know either of them exists.
+        val wakeWord = WakeWordRegistry.byId(activeId).withLadder(TunedLadder.parse(storedLadder))
         val sensitivity = WakeWordSensitivity.fromName(sensitivityName)
         val point = wakeWord.operatingPoint(sensitivity)
         Log.i(TAG, "Loading wake word model: ${wakeWord.id} @ sensitivity=${sensitivity.name} (cutoff=${point.probabilityCutoff}, window=${point.slidingWindowSize})")
@@ -692,6 +697,16 @@ class WakeWordService : Service() {
             setShowBadge(true)
         }
         manager.createNotificationChannel(detectionChannel)
+
+        val tuningChannel = NotificationChannel(
+            CHANNEL_TUNING,
+            getString(R.string.notif_channel_wake_tuning_name),
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = getString(R.string.notif_channel_wake_tuning_description)
+            setShowBadge(true)
+        }
+        manager.createNotificationChannel(tuningChannel)
     }
 
     /**
@@ -828,6 +843,14 @@ class WakeWordService : Service() {
 
         private const val CHANNEL_LISTENING = "wake_word_listening"
         private const val CHANNEL_DETECTION = "wake_word_detection"
+
+        /**
+         * Sensitivity advice: too many false wakes, and the follow-up asking
+         * whether a tightening went too far. Its own channel so somebody who
+         * finds it nagging can silence it without also silencing the wake word
+         * telling them it could not open.
+         */
+        const val CHANNEL_TUNING = "wake_word_tuning"
 
         private const val SAMPLE_RATE = 16000
 

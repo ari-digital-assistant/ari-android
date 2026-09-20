@@ -40,6 +40,22 @@ data class WakeWordModel(
         WakeWordSensitivity.MEDIUM -> medium
         WakeWordSensitivity.LOW -> low
     }
+
+    /**
+     * This model running on a ladder measured on the user's own phone.
+     *
+     * A ladder for another model is ignored rather than applied: the numbers
+     * are points on one model's curve and mean nothing on another's, which is
+     * the mistake this file's header exists to document. Someone switching
+     * wake word gets the built-in ladder back until they tune again.
+     */
+    fun withLadder(ladder: TunedLadder?): WakeWordModel =
+        if (ladder == null || ladder.modelId != id) this
+        else copy(
+            high = OperatingPoint(ladder.high, ladder.slidingWindowSize),
+            medium = OperatingPoint(ladder.medium, ladder.slidingWindowSize),
+            low = OperatingPoint(ladder.low, ladder.slidingWindowSize),
+        )
 }
 
 object WakeWordRegistry {
@@ -51,11 +67,20 @@ object WakeWordRegistry {
      * meant to make rather than every take something detected.
      *
      * Over that ambient the highest mean across a window of 10 is 0.349, so
-     * each cutoff below is quoted by its gap above that floor: HIGH +0.10,
-     * MEDIUM +0.20, LOW +0.30. Recall runs 72% / 69% / 69% across all four
+     * each cutoff below is quoted by its gap above that floor: HIGH +0.30,
+     * MEDIUM +0.40, LOW +0.50. Recall runs 70% / 67% / 63% across all four
      * speakers, and the ladder is deliberately flat — this model separates the
      * phrase from conversation well enough that tightening it buys headroom
      * almost for free.
+     *
+     * The ladder before this one quoted the same floor at +0.10 / +0.20 /
+     * +0.30 and false-fired in the house inside two days, on LOW — its
+     * strictest setting, with no stricter one left to try. No cutoff in this
+     * whole range fires on the twenty minutes of ambient, so that corpus could
+     * neither predict it nor price the fix; the margin moved because a room
+     * said so, not because a recording did. Whatever wakes it has never been
+     * recorded, and until it has, every number here is a floor rather than an
+     * answer.
      *
      * It replaced a ladder of 0.95 / 0.985 / 0.99 that had been here since
      * April, inherited rather than measured. That one sat 0.64 clear of the
@@ -63,7 +88,11 @@ object WakeWordRegistry {
      * wakes — 18 of 46 against 29 — while barely touching the loudest, who
      * went 13 of 16 to 14 of 16. A wake word that only answers the person who
      * set it up is the failure this ladder exists to prevent, and it is
-     * invisible if you only ever test it yourself.
+     * invisible if you only ever test it yourself. She keeps 25 of those 46
+     * here, and the loudest speaker is unchanged at 14 of 16 — as he is at
+     * every cutoff up to 0.95, which is why tightening costs him nothing and
+     * her four takes. Past 0.95 she drops to 18 and that is where the ladder
+     * stops.
      *
      * Twenty minutes cannot price a rate of one false wake an hour. Treat the
      * floor as provisional and raise it when longer ambient says so.
@@ -73,9 +102,9 @@ object WakeWordRegistry {
         displayName = "Hey Ari",
         assetFilename = "hey_ari.tflite",
         featureStepSizeMs = 10,
-        high = OperatingPoint(0.45f, 10),
-        medium = OperatingPoint(0.55f, 10),
-        low = OperatingPoint(0.65f, 10),
+        high = OperatingPoint(0.65f, 10),
+        medium = OperatingPoint(0.75f, 10),
+        low = OperatingPoint(0.85f, 10),
     )
 
     /**

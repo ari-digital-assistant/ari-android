@@ -8,9 +8,9 @@
     <!--
       Captured false-trigger audio (WakeCaptureStore) and captured commands
       (UtteranceCaptureStore). These are microphone recordings of the user's
-      home, and the settings page promises they never leave the device. Backing
-      them up would copy them to Google's servers, so they are excluded here
-      and in data_extraction_rules.xml.
+      home. Sharing them is the user's decision to make, one category at a
+      time, and a backup is not that decision — it would copy the lot to
+      Google's servers. Excluded here and in data_extraction_rules.xml.
     -->
     <exclude domain="file" path="wake-captures/" />
     <exclude domain="file" path="wake-captures-rejected/" />
