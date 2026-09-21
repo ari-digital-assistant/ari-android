@@ -530,9 +530,20 @@ class PlaceGeofences @Inject constructor(
         // better authority — Play Services has been watching continuously,
         // where we get one burst. Let it go before a late fix overwrites this.
         stopSeed()
+        // Logged at the same weight as the platform crossings so the two can be
+        // read side by side. Under BOTH the interesting number is not that a
+        // crossing arrived, it is which stack said it first and how far apart
+        // they were.
+        val names = ids.map { id -> registered.firstOrNull { it.id == id }?.name ?: id }
         when (event.geofenceTransition) {
-            Geofence.GEOFENCE_TRANSITION_ENTER -> insideIds.update { it + ids }
-            Geofence.GEOFENCE_TRANSITION_EXIT -> insideIds.update { it - ids }
+            Geofence.GEOFENCE_TRANSITION_ENTER -> {
+                Log.i(TAG, "Play fence: entered ${names.joinToString()}")
+                insideIds.update { it + ids }
+            }
+            Geofence.GEOFENCE_TRANSITION_EXIT -> {
+                Log.i(TAG, "Play fence: left ${names.joinToString()}")
+                insideIds.update { it - ids }
+            }
             else -> Log.w(TAG, "Ignoring geofence transition ${event.geofenceTransition}")
         }
     }
