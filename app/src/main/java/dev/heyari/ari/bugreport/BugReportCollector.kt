@@ -32,8 +32,17 @@ import javax.inject.Singleton
 
 private const val TAG = "BugReportCollector"
 
-/** How much of the log to keep. Enough to hold the incident, not the week. */
-private const val LOGCAT_LINES = 2000
+/**
+ * How much of the log to keep.
+ *
+ * 2000 was sized for one process's worth of trouble. Now that the read spans
+ * Ari's previous lives, the incident worth catching is a restart loop: nine
+ * processes over six hours on 2026-09-21, and 2000 lines would have reached
+ * back about as far as the last one. At the ~150 bytes a line runs to in
+ * practice this is roughly 1.5MB against a 20MB per-report ceiling, and the
+ * audio attachments are what actually spend that budget.
+ */
+private const val LOGCAT_LINES = 10_000
 
 /**
  * How many process exits to name. Enough that a crash loop is obvious as a
