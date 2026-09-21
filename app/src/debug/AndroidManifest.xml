@@ -10,5 +10,16 @@
 
     <application
         android:networkSecurityConfig="@xml/network_security_config_debug"
-        tools:replace="android:networkSecurityConfig" />
+        tools:replace="android:networkSecurityConfig">
+
+        <!--
+          Issue #19 probe: measures whether the platform location stack is
+          throttled while Ari's microphone FGS is up. Exported so it can be
+          driven from `adb shell am broadcast`, which is the whole point of
+          it; debug-only, so nothing exported here ever ships.
+        -->
+        <receiver
+            android:name="dev.heyari.ari.debug.LocationProbeReceiver"
+            android:exported="true" />
+    </application>
 </manifest>
