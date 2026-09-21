@@ -1,6 +1,7 @@
 package dev.heyari.ari.bugreport
 
 import android.app.ActivityManager
+import android.app.ApplicationExitInfo
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
@@ -8,6 +9,7 @@ import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.PowerManager
 import android.util.Log
+import androidx.annotation.RequiresApi
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.BuildConfig
 import dev.heyari.ari.data.SecretStore
@@ -22,6 +24,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.time.Instant
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import javax.inject.Inject
@@ -31,6 +34,12 @@ private const val TAG = "BugReportCollector"
 
 /** How much of the log to keep. Enough to hold the incident, not the week. */
 private const val LOGCAT_LINES = 2000
+
+/**
+ * How many process exits to name. Enough that a crash loop is obvious as a
+ * loop rather than as one bad night, without turning the header into the log.
+ */
+private const val EXIT_REASONS = 10
 
 /**
  * What a diagnostic file would cost to send, so the report screen can show a
@@ -50,9 +59,8 @@ data class AttachmentOffer(
  *
  * Reads from what the app already keeps — the capture stores, the settings,
  * the conversation log — and never starts recording anything of its own. The
- * logcat is filtered to Ari's own process and put through [LogScrubber] before
- * it is written anywhere, so the copy that reaches the staging directory is
- * already redacted.
+ * logcat is put through [LogScrubber] before it is written anywhere, so the
+ * copy that reaches the staging directory is already redacted.
  */
 @Singleton
 class BugReportCollector @Inject constructor(
@@ -230,24 +238,86 @@ class BugReportCollector @Inject constructor(
     }
 
     /**
-     * Ari's own log, redacted.
+     * Ari's own log, redacted, with the recent process exits on top.
      *
-     * `logcat --pid` is the whole of the filtering: since Android 4.1 an app
-     * can only read its own entries anyway, so this is a narrowing rather than
-     * a privacy boundary. The scrubber is the privacy boundary, and it runs
-     * before a single byte is written to disk.
+     * Deliberately NOT narrowed to the current pid. A crash report is filed by
+     * the process that came up *after* the crash, so `--pid` reliably excluded
+     * the one thing the report existed to carry. Since Android 4.1 a log read
+     * is restricted to the app's own uid regardless, so dropping the filter
+     * widens this to Ari's previous lives and to nothing else. The scrubber is
+     * the privacy boundary, and it runs before a single byte reaches disk.
      */
     private suspend fun scrubbedLogcat(): String {
         val raw = runCatching {
             val process = ProcessBuilder(
-                "logcat", "-d", "-t", LOGCAT_LINES.toString(), "--pid=${android.os.Process.myPid()}",
+                "logcat", "-d", "-t", LOGCAT_LINES.toString(),
             ).redirectErrorStream(true).start()
             process.inputStream.bufferedReader().use { it.readText() }.also { process.waitFor() }
         }.getOrElse {
             Log.w(TAG, "could not read logcat", it)
-            return "logcat was not readable on this device"
+            "logcat was not readable on this device"
         }
-        return LogScrubber(knownSecrets()).scrub(raw)
+        return LogScrubber(knownSecrets()).scrub(recentExits() + raw)
+    }
+
+    /**
+     * Why Ari's last few processes ended, straight from the platform.
+     *
+     * The log says what was happening when a process stopped writing; this
+     * says what stopped it. It also outlives the log: the ring buffer rolls
+     * within hours and does not survive a reboot, while these do both.
+     */
+    private fun recentExits(): String {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return ""
+        val manager = context.getSystemService(ActivityManager::class.java) ?: return ""
+        val exits = runCatching {
+            manager.getHistoricalProcessExitReasons(context.packageName, 0, EXIT_REASONS)
+        }.getOrElse {
+            Log.w(TAG, "could not read process exit reasons", it)
+            return ""
+        }
+        if (exits.isEmpty()) return ""
+        return buildString {
+            appendLine("--------- beginning of process exits (newest first)")
+            for (exit in exits) {
+                append(Instant.ofEpochMilli(exit.timestamp))
+                append(" pid=${exit.pid}")
+                append(" reason=${reasonName(exit.reason)}")
+                append(" status=${exit.status}")
+                append(" importance=${exit.importance}")
+                exit.description?.let { append(" description=$it") }
+                appendLine()
+            }
+            appendLine()
+        }
+    }
+
+    /**
+     * Named rather than numbered, because nobody reading a report at 2am
+     * remembers that 4 is a crash and 12 is a dependency dying.
+     */
+    @RequiresApi(Build.VERSION_CODES.R)
+    private fun reasonName(reason: Int): String = when (reason) {
+        ApplicationExitInfo.REASON_EXIT_SELF -> "exit-self"
+        ApplicationExitInfo.REASON_SIGNALED -> "signalled"
+        ApplicationExitInfo.REASON_LOW_MEMORY -> "low-memory"
+        ApplicationExitInfo.REASON_CRASH -> "crash"
+        ApplicationExitInfo.REASON_CRASH_NATIVE -> "crash-native"
+        ApplicationExitInfo.REASON_ANR -> "anr"
+        ApplicationExitInfo.REASON_INITIALIZATION_FAILURE -> "init-failure"
+        ApplicationExitInfo.REASON_PERMISSION_CHANGE -> "permission-change"
+        ApplicationExitInfo.REASON_EXCESSIVE_RESOURCE_USAGE -> "excessive-resources"
+        ApplicationExitInfo.REASON_USER_REQUESTED -> "user-requested"
+        ApplicationExitInfo.REASON_USER_STOPPED -> "user-stopped"
+        ApplicationExitInfo.REASON_DEPENDENCY_DIED -> "dependency-died"
+        ApplicationExitInfo.REASON_OTHER -> "other"
+        // These three arrived after API 30, and this block runs from 30, so
+        // they go in by value rather than by a name lint would rightly reject.
+        // Platform reason codes are wire-stable; they do not get renumbered.
+        14 -> "freezer"
+        15 -> "package-state-change"
+        16 -> "package-updated"
+        else -> "unknown($reason)"
     }
 
     /**
