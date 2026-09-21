@@ -82,6 +82,14 @@ class BugReportCollector @Inject constructor(
 ) {
 
     /**
+     * The scrubbed log for the report being written, captured once by [offers]
+     * and written by [stage]. Read from an IO dispatcher, written from the
+     * caller's, hence the volatile.
+     */
+    @Volatile
+    private var logcatSnapshot: String? = null
+
+    /**
      * The engine version comes from the FFI rather than from anything the app
      * hardcodes, so it can never drift from the library actually loaded — a
      * bug report that names the wrong engine is worse than one that names
@@ -175,8 +183,13 @@ class BugReportCollector @Inject constructor(
      * as an empty tick — there is no point asking somebody to consent to
      * sending nothing.
      */
-    fun offers(hasScreenshot: Boolean): List<AttachmentOffer> = buildList {
-        add(AttachmentOffer(AttachmentKind.LOGCAT, 1, 0, defaultOn = true))
+    suspend fun offers(hasScreenshot: Boolean): List<AttachmentOffer> = buildList {
+        // Captured here rather than sized by guess, and kept for [stage] to
+        // write: a figure somebody consented to is worth nothing if the file
+        // that goes up is a different one. Fresh on every open, so a report
+        // abandoned last week can't leave its log behind for this one.
+        val log = captureLogcat().also { logcatSnapshot = it }
+        add(AttachmentOffer(AttachmentKind.LOGCAT, 1, log.toByteArray().size.toLong(), defaultOn = true))
         if (hasScreenshot) {
             add(AttachmentOffer(AttachmentKind.SCREENSHOT, 1, 0, defaultOn = true))
         }
@@ -224,7 +237,7 @@ class BugReportCollector @Inject constructor(
             val file = File(staging, "${kind.wireName}.${kind.extension}")
             val written = runCatching {
                 when (kind) {
-                    AttachmentKind.LOGCAT -> file.writeText(scrubbedLogcat())
+                    AttachmentKind.LOGCAT -> file.writeText(logcatSnapshot ?: captureLogcat())
                     AttachmentKind.SCREENSHOT -> screenshot?.let { file.writeBytes(it) }
                     AttachmentKind.CONVERSATION -> file.writeText(conversationJson())
                     AttachmentKind.COMMANDS -> zipInto(file, utteranceCaptures.files())
@@ -243,6 +256,7 @@ class BugReportCollector @Inject constructor(
      * somebody's audio in the cache would be careless.
      */
     fun clearStaging() {
+        logcatSnapshot = null
         stagingDir(context.cacheDir).listFiles()?.forEach { it.delete() }
     }
 
@@ -256,7 +270,7 @@ class BugReportCollector @Inject constructor(
      * widens this to Ari's previous lives and to nothing else. The scrubber is
      * the privacy boundary, and it runs before a single byte reaches disk.
      */
-    private suspend fun scrubbedLogcat(): String {
+    private suspend fun captureLogcat(): String = withContext(Dispatchers.IO) {
         val raw = runCatching {
             val process = ProcessBuilder(
                 "logcat", "-d", "-t", LOGCAT_LINES.toString(),
@@ -266,7 +280,7 @@ class BugReportCollector @Inject constructor(
             Log.w(TAG, "could not read logcat", it)
             "logcat was not readable on this device"
         }
-        return LogScrubber(knownSecrets()).scrub(recentExits() + raw)
+        LogScrubber(knownSecrets()).scrub(recentExits() + raw)
     }
 
     /**

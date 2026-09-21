@@ -455,7 +455,14 @@ private val AttachmentKind.labelRes: Int
  */
 @Composable
 private fun AttachmentOffer.summary(): String = when (kind) {
-    AttachmentKind.LOGCAT -> stringResource(R.string.bug_report_file_logcat_note)
+    // The log is the one attachment nobody can picture the size of, and it is
+    // ticked by default, so the size goes next to the reassurance rather than
+    // instead of it.
+    AttachmentKind.LOGCAT -> stringResource(
+        R.string.bug_report_file_count_size,
+        stringResource(R.string.bug_report_file_logcat_note),
+        formatBytes(bytes),
+    )
     AttachmentKind.SCREENSHOT -> stringResource(R.string.bug_report_file_screenshot_note)
     AttachmentKind.CONVERSATION ->
         pluralStringResource(R.plurals.bug_report_turns, fileCount, fileCount)
