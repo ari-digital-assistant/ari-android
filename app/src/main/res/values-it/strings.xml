@@ -448,6 +448,16 @@
     <string name="listening_mode_never_blurb">Ari non apre mai il microfono da solo. Lo richiami con il pulsante del microfono, il gesto dell\'assistente o il tasto di un auricolare.</string>
     <string name="listening_mode_custom_label">Personalizzata</string>
     <string name="listening_mode_custom_blurb">Ari ascolta quando è vera almeno una delle condizioni che scegli.</string>
+
+    <!-- Place fence source. Only shown where Play Services is sandboxed. -->
+    <string name="place_fences_title">Come vengono rilevati i luoghi</string>
+    <string name="place_fences_blurb">Su questo dispositivo Play Services è isolato, quindi la sua posizione può essere troppo imprecisa per un\'area piccola. Usando entrambi i sistemi, Ari ha due possibilità di accorgersene.</string>
+    <string name="place_fences_play_label">Play Services</string>
+    <string name="place_fences_play_blurb">Il metodo abituale. Consuma meno batteria, ma è preciso solo quanto la posizione su cui si basa.</string>
+    <string name="place_fences_platform_label">Integrato in Android</string>
+    <string name="place_fences_platform_blurb">Le aree di Android, senza coinvolgere Play Services. Più semplice, ma potrebbe accorgersene più tardi.</string>
+    <string name="place_fences_both_label">Entrambi</string>
+    <string name="place_fences_both_blurb">Registra entrambi e usa il primo che se ne accorge. Consigliato su questo dispositivo.</string>
     <string name="listening_condition_screen_label">Schermo acceso</string>
     <string name="listening_condition_screen_blurb">Ascolta mentre usi il telefono. Il risparmio più grande di tutti: lo schermo è spento per la maggior parte della giornata.</string>
     <string name="listening_condition_charging_label">Sotto carica</string>

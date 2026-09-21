@@ -50,6 +50,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.gms.location.LocationServices
 import dev.heyari.ari.R
 import dev.heyari.ari.listening.ListeningPlace
+import dev.heyari.ari.listening.PlaceFenceSource
 import dev.heyari.ari.ui.settings.SettingsViewModel
 import dev.heyari.ari.ui.settings.components.SettingsScaffold
 import org.ramani.compose.CameraPosition
@@ -156,6 +157,31 @@ fun ListeningPlacesPage(
                     Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.settings_listening_place_add))
+                }
+            }
+
+            // Only where Play Services is sandboxed. On an ordinary device the
+            // second set of fences would never disagree with the first, so the
+            // choice would be a question with one right answer — which is not a
+            // setting, it is clutter.
+            if (state.sandboxedPlay) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.place_fences_title),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = stringResource(R.string.place_fences_blurb),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                PlaceFenceSource.entries.forEach { option ->
+                    ListeningModeCard(
+                        selected = state.placeFenceSource == option,
+                        title = stringResource(option.labelRes),
+                        blurb = stringResource(option.blurbRes),
+                        onClick = { viewModel.setPlaceFenceSource(option) },
+                    )
                 }
             }
         }

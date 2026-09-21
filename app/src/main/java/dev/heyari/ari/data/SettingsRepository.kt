@@ -15,6 +15,7 @@ import dev.heyari.ari.listening.ListeningCondition
 import dev.heyari.ari.listening.ListeningMode
 import dev.heyari.ari.listening.ListeningPlace
 import dev.heyari.ari.listening.ListeningSchedule
+import dev.heyari.ari.listening.PlaceFenceSource
 import dev.heyari.ari.listening.decodeConditions
 import dev.heyari.ari.listening.decodePlaces
 import dev.heyari.ari.listening.decodeSchedules
@@ -699,6 +700,25 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    /**
+     * Which fences decide whether the device is at a listening place.
+     *
+     * Unset means [PlaceFenceSource.defaultFor], which is resolved per read
+     * rather than written once: a device whose Play Services arrangement
+     * changes under it should pick up the right answer without anyone having
+     * to go and clear a stored value.
+     */
+    val placeFenceSource: Flow<PlaceFenceSource> = context.dataStore.data.map { prefs ->
+        PlaceFenceSource.fromSlug(
+            prefs[KEY_PLACE_FENCE_SOURCE],
+            PlaceFenceSource.defaultFor(context),
+        )
+    }.distinctUntilChanged()
+
+    suspend fun setPlaceFenceSource(source: PlaceFenceSource) {
+        context.dataStore.edit { prefs -> prefs[KEY_PLACE_FENCE_SOURCE] = source.slug }
+    }
+
     /** Recurring listening windows, as a JSON array. Empty until the user adds one. */
     val listeningSchedules: Flow<List<ListeningSchedule>> = context.dataStore.data.map { prefs ->
         decodeSchedules(prefs[KEY_LISTENING_SCHEDULES])
@@ -788,6 +808,7 @@ class SettingsRepository @Inject constructor(
         private val KEY_FAB_Y = floatPreferencesKey("bug_report_fab_y")
         private val KEY_PENDING_CLOUD_ASSISTANT_SETUP = booleanPreferencesKey("pending_cloud_assistant_setup")
         private val KEY_LISTENING_MODE = stringPreferencesKey("listening_mode")
+        private val KEY_PLACE_FENCE_SOURCE = stringPreferencesKey("place_fence_source")
         private val KEY_LISTENING_CONDITIONS = stringPreferencesKey("listening_conditions")
         private val KEY_LISTENING_SCHEDULES = stringPreferencesKey("listening_schedules")
         private val KEY_LISTENING_PLACES = stringPreferencesKey("listening_places")

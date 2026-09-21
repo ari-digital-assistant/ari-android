@@ -9,12 +9,15 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.location.Location
+import android.location.LocationListener
 import android.location.LocationManager
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.location.Geofence
@@ -64,6 +67,16 @@ class PlaceGeofences @Inject constructor(
 
     private var wakeReceiver: BroadcastReceiver? = null
 
+    // The platform seed's own listener, which has no Play Services equivalent
+    // to cancel through. Kept so [stopSeed] can shut the burst down whichever
+    // half of the code opened it.
+    private var platformSeedListener: LocationListener? = null
+
+    // Which fences to register. Set by [register] before anything is armed, and
+    // read again on every [refreshIfStale] re-arm.
+    @Volatile
+    private var source: PlaceFenceSource = PlaceFenceSource.PLAY
+
     // When the geofencer or a seed last told us anything. Elapsed-realtime
     // rather than uptime, because the Doze that silences the geofencer is
     // exactly the time that has to count towards going stale.
@@ -100,8 +113,9 @@ class PlaceGeofences @Inject constructor(
         return fine && background
     }
 
-    fun register(places: List<ListeningPlace>) {
+    fun register(places: List<ListeningPlace>, source: PlaceFenceSource) {
         clear()
+        this.source = source
         if (places.isEmpty()) return
         arm(places.take(ListeningPlace.MAX_PLACES))
     }
@@ -115,9 +129,13 @@ class PlaceGeofences @Inject constructor(
      */
     @SuppressLint("MissingPermission") // gated on hasPermissions() immediately below
     private fun arm(places: List<ListeningPlace>) {
-        if (!playServicesAvailable()) {
-            Log.w(TAG, "Play Services unavailable — place-based listening is off")
-            return
+        // Falling back rather than switching the feature off: somebody who
+        // picked Play fences on a device that turns out not to have them is
+        // better served by the worse mechanism than by silence.
+        val usePlay = source.usesPlay && playServicesAvailable()
+        val usePlatform = source.usesPlatform || !usePlay
+        if (source.usesPlay && !usePlay) {
+            Log.w(TAG, "Play Services unavailable — falling back to platform fences")
         }
         if (!hasPermissions()) {
             Log.w(TAG, "Fine + background location not granted — place-based listening is off")
@@ -127,6 +145,12 @@ class PlaceGeofences @Inject constructor(
         registered = places
         lastConfirmedAt = SystemClock.elapsedRealtime()
         watchForWake()
+
+        if (usePlatform) armPlatformFences(places)
+        if (!usePlay) {
+            seedFromCurrentLocation(places, useFused = false)
+            return
+        }
 
         val fences = places.map { place ->
             Geofence.Builder()
@@ -151,7 +175,45 @@ class PlaceGeofences @Inject constructor(
         client.addGeofences(request, transitionPendingIntent())
             .addOnFailureListener { Log.w(TAG, "Failed to register geofences", it) }
 
-        seedFromCurrentLocation(places)
+        seedFromCurrentLocation(places, useFused = true)
+    }
+
+    /**
+     * The platform's own circles, registered alongside the Play Services ones
+     * rather than instead of them.
+     *
+     * `addProximityAlert` is the cruder mechanism — no dwell, no batching, and
+     * scheduling we don't get to tune — but it is watching a different stack,
+     * so the two fail at different times. Where Play Services is sandboxed and
+     * working off a ±300m fix, the crude fence on a ±10m platform fix is
+     * routinely the one that notices.
+     *
+     * Re-registering the same PendingIntent replaces the alert rather than
+     * doubling it, so a re-arm needs no teardown first.
+     */
+    @SuppressLint("MissingPermission") // gated on hasPermissions() in arm()
+    private fun armPlatformFences(places: List<ListeningPlace>) {
+        val lm = context.getSystemService(LocationManager::class.java) ?: return
+        for (place in places) {
+            runCatching {
+                lm.addProximityAlert(
+                    place.latitude,
+                    place.longitude,
+                    place.radiusMetres,
+                    NEVER_EXPIRE,
+                    proximityPendingIntent(place.id),
+                )
+            }.onFailure { Log.w(TAG, "Failed to register platform fence for ${place.name}", it) }
+        }
+        Log.i(TAG, "Registered ${places.size} platform fence(s)")
+    }
+
+    private fun clearPlatformFences(places: List<ListeningPlace>) {
+        val lm = context.getSystemService(LocationManager::class.java) ?: return
+        for (place in places) {
+            runCatching { lm.removeProximityAlert(proximityPendingIntent(place.id)) }
+                .onFailure { Log.w(TAG, "Failed to remove platform fence for ${place.name}", it) }
+        }
     }
 
     /**
@@ -237,7 +299,7 @@ class PlaceGeofences @Inject constructor(
      * re-seeds once the fences go quiet.
      */
     @SuppressLint("MissingPermission") // gated on hasPermissions() in register()
-    private fun seedFromCurrentLocation(places: List<ListeningPlace>) {
+    private fun seedFromCurrentLocation(places: List<ListeningPlace>, useFused: Boolean) {
         stopSeed()
 
         var sharpest: Location? = null
@@ -271,6 +333,16 @@ class PlaceGeofences @Inject constructor(
         }
 
         if (platformLastKnown()?.let(::offer) == true) return
+
+        if (!useFused) {
+            // No Play Services to burst from, so ask the platform directly. The
+            // backstop below is shared: it does not care which stack failed to
+            // converge, only that the window closed.
+            startPlatformSeed(::offer)
+            seedBackstop = platformBackstop(places) { sharpest }
+            seedHandler.postDelayed(seedBackstop!!, SEED_TIMEOUT_MS)
+            return
+        }
 
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, SEED_INTERVAL_MS)
             .setMinUpdateIntervalMillis(SEED_INTERVAL_MS)
@@ -311,6 +383,65 @@ class PlaceGeofences @Inject constructor(
     }
 
     /**
+     * The same burst as the Play Services one, asked of the platform instead.
+     * Every fix goes through the identical [offer] test, so the two paths settle
+     * on the same evidence and differ only in who supplied it.
+     */
+    @SuppressLint("MissingPermission") // gated on hasPermissions() in arm()
+    private fun startPlatformSeed(offer: (Location) -> Boolean) {
+        val lm = context.getSystemService(LocationManager::class.java) ?: return
+        val provider = bestPlatformProvider(lm) ?: run {
+            Log.w(TAG, "No platform location provider enabled — nothing to seed from")
+            return
+        }
+        val listener = LocationListener { location -> offer(location) }
+        platformSeedListener = listener
+        runCatching {
+            lm.requestLocationUpdates(provider, SEED_INTERVAL_MS, 0f, listener, Looper.getMainLooper())
+        }.onFailure {
+            Log.w(TAG, "Couldn't seed place state from $provider", it)
+            platformSeedListener = null
+        }
+    }
+
+    private fun platformBackstop(
+        places: List<ListeningPlace>,
+        sharpest: () -> Location?,
+    ) = Runnable {
+        val settled = sharpest()
+        if (settled == null) {
+            Log.w(TAG, "Platform seed window closed with no usable fix — leaving it to the fences")
+            stopSeed()
+        } else {
+            Log.i(
+                TAG,
+                "Seeded from ${settled.provider} (best of ${SEED_TIMEOUT_MS / 1000}s, " +
+                    "±${settled.accuracy.toInt()}m): inside " +
+                    "${places.count { it.contains(settled) }} of ${places.size} place(s)",
+            )
+            insideIds.value = places.filter { it.contains(settled) }.map { it.id }.toSet()
+            lastConfirmedAt = SystemClock.elapsedRealtime()
+            stopSeed()
+        }
+    }
+
+    /**
+     * The platform's fused provider where there is one, which is the closest
+     * thing it has to the Play Services client, and the network provider
+     * otherwise. GPS last: indoors it is the one that never answers.
+     */
+    private fun bestPlatformProvider(lm: LocationManager): String? {
+        val enabled = lm.getProviders(true)
+        return when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                LocationManager.FUSED_PROVIDER in enabled -> LocationManager.FUSED_PROVIDER
+            LocationManager.NETWORK_PROVIDER in enabled -> LocationManager.NETWORK_PROVIDER
+            LocationManager.GPS_PROVIDER in enabled -> LocationManager.GPS_PROVIDER
+            else -> null
+        }
+    }
+
+    /**
      * The sharpest fix the platform already has to hand, across every enabled
      * provider, ignoring anything too old to describe where we are now.
      *
@@ -346,16 +477,44 @@ class PlaceGeofences @Inject constructor(
         seedBackstop = null
         seedCallback?.let { locationClient.removeLocationUpdates(it) }
         seedCallback = null
+        platformSeedListener?.let { listener ->
+            runCatching { context.getSystemService(LocationManager::class.java)?.removeUpdates(listener) }
+        }
+        platformSeedListener = null
     }
 
     fun clear() {
         stopSeed()
         stopWatchingForWake()
+        // Read before blanking: the platform alerts can only be removed by
+        // rebuilding the PendingIntent each one was registered with, which
+        // needs the ids.
+        val wasRegistered = registered
         registered = emptyList()
         insideIds.value = emptySet()
+        if (wasRegistered.isNotEmpty()) clearPlatformFences(wasRegistered)
         if (!playServicesAvailable()) return
         client.removeGeofences(transitionPendingIntent())
             .addOnFailureListener { Log.w(TAG, "Failed to remove geofences", it) }
+    }
+
+    /**
+     * A platform proximity crossing, which carries one place and a direction
+     * rather than Play Services' batch.
+     *
+     * Treated as equal in authority to a Play Services transition: under [BOTH]
+     * whichever stack notices first wins, and the other agreeing later is a
+     * no-op on a set. [stopSeed] for the same reason the Play path does it — a
+     * fence that has actually spoken outranks a burst still guessing.
+     */
+    internal fun onProximity(intent: Intent) {
+        val placeId = intent.data?.lastPathSegment ?: return
+        val entering = intent.getBooleanExtra(LocationManager.KEY_PROXIMITY_ENTERING, false)
+        val name = registered.firstOrNull { it.id == placeId }?.name ?: placeId
+        Log.i(TAG, "Platform fence: ${if (entering) "entered" else "left"} $name")
+        lastConfirmedAt = SystemClock.elapsedRealtime()
+        stopSeed()
+        if (entering) insideIds.update { it + placeId } else insideIds.update { it - placeId }
     }
 
     internal fun onTransition(event: GeofencingEvent) {
@@ -390,9 +549,33 @@ class PlaceGeofences @Inject constructor(
         )
     }
 
+    /**
+     * One alert per place, told apart by the intent's data.
+     *
+     * PendingIntents are deduped on action and data and explicitly *not* on
+     * extras, so putting the id in an extra would collapse every place onto a
+     * single fence — the last one registered silently replacing the rest.
+     */
+    private fun proximityPendingIntent(placeId: String): PendingIntent {
+        val intent = Intent(context, GeofenceReceiver::class.java)
+            .setAction(GeofenceReceiver.ACTION_PROXIMITY)
+            .setData("ari://place/$placeId".toUri())
+        return PendingIntent.getBroadcast(
+            context,
+            REQUEST_PROXIMITY,
+            intent,
+            // Mutable: the platform fills KEY_PROXIMITY_ENTERING in on delivery.
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
+        )
+    }
+
     private companion object {
         const val TAG = "PlaceGeofences"
         const val REQUEST_TRANSITION = 0
+        const val REQUEST_PROXIMITY = 1
+
+        /** `addProximityAlert`'s own spelling of Geofence.NEVER_EXPIRE. */
+        const val NEVER_EXPIRE = -1L
         const val RESPONSIVENESS_MS = 5 * 60 * 1000
 
         const val SEED_INTERVAL_MS = 1000L
@@ -443,11 +626,17 @@ class GeofenceReceiver : BroadcastReceiver() {
     lateinit var placeGeofences: PlaceGeofences
 
     override fun onReceive(context: Context, intent: Intent) {
-        val event = GeofencingEvent.fromIntent(intent) ?: return
-        placeGeofences.onTransition(event)
+        when (intent.action) {
+            ACTION_PROXIMITY -> placeGeofences.onProximity(intent)
+            else -> {
+                val event = GeofencingEvent.fromIntent(intent) ?: return
+                placeGeofences.onTransition(event)
+            }
+        }
     }
 
     companion object {
         const val ACTION_TRANSITION = "dev.heyari.ari.GEOFENCE_TRANSITION"
+        const val ACTION_PROXIMITY = "dev.heyari.ari.PLACE_PROXIMITY"
     }
 }

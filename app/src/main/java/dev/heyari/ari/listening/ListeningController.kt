@@ -89,9 +89,13 @@ class ListeningController @Inject constructor(
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun placeSignal(): Flow<List<String>> =
-        settingsRepository.listeningPlaces.flatMapLatest { places ->
+        combine(
+            settingsRepository.listeningPlaces,
+            settingsRepository.placeFenceSource,
+            ::Pair,
+        ).flatMapLatest { (places, source) ->
             placeGeofences.insidePlaceNames
-                .onStart { placeGeofences.register(places) }
+                .onStart { placeGeofences.register(places, source) }
                 .onCompletion { placeGeofences.clear() }
         }
 }

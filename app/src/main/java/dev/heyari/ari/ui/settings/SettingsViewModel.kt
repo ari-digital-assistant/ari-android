@@ -30,7 +30,9 @@ import dev.heyari.ari.listening.ListeningCondition
 import dev.heyari.ari.listening.ListeningMode
 import dev.heyari.ari.listening.ListeningPlace
 import dev.heyari.ari.listening.ListeningSchedule
+import dev.heyari.ari.listening.PlaceFenceSource
 import dev.heyari.ari.listening.PlaceGeofences
+import dev.heyari.ari.listening.playServicesAreSandboxed
 import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.stt.SttMode
 import dev.heyari.ari.stt.SttModel
@@ -146,6 +148,15 @@ data class SettingsState(
     val hasBackgroundLocation: Boolean = false,
     /** False on a de-Googled device, where geofencing simply isn't available. */
     val geofencingAvailable: Boolean = true,
+    /** Which fences decide place state. Only worth showing when [sandboxedPlay]. */
+    val placeFenceSource: PlaceFenceSource = PlaceFenceSource.PLAY,
+    /**
+     * Play Services here is GrapheneOS's sandboxed build. The only place the
+     * fence choice is worth putting in front of anyone: everywhere else Play
+     * Services is a system app and the second set of fences would just agree
+     * with it.
+     */
+    val sandboxedPlay: Boolean = false,
 )
 
 @HiltViewModel
@@ -324,6 +335,12 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.listeningPlaces.collect { places ->
                 _state.update { it.copy(listeningPlaces = places) }
+            }
+        }
+
+        viewModelScope.launch {
+            settingsRepository.placeFenceSource.collect { source ->
+                _state.update { it.copy(placeFenceSource = source) }
             }
         }
 
@@ -566,6 +583,7 @@ class SettingsViewModel @Inject constructor(
                     application, Manifest.permission.ACCESS_BACKGROUND_LOCATION
                 ) == PackageManager.PERMISSION_GRANTED,
                 geofencingAvailable = placeGeofences.playServicesAvailable(),
+                sandboxedPlay = playServicesAreSandboxed(application),
             )
         }
     }
@@ -584,6 +602,10 @@ class SettingsViewModel @Inject constructor(
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
         return application.packageManager.backgroundPermissionOptionLabel
             .takeIf { it.isNotBlank() }
+    }
+
+    fun setPlaceFenceSource(source: PlaceFenceSource) {
+        viewModelScope.launch { settingsRepository.setPlaceFenceSource(source) }
     }
 
     fun setListeningMode(mode: ListeningMode) {

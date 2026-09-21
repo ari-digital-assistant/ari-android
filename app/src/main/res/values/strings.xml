@@ -449,6 +449,16 @@
     <string name="listening_mode_never_blurb">Ari never opens the microphone on its own. Summon it with the mic button, the assist gesture, or a headset button.</string>
     <string name="listening_mode_custom_label">Custom</string>
     <string name="listening_mode_custom_blurb">Ari listens whenever any of the conditions you pick are true.</string>
+
+    <!-- Place fence source. Only shown where Play Services is sandboxed. -->
+    <string name="place_fences_title">How places are detected</string>
+    <string name="place_fences_blurb">Play Services is sandboxed on this device, so its location fix can be vague enough to miss a small circle. Using both sets of fences gives Ari two chances to notice.</string>
+    <string name="place_fences_play_label">Play Services</string>
+    <string name="place_fences_play_blurb">The usual mechanism. Best battery life, but only as accurate as the fix behind it.</string>
+    <string name="place_fences_platform_label">Built into Android</string>
+    <string name="place_fences_platform_blurb">Android\'s own fences, with Play Services left out of it entirely. Simpler, and it may notice later.</string>
+    <string name="place_fences_both_label">Both</string>
+    <string name="place_fences_both_blurb">Register both and act on whichever notices first. Recommended on this device.</string>
     <string name="listening_condition_screen_label">Screen is on</string>
     <string name="listening_condition_screen_blurb">Listen while you\'re using your phone. The biggest saving of the lot — your screen is off for most of the day.</string>
     <string name="listening_condition_charging_label">While charging</string>
