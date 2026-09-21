@@ -111,8 +111,29 @@ class WakeWordService : Service() {
     @Volatile
     private var oneShotTurnBegan = false
 
+    // Set when Hilt could not inject. Every injected field is then a landmine,
+    // so onStartCommand has to leave before it touches one. Main thread only,
+    // which is where both lifecycle callbacks run.
+    private var injectionFailed = false
+
     override fun onCreate() {
-        super.onCreate()
+        try {
+            super.onCreate()
+        } catch (e: IllegalStateException) {
+            // "Hilt service must be attached to an @HiltAndroidApp Application.
+            // Found: class android.app.Application" — the process came up
+            // without Ari's own Application class, so nothing was injected.
+            // Seen once in the wild, in the middle of a restart storm. A
+            // service with no dependencies can't read settings, open a mic or
+            // decide anything, so there is nothing to do but leave the one-tap
+            // way back up and go quietly. Crashing here would only earn
+            // another restart into the same broken process.
+            injectionFailed = true
+            Log.e(TAG, "Hilt injection failed — standing down", e)
+            postTapToStartNotification(this)
+            stopSelf()
+            return
+        }
         createNotificationChannels()
         // Watch the voice session state. When it returns to Idle (i.e. the
         // overlay has dismissed), resume wake word listening.
@@ -205,7 +226,23 @@ class WakeWordService : Service() {
         updateNotification()
     }
 
+    /**
+     * Stand the capture host down and leave the one-tap way back up. Both
+     * startForeground refusals land here: from a background context there is
+     * nothing the service can do except ask for a foreground one.
+     */
+    private fun standDown(reason: String, e: Exception): Int {
+        Log.w(TAG, "$reason — posting tap-to-start recovery", e)
+        postTapToStartNotification(this)
+        stopSelf()
+        return START_NOT_STICKY
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // onCreate already stood us down, and Android calls this anyway. Every
+        // branch below reads an injected field, starting with the next one.
+        if (injectionFailed) return START_NOT_STICKY
+
         when (intent?.action) {
             ACTION_STOP_LISTENING -> {
                 // The notification's stop action sets the mode itself, so it
@@ -223,10 +260,10 @@ class WakeWordService : Service() {
 
         // One gate for every start path — boot, notification tap, the settings
         // switch, tap-to-talk, dictation — instead of six callers each hoping.
-        // A14+ throws SecurityException out of startForeground when a
-        // MICROPHONE-typed FGS doesn't hold RECORD_AUDIO, and the catch below
-        // only covers IllegalStateException, so an intervening revoke would
-        // take the service down hard rather than log and stand down.
+        // It catches an outright revoke and nothing more: RECORD_AUDIO is a
+        // while-in-use permission, so checkSelfPermission keeps answering
+        // GRANTED for a process that is nowhere near eligible to open a mic.
+        // The catch around startForeground below is what covers that.
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
             != PackageManager.PERMISSION_GRANTED
         ) {
@@ -260,10 +297,16 @@ class WakeWordService : Service() {
             // working on older SDKs where the subclass isn't available.
             // Happens whenever the start context wasn't foreground enough for
             // a mic FGS: BOOT_COMPLETED, notification taps on A14+, etc.
-            Log.w(TAG, "startForeground blocked — posting tap-to-start recovery", e)
-            postTapToStartNotification(this)
-            stopSelf()
-            return START_NOT_STICKY
+            return standDown("startForeground blocked", e)
+        } catch (e: SecurityException) {
+            // A14+ validates the FGS type on top of the permission check, and
+            // a MICROPHONE service needs the app to be in an eligible state
+            // for RECORD_AUDIO, not merely to hold it. The START_STICKY
+            // restart the system does after killing the process arrives with a
+            // null intent and no foreground anything, so this is the path Ari
+            // takes every time it gets put back overnight — it has to stand
+            // down the same way, not take the app down with it.
+            return standDown("mic FGS refused — start context wasn't eligible", e)
         }
         // The capture host now exists, which is what isRunning has always meant
         // to its callers. Whether the mic is actually open is micHot's job — the
