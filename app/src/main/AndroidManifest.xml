@@ -26,6 +26,7 @@
     -->
     <queries>
         <package android:name="app.grapheneos.gmscompat" />
+        <package android:name="com.google.android.gms" />
     </queries>
     <!--
       Needed so BootReceiver can fire after the user reboots and opt-in
@@ -415,15 +416,29 @@
 
         <!--
           Geofence transitions for the "listen at certain places" condition.
-          Play Services delivers ENTER/EXIT here via a mutable PendingIntent.
+          Play Services delivers ENTER/EXIT here via a mutable PendingIntent,
+          and the platform delivers its own proximity alerts to the same place.
+
+          In `:gms` along with everything else that touches Play Services. On
+          GrapheneOS the whole Play Services stack tears itself down nightly
+          and kills every process holding gmscompat's RpcProvider, so the
+          process that holds the microphone must never be one of them.
         -->
         <receiver
             android:name=".listening.GeofenceReceiver"
+            android:process=":gms"
             android:exported="false">
             <intent-filter>
                 <action android:name="dev.heyari.ari.GEOFENCE_TRANSITION" />
+                <action android:name="dev.heyari.ari.PLACE_PROXIMITY" />
             </intent-filter>
         </receiver>
+
+        <!-- Owns PlaceGeofences, on the far side of that boundary. -->
+        <service
+            android:name=".listening.PlaceFenceService"
+            android:process=":gms"
+            android:exported="false" />
 
         <!--
           Generic notification-action router: any tap on a notification

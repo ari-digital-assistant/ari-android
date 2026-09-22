@@ -31,8 +31,8 @@ import dev.heyari.ari.listening.ListeningMode
 import dev.heyari.ari.listening.ListeningPlace
 import dev.heyari.ari.listening.ListeningSchedule
 import dev.heyari.ari.listening.PlaceFenceSource
-import dev.heyari.ari.listening.PlaceGeofences
 import dev.heyari.ari.listening.playServicesAreSandboxed
+import dev.heyari.ari.listening.playServicesInstalled
 import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.stt.SttMode
 import dev.heyari.ari.stt.SttModel
@@ -170,7 +170,6 @@ class SettingsViewModel @Inject constructor(
     private val engineHolder: EngineHolder,
     private val assistantRegistry: AssistantRegistry,
     private val speechOutput: SpeechOutput,
-    private val placeGeofences: PlaceGeofences,
     @param:ApplicationScope private val appScope: CoroutineScope,
 ) : ViewModel() {
 
@@ -582,7 +581,7 @@ class SettingsViewModel @Inject constructor(
                 hasBackgroundLocation = ContextCompat.checkSelfPermission(
                     application, Manifest.permission.ACCESS_BACKGROUND_LOCATION
                 ) == PackageManager.PERMISSION_GRANTED,
-                geofencingAvailable = placeGeofences.playServicesAvailable(),
+                geofencingAvailable = playServicesInstalled(application),
                 sandboxedPlay = playServicesAreSandboxed(application),
             )
         }

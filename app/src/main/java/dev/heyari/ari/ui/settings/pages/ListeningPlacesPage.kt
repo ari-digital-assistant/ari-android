@@ -2,6 +2,7 @@ package dev.heyari.ari.ui.settings.pages
 
 import android.Manifest
 import android.location.Location
+import android.location.LocationManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -47,7 +48,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.google.android.gms.location.LocationServices
 import dev.heyari.ari.R
 import dev.heyari.ari.listening.ListeningPlace
 import dev.heyari.ari.listening.PlaceFenceSource
@@ -282,16 +282,25 @@ fun PlaceEditorScreen(
             val hasFine = ContextCompat.checkSelfPermission(
                 context, Manifest.permission.ACCESS_FINE_LOCATION
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            // Platform last-known rather than the Play Services client. This is
+            // an Activity, so it cannot move to `:gms` with the rest of the
+            // Play Services work, and touching Play Services from the main
+            // process acquires gmscompat's RpcProvider — which is what gets
+            // the microphone killed nightly on GrapheneOS. Centring a map is
+            // not worth that, and the sharpest cached fix is plenty for it.
             if (hasFine) {
                 @Suppress("MissingPermission")
-                LocationServices.getFusedLocationProviderClient(context).lastLocation
-                    .addOnSuccessListener { loc: Location? ->
-                        if (loc != null) {
-                            val here = org.ramani.compose.LatLng(loc.latitude, loc.longitude)
-                            centerState.center = here
-                            cameraState.position = CameraPosition(target = here, zoom = 15.0)
-                        }
+                val loc = context.getSystemService(LocationManager::class.java)
+                    ?.let { lm ->
+                        lm.getProviders(true).mapNotNull { provider ->
+                            runCatching { lm.getLastKnownLocation(provider) }.getOrNull()
+                        }.filter { it.hasAccuracy() }.minByOrNull { it.accuracy }
                     }
+                if (loc != null) {
+                    val here = org.ramani.compose.LatLng(loc.latitude, loc.longitude)
+                    centerState.center = here
+                    cameraState.position = CameraPosition(target = here, zoom = 15.0)
+                }
             }
             onDispose {}
         }

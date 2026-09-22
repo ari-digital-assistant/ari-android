@@ -93,6 +93,27 @@ class PlaceGeofences @Inject constructor(
         .map { ids -> registered.filter { it.id in ids }.map { it.name } }
         .distinctUntilChanged()
 
+    /**
+     * Tell the main process where we are.
+     *
+     * This class runs in `:gms`, which is the process that dies whenever the
+     * Play Services stack cycles. The listening decision lives in the main
+     * process, so the answer has to cross over, by broadcast rather than by
+     * anything the main process could be killed for depending on.
+     *
+     * Called at every mutation rather than from a collector, because a
+     * transition can arrive into a freshly-woken process with nothing
+     * collecting anything yet.
+     */
+    private fun publish() {
+        val names = registered.filter { it.id in insideIds.value }.map { it.name }
+        context.sendBroadcast(
+            Intent(ACTION_PLACE_STATE)
+                .setPackage(context.packageName)
+                .putStringArrayListExtra(EXTRA_PLACE_NAMES, ArrayList(names))
+        )
+    }
+
     fun playServicesAvailable(): Boolean =
         GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) ==
             ConnectionResult.SUCCESS
@@ -312,6 +333,7 @@ class PlaceGeofences @Inject constructor(
             )
             insideIds.value = inside.map { it.id }.toSet()
             lastConfirmedAt = SystemClock.elapsedRealtime()
+            publish()
             stopSeed()
         }
 
@@ -421,6 +443,7 @@ class PlaceGeofences @Inject constructor(
             )
             insideIds.value = places.filter { it.contains(settled) }.map { it.id }.toSet()
             lastConfirmedAt = SystemClock.elapsedRealtime()
+            publish()
             stopSeed()
         }
     }
@@ -492,6 +515,7 @@ class PlaceGeofences @Inject constructor(
         val wasRegistered = registered
         registered = emptyList()
         insideIds.value = emptySet()
+        publish()
         if (wasRegistered.isNotEmpty()) clearPlatformFences(wasRegistered)
         if (!playServicesAvailable()) return
         client.removeGeofences(transitionPendingIntent())
@@ -515,6 +539,7 @@ class PlaceGeofences @Inject constructor(
         lastConfirmedAt = SystemClock.elapsedRealtime()
         stopSeed()
         if (entering) insideIds.update { it + placeId } else insideIds.update { it - placeId }
+        publish()
     }
 
     internal fun onTransition(event: GeofencingEvent) {
@@ -539,10 +564,12 @@ class PlaceGeofences @Inject constructor(
             Geofence.GEOFENCE_TRANSITION_ENTER -> {
                 Log.i(TAG, "Play fence: entered ${names.joinToString()}")
                 insideIds.update { it + ids }
+                publish()
             }
             Geofence.GEOFENCE_TRANSITION_EXIT -> {
                 Log.i(TAG, "Play fence: left ${names.joinToString()}")
                 insideIds.update { it - ids }
+                publish()
             }
             else -> Log.w(TAG, "Ignoring geofence transition ${event.geofenceTransition}")
         }
@@ -629,6 +656,10 @@ private fun ListeningPlace.distanceFrom(location: Location): Float {
     Location.distanceBetween(latitude, longitude, location.latitude, location.longitude, metres)
     return metres[0]
 }
+
+/** Sent by `:gms`, consumed by the main process. Never leaves the package. */
+const val ACTION_PLACE_STATE = "dev.heyari.ari.PLACE_STATE"
+const val EXTRA_PLACE_NAMES = "place_names"
 
 @AndroidEntryPoint
 class GeofenceReceiver : BroadcastReceiver() {

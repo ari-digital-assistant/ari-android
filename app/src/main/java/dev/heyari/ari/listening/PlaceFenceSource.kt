@@ -84,4 +84,22 @@ fun playServicesAreSandboxed(context: Context): Boolean = try {
     false
 }
 
+/**
+ * Whether Play Services is installed, asked of the package manager.
+ *
+ * GoogleApiAvailability would answer this more thoroughly, at the cost of
+ * touching the Play Services client library, which acquires gmscompat's
+ * RpcProvider and puts the calling process back in the nightly firing line.
+ * The UI only needs to know whether to grey out a screen, so it asks the
+ * cheap way. [PlaceGeofences] still uses the thorough check, because it runs
+ * in `:gms` where the cost does not apply.
+ */
+fun playServicesInstalled(context: Context): Boolean = try {
+    context.packageManager.getPackageInfo(PLAY_SERVICES_PACKAGE, 0)
+    true
+} catch (e: PackageManager.NameNotFoundException) {
+    false
+}
+
 const val GMSCOMPAT_PACKAGE = "app.grapheneos.gmscompat"
+const val PLAY_SERVICES_PACKAGE = "com.google.android.gms"

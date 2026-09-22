@@ -44,8 +44,27 @@ class AriApplication : Application(), Configuration.Provider {
             .setWorkerFactory(workerFactory)
             .build()
 
+    /**
+     * Whether this is the process the app proper runs in.
+     *
+     * Android names the main process after the package and every other one
+     * after the `android:process` attribute that declared it, so the
+     * comparison is the whole test.
+     */
+    private fun isMainProcess(): Boolean = getProcessName() == packageName
+
     override fun onCreate() {
         super.onCreate()
+        // `:gms` hosts the Play Services work and nothing else, but it is a
+        // process of this app so it runs this method too. None of what follows
+        // belongs there: it would build a second copy of the engine, load a
+        // second STT model, schedule every worker twice, and — worst — open
+        // the DataStore a second time. DataStore is single-process by design,
+        // and two of them on one file is how settings get corrupted.
+        if (!isMainProcess()) {
+            Log.i(TAG, "Secondary process ${getProcessName()} — skipping app startup")
+            return
+        }
         // First thing, before anything else can crash: a handler that outlives
         // the process is no use if it is installed after the failure.
         CrashRecorder.install(this)

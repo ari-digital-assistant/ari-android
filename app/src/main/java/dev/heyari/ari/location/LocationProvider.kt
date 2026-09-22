@@ -17,6 +17,7 @@ import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.android.gms.tasks.Tasks
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.heyari.ari.listening.playServicesAreSandboxed
 import uniffi.ari_ffi.FfiLocationResult
 import uniffi.ari_ffi.FfiLocationStatus
 import java.util.concurrent.CountDownLatch
@@ -137,8 +138,26 @@ class LocationProvider @Inject constructor(
      * GrapheneOS build, or an in-progress Play Services update — we use the
      * platform providers instead of declaring the device incapable.
      */
-    private fun playServicesAvailable(): Boolean =
-        GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
+    /**
+     * Whether to ask Play Services for the fix, rather than the platform.
+     *
+     * Two reasons to say no where Play Services is sandboxed, and either would
+     * be enough on its own. The first is quality: a sandboxed GmsCore cut off
+     * from Google's backend drops to cell-tower grade, around 300m, while the
+     * OS's own network provider hands over 10m for free. The second is that
+     * touching Play Services from this process acquires gmscompat's
+     * RpcProvider, and that is what gets the microphone killed nightly. The
+     * fences run in `:gms` for that reason; this class stays out of it.
+     *
+     * Checked by package rather than through GoogleApiAvailability, because
+     * asking the Play Services client library whether Play Services is there
+     * is itself a way of touching it.
+     */
+    private fun playServicesAvailable(): Boolean {
+        if (playServicesAreSandboxed(context)) return false
+        return GoogleApiAvailability.getInstance()
+            .isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
+    }
 
     /** The fused last-known fix, or null. Fetched once and reused for both the
      *  fresh-enough fast path and the stale fallback. */

@@ -29,7 +29,6 @@ class ListeningController @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val settingsRepository: SettingsRepository,
     private val scheduleAlarms: ScheduleAlarms,
-    private val placeGeofences: PlaceGeofences,
 ) {
     private data class Config(
         val mode: ListeningMode,
@@ -94,8 +93,8 @@ class ListeningController @Inject constructor(
             settingsRepository.placeFenceSource,
             ::Pair,
         ).flatMapLatest { (places, source) ->
-            placeGeofences.insidePlaceNames
-                .onStart { placeGeofences.register(places, source) }
-                .onCompletion { placeGeofences.clear() }
+            placeStateFlow(context)
+                .onStart { PlaceFenceService.register(context, places, source) }
+                .onCompletion { PlaceFenceService.clear(context) }
         }
 }
