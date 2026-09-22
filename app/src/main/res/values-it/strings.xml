@@ -453,9 +453,9 @@
     <string name="place_fences_title">Come vengono rilevati i luoghi</string>
     <string name="place_fences_blurb">Su questo dispositivo Play Services è isolato, quindi la sua posizione può essere troppo imprecisa per un\'area piccola. Usando entrambi i sistemi, Ari ha due possibilità di accorgersene.</string>
     <string name="place_fences_play_label">Play Services</string>
-    <string name="place_fences_play_blurb">Il metodo abituale. Consuma meno batteria, ma è preciso solo quanto la posizione su cui si basa.</string>
+    <string name="place_fences_play_blurb">Usa Google Play Services per la posizione. Ottimo per la batteria, posizione più rapida da ottenere.</string>
     <string name="place_fences_platform_label">Integrato in Android</string>
-    <string name="place_fences_platform_blurb">Le aree di Android, senza coinvolgere Play Services. Più semplice, ma potrebbe accorgersene più tardi.</string>
+    <string name="place_fences_platform_blurb">Non usa Google Play Services. La posizione può richiedere più tempo e consumare più batteria.</string>
     <string name="place_fences_both_label">Entrambi</string>
     <string name="place_fences_both_blurb">Registra entrambi e usa il primo che se ne accorge. Consigliato su questo dispositivo.</string>
     <string name="listening_condition_screen_label">Schermo acceso</string>

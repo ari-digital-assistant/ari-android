@@ -454,9 +454,9 @@
     <string name="place_fences_title">How places are detected</string>
     <string name="place_fences_blurb">Play Services is sandboxed on this device, so its location fix can be vague enough to miss a small circle. Using both sets of fences gives Ari two chances to notice.</string>
     <string name="place_fences_play_label">Play Services</string>
-    <string name="place_fences_play_blurb">The usual mechanism. Best battery life, but only as accurate as the fix behind it.</string>
-    <string name="place_fences_platform_label">Built into Android</string>
-    <string name="place_fences_platform_blurb">Android\'s own fences, with Play Services left out of it entirely. Simpler, and it may notice later.</string>
+    <string name="place_fences_play_blurb">Use Google Play Services for location. Best for battery life, quicker to acquire location.</string>
+    <string name="place_fences_platform_label">Android Built-In</string>
+    <string name="place_fences_platform_blurb">Does not use Google Play Services. May acquire locations slower and use more battery life.</string>
     <string name="place_fences_both_label">Both</string>
     <string name="place_fences_both_blurb">Register both and act on whichever notices first. Recommended on this device.</string>
     <string name="listening_condition_screen_label">Screen is on</string>
