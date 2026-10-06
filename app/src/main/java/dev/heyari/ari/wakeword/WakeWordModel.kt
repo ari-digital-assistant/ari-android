@@ -108,6 +108,28 @@ object WakeWordRegistry {
     )
 
     /**
+     * A retrain for issue 21, on a phone trial against [heyAri]
+     * (`ari-tools/wakeword/trained/hey_ari-r6b/`). Each cutoff is the one that
+     * hears as many of the 92 marked takes as [heyAri] does at the same level;
+     * there, it fires on 2-4 of the 25 household false wakes held out of its
+     * training, where [heyAri] fires on all 25.
+     *
+     * It breaks this file's rule. The kitchen ambient peaks at 0.999 for this
+     * model, so no cutoff clears it, and it fires once in those ten minutes at
+     * every level, 7:40 in. Ten minutes cannot price that and a few days in the
+     * house can, which is why this is an option to pick rather than the default.
+     */
+    private val heyAriRetrained = WakeWordModel(
+        id = "hey_ari_r6b",
+        displayName = "Hey Ari (retrained, trial)",
+        assetFilename = "hey_ari_r6b.tflite",
+        featureStepSizeMs = 10,
+        high = OperatingPoint(0.97f, 10),
+        medium = OperatingPoint(0.985f, 10),
+        low = OperatingPoint(0.995f, 10),
+    )
+
+    /**
      * Unmeasured, so deliberately left on the ladder the app shipped before
      * operating points became per-model. Neither has been retrained and neither
      * has a household recording to score against; changing their behaviour on
@@ -125,6 +147,7 @@ object WakeWordRegistry {
 
     val all: List<WakeWordModel> = listOf(
         heyAri,
+        heyAriRetrained,
         unmeasured("ok_ari", "OK Ari"),
         unmeasured("hey_jarvis", "Hey Jarvis"),
     )
