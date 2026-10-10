@@ -60,6 +60,8 @@ internal const val LOG_ALIVE = "alive"
 internal const val LOG_WAKE = "wake"
 internal const val LOG_OUTCOME = "outcome"
 internal const val LOG_DROPPED = "dropped"
+internal const val LOG_PASSED_AFTER_DROP = "passed-after-drop"
+internal const val LOG_CHECK_FAILED = "speech-check-failed"
 
 /** One line of the wake log: when, what, and the words that follow. */
 internal data class WakeLogEntry(val at: Long, val kind: String, val args: List<String>)
@@ -82,6 +84,10 @@ internal data class ModelTally(
     val outcomes: Map<WakeOutcome, Int> = emptyMap(),
     /** Detections the speech check dropped before anything opened. Not wakes, not false wakes. */
     val dropped: Int = 0,
+    /** Drops whose episode was let through on a re-check after all: prevented nothing. */
+    val passedAfterDrop: Int = 0,
+    /** Wakes let through unchecked because the check could not load or threw. */
+    val checkFailed: Int = 0,
 ) {
     val falseWakes: Int get() = outcomes.filterKeys { it.falseWake }.values.sum()
 
@@ -120,6 +126,8 @@ internal fun summariseWakeLog(
     val wakes = mutableMapOf<String, Int>()
     val outcomes = mutableMapOf<String, MutableMap<WakeOutcome, Int>>()
     val dropped = mutableMapOf<String, Int>()
+    val passedAfterDrop = mutableMapOf<String, Int>()
+    val checkFailed = mutableMapOf<String, Int>()
     var unclosed = 0
     var openModel: String? = null
     var openAt = 0L
@@ -151,9 +159,15 @@ internal fun summariseWakeLog(
                 pendingInWindow = entry.at in from..to
                 if (pendingInWindow) wakes.merge(model, 1, Int::plus)
             }
-            LOG_DROPPED -> {
+            LOG_DROPPED, LOG_PASSED_AFTER_DROP, LOG_CHECK_FAILED -> {
                 val model = entry.args.firstOrNull() ?: continue
-                if (entry.at in from..to) dropped.merge(model, 1, Int::plus)
+                if (entry.at !in from..to) continue
+                val tally = when (entry.kind) {
+                    LOG_DROPPED -> dropped
+                    LOG_PASSED_AFTER_DROP -> passedAfterDrop
+                    else -> checkFailed
+                }
+                tally.merge(model, 1, Int::plus)
             }
             LOG_OUTCOME -> {
                 val model = pendingWake ?: continue
@@ -166,7 +180,7 @@ internal fun summariseWakeLog(
     }
     if (close(if (listeningNow) to else lastSign) && !listeningNow) unclosed++
 
-    val models = listening.keys + wakes.keys + outcomes.keys + dropped.keys
+    val models = listening.keys + wakes.keys + outcomes.keys + dropped.keys + checkFailed.keys
     return WakeLogSummary(
         byModel = models.associateWith { model ->
             ModelTally(
@@ -174,6 +188,8 @@ internal fun summariseWakeLog(
                 wakes = wakes[model] ?: 0,
                 outcomes = outcomes[model].orEmpty(),
                 dropped = dropped[model] ?: 0,
+                passedAfterDrop = passedAfterDrop[model] ?: 0,
+                checkFailed = checkFailed[model] ?: 0,
             )
         },
         unclosed = unclosed,
@@ -204,6 +220,8 @@ internal fun renderWakeLogSummary(span: String, summary: WakeLogSummary): String
         } + listOfNotNull(
             tally.unresolved.takeIf { it > 0 }?.let { "no outcome $it" },
             tally.dropped.takeIf { it > 0 }?.let { "dropped for no speech $it" },
+            tally.passedAfterDrop.takeIf { it > 0 }?.let { "of those, let through on a re-check $it" },
+            tally.checkFailed.takeIf { it > 0 }?.let { "let through unchecked $it" },
         )
         if (parts.isNotEmpty()) appendLine("  " + parts.joinToString(", "))
     }
@@ -266,6 +284,16 @@ class WakeLog internal constructor(private val file: File) {
 
     /** A detection the speech check dropped: no overlay, no chime, only this line. */
     fun dropped(modelId: String) = record(LOG_DROPPED, modelId)
+
+    /** The check found speech in an episode it had already dropped once. */
+    fun passedAfterDrop(modelId: String) = record(LOG_PASSED_AFTER_DROP, modelId)
+
+    /**
+     * A wake let through because the check could not run: [reason] is
+     * `unavailable` (the model would not load) or `error` (it threw). Kept apart
+     * from drops so a trial can show which protection actually ran.
+     */
+    fun speechCheckFailed(modelId: String, reason: String) = record(LOG_CHECK_FAILED, modelId, reason)
 
     private fun record(kind: String, vararg args: String) {
         val line = formatWakeLogLine(System.currentTimeMillis(), kind, args.toList())

@@ -41,6 +41,12 @@ internal class SpeechCheckPacing {
         return first
     }
 
+    /**
+     * The check found speech. True when this episode already logged a drop: the
+     * wake was let through after all, so that drop prevented nothing.
+     */
+    fun passed(): Boolean = episodeLogged
+
     companion object {
         const val RECHECK_MS = 250L
         const val EPISODE_GAP_MS = 1_000L

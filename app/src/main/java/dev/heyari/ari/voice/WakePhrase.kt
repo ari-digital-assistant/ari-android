@@ -13,9 +13,13 @@ package dev.heyari.ari.voice
  *     get appended via [WakeMishearTable])
  *   - Trailing punctuation, comma, full stop, etc., is eaten
  *
- * Anything before the first match position is also dropped — sometimes the
- * pre-roll catches a stray ambient word and we don't want it polluting the
- * query either. If no wake phrase is found at all, returns the input trimmed.
+ * Up to two words before the name are also dropped, since the pre-roll
+ * sometimes catches a stray ambient word and we don't want it polluting the
+ * query either. A name later than that is not a wake phrase: in all 93
+ * recorded real wakes the name came straight after the opener or fused with
+ * it ("Heyari"), and matching it anywhere is how "we're" and "you're" in a
+ * lecture and a TV scene came to be answered. If no wake phrase is found at
+ * all, returns the input trimmed.
  *
  * The wake-word model is always English regardless of Ari's active locale
  * (per the multi-language plan: per-language wake training is parked), so the
@@ -59,16 +63,18 @@ object WakeMishearTable {
 //      "Okay what time"). This is mildly risky if the user genuinely starts
 //      a query with "ok" — accepted cost.
 private val BASE_OPENERS = listOf("hey", "ok", "okay", "hi", "hello")
+// No "re": it matched the tail of every "we're" and "you're", and both false
+// wakes Ari answered in September were exactly that.
 private val BASE_NAMES = listOf(
     "ari", "ary", "arie", "arrie", "airy", "harry", "hari", "hairy", "ara",
-    "ori", "orie", "re", "ray", "rae", "jarvis", "jarviz",
+    "ori", "orie", "ray", "rae", "jarvis", "jarviz",
 )
 
 private fun buildWakeRegex(extraOpeners: List<String>, extraNames: List<String>): Regex {
     val openers = (BASE_OPENERS + extraOpeners).distinct().joinToString("|") { Regex.escape(it) }
     val names = (BASE_NAMES + extraNames).distinct().joinToString("|") { Regex.escape(it) }
     return Regex(
-        "^.*?\\b(?:$openers)?\\s*(?:$names)\\b[\\s,.!?:;]*",
+        "^(?:\\S+\\s+){0,2}?\\b(?:$openers)?\\s*(?:$names)\\b[\\s,.!?:;]*",
         setOf(RegexOption.IGNORE_CASE),
     )
 }

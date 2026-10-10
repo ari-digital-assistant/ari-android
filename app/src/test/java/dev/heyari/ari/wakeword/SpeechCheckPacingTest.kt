@@ -36,6 +36,28 @@ class SpeechCheckPacingTest {
     }
 
     @Test
+    fun `a pass after a logged drop in the same episode says the drop prevented nothing`() {
+        val pacing = SpeechCheckPacing()
+        pacing.shouldCheck(10_000L)
+        assertFalse(pacing.passed())
+
+        pacing.dropped(10_000L)
+        pacing.shouldCheck(10_260L)
+
+        assertTrue(pacing.passed())
+    }
+
+    @Test
+    fun `a pass in a fresh episode is a plain wake`() {
+        val pacing = SpeechCheckPacing()
+        pacing.shouldCheck(10_000L)
+        pacing.dropped(10_000L)
+        pacing.shouldCheck(12_000L)
+
+        assertFalse(pacing.passed())
+    }
+
+    @Test
     fun `a gap of over a second starts a new episode, checked and logged afresh`() {
         val pacing = SpeechCheckPacing()
         pacing.shouldCheck(10_000L)

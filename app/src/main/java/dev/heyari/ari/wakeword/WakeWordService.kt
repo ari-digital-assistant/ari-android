@@ -524,8 +524,21 @@ class WakeWordService : Service() {
                     null
                 }
             }
-            val vad = gate ?: return true
-            if (vad.speechInTail(captureBus.peekRecent(SPEECH_CHECK_BUFFER_S), SPEECH_CHECK_TAIL_SAMPLES)) {
+            val vad = gate ?: run {
+                wakeLog.speechCheckFailed(activeModelId, "unavailable")
+                return true
+            }
+            // Caught here because this runs on the capture thread, where anything
+            // uncaught ends the listening for good.
+            val speech = try {
+                vad.speechInTail(captureBus.peekRecent(SPEECH_CHECK_BUFFER_S), SPEECH_CHECK_TAIL_SAMPLES)
+            } catch (t: Throwable) {
+                Log.w(TAG, "Speech check failed, letting the wake through", t)
+                wakeLog.speechCheckFailed(activeModelId, "error")
+                return true
+            }
+            if (speech) {
+                if (pacing.passed()) wakeLog.passedAfterDrop(activeModelId)
                 return true
             }
             if (pacing.dropped(now)) {

@@ -101,9 +101,30 @@ class WakeLogTest {
         val ari = summariseWakeLog(entries, from = 0, to = 100, listeningNow = true).byModel.getValue("hey_ari")
 
         assertEquals(2, ari.dropped)
+        assertEquals(0, ari.passedAfterDrop)
         assertEquals(1, ari.wakes)
         assertEquals(0, ari.falseWakes)
         assertEquals(0, ari.unresolved)
+    }
+
+    @Test
+    fun `drops let through later and checks that could not run are counted apart`() {
+        val entries = listOf(
+            on(0),
+            WakeLogEntry(10, LOG_DROPPED, listOf("hey_ari")),
+            WakeLogEntry(12, LOG_PASSED_AFTER_DROP, listOf("hey_ari")),
+            wake(12), outcome(14, WakeOutcome.ACCEPTED),
+            WakeLogEntry(20, LOG_CHECK_FAILED, listOf("hey_ari", "error")),
+            wake(20), outcome(22, WakeOutcome.NO_SPEECH),
+        )
+
+        val ari = summariseWakeLog(entries, from = 0, to = 100, listeningNow = true).byModel.getValue("hey_ari")
+
+        assertEquals(1, ari.dropped)
+        assertEquals(1, ari.passedAfterDrop)
+        assertEquals(1, ari.checkFailed)
+        assertEquals(2, ari.wakes)
+        assertEquals(1, ari.falseWakes)
     }
 
     @Test

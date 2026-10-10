@@ -46,6 +46,35 @@ class WakePhraseTest {
     }
 
     @Test
+    fun `the two false wakes Ari answered are no longer addressed to it`() {
+        // Real captures, 2026-09: a lecture and a TV scene, matched on "re".
+        assertFalse(matchWakePhrase("So anyway, we're first sorting by country and then by city.").nameMatched)
+        assertFalse(matchWakePhrase("Ah, I guess time doesn't mean much when you're dead.").nameMatched)
+    }
+
+    @Test
+    fun `a name deep in a sentence is not a wake phrase and is left in the text`() {
+        val match = matchWakePhrase("I was telling Harry about the weather")
+        assertFalse(match.nameMatched)
+        assertEquals("I was telling Harry about the weather", match.text)
+    }
+
+    @Test
+    fun `a stray word from the pre-roll before the wake phrase is still a match`() {
+        val match = matchWakePhrase("um hey ari what time is it")
+        assertTrue(match.nameMatched)
+        assertEquals("what time is it", match.text)
+    }
+
+    @Test
+    fun `cloud transcription's fused heyari is a match`() {
+        // Real capture, 2026-09-12: cloud STT writes the phrase as one word.
+        val match = matchWakePhrase("Heyari, what time is it?")
+        assertTrue(match.nameMatched)
+        assertEquals("what time is it?", match.text)
+    }
+
+    @Test
     fun `unrelated speech reports no name match and is left alone`() {
         val match = matchWakePhrase("i was talking to dave about it")
         assertFalse(match.nameMatched)
