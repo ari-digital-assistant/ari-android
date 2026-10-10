@@ -19,13 +19,15 @@ MicroWakeWordEngine::MicroWakeWordEngine(
     int sampleRate,
     int featureStepSizeMs,
     float probabilityCutoff,
-    int slidingWindowSize
+    int slidingWindowSize,
+    bool resetOnDetection
 )
     : frontend_(sampleRate, static_cast<size_t>(std::max(1, featureStepSizeMs)))
     , probabilityCutoff_(static_cast<uint8_t>(std::max(0.0f, std::min(1.0f, probabilityCutoff)) * 255.0f))
     , slidingWindowSize_(std::max(1, slidingWindowSize))
     , recentProbabilities_(slidingWindowSize_, 0)
     , ignoreWindows_(-MIN_SLICES_BEFORE_DETECTION)
+    , resetOnDetection_(resetOnDetection)
 {
     if (slidingWindowSize <= 0) {
         LOGE(LOG_TAG, "Invalid slidingWindowSize: %d (must be > 0)", slidingWindowSize);
@@ -185,6 +187,7 @@ bool MicroWakeWordEngine::processAudio(const int16_t* samples, size_t numSamples
 
     int8_t quantizedFeatures[PREPROCESSOR_FEATURE_SIZE]{};
     size_t samplesProcessed = 0;
+    bool detected = false;
 
     while (samplesProcessed < numSamples) {
         const float* frame = nullptr;
@@ -210,11 +213,12 @@ bool MicroWakeWordEngine::processAudio(const int16_t* samples, size_t numSamples
         }
 
         if (processFeatureFrame(quantizedFeatures)) {
-            return true;
+            if (resetOnDetection_) return true;
+            detected = true;
         }
     }
 
-    return false;
+    return detected;
 }
 
 bool MicroWakeWordEngine::processFeatureFrame(const int8_t* features) {
@@ -262,8 +266,12 @@ bool MicroWakeWordEngine::processFeatureFrame(const int8_t* features) {
 
     // Check for detection
     if (checkDetection()) {
-        LOGI(LOG_TAG, "Wake word detected");
-        resetDetectionState();
+        // Without the reset this fires on every inference while the window stays
+        // above the cutoff, and the caller logs what it decides instead.
+        if (resetOnDetection_) {
+            LOGI(LOG_TAG, "Wake word detected");
+            resetDetectionState();
+        }
         return true;
     }
 

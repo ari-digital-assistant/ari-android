@@ -48,6 +48,7 @@ import uniffi.ari_ffi.AssistantRegistry
 import uniffi.ari_ffi.FfiConfigField
 import uniffi.ari_ffi.FfiSettingsQueryResult
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,6 +56,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -115,6 +117,7 @@ data class SettingsState(
     val download: ModelDownloadState = ModelDownloadState.Idle,
     val wakeWords: List<WakeWordOption> = emptyList(),
     val wakeWordSensitivity: WakeWordSensitivity = WakeWordSensitivity.DEFAULT,
+    val wakeSpeechCheck: Boolean = true,
     val llmModels: List<LlmModelStatus> = emptyList(),
     val llmDownload: LlmDownloadState = LlmDownloadState.Idle,
     val llmNoneActive: Boolean = true,
@@ -193,8 +196,18 @@ class SettingsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            settingsRepository.wakeWordSensitivity.collect { name ->
-                _state.update { it.copy(wakeWordSensitivity = WakeWordSensitivity.fromName(name)) }
+            // The active model's own level: switching wake word shows that
+            // model's setting, not the one just left.
+            @OptIn(ExperimentalCoroutinesApi::class)
+            settingsRepository.activeWakeWordId
+                .flatMapLatest { id -> settingsRepository.wakeWordSensitivity(WakeWordRegistry.byId(id).id) }
+                .collect { name ->
+                    _state.update { it.copy(wakeWordSensitivity = WakeWordSensitivity.fromName(name)) }
+                }
+        }
+        viewModelScope.launch {
+            settingsRepository.wakeSpeechCheck.collect { on ->
+                _state.update { it.copy(wakeSpeechCheck = on) }
             }
         }
         viewModelScope.launch(Dispatchers.IO) {
@@ -878,7 +891,7 @@ class SettingsViewModel @Inject constructor(
     fun selectWakeWord(model: WakeWordModel) {
         viewModelScope.launch {
             settingsRepository.setActiveWakeWordId(model.id)
-            bounceWakeWordService()
+            WakeWordService.restartIfRunning(application)
         }
     }
 
@@ -890,15 +903,17 @@ class SettingsViewModel @Inject constructor(
      */
     fun selectWakeWordSensitivity(sensitivity: WakeWordSensitivity) {
         viewModelScope.launch {
-            settingsRepository.setWakeWordSensitivity(sensitivity.name)
-            bounceWakeWordService()
+            val modelId = WakeWordRegistry.byId(settingsRepository.activeWakeWordId.first()).id
+            settingsRepository.setWakeWordSensitivity(modelId, sensitivity.name)
+            WakeWordService.restartIfRunning(application)
         }
     }
 
-    private fun bounceWakeWordService() {
-        if (WakeWordService.isRunning) {
-            application.stopService(Intent(application, WakeWordService::class.java))
-            WakeWordService.start(application)
+    /** Same restart as the sensitivity: the service reads the switch when it opens the mic. */
+    fun setWakeSpeechCheck(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setWakeSpeechCheck(enabled)
+            WakeWordService.restartIfRunning(application)
         }
     }
 

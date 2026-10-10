@@ -30,6 +30,11 @@ public:
      * @param featureStepSizeMs  Step size for feature extraction in milliseconds
      * @param probabilityCutoff  Detection threshold (0.0-1.0)
      * @param slidingWindowSize  Number of frames to average for detection
+     * @param resetOnDetection   Clear the detection window and start the cool-off the moment
+     *                           a detection is reported. False hands that to the caller, which
+     *                           then must call reset() on every detection it acts on; until it
+     *                           does, the engine keeps reporting while the window stays above
+     *                           the cutoff.
      */
     MicroWakeWordEngine(
         const uint8_t* modelData,
@@ -37,7 +42,8 @@ public:
         int sampleRate,
         int featureStepSizeMs,
         float probabilityCutoff,
-        int slidingWindowSize
+        int slidingWindowSize,
+        bool resetOnDetection
     );
 
     // Non-copyable, non-movable
@@ -53,7 +59,9 @@ public:
      *
      * @param samples    16-bit PCM audio samples at the configured sample rate
      * @param numSamples Number of samples
-     * @return true if wake word was detected
+     * @return true if wake word was detected. With resetOnDetection, the rest of the
+     *         samples after a detection are discarded; without it, every sample is
+     *         processed, so a caller that ignores a detection loses no audio.
      */
     [[nodiscard]] bool processAudio(const int16_t* samples, size_t numSamples);
 
@@ -106,6 +114,7 @@ private:
     std::vector<uint8_t> recentProbabilities_;
     int lastNIndex_ = 0;
     int ignoreWindows_ = 0;
+    bool resetOnDetection_;
 
     bool initialized_ = false;
 };

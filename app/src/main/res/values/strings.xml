@@ -348,6 +348,8 @@
 
     <!-- Settings section blurbs -->
     <string name="settings_wakeword_blurb">The phrase Ari listens for. \"Hey Jarvis\" is the original microWakeWord model and is included as a fallback.</string>
+    <string name="settings_wake_speech_check_title">Ignore wakes with no speech</string>
+    <string name="settings_wake_speech_check_blurb">Ari only opens if it heard a voice just before. This stops knocks, buzzes and hums from waking it. Turn it off if Ari stops hearing you.</string>
     <string name="settings_wakeword_sensitivity_blurb">Sensitivity — how eagerly Ari responds to your voice. If Ari activates when it shouldn\'t, lower this. If it doesn\'t activate when you want it to, raise this.</string>
     <string name="sensitivity_tuning_title">Tune sensitivity</string>
     <string name="sensitivity_tuning_blurb">Ari will ask you to say a few things — sometimes the wake phrase, sometimes not. The ones that are not the wake phrase are the important half: they show Ari what to ignore. Do it once for everyone in the house.</string>
@@ -382,6 +384,8 @@
     <string name="false_wake_advice_tighten_body">Ari is already on its strictest setting, so it will make the setting itself a little stricter. If that stops it hearing someone, Ari will ask you about it in a couple of days.</string>
     <string name="false_wake_advice_tighten_action">Adjust it for me</string>
     <string name="false_wake_advice_exhausted_body">Ari is as strict as it can usefully go. Going further would not make it more reliable, only deafer — this is a limit of the wake word rather than the setting.</string>
+    <string name="false_wake_advice_step_done">Ari is now set to %1$s.</string>
+    <string name="false_wake_advice_tighten_done">Ari is now a little less sensitive.</string>
     <string name="false_wake_advice_ignore">Leave it as it is</string>
     <string name="false_wake_advice_close">Close</string>
     <string name="false_wake_advice_review_body">Ari made itself a little less sensitive on %1$s, because it kept waking up when nobody was talking to it. Is it still hearing everyone?</string>

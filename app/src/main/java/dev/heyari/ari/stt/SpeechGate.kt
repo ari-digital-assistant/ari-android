@@ -6,13 +6,15 @@ import com.k2fsa.sherpa.onnx.Vad
 import com.k2fsa.sherpa.onnx.VadModelConfig
 
 /**
- * Thin wrapper over sherpa-onnx silero VAD used purely as an endpoint
- * VETO: "has anyone been speaking recently?". We call [Vad.compute]
- * per 512-sample window and track the last window that scored over
+ * Thin wrapper over sherpa-onnx silero VAD, asking "has anyone been speaking
+ * recently?". We call [Vad.compute] per 512-sample window and compare it with
  * [SPEECH_PROBABILITY]; the segment machinery (front/pop) is not used.
  *
- * Not thread-safe — owned and driven by the single listen coroutine in
- * [SpeechRecognizer].
+ * Two uses, each with its own instance: the endpoint veto, driven by the single
+ * listen coroutine in [SpeechRecognizer] through [feed], and the wake service's
+ * check for speech before a wake, through [speechInTail].
+ *
+ * Not thread-safe: one instance belongs to one thread.
  */
 class SpeechGate(assets: AssetManager) {
 
@@ -59,6 +61,26 @@ class SpeechGate(assets: AssetManager) {
             offset += WINDOW_SAMPLES
         }
         pending = buf.copyOfRange(offset, buf.size)
+    }
+
+    /**
+     * Whether [pcm] holds speech in a window ending within its last [tailSamples],
+     * scored from a fresh state with the windows aligned so the last ends where
+     * [pcm] does. Clears the state [feed] keeps, so the two uses never share an
+     * instance.
+     */
+    fun speechInTail(pcm: ShortArray, tailSamples: Int): Boolean {
+        vad.reset()
+        var start = pcm.size % WINDOW_SAMPLES
+        while (start + WINDOW_SAMPLES <= pcm.size) {
+            val window = FloatArray(WINDOW_SAMPLES) { pcm[start + it] / 32768.0f }
+            val probability = vad.compute(window)
+            if (start + WINDOW_SAMPLES > pcm.size - tailSamples && probability >= SPEECH_PROBABILITY) {
+                return true
+            }
+            start += WINDOW_SAMPLES
+        }
+        return false
     }
 
     /** Long.MAX_VALUE until the first speech window — arming silence must not read as "recent speech". */

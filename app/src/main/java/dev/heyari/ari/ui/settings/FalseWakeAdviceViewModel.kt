@@ -1,8 +1,10 @@
 package dev.heyari.ari.ui.settings
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.wakeword.FalseWakeMonitor
 import dev.heyari.ari.wakeword.FalseWakeRemedy
@@ -10,6 +12,7 @@ import dev.heyari.ari.wakeword.LadderReviewScheduler
 import dev.heyari.ari.wakeword.TunedLadder
 import dev.heyari.ari.wakeword.WakeWordRegistry
 import dev.heyari.ari.wakeword.WakeWordSensitivity
+import dev.heyari.ari.wakeword.WakeWordService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,12 +32,16 @@ enum class AdviceMode {
 
 data class FalseWakeAdviceUiState(
     val mode: AdviceMode = AdviceMode.BURST,
+    /** The model the advice is about: the one that was running when the screen opened. */
+    val modelId: String = WakeWordRegistry.default.id,
     val falseWakes: Int = 0,
     val current: WakeWordSensitivity = WakeWordSensitivity.DEFAULT,
     val remedy: FalseWakeRemedy? = null,
     val tightenedAt: Long = 0L,
     /** Set once the user has chosen, so the screen can close itself. */
     val settled: Boolean = false,
+    /** The remedy that was just applied, so the screen can say so as it closes. */
+    val applied: FalseWakeRemedy? = null,
 )
 
 /**
@@ -48,6 +55,7 @@ data class FalseWakeAdviceUiState(
  */
 @HiltViewModel
 class FalseWakeAdviceViewModel @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     private val settingsRepository: SettingsRepository,
     private val falseWakeMonitor: FalseWakeMonitor,
     private val reviewScheduler: LadderReviewScheduler,
@@ -58,13 +66,13 @@ class FalseWakeAdviceViewModel @Inject constructor(
 
     fun load(mode: AdviceMode) {
         viewModelScope.launch {
-            val level = WakeWordSensitivity.fromName(settingsRepository.wakeWordSensitivity.first())
-            val model = WakeWordRegistry
-                .byId(settingsRepository.activeWakeWordId.first())
-                .withLadder(TunedLadder.parse(settingsRepository.wakeLadder.first()))
+            val active = WakeWordRegistry.byId(settingsRepository.activeWakeWordId.first())
+            val level = WakeWordSensitivity.fromName(settingsRepository.wakeWordSensitivity(active.id).first())
+            val model = active.withLadder(TunedLadder.parse(settingsRepository.wakeLadder(active.id).first()))
             _state.update {
                 it.copy(
                     mode = mode,
+                    modelId = active.id,
                     falseWakes = falseWakeMonitor.recentCount(),
                     current = level,
                     remedy = FalseWakeRemedy.forLevel(level, model),
@@ -74,31 +82,41 @@ class FalseWakeAdviceViewModel @Inject constructor(
         }
     }
 
-    /** Take the one suggestion on offer. */
+    /**
+     * Take the one suggestion on offer, for the model it was worked out for,
+     * and restart listening so it applies from now rather than from whenever
+     * the microphone next happens to close.
+     */
     fun accept() {
         val current = _state.value
         viewModelScope.launch {
-            when (val remedy = current.remedy) {
-                is FalseWakeRemedy.StepDown ->
-                    settingsRepository.setWakeWordSensitivity(remedy.to.name)
+            val changed = when (val remedy = current.remedy) {
+                is FalseWakeRemedy.StepDown -> {
+                    settingsRepository.setWakeWordSensitivity(current.modelId, remedy.to.name)
+                    true
+                }
 
                 is FalseWakeRemedy.Tighten -> {
+                    val modelId = remedy.ladder.modelId
                     // Remembered before it is overwritten, because REVIEW's
                     // only job is putting this back and it cannot recompute
                     // what was here — the old ladder may itself have been
                     // measured rather than built in.
                     settingsRepository.setLadderBeforeTightening(
-                        settingsRepository.wakeLadder.first()
+                        settingsRepository.wakeLadder(modelId).first()
                     )
-                    settingsRepository.setWakeLadder(remedy.ladder.format())
-                    settingsRepository.setWakeWordSensitivity(WakeWordSensitivity.MEDIUM.name)
+                    settingsRepository.setLadderTightenedModel(modelId)
+                    settingsRepository.setWakeLadder(modelId, remedy.ladder.format())
+                    settingsRepository.setWakeWordSensitivity(modelId, WakeWordSensitivity.MEDIUM.name)
                     settingsRepository.setLadderTightenedAt(System.currentTimeMillis())
                     reviewScheduler.schedule()
+                    true
                 }
 
-                FalseWakeRemedy.Exhausted, null -> Unit
+                FalseWakeRemedy.Exhausted, null -> false
             }
-            _state.update { it.copy(settled = true) }
+            if (changed) WakeWordService.restartIfRunning(context)
+            _state.update { it.copy(settled = true, applied = current.remedy.takeIf { changed }) }
         }
     }
 
@@ -110,6 +128,7 @@ class FalseWakeAdviceViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.setLadderTightenedAt(0L)
             settingsRepository.setLadderBeforeTightening(null)
+            settingsRepository.setLadderTightenedModel(null)
             _state.update { it.copy(settled = true) }
         }
     }
@@ -123,10 +142,16 @@ class FalseWakeAdviceViewModel @Inject constructor(
      */
     fun undoTightening() {
         viewModelScope.launch {
-            settingsRepository.setWakeLadder(settingsRepository.ladderBeforeTightening.first())
+            // A tightening from before ladders were per model never said which
+            // model it was for; the active one is the only reasonable guess.
+            val modelId = settingsRepository.ladderTightenedModel.first()
+                ?: WakeWordRegistry.byId(settingsRepository.activeWakeWordId.first()).id
+            settingsRepository.setWakeLadder(modelId, settingsRepository.ladderBeforeTightening.first())
             settingsRepository.setLadderBeforeTightening(null)
+            settingsRepository.setLadderTightenedModel(null)
             settingsRepository.setLadderTightenedAt(0L)
             reviewScheduler.cancel()
+            WakeWordService.restartIfRunning(context)
             _state.update { it.copy(settled = true) }
         }
     }

@@ -21,6 +21,7 @@ import dev.heyari.ari.stt.UtteranceTurn
 import dev.heyari.ari.tts.SpeechOutput
 import dev.heyari.ari.tts.pleaseWaitPhrase
 import dev.heyari.ari.tts.pleaseRepeatPhrase
+import dev.heyari.ari.wakeword.WakeOutcome
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -86,6 +87,19 @@ internal fun shouldAcceptWake(
     raw.isNullOrBlank() -> true
     else -> nameMatched
 }
+
+/**
+ * A wake turn whose transcript came back blank: no speech in the wake phrase's
+ * own pre-roll or after it, so nobody said "Hey Ari". [shouldAcceptWake] fails
+ * open on a blank transcript, which is right for the question it answers, but
+ * the accept path would then file this wake's pre-roll as a confirmed true
+ * positive, so this is asked first.
+ *
+ * A null [raw] is unknown rather than blank: only the manual stop path leaves
+ * it null, and that path only fires on a partial that was not empty.
+ */
+internal fun isNoSpeechWake(verifyWake: Boolean, raw: String?): Boolean =
+    verifyWake && raw != null && raw.isBlank()
 
 internal fun shouldEnterConversation(response: FfiResponse): Boolean = when (response) {
     is FfiResponse.Text -> response.enterConversation
@@ -186,6 +200,7 @@ class VoiceSession @Inject constructor(
     private val settingsRepository: dev.heyari.ari.data.SettingsRepository,
     private val wakeCaptureStore: dev.heyari.ari.wakeword.WakeCaptureStore,
     private val falseWakeMonitor: dev.heyari.ari.wakeword.FalseWakeMonitor,
+    private val wakeLog: dev.heyari.ari.wakeword.WakeLog,
     private val utteranceCaptureStore: UtteranceCaptureStore,
     private val localeProvider: dev.heyari.ari.locale.AriFfiLocaleProvider,
     private val logRepository: ConversationLogRepository,
@@ -241,6 +256,14 @@ class VoiceSession @Inject constructor(
     @Volatile
     private var wakePreroll: ShortArray? = null
 
+    // True from a wake-initiated start() until that wake's ending is in the wake
+    // log. Every wake gets exactly one ending: the first path to reach one
+    // writes it, and dismiss() supplies DISMISSED for any wake nothing else
+    // ended. Apart from verifyWakePending because the cold-start branch ends
+    // the wake (COLD_START) while the parameter that started it is still true.
+    @Volatile
+    private var wakeOutcomePending: Boolean = false
+
     // "Let's talk" continuous mode: while true, every turn re-arms the mic
     // (no wake word) until an exit phrase, 30s silence, or an error.
     @Volatile
@@ -285,6 +308,7 @@ class VoiceSession @Inject constructor(
             return
         }
         verifyWakePending = verifyWake
+        wakeOutcomePending = verifyWake
         // Snapshot now rather than at detection time: the overlay launch costs
         // a few hundred ms, but the ring holds 2 s and "Hey Ari" is ~0.7 s, so
         // the phrase is still comfortably inside the window.
@@ -308,6 +332,7 @@ class VoiceSession @Inject constructor(
         sessionJob = scope.launch {
             try {
                 if (!modelLoaded) {
+                    logWakeOutcome(WakeOutcome.COLD_START)
                     // Cold start: acknowledge, wait for the warm-up, then ask
                     // the user to repeat — their words have already aged out of
                     // the 2 s CaptureBus ring buffer, so there's nothing to
@@ -384,7 +409,7 @@ class VoiceSession @Inject constructor(
                                 // The count is kept even when the audio is not
                                 // — it is the event that prices the wake word,
                                 // and the recording is only for retraining it.
-                                falseWakeMonitor.onFalseWake()
+                                endWake(WakeOutcome.SILENT)
                             }
                             dismiss()
                             return@launch
@@ -468,6 +493,15 @@ class VoiceSession @Inject constructor(
                                     }
                                     return@collect
                                 }
+                                if (isNoSpeechWake(verifyWakePending, sttState.raw)) {
+                                    // Whisper's way of saying it heard nothing.
+                                    // The overlay closes as quietly as it did
+                                    // when this went down the accept path.
+                                    Log.i(TAG, "Wake heard no speech")
+                                    onNoSpeechWake(sttState.audio ?: wakePreroll)
+                                    dismiss()
+                                    return@collect
+                                }
                                 if (!shouldAcceptWake(
                                         verifyWakePending,
                                         sttState.raw,
@@ -487,6 +521,7 @@ class VoiceSession @Inject constructor(
                                         sttState.raw.orEmpty(),
                                         dev.heyari.ari.wakeword.WakeCaptureHook.REJECTED,
                                     )
+                                    endWake(WakeOutcome.REJECTED)
                                     dismiss()
                                     return@collect
                                 }
@@ -494,6 +529,7 @@ class VoiceSession @Inject constructor(
                                 // a confirmed true positive — record the wake
                                 // moment (pre-roll) before the slot is cleared.
                                 // The full utterance is captureUtterance's job.
+                                logWakeOutcome(WakeOutcome.ACCEPTED)
                                 captureAcceptedWake(wakePreroll, sttState.raw.orEmpty())
                                 verifyWakePending = false
                                 wakePreroll = null
@@ -515,8 +551,20 @@ class VoiceSession @Inject constructor(
                                 }
                             }
                             is SttState.Error -> {
+                                logWakeOutcome(WakeOutcome.ERROR)
                                 _state.value = VoiceState.Error(sttState.message)
                                 silenceWatcher.cancel()
+                                delay(2500)
+                                dismiss()
+                                return@collect
+                            }
+                            is SttState.NoSpeech -> {
+                                // Shown like any other error, as it always was;
+                                // only now a wake that heard nothing is kept
+                                // and counted instead of vanishing.
+                                silenceWatcher.cancel()
+                                if (verifyWakePending) onNoSpeechWake(sttState.audio ?: wakePreroll)
+                                _state.value = VoiceState.Error(sttState.message)
                                 delay(2500)
                                 dismiss()
                                 return@collect
@@ -532,6 +580,7 @@ class VoiceSession @Inject constructor(
             } catch (t: Throwable) {
                 if (t is kotlinx.coroutines.CancellationException) throw t
                 Log.e(TAG, "Voice session failed", t)
+                logWakeOutcome(WakeOutcome.ERROR)
                 _state.value = VoiceState.Error(t.message ?: "Unknown error")
                 delay(2500)
                 dismiss()
@@ -919,6 +968,7 @@ class VoiceSession @Inject constructor(
 
     fun dismiss() {
         Log.i(TAG, "Dismissing voice session")
+        logWakeOutcome(WakeOutcome.DISMISSED)
         // Drop any reply the engine was still waiting on. No-op on the normal
         // happy path (nothing pending); covers tap-dismiss, the silence-timeout
         // path (which calls dismiss()), and lifecycle stop.
@@ -942,6 +992,33 @@ class VoiceSession @Inject constructor(
         sessionJob?.cancel()
         sessionJob = null
         _state.value = VoiceState.Idle
+    }
+
+    /**
+     * Write how this wake ended to the wake log, unless something already has.
+     * Returns whether this call was the one that ended it.
+     */
+    private fun logWakeOutcome(outcome: WakeOutcome): Boolean {
+        if (!wakeOutcomePending) return false
+        wakeOutcomePending = false
+        wakeLog.outcome(outcome)
+        return true
+    }
+
+    /**
+     * End the wake and, if it was a false one, count it towards the warning
+     * that offers to make Ari less sensitive. Every false wake the user saw is
+     * counted, whichever path noticed it: fed from the silence timeout alone,
+     * the warning never fired on cloud transcription, which cannot reach it.
+     */
+    private suspend fun endWake(outcome: WakeOutcome) {
+        if (logWakeOutcome(outcome) && outcome.falseWake) falseWakeMonitor.onFalseWake()
+    }
+
+    /** A wake with no speech in it: keep the audio if the user asked to, and count it. */
+    private suspend fun onNoSpeechWake(pcm: ShortArray?) {
+        captureFalseTrigger(pcm, "", dev.heyari.ari.wakeword.WakeCaptureHook.NO_SPEECH)
+        endWake(WakeOutcome.NO_SPEECH)
     }
 
     /**
@@ -1097,6 +1174,10 @@ class VoiceSession @Inject constructor(
                         }
                         is SttState.Error -> {
                             Log.w(TAG, "Dictation STT error: ${stt.message}")
+                            dismiss()
+                            return@collect
+                        }
+                        is SttState.NoSpeech -> {
                             dismiss()
                             return@collect
                         }

@@ -8,7 +8,8 @@ static constexpr char LOG_TAG[] = "MicroWakeWord_jni";
 
 static jlong nativeCreate(
     JNIEnv* env, jclass /*clazz*/, jobject modelBuffer, jint sampleRate,
-    jint featureStepSizeMs, jfloat probabilityCutoff, jint slidingWindowSize) {
+    jint featureStepSizeMs, jfloat probabilityCutoff, jint slidingWindowSize,
+    jboolean resetOnDetection) {
 
     auto* modelData = static_cast<uint8_t*>(env->GetDirectBufferAddress(modelBuffer));
     if (modelData == nullptr) {
@@ -27,7 +28,8 @@ static jlong nativeCreate(
         static_cast<int>(sampleRate),
         static_cast<int>(featureStepSizeMs),
         static_cast<float>(probabilityCutoff),
-        static_cast<int>(slidingWindowSize)
+        static_cast<int>(slidingWindowSize),
+        resetOnDetection == JNI_TRUE
     );
 
     if (!engine->isInitialized()) {
@@ -68,7 +70,7 @@ static void nativeDestroy(JNIEnv* /*env*/, jclass /*clazz*/, jlong handle) {
 }
 
 static const JNINativeMethod methods[] = {
-    {"nativeCreate", "(Ljava/nio/ByteBuffer;IIFI)J", reinterpret_cast<void*>(nativeCreate)},
+    {"nativeCreate", "(Ljava/nio/ByteBuffer;IIFIZ)J", reinterpret_cast<void*>(nativeCreate)},
     {"nativeProcessAudio", "(J[S)Z", reinterpret_cast<void*>(nativeProcessAudio)},
     {"nativeReset", "(J)V", reinterpret_cast<void*>(nativeReset)},
     {"nativeDestroy", "(J)V", reinterpret_cast<void*>(nativeDestroy)},

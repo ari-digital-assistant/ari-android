@@ -113,13 +113,20 @@ class SensitivityTuningViewModel @Inject constructor(
     private fun apply(fit: LadderFit?) {
         val ladder = fit?.ladder ?: return
         viewModelScope.launch {
-            settingsRepository.setWakeLadder(ladder.format())
-            settingsRepository.setWakeWordSensitivity(WakeWordSensitivity.MEDIUM.name)
+            settingsRepository.setWakeLadder(ladder.modelId, ladder.format())
+            settingsRepository.setWakeWordSensitivity(ladder.modelId, WakeWordSensitivity.MEDIUM.name)
             // A hand-tuned ladder settles the question the scheduled review
             // exists to ask, so retire it rather than letting it arrive in two
             // days asking about a tightening the user has since overwritten.
-            settingsRepository.setLadderTightenedAt(0L)
-            settingsRepository.setLadderBeforeTightening(null)
+            // Only for this model: another model's tightening still stands.
+            // An unrecorded model predates per-model ladders and is retired as
+            // it always was.
+            val tightened = settingsRepository.ladderTightenedModel.first()
+            if (tightened == null || tightened == ladder.modelId) {
+                settingsRepository.setLadderTightenedAt(0L)
+                settingsRepository.setLadderBeforeTightening(null)
+                settingsRepository.setLadderTightenedModel(null)
+            }
         }
     }
 

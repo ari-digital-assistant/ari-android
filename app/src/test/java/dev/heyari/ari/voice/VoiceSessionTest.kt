@@ -145,4 +145,17 @@ class VoiceSessionTest {
         assertEquals("binary(image/png)", responseLabel(FfiResponse.Binary("image/png", ByteArray(4))))
         assertEquals("not-understood", responseLabel(FfiResponse.NotUnderstood("?")))
     }
+
+    @Test
+    fun `a wake whose transcript came back blank heard no speech`() {
+        assertTrue(isNoSpeechWake(verifyWake = true, raw = ""))
+        assertTrue(isNoSpeechWake(verifyWake = true, raw = "  "))
+    }
+
+    @Test
+    fun `speech, an unknown transcript, or a turn no wake opened is not a no-speech wake`() {
+        assertFalse(isNoSpeechWake(verifyWake = true, raw = "turn on the lights"))
+        assertFalse(isNoSpeechWake(verifyWake = true, raw = null))
+        assertFalse(isNoSpeechWake(verifyWake = false, raw = ""))
+    }
 }

@@ -43,6 +43,16 @@ private val CONTRIBUTOR_ID_FORMAT =
 
 private val Context.dataStore by preferencesDataStore(name = "ari_settings")
 
+/**
+ * The ladder stored for [modelId]: its own slot, else the slot every model
+ * shared before ladders were per model, but only when that one was measured
+ * for [modelId]. A stored ladder starts with the id it belongs to.
+ */
+internal fun storedLadder(modelId: String, own: String?, shared: String?): String? =
+    own ?: shared?.takeIf { it.substringBefore('|') == modelId }
+
+private fun perModelKey(base: String, modelId: String) = stringPreferencesKey("${base}_$modelId")
+
 @Singleton
 class SettingsRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,
@@ -103,29 +113,56 @@ class SettingsRepository @Inject constructor(
         }
     }
 
-    val wakeWordSensitivity: Flow<String?> = context.dataStore.data.map { prefs ->
-        prefs[KEY_WAKE_WORD_SENSITIVITY]
+    /**
+     * Which rung of [modelId]'s ladder is in use.
+     *
+     * Per model, because a rung is a number on one model's curve: making one
+     * model stricter used to make every model stricter. A model that has
+     * never had its own falls back to the one setting they all shared before.
+     */
+    fun wakeWordSensitivity(modelId: String): Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[perModelKey(KEY_WAKE_WORD_SENSITIVITY.name, modelId)] ?: prefs[KEY_WAKE_WORD_SENSITIVITY]
     }.distinctUntilChanged()
 
-    suspend fun setWakeWordSensitivity(name: String) {
+    suspend fun setWakeWordSensitivity(modelId: String, name: String) {
         context.dataStore.edit { prefs ->
-            prefs[KEY_WAKE_WORD_SENSITIVITY] = name
+            prefs[perModelKey(KEY_WAKE_WORD_SENSITIVITY.name, modelId)] = name
         }
     }
 
     /**
-     * The ladder measured on this phone, replacing the model's built-in one.
-     * Null until somebody tunes. See [dev.heyari.ari.wakeword.TunedLadder].
+     * The ladder measured on this phone for [modelId], replacing its built-in
+     * one. Null until somebody tunes that model. See
+     * [dev.heyari.ari.wakeword.TunedLadder].
+     *
+     * One slot per model. There used to be one slot for all of them, so tuning
+     * one model threw away another's ladder. The old slot is still read for the
+     * model it names, and is removed the first time that model's own slot is
+     * written, so writing null really does restore the built-in ladder.
      */
-    val wakeLadder: Flow<String?> = context.dataStore.data.map { prefs ->
-        prefs[KEY_WAKE_LADDER]
+    fun wakeLadder(modelId: String): Flow<String?> = context.dataStore.data.map { prefs ->
+        storedLadder(modelId, prefs[perModelKey(KEY_WAKE_LADDER.name, modelId)], prefs[KEY_WAKE_LADDER])
     }.distinctUntilChanged()
 
-    suspend fun setWakeLadder(formatted: String?) {
+    suspend fun setWakeLadder(modelId: String, formatted: String?) {
         context.dataStore.edit { prefs ->
-            if (formatted == null) prefs.remove(KEY_WAKE_LADDER)
-            else prefs[KEY_WAKE_LADDER] = formatted
+            val key = perModelKey(KEY_WAKE_LADDER.name, modelId)
+            if (formatted == null) prefs.remove(key) else prefs[key] = formatted
+            if (storedLadder(modelId, null, prefs[KEY_WAKE_LADDER]) != null) prefs.remove(KEY_WAKE_LADDER)
         }
+    }
+
+    /**
+     * Whether a wake must have speech in the second before it to open Ari. On
+     * by default: it drops knocks, buzzes and hums before anyone sees them. The
+     * switch is there for comparison, and for anyone it stops hearing.
+     */
+    val wakeSpeechCheck: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_WAKE_SPEECH_CHECK] ?: true
+    }.distinctUntilChanged()
+
+    suspend fun setWakeSpeechCheck(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[KEY_WAKE_SPEECH_CHECK] = enabled }
     }
 
     /**
@@ -157,6 +194,15 @@ class SettingsRepository @Inject constructor(
         context.dataStore.edit { prefs -> prefs[KEY_FALSE_WAKE_LOG] = csv }
     }
 
+    /** When the false-wake warning last went out, epoch millis, or 0. */
+    val falseWakeNotifiedAt: Flow<Long> = context.dataStore.data.map { prefs ->
+        prefs[KEY_FALSE_WAKE_NOTIFIED_AT] ?: 0L
+    }.distinctUntilChanged()
+
+    suspend fun setFalseWakeNotifiedAt(epochMs: Long) {
+        context.dataStore.edit { prefs -> prefs[KEY_FALSE_WAKE_NOTIFIED_AT] = epochMs }
+    }
+
     /**
      * When Ari last made itself stricter on its own, epoch millis, or 0.
      *
@@ -181,6 +227,22 @@ class SettingsRepository @Inject constructor(
         context.dataStore.edit { prefs ->
             if (formatted == null) prefs.remove(KEY_LADDER_BEFORE_TIGHTENING)
             else prefs[KEY_LADDER_BEFORE_TIGHTENING] = formatted
+        }
+    }
+
+    /**
+     * Which model the last self-tightening was for, so undoing it restores
+     * that model's ladder. [ladderBeforeTightening] cannot say: it is null
+     * whenever the model was on its built-in ladder.
+     */
+    val ladderTightenedModel: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[KEY_LADDER_TIGHTENED_MODEL]
+    }.distinctUntilChanged()
+
+    suspend fun setLadderTightenedModel(modelId: String?) {
+        context.dataStore.edit { prefs ->
+            if (modelId == null) prefs.remove(KEY_LADDER_TIGHTENED_MODEL)
+            else prefs[KEY_LADDER_TIGHTENED_MODEL] = modelId
         }
     }
 
@@ -770,9 +832,12 @@ class SettingsRepository @Inject constructor(
         private val KEY_WAKE_WORD_SENSITIVITY = stringPreferencesKey("wake_word_sensitivity")
         private val KEY_WAKE_LADDER = stringPreferencesKey("wake_ladder")
         private val KEY_TUNE_DURING_NORMAL_USE = booleanPreferencesKey("tune_during_normal_use")
+        private val KEY_WAKE_SPEECH_CHECK = booleanPreferencesKey("wake_speech_check")
         private val KEY_FALSE_WAKE_LOG = stringPreferencesKey("false_wake_log")
+        private val KEY_FALSE_WAKE_NOTIFIED_AT = longPreferencesKey("false_wake_notified_at")
         private val KEY_LADDER_TIGHTENED_AT = longPreferencesKey("ladder_tightened_at")
         private val KEY_LADDER_BEFORE_TIGHTENING = stringPreferencesKey("ladder_before_tightening")
+        private val KEY_LADDER_TIGHTENED_MODEL = stringPreferencesKey("ladder_tightened_model")
         private val KEY_ACTIVE_LLM_MODEL = stringPreferencesKey("active_llm_model")
         private val KEY_ACTIVE_ASSISTANT = stringPreferencesKey("active_assistant")
         private val KEY_ACTIVE_TTS_VOICE = stringPreferencesKey("active_tts_voice")

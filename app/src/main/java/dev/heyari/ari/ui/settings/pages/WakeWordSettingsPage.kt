@@ -51,6 +51,12 @@ fun WakeWordSettingsPage(
             Button(onClick = onTune, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.settings_wakeword_tune))
             }
+            RecordingToggleRow(
+                title = stringResource(R.string.settings_wake_speech_check_title),
+                blurb = stringResource(R.string.settings_wake_speech_check_blurb),
+                checked = state.wakeSpeechCheck,
+                onCheckedChange = viewModel::setWakeSpeechCheck,
+            )
             // The false-trigger capture toggle lives on the Debug page now,
             // beside the other recording switches.
         }

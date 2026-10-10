@@ -82,6 +82,10 @@ class MainActivity : ComponentActivity() {
         handleSkillUpdatesIntent(intent)
         handleSkillDeepLinkIntent(intent)
         handleModelUpdatesIntent(intent)
+        // The sensitivity notifications arrive here, not in onNewIntent: they
+        // launch with CLEAR_TOP and no SINGLE_TOP, which recreates this
+        // activity rather than delivering the intent to the running one.
+        handleSensitivityIntent(intent)
         setContent {
             AriTheme {
                 // An opaque backdrop behind the NavHost. Without it the window

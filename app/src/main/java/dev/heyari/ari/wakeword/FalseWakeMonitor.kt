@@ -19,9 +19,10 @@ import javax.inject.Singleton
  * about it.
  *
  * A false wake is the one fault in this app that reports itself. The wake word
- * fires, nobody says anything, the turn times out — and that silence is a
- * confirmed negative with no user judgement in it, which is why nothing here
- * asks the user whether it really was one. Every other wake-word fault is
+ * fires and nobody called Ari: the turn times out in silence, the transcript
+ * holds no speech, or the speech holds no "Ari". Each is a negative with no
+ * user judgement in it, which is why nothing here asks the user whether it
+ * really was one. Every other wake-word fault is
  * invisible: a phone that has stopped hearing somebody produces no event at
  * all, which is the reason [dev.heyari.ari.data.SettingsRepository.ladderTightenedAt]
  * exists and why this class comes back later to ask.
@@ -43,25 +44,28 @@ class FalseWakeMonitor @Inject constructor(
     /**
      * Record a false wake and, if they are coming thick and fast, say so.
      *
-     * Called from the silence timeout, which is the only place that knows a
-     * wake produced nothing. Never throws into that path: a failure to count
-     * must not take the voice turn down with it.
+     * Called by the voice session for every false wake the user saw. Never
+     * throws into that path: a failure to count must not take the voice turn
+     * down with it.
      */
     suspend fun onFalseWake(now: Long = System.currentTimeMillis()) {
         try {
             val recent = (prune(read(), now) + now).sorted()
             settingsRepository.setFalseWakeLog(recent.joinToString(","))
-            if (recent.size < BURST_THRESHOLD) return
+            val notifiedAt = settingsRepository.falseWakeNotifiedAt.first()
+            if (!burstDue(recent, notifiedAt)) return
             if (!settingsRepository.tuneDuringNormalUse.first()) {
                 // Counted but not acted on. Worth a log line: the rate is the
                 // number nobody has ever had, and this is where it shows up.
                 Log.i(TAG, "${recent.size} false wakes in ${WINDOW_MS / 3_600_000}h, tuning is off")
                 return
             }
+            Log.i(TAG, "${recent.size} false wakes in ${WINDOW_MS / 3_600_000}h, offering to help")
             notifyBurst(recent.size)
-            // Cleared so the next notification needs a fresh burst rather than
-            // arriving again on the very next false wake.
-            settingsRepository.setFalseWakeLog("")
+            // The log itself is kept: the screen this notification opens
+            // reads its count from it, and clearing it here made that screen
+            // say Ari had woken up zero times.
+            settingsRepository.setFalseWakeNotifiedAt(now)
         } catch (t: Throwable) {
             Log.e(TAG, "Failed to record false wake", t)
         }
@@ -129,5 +133,14 @@ class FalseWakeMonitor @Inject constructor(
         /** Drops anything older than [WINDOW_MS]; also the pruning on every write. */
         fun prune(timestamps: List<Long>, now: Long): List<Long> =
             timestamps.filter { now - it in 0..WINDOW_MS }
+
+        /**
+         * Whether [recent], already pruned to the window, is a burst worth a
+         * notification. Only false wakes after the last notification count, so
+         * the next one needs a fresh burst rather than arriving again on the
+         * very next false wake.
+         */
+        fun burstDue(recent: List<Long>, notifiedAt: Long): Boolean =
+            recent.count { it > notifiedAt } >= BURST_THRESHOLD
     }
 }

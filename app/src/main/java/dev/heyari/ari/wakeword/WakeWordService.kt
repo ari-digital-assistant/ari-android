@@ -35,6 +35,7 @@ import dev.heyari.ari.listening.ListeningDecision
 import dev.heyari.ari.listening.ListeningMode
 import dev.heyari.ari.listening.ListeningReason
 import dev.heyari.ari.listening.decideListening
+import dev.heyari.ari.stt.SpeechGate
 import dev.heyari.ari.voice.CaptureMode
 import dev.heyari.ari.voice.VoiceOverlayActivity
 import dev.heyari.ari.voice.VoiceSession
@@ -63,6 +64,14 @@ class WakeWordService : Service() {
 
     @Inject
     lateinit var listeningController: ListeningController
+
+    @Inject
+    lateinit var wakeLog: WakeLog
+
+    // Which model the detector was built from, for the wake log. Set before the
+    // capture thread starts, which is the only thread that reads it after.
+    @Volatile
+    private var activeModelId: String = WakeWordRegistry.default.id
 
     /**
      * The policy's latest word on whether the mic should be open. Seeded
@@ -425,13 +434,15 @@ class WakeWordService : Service() {
         // fine for service startup. Sync is required because the rest of
         // startListening() is sync and there's no audio loop yet to defer into.
         val activeId = runBlocking { settingsRepository.activeWakeWordId.first() }
-        val sensitivityName = runBlocking { settingsRepository.wakeWordSensitivity.first() }
-        val storedLadder = runBlocking { settingsRepository.wakeLadder.first() }
+        val model = WakeWordRegistry.byId(activeId)
+        val sensitivityName = runBlocking { settingsRepository.wakeWordSensitivity(model.id).first() }
+        val storedLadder = runBlocking { settingsRepository.wakeLadder(model.id).first() }
+        val speechCheck = runBlocking { settingsRepository.wakeSpeechCheck.first() }
         // The ladder this phone measured for itself, where there is one. Read
         // here rather than held as a field so a tuning session or a self-
         // tightening takes effect on the next mic cycle without the service
         // needing to know either of them exists.
-        val wakeWord = WakeWordRegistry.byId(activeId).withLadder(TunedLadder.parse(storedLadder))
+        val wakeWord = model.withLadder(TunedLadder.parse(storedLadder))
         val sensitivity = WakeWordSensitivity.fromName(sensitivityName)
         val point = wakeWord.operatingPoint(sensitivity)
         Log.i(TAG, "Loading wake word model: ${wakeWord.id} @ sensitivity=${sensitivity.name} (cutoff=${point.probabilityCutoff}, window=${point.slidingWindowSize})")
@@ -448,6 +459,11 @@ class WakeWordService : Service() {
             featureStepSizeMs = wakeWord.featureStepSizeMs,
             probabilityCutoff = point.probabilityCutoff,
             slidingWindowSize = point.slidingWindowSize,
+            // The speech check needs to decline a detection without the engine's
+            // cool-off swallowing the phrase that follows it. Every path below
+            // that acts on a detection resets the engine itself. Off, the engine
+            // behaves exactly as it always has.
+            resetOnDetection = !speechCheck,
         )
 
         val record = openAudioRecord(currentSource)
@@ -469,18 +485,56 @@ class WakeWordService : Service() {
         record.startRecording()
         isListening = true
         micHot = true
+        activeModelId = wakeWord.id
+        wakeLog.listeningStarted(wakeWord, sensitivity, point, speechCheck)
 
         // Its own thread, not a slot on the shared Default dispatcher: read()
         // blocks for a whole buffer period, so parking it on a pool thread the
         // detector and the rest of the app also use is a stall waiting to happen.
-        captureThread = Thread({ captureLoop(record) }, "AriMicCapture").also { it.start() }
+        captureThread = Thread({ captureLoop(record, speechCheck) }, "AriMicCapture").also { it.start() }
 
         Log.i(TAG, "Wake word listening started")
     }
 
-    private fun captureLoop(record: AudioRecord) {
+    private fun captureLoop(record: AudioRecord, speechCheck: Boolean) {
         Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
         val buffer = ShortArray(CHUNK_SIZE)
+        var aliveLoggedAt = System.currentTimeMillis()
+
+        // Loop-local like the buffer: the speech model is not thread-safe, and a
+        // capture thread that outlives its join must not share one with the next.
+        // Built at the first detection that needs it, since loading it per wake
+        // would cost more than the check.
+        val pacing = SpeechCheckPacing()
+        var gate: SpeechGate? = null
+        var gateUnavailable = false
+
+        // Whether this detection may open Ari: speech in the second before it, on
+        // the rule measured offline (ari-tools/wakeword/trained/2026-10-07-vad-gate/).
+        // A model that cannot load fails open, because a check that cannot run must
+        // never cost somebody their wake.
+        fun speechBeforeWake(now: Long): Boolean {
+            if (!pacing.shouldCheck(now)) return false
+            if (gate == null && !gateUnavailable) {
+                gate = try {
+                    SpeechGate(assets)
+                } catch (t: Throwable) {
+                    Log.w(TAG, "Speech check unavailable, letting wakes through", t)
+                    gateUnavailable = true
+                    null
+                }
+            }
+            val vad = gate ?: return true
+            if (vad.speechInTail(captureBus.peekRecent(SPEECH_CHECK_BUFFER_S), SPEECH_CHECK_TAIL_SAMPLES)) {
+                return true
+            }
+            if (pacing.dropped(now)) {
+                Log.i(TAG, "Wake dropped: no speech in the second before it")
+                wakeLog.dropped(activeModelId)
+            }
+            return false
+        }
+
         while (isListening) {
             val read = record.read(buffer, 0, buffer.size)
             if (read < 0) {
@@ -491,6 +545,12 @@ class WakeWordService : Service() {
                 return
             }
             if (read == 0) continue
+
+            val chunkAt = System.currentTimeMillis()
+            if (chunkAt - aliveLoggedAt >= WakeLog.ALIVE_INTERVAL_MS) {
+                aliveLoggedAt = chunkAt
+                wakeLog.stillListening()
+            }
 
             // Feed every chunk into the shared capture bus FIRST.
             // Producer-side fan-out: ring buffer always; live channel
@@ -518,8 +578,12 @@ class WakeWordService : Service() {
                 detector?.reset()
                 continue
             }
+            // No reset when this declines: the engine reports again while it still
+            // hears the wake word, and the check runs again once speech arrives.
+            if (speechCheck && !speechBeforeWake(now)) continue
             lastDetectionAt = now
             Log.i(TAG, "Wake word detected!")
+            wakeLog.wake(activeModelId)
             onWakeWordDetected()
             detector?.reset()
         }
@@ -548,6 +612,7 @@ class WakeWordService : Service() {
      * state.
      */
     private fun releaseMic() {
+        if (isListening) wakeLog.listeningStopped()
         isListening = false
         micHot = false
         captureThread?.let { thread ->
@@ -617,10 +682,11 @@ class WakeWordService : Service() {
         if (!Settings.canDrawOverlays(this)) {
             Log.w(TAG, "SYSTEM_ALERT_WINDOW not granted — cannot launch over lock screen. Posting recovery notification.")
             postSawMissingNotification()
+            wakeLog.outcome(WakeOutcome.NOT_SHOWN)
             return
         }
 
-        launchVoiceOverlay(verifyWake = true)
+        if (!launchVoiceOverlay(verifyWake = true)) wakeLog.outcome(WakeOutcome.NOT_SHOWN)
     }
 
     /**
@@ -879,6 +945,20 @@ class WakeWordService : Service() {
             return true
         }
 
+        /**
+         * Restart a running service so it picks up a new wake model or a new
+         * sensitivity. The detector is built once per mic cycle, and the mic
+         * stays open across voice turns, so without this a changed setting
+         * waits for the next time the microphone happens to close. Only safe
+         * from the foreground: a microphone service cannot be started from the
+         * background.
+         */
+        fun restartIfRunning(context: Context) {
+            if (!isRunning) return
+            context.stopService(Intent(context, WakeWordService::class.java))
+            start(context)
+        }
+
         private const val NOTIFICATION_ID = 1
         private const val DETECTION_NOTIFICATION_ID = 2
 
@@ -896,6 +976,12 @@ class WakeWordService : Service() {
         const val CHANNEL_TUNING = "wake_word_tuning"
 
         private const val SAMPLE_RATE = 16000
+
+        // The speech check's view: the ring buffer's 2 s ending at the detection,
+        // with speech required in its last second. Measured, not tuned; changing
+        // either means measuring again.
+        private const val SPEECH_CHECK_BUFFER_S = 2.0f
+        private const val SPEECH_CHECK_TAIL_SAMPLES = SAMPLE_RATE
 
         // 30ms at 16kHz. The models step features every 10ms, so one read now
         // yields three feature frames instead of one — same detection, a third

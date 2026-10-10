@@ -20,6 +20,13 @@ enum class WakeCaptureHook(val slug: String) {
     SILENT("silent"),
 
     /**
+     * The wake fired and the transcriber found no speech in what followed. The
+     * same label as [SILENT], reached on the paths that endpoint and transcribe
+     * instead of timing out, which on cloud transcription is all of them.
+     */
+    NO_SPEECH("no-speech"),
+
+    /**
      * The wake fired and the turn was accepted — a true positive. Captured by
      * the keep-wake toggle (or the firehose), never by the false-trigger one:
      * the two are opposite labels and must not share a switch.
@@ -84,7 +91,7 @@ class WakeCaptureStore internal constructor(
         // not silently inherit the retrain feed.
         val clips = when (hook) {
             WakeCaptureHook.REJECTED -> rejectedClips
-            WakeCaptureHook.SILENT -> silentClips
+            WakeCaptureHook.SILENT, WakeCaptureHook.NO_SPEECH -> silentClips
             WakeCaptureHook.ACCEPTED -> acceptedClips
         }
         clips.save(clipStem("wake", timestampMs, hook.slug), pcm, rawTranscript)

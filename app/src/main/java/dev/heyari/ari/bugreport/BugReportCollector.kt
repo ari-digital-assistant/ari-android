@@ -17,6 +17,8 @@ import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.data.conversation.ConversationLogRepository
 import dev.heyari.ari.stt.UtteranceCaptureStore
 import dev.heyari.ari.wakeword.WakeCaptureStore
+import dev.heyari.ari.wakeword.WakeLog
+import dev.heyari.ari.wakeword.WakeWordService
 import uniffi.ari_ffi.engineVersion
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -79,6 +81,7 @@ class BugReportCollector @Inject constructor(
     private val conversation: ConversationLogRepository,
     private val wakeCaptures: WakeCaptureStore,
     private val utteranceCaptures: UtteranceCaptureStore,
+    private val wakeLog: WakeLog,
 ) {
 
     /**
@@ -261,7 +264,11 @@ class BugReportCollector @Inject constructor(
     }
 
     /**
-     * Ari's own log, redacted, with the recent process exits on top.
+     * Ari's own log, redacted, with the recent process exits and the wake log
+     * on top. The wake log rides here rather than as an attachment of its own
+     * because this one is ticked by default, and a false-wake rate is only
+     * worth anything if most reports carry it. A new attachment kind would
+     * also need the server to learn its wire name first.
      *
      * Deliberately NOT narrowed to the current pid. A crash report is filed by
      * the process that came up *after* the crash, so `--pid` reliably excluded
@@ -280,7 +287,8 @@ class BugReportCollector @Inject constructor(
             Log.w(TAG, "could not read logcat", it)
             "logcat was not readable on this device"
         }
-        LogScrubber(knownSecrets()).scrub(recentExits() + raw)
+        val wakes = wakeLog.report(System.currentTimeMillis(), listeningNow = WakeWordService.micHot)
+        LogScrubber(knownSecrets()).scrub(recentExits() + wakes + raw)
     }
 
     /**

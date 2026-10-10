@@ -49,6 +49,22 @@ class WakeCaptureStoreTest {
     }
 
     @Test
+    fun `no-speech clips join the silent ones in the retrain feed`() {
+        val store = store()
+
+        store.save(pcm, "", WakeCaptureHook.NO_SPEECH, 4_000L)
+
+        assertEquals(
+            listOf(
+                "wake-00000000000004000-no-speech.txt",
+                "wake-00000000000004000-no-speech.wav",
+            ),
+            names("wake-captures"),
+        )
+        assertEquals(emptyList<String>(), names("wake-captures-rejected"))
+    }
+
+    @Test
     fun `accepted clips land in their own dir, never the retrain feed or quarantine`() {
         val store = store()
 

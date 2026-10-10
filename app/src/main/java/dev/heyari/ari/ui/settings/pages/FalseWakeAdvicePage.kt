@@ -1,5 +1,6 @@
 package dev.heyari.ari.ui.settings.pages
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -44,8 +46,26 @@ fun FalseWakeAdvicePage(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
+    val context = LocalContext.current
+    // Resolved during composition, not inside the effect, so a language change
+    // cannot leave a stale string behind.
+    val appliedMessage = when (val applied = state.applied) {
+        is FalseWakeRemedy.StepDown -> stringResource(
+            R.string.false_wake_advice_step_done,
+            stringResource(applied.to.displayNameRes),
+        )
+        is FalseWakeRemedy.Tighten -> stringResource(R.string.false_wake_advice_tighten_done)
+        FalseWakeRemedy.Exhausted, null -> null
+    }
+
     LaunchedEffect(mode) { viewModel.load(mode) }
-    LaunchedEffect(state.settled) { if (state.settled) onDone() }
+    LaunchedEffect(state.settled) {
+        if (!state.settled) return@LaunchedEffect
+        // The screen closes the moment the change is made, so without this the
+        // only sign anything happened would be Ari waking up less.
+        appliedMessage?.let { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
+        onDone()
+    }
 
     SettingsScaffold(
         title = stringResource(R.string.false_wake_advice_title),
@@ -73,7 +93,7 @@ fun FalseWakeAdvicePage(
                         is FalseWakeRemedy.StepDown -> Remedy(
                             explanation = stringResource(
                                 R.string.false_wake_advice_step_body,
-                                stringResource(remedy.to.displayNameRes),
+                                stringResource(state.current.displayNameRes),
                             ),
                             actionLabel = stringResource(
                                 R.string.false_wake_advice_step_action,

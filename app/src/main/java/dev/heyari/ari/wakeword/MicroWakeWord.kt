@@ -4,11 +4,18 @@ import android.util.Log
 import java.io.Closeable
 import java.nio.ByteBuffer
 
+/**
+ * [resetOnDetection] false leaves the engine alone when it reports a detection, so the caller
+ * can decline one without the engine's cool-off swallowing what comes next; the engine keeps
+ * reporting while its window stays above the cutoff, and the caller must [reset] on every
+ * detection it acts on.
+ */
 class MicroWakeWord(
     modelBuffer: ByteBuffer,
     featureStepSizeMs: Int,
     probabilityCutoff: Float,
     slidingWindowSize: Int,
+    resetOnDetection: Boolean = true,
 ) : Closeable {
 
     private var nativeHandle: Long = 0
@@ -19,7 +26,9 @@ class MicroWakeWord(
         require(probabilityCutoff in 0f..1f) { "probabilityCutoff must be in [0.0, 1.0]" }
         require(modelBuffer.isDirect) { "modelBuffer must be a direct ByteBuffer" }
         ensureLibraryLoaded()
-        nativeHandle = nativeCreate(modelBuffer, DEFAULT_SAMPLE_RATE, featureStepSizeMs, probabilityCutoff, slidingWindowSize)
+        nativeHandle = nativeCreate(
+            modelBuffer, DEFAULT_SAMPLE_RATE, featureStepSizeMs, probabilityCutoff, slidingWindowSize, resetOnDetection,
+        )
         if (nativeHandle == 0L) {
             throw IllegalStateException("Failed to create native MicroWakeWord engine")
         }
@@ -69,6 +78,7 @@ class MicroWakeWord(
             featureStepSizeMs: Int,
             probabilityCutoff: Float,
             slidingWindowSize: Int,
+            resetOnDetection: Boolean,
         ): Long
 
         @JvmStatic

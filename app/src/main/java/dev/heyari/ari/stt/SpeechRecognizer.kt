@@ -451,7 +451,13 @@ class SpeechRecognizer @Inject constructor(
                 // "your key was rejected" send the user to different places,
                 // and a single generic error taught nobody anything.
                 Log.w(TAG, "Cloud STT failed (${e.failure})", e)
-                _state.value = SttState.Error(context.getString(cloudErrorRes(e.failure)))
+                val message = context.getString(cloudErrorRes(e.failure))
+                // Hearing nothing is not a failure of the request, and on a wake
+                // turn it is the commonest false wake there is: the host needs
+                // the audio to keep it and the distinction to count it.
+                _state.value =
+                    if (e.failure == CloudSttFailure.EMPTY) SttState.NoSpeech(message, pcm)
+                    else SttState.Error(message)
                 return@startBufferedListening
             }
             val match = matchWakePhrase(transcript, locale)
@@ -1100,4 +1106,14 @@ sealed interface SttState {
         val nameMatched: Boolean? = null,
     ) : SttState
     data class Error(val message: String) : SttState
+
+    /**
+     * The utterance was transcribed and held no speech. Cloud path only: the
+     * whisper path reports the same thing as a [Done] with a blank [Done.raw],
+     * and the streaming path never endpoints on silence at all.
+     *
+     * @param message What to show the user, as for [Error].
+     * @param audio What was sent for transcription, so a false wake can be kept.
+     */
+    data class NoSpeech(val message: String, val audio: ShortArray?) : SttState
 }
