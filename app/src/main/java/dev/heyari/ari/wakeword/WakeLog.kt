@@ -88,11 +88,16 @@ internal data class ModelTally(
     val passedAfterDrop: Int = 0,
     /** Wakes let through unchecked because the check could not load or threw. */
     val checkFailed: Int = 0,
+    /** How quiet wakes ended that never showed anything. Not in [outcomes]. */
+    val hidden: Map<WakeOutcome, Int> = emptyMap(),
 ) {
+    /** False wakes somebody saw. The ones a quiet wake hid are [hiddenFalseWakes]. */
     val falseWakes: Int get() = outcomes.filterKeys { it.falseWake }.values.sum()
 
+    val hiddenFalseWakes: Int get() = hidden.filterKeys { it.falseWake }.values.sum()
+
     /** Wakes with no outcome line: the overlay was replaced by another wake, or the app died. */
-    val unresolved: Int get() = wakes - outcomes.values.sum()
+    val unresolved: Int get() = wakes - outcomes.values.sum() - hidden.values.sum()
 }
 
 internal data class WakeLogSummary(
@@ -128,6 +133,7 @@ internal fun summariseWakeLog(
     val dropped = mutableMapOf<String, Int>()
     val passedAfterDrop = mutableMapOf<String, Int>()
     val checkFailed = mutableMapOf<String, Int>()
+    val hidden = mutableMapOf<String, MutableMap<WakeOutcome, Int>>()
     var unclosed = 0
     var openModel: String? = null
     var openAt = 0L
@@ -173,7 +179,8 @@ internal fun summariseWakeLog(
                 val model = pendingWake ?: continue
                 pendingWake = null
                 val outcome = entry.args.firstOrNull()?.let(WakeOutcome::fromSlug) ?: continue
-                if (pendingInWindow) outcomes.getOrPut(model) { mutableMapOf() }.merge(outcome, 1, Int::plus)
+                val into = if (entry.args.getOrNull(1) == "hidden") hidden else outcomes
+                if (pendingInWindow) into.getOrPut(model) { mutableMapOf() }.merge(outcome, 1, Int::plus)
             }
         }
         if (openModel != null) lastSign = entry.at
@@ -190,6 +197,7 @@ internal fun summariseWakeLog(
                 dropped = dropped[model] ?: 0,
                 passedAfterDrop = passedAfterDrop[model] ?: 0,
                 checkFailed = checkFailed[model] ?: 0,
+                hidden = hidden[model].orEmpty(),
             )
         },
         unclosed = unclosed,
@@ -224,6 +232,10 @@ internal fun renderWakeLogSummary(span: String, summary: WakeLogSummary): String
             tally.checkFailed.takeIf { it > 0 }?.let { "let through unchecked $it" },
         )
         if (parts.isNotEmpty()) appendLine("  " + parts.joinToString(", "))
+        val quiet = WakeOutcome.entries.mapNotNull { outcome ->
+            tally.hidden[outcome]?.let { "${outcome.slug} $it" }
+        }
+        if (quiet.isNotEmpty()) appendLine("  never shown (quiet wake): " + quiet.joinToString(", "))
     }
     if (summary.unclosed > 0) {
         appendLine(
@@ -264,6 +276,7 @@ class WakeLog internal constructor(private val file: File) {
         sensitivity: WakeWordSensitivity,
         point: OperatingPoint,
         speechCheck: Boolean,
+        quietWake: Boolean,
     ) = record(
         LOG_LISTEN_ON,
         model.id,
@@ -271,6 +284,7 @@ class WakeLog internal constructor(private val file: File) {
         point.probabilityCutoff.toString(),
         point.slidingWindowSize.toString(),
         if (speechCheck) "speech-check=on" else "speech-check=off",
+        if (quietWake) "quiet-wake=on" else "quiet-wake=off",
     )
 
     fun listeningStopped() = record(LOG_LISTEN_OFF)
@@ -280,7 +294,9 @@ class WakeLog internal constructor(private val file: File) {
 
     fun wake(modelId: String) = record(LOG_WAKE, modelId)
 
-    fun outcome(outcome: WakeOutcome) = record(LOG_OUTCOME, outcome.slug)
+    /** [hidden]: a quiet wake that ended without ever showing anything. */
+    fun outcome(outcome: WakeOutcome, hidden: Boolean = false) =
+        if (hidden) record(LOG_OUTCOME, outcome.slug, "hidden") else record(LOG_OUTCOME, outcome.slug)
 
     /** A detection the speech check dropped: no overlay, no chime, only this line. */
     fun dropped(modelId: String) = record(LOG_DROPPED, modelId)

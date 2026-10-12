@@ -57,6 +57,12 @@ fun WakeWordSettingsPage(
                 checked = state.wakeSpeechCheck,
                 onCheckedChange = viewModel::setWakeSpeechCheck,
             )
+            RecordingToggleRow(
+                title = stringResource(R.string.settings_quiet_wake_title),
+                blurb = stringResource(R.string.settings_quiet_wake_blurb),
+                checked = state.quietWake,
+                onCheckedChange = viewModel::setQuietWake,
+            )
             // The false-trigger capture toggle lives on the Debug page now,
             // beside the other recording switches.
         }

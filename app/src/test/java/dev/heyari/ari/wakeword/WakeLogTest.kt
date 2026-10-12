@@ -128,6 +128,31 @@ class WakeLogTest {
     }
 
     @Test
+    fun `quiet wakes that never showed are not false wakes anyone saw`() {
+        val entries = listOf(
+            on(0),
+            wake(10), WakeLogEntry(12, LOG_OUTCOME, listOf("rejected", "hidden")),
+            wake(20), WakeLogEntry(22, LOG_OUTCOME, listOf("no-speech", "hidden")),
+            wake(30), outcome(32, WakeOutcome.ACCEPTED),
+            wake(40), outcome(42, WakeOutcome.REJECTED),
+        )
+
+        val ari = summariseWakeLog(entries, from = 0, to = 100, listeningNow = true).byModel.getValue("hey_ari")
+
+        assertEquals(4, ari.wakes)
+        assertEquals(1, ari.falseWakes)
+        assertEquals(2, ari.hiddenFalseWakes)
+        assertEquals(0, ari.unresolved)
+        assertEquals(
+            "--------- wake log, x\n" +
+                "hey_ari: listening 10.0 h, 4 wakes, 1 false (0.10 per listening hour)\n" +
+                "  accepted 1, rejected 1\n" +
+                "  never shown (quiet wake): rejected 1, no-speech 1\n",
+            renderWakeLogSummary("x", WakeLogSummary(mapOf("hey_ari" to ari.copy(listeningMs = 10 * hour)), 0)),
+        )
+    }
+
+    @Test
     fun `a wake before the window takes its outcome with it`() {
         val entries = listOf(wake(10), outcome(20, WakeOutcome.REJECTED), wake(30), outcome(31, WakeOutcome.ACCEPTED))
 

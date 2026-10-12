@@ -2,7 +2,6 @@ package dev.heyari.ari.wakeword
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.ActivityOptions
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -16,7 +15,6 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.net.Uri
-import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -37,7 +35,7 @@ import dev.heyari.ari.listening.ListeningReason
 import dev.heyari.ari.listening.decideListening
 import dev.heyari.ari.stt.SpeechGate
 import dev.heyari.ari.voice.CaptureMode
-import dev.heyari.ari.voice.VoiceOverlayActivity
+import dev.heyari.ari.voice.VoiceOverlayLauncher
 import dev.heyari.ari.voice.VoiceSession
 import dev.heyari.ari.voice.VoiceState
 import kotlinx.coroutines.CoroutineScope
@@ -72,6 +70,11 @@ class WakeWordService : Service() {
     // capture thread starts, which is the only thread that reads it after.
     @Volatile
     private var activeModelId: String = WakeWordRegistry.default.id
+
+    // Whether a wake starts the voice session unseen, read with the rest of the
+    // wake settings when the microphone opens.
+    @Volatile
+    private var quietWake: Boolean = false
 
     /**
      * The policy's latest word on whether the mic should be open. Seeded
@@ -438,6 +441,7 @@ class WakeWordService : Service() {
         val sensitivityName = runBlocking { settingsRepository.wakeWordSensitivity(model.id).first() }
         val storedLadder = runBlocking { settingsRepository.wakeLadder(model.id).first() }
         val speechCheck = runBlocking { settingsRepository.wakeSpeechCheck.first() }
+        quietWake = runBlocking { settingsRepository.quietWake.first() }
         // The ladder this phone measured for itself, where there is one. Read
         // here rather than held as a field so a tuning session or a self-
         // tightening takes effect on the next mic cycle without the service
@@ -486,7 +490,7 @@ class WakeWordService : Service() {
         isListening = true
         micHot = true
         activeModelId = wakeWord.id
-        wakeLog.listeningStarted(wakeWord, sensitivity, point, speechCheck)
+        wakeLog.listeningStarted(wakeWord, sensitivity, point, speechCheck, quietWake)
 
         // Its own thread, not a slot on the shared Default dispatcher: read()
         // blocks for a whole buffer period, so parking it on a pool thread the
@@ -699,11 +703,18 @@ class WakeWordService : Service() {
             return
         }
 
+        if (quietWake) {
+            // The session listens unseen and opens the overlay itself once the
+            // transcript has passed the name check. Posted to the main thread,
+            // where the overlay would otherwise have started it.
+            mainHandler.post { voiceSession.start(verifyWake = true, quiet = true) }
+            return
+        }
         if (!launchVoiceOverlay(verifyWake = true)) wakeLog.outcome(WakeOutcome.NOT_SHOWN)
     }
 
     /**
-     * Launch the transparent [VoiceOverlayActivity], which starts the shared
+     * Launch the transparent [dev.heyari.ari.voice.VoiceOverlayActivity], which starts the shared
      * [VoiceSession] and renders the turn UI. Shared by two callers:
      *  - the wake-detection path ([onWakeWordDetected]), which gates on SAW
      *    FIRST because it launches from the background / over the lock screen;
@@ -715,38 +726,12 @@ class WakeWordService : Service() {
      * the service would sit with the mic hot waiting for a turn that never began.
      */
     private fun launchVoiceOverlay(verifyWake: Boolean): Boolean {
-        val intent = Intent(this, VoiceOverlayActivity::class.java).apply {
-            putExtra(EXTRA_VERIFY_WAKE, verifyWake)
-            addFlags(
-                Intent.FLAG_ACTIVITY_NEW_TASK
-                    or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    or Intent.FLAG_ACTIVITY_NO_ANIMATION
-            )
-        }
-        @Suppress("DEPRECATION")
-        val options = ActivityOptions.makeBasic().apply {
-            if (Build.VERSION.SDK_INT >= 34) {
-                // Deprecated in API 36 in favour of an as-yet-unstable replacement;
-                // the constant still works and SAW is the actual BAL grant anyway —
-                // this just makes the intent explicit for OEM hardening.
-                setPendingIntentBackgroundActivityStartMode(
-                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                )
-            }
-        }.toBundle()
-
-        return try {
-            startActivity(intent, options)
-            Log.i(TAG, "Voice overlay activity launched")
-            true
-        } catch (t: Throwable) {
-            // Should not happen: the wake path holds SAW and the tap path is
-            // foreground. If it does, surface the recovery notification — it's
-            // the only path the user can act on.
-            Log.e(TAG, "Failed to launch voice overlay activity", t)
-            postSawMissingNotification()
-            false
-        }
+        val launched = VoiceOverlayLauncher.launch(this, verifyWake)
+        // Should not happen: the wake path holds SAW and the tap path is
+        // foreground. If it does, surface the recovery notification, the only
+        // path the user can act on.
+        if (!launched) postSawMissingNotification()
+        return launched
     }
 
     /**

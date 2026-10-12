@@ -350,6 +350,8 @@
     <string name="settings_wakeword_blurb">The phrase Ari listens for. \"Hey Jarvis\" is the original microWakeWord model and is included as a fallback.</string>
     <string name="settings_wake_speech_check_title">Ignore wakes with no speech</string>
     <string name="settings_wake_speech_check_blurb">Ari only opens if it heard a voice just before. This stops knocks, buzzes and hums from waking it. Turn it off if Ari stops hearing you.</string>
+    <string name="settings_quiet_wake_title">Wait until Ari hears its name</string>
+    <string name="settings_quiet_wake_blurb">Ari stays hidden and silent until it has heard \"Hey Ari\", so things that only sound like it show nothing. It appears a moment later than it would otherwise.</string>
     <string name="settings_wakeword_sensitivity_blurb">Sensitivity — how eagerly Ari responds to your voice. If Ari activates when it shouldn\'t, lower this. If it doesn\'t activate when you want it to, raise this.</string>
     <string name="sensitivity_tuning_title">Tune sensitivity</string>
     <string name="sensitivity_tuning_blurb">Ari will ask you to say a few things — sometimes the wake phrase, sometimes not. The ones that are not the wake phrase are the important half: they show Ari what to ignore. Do it once for everyone in the house.</string>

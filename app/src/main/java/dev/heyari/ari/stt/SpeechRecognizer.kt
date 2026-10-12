@@ -418,7 +418,10 @@ class SpeechRecognizer @Inject constructor(
      * Dispatches to the streaming or buffered code path based on which
      * recogniser is loaded.
      */
-    fun startListening(rewindSeconds: Float = DEFAULT_REWIND_SECONDS) {
+    fun startListening(
+        rewindSeconds: Float = DEFAULT_REWIND_SECONDS,
+        giveUpWithoutSpeechMs: Long? = null,
+    ) {
         if (_state.value is SttState.Listening) return
 
         val online = onlineRecognizer
@@ -428,9 +431,9 @@ class SpeechRecognizer @Inject constructor(
             // Cloud first: it needs no local model, so checking it last would
             // mean a leftover recogniser from a previous on-device session
             // silently won after the user switched to cloud.
-            cloudMode -> startCloudListening(rewindSeconds)
+            cloudMode -> startCloudListening(rewindSeconds, giveUpWithoutSpeechMs)
             online != null -> startOnlineListening(online, rewindSeconds)
-            offline != null -> startBufferedListening(rewindSeconds, "offline whisper") { pcm ->
+            offline != null -> startBufferedListening(rewindSeconds, "offline whisper", giveUpWithoutSpeechMs) { pcm ->
                 decodeWhisperAndEmit(offline, pcm)
             }
             else -> {
@@ -440,8 +443,8 @@ class SpeechRecognizer @Inject constructor(
         }
     }
 
-    private fun startCloudListening(rewindSeconds: Float) {
-        startBufferedListening(rewindSeconds, "cloud") { pcm ->
+    private fun startCloudListening(rewindSeconds: Float, giveUpWithoutSpeechMs: Long?) {
+        startBufferedListening(rewindSeconds, "cloud", giveUpWithoutSpeechMs) { pcm ->
             _state.value = SttState.Transcribing
             val locale = localeProvider.currentLocale()
             val transcript = try {
@@ -763,6 +766,12 @@ class SpeechRecognizer @Inject constructor(
      * RMS endpointing and the hard cap are identical, and duplicating that
      * loop once per backend is how the endpointing rules drift apart.
      *
+     * [giveUpWithoutSpeechMs], when set, ends the listen with
+     * [SttState.NoSpeech] if nothing has crossed the speech level by then, and
+     * nothing is transcribed. A quiet wake needs it: without Ari's ready chime,
+     * which is what usually trips the speech level, a wake on pure noise would
+     * otherwise listen for the full 30 s and then upload all of it.
+     *
      * [transcribe] runs off this coroutine's thread and may throw; the caller's
      * wrapper decides what the user hears. It emits the terminal state and
      * nothing else — tearing the listen down is this loop's job, because only
@@ -771,6 +780,7 @@ class SpeechRecognizer @Inject constructor(
     private fun startBufferedListening(
         rewindSeconds: Float,
         label: String,
+        giveUpWithoutSpeechMs: Long?,
         transcribe: suspend (ShortArray) -> Unit,
     ) {
         val channel = captureBus.arm(rewindSeconds) ?: run {
@@ -799,7 +809,8 @@ class SpeechRecognizer @Inject constructor(
             // started, MIN_SILENCE_AFTER_SPEECH_MS of below-threshold audio
             // ends the utterance.
             var firstSpeechAt: Long? = null
-            var lastSpeechAt = System.currentTimeMillis()
+            val startedAt = System.currentTimeMillis()
+            var lastSpeechAt = startedAt
 
             while (isActive) {
                 val incoming = try {
@@ -813,7 +824,10 @@ class SpeechRecognizer @Inject constructor(
                 totalSamples += incoming.size
 
                 val now = System.currentTimeMillis()
-                val rms = computeRms(incoming)
+                // The loudest frame rather than the whole chunk: the first chunk
+                // is the 2 s pre-roll, and a "Hey Ari" inside it averaged over
+                // the silence around it can sit below the speech level.
+                val rms = loudestFrameRms(incoming)
                 if (rms >= SPEECH_RMS_THRESHOLD) {
                     if (firstSpeechAt == null) {
                         firstSpeechAt = now
@@ -842,6 +856,16 @@ class SpeechRecognizer @Inject constructor(
                 if (totalSamples >= MAX_OFFLINE_UTTERANCE_SAMPLES) {
                     Log.i(TAG, "$label endpoint: hard cap (${totalSamples} samples)")
                     transcribe(merge(accumulator, totalSamples))
+                    stopRecording(owner)
+                    return@launch
+                }
+
+                if (shouldGiveUp(now, startedAt, firstSpeechAt, giveUpWithoutSpeechMs)) {
+                    Log.i(TAG, "$label: no speech within ${giveUpWithoutSpeechMs}ms, giving up untranscribed")
+                    _state.value = SttState.NoSpeech(
+                        context.getString(R.string.stt_cloud_error_empty),
+                        merge(accumulator, totalSamples),
+                    )
                     stopRecording(owner)
                     return@launch
                 }
@@ -896,16 +920,6 @@ class SpeechRecognizer @Inject constructor(
             raw = transcript,
             nameMatched = wakeVerdict(match, locale),
         )
-    }
-
-    private fun computeRms(samples: ShortArray): Float {
-        if (samples.isEmpty()) return 0f
-        var sumSquares = 0.0
-        for (s in samples) {
-            val v = s.toDouble()
-            sumSquares += v * v
-        }
-        return sqrt(sumSquares / samples.size).toFloat()
     }
 
     fun stopListening() {
@@ -1037,6 +1051,10 @@ class SpeechRecognizer @Inject constructor(
         private const val PREROLL_SKIP_BATCHES = 20
 
         // --- Offline whisper endpointing constants ---
+        // 30 ms, the size of one capture chunk, so a live chunk scores exactly
+        // as it did before frames were looked at separately.
+        private const val RMS_FRAME_SAMPLES = 480
+
         // RMS threshold for "this chunk contains speech". int16 PCM samples
         // span [-32768, 32767]; quiet speech sits around 1000-3000 RMS,
         // ambient room noise typically <300. 600 lands comfortably between.
@@ -1058,6 +1076,31 @@ class SpeechRecognizer @Inject constructor(
         // first segment dominates accuracy, so we cap at the same point
         // as a safety net rather than an expected case.
         private const val MAX_OFFLINE_UTTERANCE_SAMPLES = SAMPLE_RATE * 30
+
+        /** The RMS of the loudest [RMS_FRAME_SAMPLES] frame in [samples]. */
+        internal fun loudestFrameRms(samples: ShortArray): Float {
+            var loudest = 0f
+            var from = 0
+            while (from < samples.size) {
+                val to = minOf(from + RMS_FRAME_SAMPLES, samples.size)
+                loudest = maxOf(loudest, rmsOf(samples, from, to))
+                from = to
+            }
+            return loudest
+        }
+
+        private fun rmsOf(samples: ShortArray, from: Int, to: Int): Float {
+            var sumSquares = 0.0
+            for (i in from until to) {
+                val v = samples[i].toDouble()
+                sumSquares += v * v
+            }
+            return sqrt(sumSquares / (to - from)).toFloat()
+        }
+
+        /** Whether a buffered listen with [giveUpWithoutSpeechMs] set has waited long enough for speech. */
+        internal fun shouldGiveUp(now: Long, startedAt: Long, firstSpeechAt: Long?, giveUpWithoutSpeechMs: Long?): Boolean =
+            giveUpWithoutSpeechMs != null && firstSpeechAt == null && now - startedAt >= giveUpWithoutSpeechMs
     }
 }
 

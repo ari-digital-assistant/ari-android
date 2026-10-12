@@ -264,6 +264,12 @@ class VoiceSession @Inject constructor(
     @Volatile
     private var wakeOutcomePending: Boolean = false
 
+    // True while a quiet wake runs unseen: no overlay, no chime, and nothing
+    // counted towards the false-wake warning, since nobody saw it. Cleared by
+    // reveal() the moment the transcript passes the name check, or by dismiss().
+    @Volatile
+    private var hidden: Boolean = false
+
     // "Let's talk" continuous mode: while true, every turn re-arms the mic
     // (no wake word) until an exit phrase, 30s silence, or an error.
     @Volatile
@@ -301,8 +307,15 @@ class VoiceSession @Inject constructor(
      * [verifyWake] must be true ONLY for a wake-word detection: it subjects the
      * first final transcript to [shouldAcceptWake], which relies on the wake
      * phrase being present in the pre-roll.
+     *
+     * [quiet] asks for a quiet wake, started by the wake service rather than by
+     * the overlay: no overlay and no chime until the transcript has passed the
+     * name check, so a false wake shows nothing at all. Only a recogniser that
+     * hands over the whole transcript (cloud, Whisper) can be heard out before
+     * anything shows; the streaming one and a cold start open the overlay at
+     * once, as an ordinary wake.
      */
-    fun start(verifyWake: Boolean) {
+    fun start(verifyWake: Boolean, quiet: Boolean = false) {
         if (sessionJob?.isActive == true) {
             Log.w(TAG, "VoiceSession.start() called while already active — ignoring")
             return
@@ -324,6 +337,8 @@ class VoiceSession @Inject constructor(
         // collector doesn't see Idle and finish itself (the lock-screen race
         // the wake path must avoid): Listening when warm, Preparing when cold.
         val modelLoaded = speechRecognizer.isModelLoaded
+        hidden = quiet && verifyWake && modelLoaded && !speechRecognizer.isStreaming
+        if (quiet && !hidden) VoiceOverlayLauncher.launch(context, verifyWake = true)
         val waitPhrase = if (modelLoaded) null else pleaseWaitPhrase(context)
         _state.value =
             if (modelLoaded) VoiceState.Listening("")
@@ -367,9 +382,11 @@ class VoiceSession @Inject constructor(
                     // Unified audio pipeline: the mic is already open and the
                     // CaptureBus has been buffering the user's first words since
                     // before the wake-word fired. Arming sherpa is instant.
-                    speechRecognizer.startListening()
+                    speechRecognizer.startListening(
+                        giveUpWithoutSpeechMs = if (hidden) QUIET_GIVE_UP_MS else null,
+                    )
                 }
-                startReadyCue()
+                if (!hidden) startReadyCue()
                 // Fresh arm supersedes any prior turn: bump the generation and
                 // snapshot it, so a straggling final from before this listen
                 // (or from a turn we left behind) is detected as stale.
@@ -525,6 +542,10 @@ class VoiceSession @Inject constructor(
                                     dismiss()
                                     return@collect
                                 }
+                                // A quiet wake that heard only "Hey Ari": the
+                                // user paused for the chime they never got.
+                                val bareWake = hidden && sttState.text.isBlank()
+                                reveal()
                                 // Keep-everything firehose: an accepted wake is
                                 // a confirmed true positive — record the wake
                                 // moment (pre-roll) before the slot is cleared.
@@ -533,6 +554,11 @@ class VoiceSession @Inject constructor(
                                 captureAcceptedWake(wakePreroll, sttState.raw.orEmpty())
                                 verifyWakePending = false
                                 wakePreroll = null
+                                if (bareWake) {
+                                    listenForCommand()
+                                    silenceWatcher = launchSilenceWatcher(SILENCE_TIMEOUT_MS)
+                                    return@collect
+                                }
                                 handleFinalText(
                                     sttState.text,
                                     sttState.parallel,
@@ -551,6 +577,10 @@ class VoiceSession @Inject constructor(
                                 }
                             }
                             is SttState.Error -> {
+                                // A quiet wake shows itself for an error: the
+                                // failed request may have been a real one, and
+                                // silence would read as Ari ignoring them.
+                                reveal()
                                 logWakeOutcome(WakeOutcome.ERROR)
                                 _state.value = VoiceState.Error(sttState.message)
                                 silenceWatcher.cancel()
@@ -564,6 +594,12 @@ class VoiceSession @Inject constructor(
                                 // and counted instead of vanishing.
                                 silenceWatcher.cancel()
                                 if (verifyWakePending) onNoSpeechWake(sttState.audio ?: wakePreroll)
+                                if (hidden) {
+                                    // Nothing was ever shown, so there is
+                                    // nothing to explain.
+                                    dismiss()
+                                    return@collect
+                                }
                                 _state.value = VoiceState.Error(sttState.message)
                                 delay(2500)
                                 dismiss()
@@ -580,6 +616,7 @@ class VoiceSession @Inject constructor(
             } catch (t: Throwable) {
                 if (t is kotlinx.coroutines.CancellationException) throw t
                 Log.e(TAG, "Voice session failed", t)
+                reveal()
                 logWakeOutcome(WakeOutcome.ERROR)
                 _state.value = VoiceState.Error(t.message ?: "Unknown error")
                 delay(2500)
@@ -969,6 +1006,7 @@ class VoiceSession @Inject constructor(
     fun dismiss() {
         Log.i(TAG, "Dismissing voice session")
         logWakeOutcome(WakeOutcome.DISMISSED)
+        hidden = false
         // Drop any reply the engine was still waiting on. No-op on the normal
         // happy path (nothing pending); covers tap-dismiss, the silence-timeout
         // path (which calls dismiss()), and lifecycle stop.
@@ -1001,8 +1039,32 @@ class VoiceSession @Inject constructor(
     private fun logWakeOutcome(outcome: WakeOutcome): Boolean {
         if (!wakeOutcomePending) return false
         wakeOutcomePending = false
-        wakeLog.outcome(outcome)
+        wakeLog.outcome(outcome, hidden)
         return true
+    }
+
+    /**
+     * Show a quiet wake. The overlay's own start() call finds this session
+     * running and leaves it alone, then follows [state] like any other turn.
+     */
+    private fun reveal() {
+        if (!hidden) return
+        hidden = false
+        VoiceOverlayLauncher.launch(context, verifyWake = true)
+    }
+
+    /**
+     * The chime the user was waiting for, and a fresh listen for the command
+     * itself. Zero rewind, so the "Hey Ari" already heard is not heard again,
+     * and an opening turn rather than a reply, since nothing was asked.
+     */
+    private fun listenForCommand() {
+        turnGeneration += 1
+        armedGeneration = turnGeneration
+        lastActivityAt = System.currentTimeMillis()
+        _state.value = VoiceState.Listening("")
+        startReadyCue()
+        speechRecognizer.startListening(rewindSeconds = 0f)
     }
 
     /**
@@ -1012,7 +1074,8 @@ class VoiceSession @Inject constructor(
      * the warning never fired on cloud transcription, which cannot reach it.
      */
     private suspend fun endWake(outcome: WakeOutcome) {
-        if (logWakeOutcome(outcome) && outcome.falseWake) falseWakeMonitor.onFalseWake()
+        val seen = !hidden
+        if (logWakeOutcome(outcome) && outcome.falseWake && seen) falseWakeMonitor.onFalseWake()
     }
 
     /** A wake with no speech in it: keep the audio if the user asked to, and count it. */
@@ -1222,6 +1285,10 @@ class VoiceSession @Inject constructor(
         // are cases where Ari asked a question or the user deliberately opened
         // the mic, so waiting is legitimate.
         private const val WAKE_TURN_SILENCE_TIMEOUT_MS = 8_000L
+        // How long a quiet wake waits for anything at speech level before giving
+        // up without transcribing. A real wake has the phrase itself in the
+        // pre-roll, so it crosses the level at once; only noise waits this long.
+        private const val QUIET_GIVE_UP_MS = 3_000L
         // How long a spoken answer stays on the overlay at minimum, for replies
         // short enough that TTS finishes before the user has read them.
         private const val MIN_RESPONSE_DWELL_MS = 3_000L
