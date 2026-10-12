@@ -70,11 +70,19 @@ private val BASE_NAMES = listOf(
     "ori", "orie", "ray", "rae", "jarvis", "jarviz",
 )
 
+// Names too short or too common to trust on their own, accepted only straight
+// after an opener. Cloud transcription wrote a real "Hey Ari" as "Hey, R" on
+// 2026-10-10, and the user had to say it twice; a lone "R" anywhere else is a
+// letter, not a name.
+private val OPENER_ONLY_NAMES = listOf("r")
+
 private fun buildWakeRegex(extraOpeners: List<String>, extraNames: List<String>): Regex {
     val openers = (BASE_OPENERS + extraOpeners).distinct().joinToString("|") { Regex.escape(it) }
     val names = (BASE_NAMES + extraNames).distinct().joinToString("|") { Regex.escape(it) }
+    val openerOnly = OPENER_ONLY_NAMES.joinToString("|") { Regex.escape(it) }
     return Regex(
-        "^(?:\\S+\\s+){0,2}?\\b(?:$openers)?\\s*(?:$names)\\b[\\s,.!?:;]*",
+        "^(?:\\S+\\s+){0,2}?\\b(?:(?:$openers)?\\s*(?:$names)|(?:$openers)[\\s,.!?:;]+(?:$openerOnly))" +
+            "\\b[\\s,.!?:;]*",
         setOf(RegexOption.IGNORE_CASE),
     )
 }

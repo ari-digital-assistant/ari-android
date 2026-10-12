@@ -75,6 +75,22 @@ class WakePhraseTest {
     }
 
     @Test
+    fun `a lone R straight after the opener is a match`() {
+        // Real capture, 2026-10-10: a genuine wake the old check rejected.
+        val match = matchWakePhrase("Hey, R, turn on the kitchen lights.")
+        assertTrue(match.nameMatched)
+        assertEquals("turn on the kitchen lights.", match.text)
+        assertTrue(matchWakePhrase("ok r what time is it").nameMatched)
+    }
+
+    @Test
+    fun `an R anywhere but straight after the opener is a letter`() {
+        assertFalse(matchWakePhrase("R. Kelly is on the radio").nameMatched)
+        assertFalse(matchWakePhrase("I got an R in the test").nameMatched)
+        assertFalse(matchWakePhrase("hey r2 turn on the lights").nameMatched)
+    }
+
+    @Test
     fun `unrelated speech reports no name match and is left alone`() {
         val match = matchWakePhrase("i was talking to dave about it")
         assertFalse(match.nameMatched)
