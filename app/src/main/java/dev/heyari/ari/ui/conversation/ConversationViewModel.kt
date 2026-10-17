@@ -14,6 +14,7 @@ import dev.heyari.ari.R
 import dev.heyari.ari.actions.ActionHandler
 import dev.heyari.ari.actions.AsyncEnvelopeChannel
 import dev.heyari.ari.actions.CardActionDispatcher
+import dev.heyari.ari.actions.AlertVoiceIntercept
 import dev.heyari.ari.actions.CardActionVoiceIntercept
 import dev.heyari.ari.actions.CardAlarmScheduler
 import dev.heyari.ari.data.SettingsRepository
@@ -78,6 +79,7 @@ class ConversationViewModel @Inject constructor(
     private val logRepository: ConversationLogRepository,
     private val cardAlarmScheduler: CardAlarmScheduler,
     private val asyncEnvelopeChannel: AsyncEnvelopeChannel,
+    private val alertVoiceIntercept: AlertVoiceIntercept,
     private val cardActionVoiceIntercept: CardActionVoiceIntercept,
     private val cardActionDispatcher: CardActionDispatcher,
     private val locationProvider: LocationProvider,
@@ -305,6 +307,11 @@ class ConversationViewModel @Inject constructor(
         val userMessage = Message(text = text, isFromUser = true, source = source)
         logRepository.append(userMessage)
         _state.update { it.copy(inputText = "", wakeWordDetected = false) }
+
+        alertVoiceIntercept.resolve(text)?.let { alertId ->
+            application.startService(AlertService.stopIntent(application, alertId))
+            return
+        }
 
         // If the most recent active card has a button whose id or
         // label matches the user's word, dispatch that button as if

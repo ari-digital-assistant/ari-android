@@ -673,6 +673,14 @@
         <item>Sorry, I didn\'t catch that — say it again?</item>
         <item>One more time?</item>
     </string-array>
+    <!-- Whole utterances that stop a ringing alert. Lowercase. Include what
+         the speech recogniser tends to hear instead of "stop": on-device it
+         often writes "stopped" or "stops". -->
+    <string-array name="alert_stop_phrases">
+        <item>stop</item>
+        <item>stopped</item>
+        <item>stops</item>
+    </string-array>
 
     <!-- Adaptive empty state (conversation home screen). -->
     <!-- TODO(i18n): add values-it/ translations -->

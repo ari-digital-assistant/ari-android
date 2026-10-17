@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Tracks which alert ids are currently sounding. Lets [AlertActivity] (the
@@ -13,13 +14,26 @@ import kotlinx.coroutines.flow.update
  *
  * Process-local singleton (intentionally — alerts don't survive process
  * restart anyway, the foreground service holds the only authoritative
- * state). [AlertService] mutates; [AlertActivity] observes.
+ * state). [AlertService] mutates; [AlertActivity] observes;
+ * [dev.heyari.ari.actions.AlertVoiceIntercept] reads [sounding] to match a
+ * spoken "stop" against the alert's own Stop button.
  */
 object AlertRegistry {
     private val _active = MutableStateFlow<Set<String>>(emptySet())
     val active: StateFlow<Set<String>> = _active.asStateFlow()
+    private val specs = ConcurrentHashMap<String, AlertSpec>()
 
-    fun start(id: String) = _active.update { it + id }
-    fun stop(id: String) = _active.update { it - id }
+    fun start(spec: AlertSpec) {
+        specs[spec.id] = spec
+        _active.update { it + spec.id }
+    }
+
+    fun stop(id: String) {
+        specs.remove(id)
+        _active.update { it - id }
+    }
+
     fun isActive(id: String): Boolean = id in _active.value
+
+    fun sounding(): Collection<AlertSpec> = specs.values
 }

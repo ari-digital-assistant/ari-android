@@ -683,6 +683,11 @@
         <item>Scusa, non ho capito — puoi ripetere?</item>
         <item>Ancora una volta?</item>
     </string-array>
+    <string-array name="alert_stop_phrases">
+        <item>ferma</item>
+        <item>stop</item>
+        <item>basta</item>
+    </string-array>
 
     <!-- Accessibility labels for the per-message input-modality glyph -->
     <string name="msg_source_typed">Messaggio digitato</string>

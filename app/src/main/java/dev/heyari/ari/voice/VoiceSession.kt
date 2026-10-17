@@ -195,6 +195,7 @@ class VoiceSession @Inject constructor(
     private val sttModelLoader: SttModelLoader,
     private val speechOutput: SpeechOutput,
     private val actionHandler: ActionHandler,
+    private val alertVoiceIntercept: dev.heyari.ari.actions.AlertVoiceIntercept,
     private val cardActionVoiceIntercept: dev.heyari.ari.actions.CardActionVoiceIntercept,
     private val cardActionDispatcher: dev.heyari.ari.actions.CardActionDispatcher,
     private val settingsRepository: dev.heyari.ari.data.SettingsRepository,
@@ -673,6 +674,16 @@ class VoiceSession @Inject constructor(
         }
 
         _state.value = VoiceState.Thinking
+
+        // "Stop" over a ringing alarm silences it, ahead of everything else,
+        // a pending reply included: dismiss() drops that.
+        alertVoiceIntercept.resolve(text)?.let { alertId ->
+            record.outcome = UtteranceOutcome.ALERT
+            logRepository.append(Message(text = text, isFromUser = true, source = InputSource.Voice))
+            context.startService(dev.heyari.ari.notifications.AlertService.stopIntent(context, alertId))
+            dismiss()
+            return
+        }
 
         // If the spoken word matches an active card's button (Yes /
         // No / Cancel / Keep — or whatever labels the skill chose),

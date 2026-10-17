@@ -42,6 +42,9 @@ enum class UtteranceOutcome(val slug: String) {
     /** The words matched a button on the card on screen, so no engine dispatch happened. */
     CARD("card"),
 
+    /** The words stopped a ringing alert, so no engine dispatch happened. */
+    ALERT("alert"),
+
     /** The recogniser endpointed with nothing to show for it. */
     BLANK("blank"),
 

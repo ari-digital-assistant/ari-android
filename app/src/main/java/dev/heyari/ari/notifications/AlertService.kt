@@ -85,7 +85,7 @@ class AlertService : Service() {
     private fun startForegroundWithAlert(spec: AlertSpec, alerting: Boolean) {
         // Register before posting the notification so the FSN-launched
         // AlertActivity sees the id present when it starts collecting.
-        if (alerting) AlertRegistry.start(spec.id)
+        if (alerting) AlertRegistry.start(spec)
         val notification = buildAlertNotification(this, spec, alerting)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
