@@ -220,6 +220,35 @@ class SpeechRecognizer @Inject constructor(
     val isStreaming: Boolean
         get() = !cloudMode && onlineRecognizer != null
 
+    /**
+     * Whether [checkNameEarly] might run: on cloud transcription only. Of the
+     * cloud services it was tested on OpenAI's alone
+     * (`ari-tools/wakeword/trained/2026-10-17-early-name-check/`), so on a
+     * self-hosted server [checkNameEarly] declines.
+     */
+    val canCheckNameEarly: Boolean
+        get() = cloudMode
+
+    /**
+     * Transcribe [pcm], the 2 s ending at a quiet wake, on its own, and say
+     * whether it holds the wake name. The listen goes on meanwhile; this only
+     * lets the host show itself before the whole command is in, since the name
+     * check needs the first two words and they are already in the clip. Null
+     * where it cannot run.
+     */
+    suspend fun checkNameEarly(pcm: ShortArray): EarlyNameCheck? {
+        val locale = localeProvider.currentLocale()
+        val transcript = try {
+            cloudTranscriber.transcribeWakeClip(pcm, locale) ?: return null
+        } catch (e: CloudSttException) {
+            Log.i(TAG, "Early name check: no transcript (${e.failure})")
+            return EarlyNameCheck.NONE
+        }
+        val result = earlyNameCheck(transcript, locale)
+        Log.i(TAG, "Early name check: raw='$transcript' -> ${result.slug}")
+        return result
+    }
+
     /** Message for a cloud failure, so the user is told which wall they hit. */
     private fun cloudErrorRes(failure: CloudSttFailure): Int = when (failure) {
         CloudSttFailure.NOT_CONFIGURED -> R.string.stt_cloud_error_not_configured
@@ -1075,6 +1104,23 @@ class SpeechRecognizer @Inject constructor(
         }
     }
 }
+
+/** What [SpeechRecognizer.checkNameEarly] found. The slug goes in the wake log. */
+enum class EarlyNameCheck(val slug: String) {
+    PASS("pass"),
+    MISS("miss"),
+
+    /** No verdict: the request failed or came back empty, or the locale forms none. */
+    NONE("none"),
+}
+
+/** The name check on an early transcript, as [wakeVerdict] decides it for the whole one. */
+internal fun earlyNameCheck(transcript: String, locale: String): EarlyNameCheck =
+    when (wakeVerdict(matchWakePhrase(transcript, locale), locale)) {
+        true -> EarlyNameCheck.PASS
+        false -> EarlyNameCheck.MISS
+        null -> EarlyNameCheck.NONE
+    }
 
 sealed interface SttState {
     data object Idle : SttState

@@ -11,6 +11,7 @@ import dev.heyari.ari.data.conversation.ConversationLogRepository
 import dev.heyari.ari.model.Attachment
 import dev.heyari.ari.model.InputSource
 import dev.heyari.ari.model.Message
+import dev.heyari.ari.stt.EarlyNameCheck
 import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.stt.SttModelLoader
 import dev.heyari.ari.stt.SttState
@@ -66,6 +67,15 @@ internal fun shouldRearm(response: FfiResponse): Boolean = when (response) {
     is FfiResponse.Action -> response.rearm
     else -> false
 }
+
+/**
+ * The name verdict a wake turn is judged on. A name the early check heard
+ * stands: the user has already seen Ari answer to it, and a full transcript can
+ * miss a name the short clip caught ("Hayori navigate to McDonald's", 2026-09-10),
+ * so the full one never turns the wake away after that.
+ */
+internal fun wakeNameVerdict(nameHeardEarly: Boolean, nameMatched: Boolean?): Boolean? =
+    if (nameHeardEarly) true else nameMatched
 
 /**
  * Post-hoc wake verification. The 64 KB detector fires on phonetic shape and
@@ -267,9 +277,15 @@ class VoiceSession @Inject constructor(
 
     // True while a quiet wake runs unseen: no overlay, no chime, and nothing
     // counted towards the false-wake warning, since nobody saw it. Cleared by
-    // reveal() the moment the transcript passes the name check, or by dismiss().
+    // reveal() the moment a name check passes, early or on the whole
+    // transcript, or by dismiss().
     @Volatile
     private var hidden: Boolean = false
+
+    // True once a quiet wake's early name check heard the name and showed Ari,
+    // before the whole transcript was in. See wakeNameVerdict.
+    @Volatile
+    private var nameHeardEarly: Boolean = false
 
     // "Let's talk" continuous mode: while true, every turn re-arms the mic
     // (no wake word) until an exit phrase, 30s silence, or an error.
@@ -310,11 +326,13 @@ class VoiceSession @Inject constructor(
      * phrase being present in the pre-roll.
      *
      * [quiet] asks for a quiet wake, started by the wake service rather than by
-     * the overlay: no overlay and no chime until the transcript has passed the
-     * name check, so a false wake shows nothing at all. Only a recogniser that
-     * hands over the whole transcript (cloud, Whisper) can be heard out before
-     * anything shows; the streaming one and a cold start open the overlay at
-     * once, as an ordinary wake.
+     * the overlay: no overlay and no chime until a name check has passed, so a
+     * false wake shows nothing at all. On OpenAI transcription the 2 s ending at
+     * the wake are checked at once, on their own, so a real call shows while it
+     * is still being spoken; otherwise the whole transcript is checked. Only a
+     * recogniser that hands over the whole transcript (cloud, Whisper) can be
+     * heard out before anything shows; the streaming one and a cold start open
+     * the overlay at once, as an ordinary wake.
      */
     fun start(verifyWake: Boolean, quiet: Boolean = false) {
         if (sessionJob?.isActive == true) {
@@ -339,6 +357,7 @@ class VoiceSession @Inject constructor(
         // the wake path must avoid): Listening when warm, Preparing when cold.
         val modelLoaded = speechRecognizer.isModelLoaded
         hidden = quiet && verifyWake && modelLoaded && !speechRecognizer.isStreaming
+        nameHeardEarly = false
         if (quiet && !hidden) VoiceOverlayLauncher.launch(context, verifyWake = true)
         val waitPhrase = if (modelLoaded) null else pleaseWaitPhrase(context)
         _state.value =
@@ -394,6 +413,26 @@ class VoiceSession @Inject constructor(
                 // (or from a turn we left behind) is detected as stale.
                 turnGeneration += 1
                 armedGeneration = turnGeneration
+
+                // A quiet wake asks about the name at once, on the 2 s that end
+                // at the wake, so a real call shows itself while the user is
+                // still talking rather than after the whole transcript: about
+                // 1 s after the wake instead of 3 on the test phone. A miss
+                // changes nothing; the whole transcript decides as before.
+                val earlyClip = wakePreroll
+                if (hidden && earlyClip != null && speechRecognizer.canCheckNameEarly) {
+                    val generation = armedGeneration
+                    val askedAt = System.currentTimeMillis()
+                    launch {
+                        val result = speechRecognizer.checkNameEarly(earlyClip) ?: return@launch
+                        val inTime = hidden && wakeOutcomePending && turnGeneration == generation
+                        wakeLog.earlyNameCheck(result.slug, System.currentTimeMillis() - askedAt, inTime)
+                        if (inTime && result == EarlyNameCheck.PASS) {
+                            nameHeardEarly = true
+                            reveal()
+                        }
+                    }
+                }
 
                 // Track activity so we can dismiss after a silence timeout if
                 // the user never actually speaks. Uses the class field so a
@@ -513,7 +552,7 @@ class VoiceSession @Inject constructor(
                                     return@collect
                                 }
                                 logWakeListenEnd()
-                                if (isNoSpeechWake(verifyWakePending, sttState.raw)) {
+                                if (!nameHeardEarly && isNoSpeechWake(verifyWakePending, sttState.raw)) {
                                     // Whisper's way of saying it heard nothing.
                                     // The overlay closes as quietly as it did
                                     // when this went down the accept path.
@@ -525,7 +564,7 @@ class VoiceSession @Inject constructor(
                                 if (!shouldAcceptWake(
                                         verifyWakePending,
                                         sttState.raw,
-                                        sttState.nameMatched,
+                                        wakeNameVerdict(nameHeardEarly, sttState.nameMatched),
                                     )
                                 ) {
                                     Log.w(TAG, "Wake rejected: raw='${sttState.raw}'")
@@ -547,7 +586,7 @@ class VoiceSession @Inject constructor(
                                 }
                                 // A quiet wake that heard only "Hey Ari": the
                                 // user paused for the chime they never got.
-                                val bareWake = hidden && sttState.text.isBlank()
+                                val bareWake = (hidden || nameHeardEarly) && sttState.text.isBlank()
                                 reveal()
                                 // Keep-everything firehose: an accepted wake is
                                 // a confirmed true positive — record the wake
@@ -598,6 +637,19 @@ class VoiceSession @Inject constructor(
                                 // and counted instead of vanishing.
                                 silenceWatcher.cancel()
                                 logWakeListenEnd()
+                                if (nameHeardEarly && verifyWakePending) {
+                                    // The early check heard the name in this
+                                    // same audio and Ari is showing: the user
+                                    // said "Hey Ari" and waits for the chime.
+                                    speechRecognizer.reset()
+                                    logWakeOutcome(WakeOutcome.ACCEPTED)
+                                    captureAcceptedWake(wakePreroll, "")
+                                    verifyWakePending = false
+                                    wakePreroll = null
+                                    listenForCommand()
+                                    silenceWatcher = launchSilenceWatcher(SILENCE_TIMEOUT_MS)
+                                    return@collect
+                                }
                                 if (verifyWakePending) onNoSpeechWake(sttState.audio ?: wakePreroll)
                                 if (hidden) {
                                     // Nothing was ever shown, so there is
@@ -1022,6 +1074,7 @@ class VoiceSession @Inject constructor(
         Log.i(TAG, "Dismissing voice session")
         logWakeOutcome(WakeOutcome.DISMISSED)
         hidden = false
+        nameHeardEarly = false
         // Drop any reply the engine was still waiting on. No-op on the normal
         // happy path (nothing pending); covers tap-dismiss, the silence-timeout
         // path (which calls dismiss()), and lifecycle stop.

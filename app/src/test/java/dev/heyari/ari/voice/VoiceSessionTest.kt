@@ -114,6 +114,15 @@ class VoiceSessionTest {
     }
 
     @Test
+    fun `a name heard early is not taken back by the whole transcript`() {
+        val raw = "Hayori navigate to McDonald's"
+
+        assertTrue(shouldAcceptWake(verifyWake = true, raw = raw, nameMatched = wakeNameVerdict(true, false)))
+        assertFalse(shouldAcceptWake(verifyWake = true, raw = raw, nameMatched = wakeNameVerdict(false, false)))
+        assertEquals(null, wakeNameVerdict(false, null))
+    }
+
+    @Test
     fun `talk mode outranks awaiting reply when labelling a turn`() {
         assertEquals(UtteranceTurn.TALK, utteranceTurn(talkMode = true, awaitingReply = true))
         assertEquals(UtteranceTurn.TALK, utteranceTurn(talkMode = true, awaitingReply = false))

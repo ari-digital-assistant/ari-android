@@ -105,6 +105,14 @@ class CloudTranscriber @Inject constructor(
         }
     }
 
+    /**
+     * [transcribe], for the short clip a quiet wake checks for its name. OpenAI
+     * only, the one service the early check was tested on: null on a
+     * self-hosted server.
+     */
+    suspend fun transcribeWakeClip(pcm: ShortArray, locale: String): String? =
+        if (settingsRepository.sttMode.first() != SttMode.OPENAI) null else transcribe(pcm, locale)
+
     companion object {
         private const val TAG = "CloudTranscriber"
         private const val CONNECT_TIMEOUT_MS = 10_000

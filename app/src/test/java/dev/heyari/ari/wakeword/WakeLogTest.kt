@@ -153,10 +153,11 @@ class WakeLogTest {
     }
 
     @Test
-    fun `a listen-end line between a wake and its outcome changes no count`() {
+    fun `listen-end and early-name lines between a wake and its outcome change no count`() {
         val entries = listOf(
             on(0),
-            wake(10), WakeLogEntry(12, LOG_LISTEN_END, listOf("endpoint", "1860")), outcome(13, WakeOutcome.ACCEPTED),
+            wake(10), WakeLogEntry(11, LOG_EARLY_NAME, listOf("pass", "640")),
+            WakeLogEntry(12, LOG_LISTEN_END, listOf("endpoint", "1860")), outcome(13, WakeOutcome.ACCEPTED),
             wake(20), WakeLogEntry(22, LOG_LISTEN_END, listOf("give-up", "3000")),
             WakeLogEntry(22, LOG_OUTCOME, listOf("no-speech", "hidden")),
         )

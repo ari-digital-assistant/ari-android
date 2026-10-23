@@ -63,6 +63,7 @@ internal const val LOG_DROPPED = "dropped"
 internal const val LOG_PASSED_AFTER_DROP = "passed-after-drop"
 internal const val LOG_CHECK_FAILED = "speech-check-failed"
 internal const val LOG_LISTEN_END = "listen-end"
+internal const val LOG_EARLY_NAME = "early-name"
 
 /** One line of the wake log: when, what, and the words that follow. */
 internal data class WakeLogEntry(val at: Long, val kind: String, val args: List<String>)
@@ -318,6 +319,15 @@ class WakeLog internal constructor(private val file: File) {
      * the offline test could only estimate: how long listening takes.
      */
     fun listenEnded(end: String, afterMs: Long) = record(LOG_LISTEN_END, end, afterMs.toString())
+
+    /**
+     * A quiet wake's early name check: [result] is an `EarlyNameCheck` slug,
+     * [afterMs] how long it took, and `late` follows when the wake had already
+     * been decided, so the result changed nothing.
+     */
+    fun earlyNameCheck(result: String, afterMs: Long, inTime: Boolean) =
+        if (inTime) record(LOG_EARLY_NAME, result, afterMs.toString())
+        else record(LOG_EARLY_NAME, result, afterMs.toString(), "late")
 
     private fun record(kind: String, vararg args: String) {
         val line = formatWakeLogLine(System.currentTimeMillis(), kind, args.toList())
