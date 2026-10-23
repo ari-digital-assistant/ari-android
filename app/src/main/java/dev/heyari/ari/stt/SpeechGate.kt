@@ -10,9 +10,10 @@ import com.k2fsa.sherpa.onnx.VadModelConfig
  * recently?". We call [Vad.compute] per 512-sample window and compare it with
  * [SPEECH_PROBABILITY]; the segment machinery (front/pop) is not used.
  *
- * Two uses, each with its own instance: the endpoint veto, driven by the single
- * listen coroutine in [SpeechRecognizer] through [feed], and the wake service's
- * check for speech before a wake, through [speechInTail].
+ * Two owners, each with its own instance. [SpeechRecognizer]'s listen
+ * coroutine, one listen at a time: the streaming endpoint veto through [feed],
+ * and the buffered listener's speech marks through [heardSpeech]. The wake
+ * service's check for speech before a wake, through [speechInTail].
  *
  * Not thread-safe: one instance belongs to one thread.
  */
@@ -51,16 +52,24 @@ class SpeechGate(assets: AssetManager) {
 
     /** Feed one decode-loop batch; [nowMs] is the caller's clock. */
     fun feed(samples: FloatArray, nowMs: Long) {
+        if (scan(samples)) lastSpeechAtMs = nowMs
+    }
+
+    /** Feed one chunk; whether a window it completed was speech. */
+    fun heardSpeech(samples: ShortArray): Boolean =
+        scan(FloatArray(samples.size) { samples[it] / 32768.0f })
+
+    private fun scan(samples: FloatArray): Boolean {
         val buf = if (pending.isEmpty()) samples else pending + samples
+        var heard = false
         var offset = 0
         while (buf.size - offset >= WINDOW_SAMPLES) {
             val window = buf.copyOfRange(offset, offset + WINDOW_SAMPLES)
-            if (vad.compute(window) >= SPEECH_PROBABILITY) {
-                lastSpeechAtMs = nowMs
-            }
+            if (vad.compute(window) >= SPEECH_PROBABILITY) heard = true
             offset += WINDOW_SAMPLES
         }
         pending = buf.copyOfRange(offset, buf.size)
+        return heard
     }
 
     /**

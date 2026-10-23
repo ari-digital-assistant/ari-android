@@ -385,6 +385,7 @@ class VoiceSession @Inject constructor(
                     // before the wake-word fired. Arming sherpa is instant.
                     speechRecognizer.startListening(
                         giveUpWithoutSpeechMs = if (hidden) QUIET_GIVE_UP_MS else null,
+                        limitMs = if (hidden) QUIET_LISTEN_LIMIT_MS else null,
                     )
                 }
                 if (!hidden) startReadyCue()
@@ -448,7 +449,7 @@ class VoiceSession @Inject constructor(
                 // partials at all between arm and endpoint, so there 8 s would
                 // be a hard cap on the whole utterance and would cut Italian
                 // speakers off mid-sentence. They keep the 30 s window, which
-                // is what MAX_OFFLINE_UTTERANCE_SAMPLES already assumes.
+                // is what BufferedEndpoint.MAX_SAMPLES already assumes.
                 //
                 // Reads the `verifyWake` PARAMETER, not the verifyWakePending
                 // field, and that is deliberate: the timeout asks "did a wake
@@ -511,6 +512,7 @@ class VoiceSession @Inject constructor(
                                     }
                                     return@collect
                                 }
+                                logWakeListenEnd()
                                 if (isNoSpeechWake(verifyWakePending, sttState.raw)) {
                                     // Whisper's way of saying it heard nothing.
                                     // The overlay closes as quietly as it did
@@ -582,6 +584,7 @@ class VoiceSession @Inject constructor(
                                 // failed request may have been a real one, and
                                 // silence would read as Ari ignoring them.
                                 reveal()
+                                logWakeListenEnd()
                                 logWakeOutcome(WakeOutcome.ERROR)
                                 _state.value = VoiceState.Error(sttState.message)
                                 silenceWatcher.cancel()
@@ -594,6 +597,7 @@ class VoiceSession @Inject constructor(
                                 // only now a wake that heard nothing is kept
                                 // and counted instead of vanishing.
                                 silenceWatcher.cancel()
+                                logWakeListenEnd()
                                 if (verifyWakePending) onNoSpeechWake(sttState.audio ?: wakePreroll)
                                 if (hidden) {
                                     // Nothing was ever shown, so there is
@@ -1044,6 +1048,15 @@ class VoiceSession @Inject constructor(
     }
 
     /**
+     * Write how the wake's own listen ended, ahead of its outcome. Buffered
+     * listens only; the streaming recogniser has no [SpeechRecognizer.lastListenEnd].
+     */
+    private fun logWakeListenEnd() {
+        if (!wakeOutcomePending) return
+        speechRecognizer.lastListenEnd?.let { wakeLog.listenEnded(it.end.slug, it.afterMs) }
+    }
+
+    /**
      * Write how this wake ended to the wake log, unless something already has.
      * Returns whether this call was the one that ended it.
      */
@@ -1296,10 +1309,15 @@ class VoiceSession @Inject constructor(
         // are cases where Ari asked a question or the user deliberately opened
         // the mic, so waiting is legitimate.
         private const val WAKE_TURN_SILENCE_TIMEOUT_MS = 8_000L
-        // How long a quiet wake waits for anything at speech level before giving
-        // up without transcribing. A real wake has the phrase itself in the
-        // pre-roll, so it crosses the level at once; only noise waits this long.
+        // How long a quiet wake waits for anything that counts as speech before
+        // giving up without transcribing. A real wake has the phrase itself in
+        // the pre-roll, so it counts at once; only noise waits this long.
         private const val QUIET_GIVE_UP_MS = 3_000L
+        // A quiet wake shows nothing while it listens, and the wake word is off
+        // meanwhile, so it stops here and transcribes what it has, even while the
+        // television talks on. The longest real command on the test phone took
+        // 2.9 s after the wake (2026-10-17).
+        private const val QUIET_LISTEN_LIMIT_MS = 6_000L
         // How long a spoken answer stays on the overlay at minimum, for replies
         // short enough that TTS finishes before the user has read them.
         private const val MIN_RESPONSE_DWELL_MS = 3_000L

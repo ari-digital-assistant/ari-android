@@ -97,8 +97,9 @@ internal fun shouldEndpoint(
  *   as the user speaks, custom partial-text-stability endpointing, parallel-stream
  *   second opinion. The English path.
  *
- * - **Offline buffered** (Whisper-turbo — encoder-decoder): no partials, RMS-based
- *   silence-detection endpointing, full-utterance decode in one shot at end of speech.
+ * - **Offline buffered** (Whisper-turbo, encoder-decoder): no partials, endpointing
+ *   by loudness and the speech detector ([BufferedEndpoint]), full-utterance decode
+ *   in one shot at end of speech.
  *   The path for every non-English language.
  *
  * Dispatch on [SttModel.modelType] at [loadModel] time. Callers (VoiceSession,
@@ -120,11 +121,12 @@ class SpeechRecognizer @Inject constructor(
     private var onlineRecognizer: OnlineRecognizer? = null
     /**
      * Silero VAD that vetoes the partial-stability endpoint while it can
-     * still hear speech. Built on first listen and reused for the app's
-     * lifetime — constructing one loads an ONNX model, which is far too
-     * expensive to repeat per utterance. Null when the model asset is
-     * missing or the native build refuses to load it, in which case
-     * [shouldEndpoint] runs unvetoed.
+     * still hear speech, and on the buffered path hears the soft speech the
+     * loudness check misses. Built on first listen by [obtainSpeechGate] and
+     * reused for the app's lifetime: constructing one loads an ONNX model,
+     * which is far too expensive to repeat per utterance. Null when the model
+     * asset is missing or the native build refuses to load it, in which case
+     * [shouldEndpoint] runs unvetoed and the buffered path goes by loudness.
      */
     private var speechGate: SpeechGate? = null
 
@@ -166,6 +168,14 @@ class SpeechRecognizer @Inject constructor(
 
     private val _state = MutableStateFlow<SttState>(SttState.Idle)
     val state: StateFlow<SttState> = _state.asStateFlow()
+
+    /**
+     * How the latest buffered listen ended, set before its terminal state is
+     * emitted. Null while listening, and for the streaming path.
+     */
+    @Volatile
+    var lastListenEnd: ListenEnded? = null
+        private set
 
     /**
      * True when transcription is routed to [CloudTranscriber] instead of a
@@ -416,13 +426,16 @@ class SpeechRecognizer @Inject constructor(
      * with the wake word service for the entire app lifecycle.
      *
      * Dispatches to the streaming or buffered code path based on which
-     * recogniser is loaded.
+     * recogniser is loaded. [giveUpWithoutSpeechMs] and [limitMs] are a quiet
+     * wake's, and only the buffered path has them: see [BufferedEndpoint].
      */
     fun startListening(
         rewindSeconds: Float = DEFAULT_REWIND_SECONDS,
         giveUpWithoutSpeechMs: Long? = null,
+        limitMs: Long? = null,
     ) {
         if (_state.value is SttState.Listening) return
+        lastListenEnd = null
 
         val online = onlineRecognizer
         val offline = offlineRecognizer
@@ -431,9 +444,9 @@ class SpeechRecognizer @Inject constructor(
             // Cloud first: it needs no local model, so checking it last would
             // mean a leftover recogniser from a previous on-device session
             // silently won after the user switched to cloud.
-            cloudMode -> startCloudListening(rewindSeconds, giveUpWithoutSpeechMs)
+            cloudMode -> startCloudListening(rewindSeconds, giveUpWithoutSpeechMs, limitMs)
             online != null -> startOnlineListening(online, rewindSeconds)
-            offline != null -> startBufferedListening(rewindSeconds, "offline whisper", giveUpWithoutSpeechMs) { pcm ->
+            offline != null -> startBufferedListening(rewindSeconds, "offline whisper", giveUpWithoutSpeechMs, limitMs) { pcm ->
                 decodeWhisperAndEmit(offline, pcm)
             }
             else -> {
@@ -443,8 +456,8 @@ class SpeechRecognizer @Inject constructor(
         }
     }
 
-    private fun startCloudListening(rewindSeconds: Float, giveUpWithoutSpeechMs: Long?) {
-        startBufferedListening(rewindSeconds, "cloud", giveUpWithoutSpeechMs) { pcm ->
+    private fun startCloudListening(rewindSeconds: Float, giveUpWithoutSpeechMs: Long?, limitMs: Long?) {
+        startBufferedListening(rewindSeconds, "cloud", giveUpWithoutSpeechMs, limitMs) { pcm ->
             _state.value = SttState.Transcribing
             val locale = localeProvider.currentLocale()
             val transcript = try {
@@ -509,17 +522,9 @@ class SpeechRecognizer @Inject constructor(
             // path in VoiceSession.
             val parStream = rec.createStream()
             Log.d(TAG, "Streams created (main + parallel)")
-            // Built here rather than in the caller so the ONNX load lands on
-            // this coroutine's background thread — startListening() is called
-            // from the main thread on the tap-to-talk path. A gate we can't
-            // build is not fatal: the endpoint just runs unvetoed, exactly as
-            // it did before this existed.
-            val gate = speechGate ?: try {
-                SpeechGate(context.assets).also { speechGate = it }
-            } catch (t: Throwable) {
-                Log.w(TAG, "VAD unavailable — endpoint veto disabled", t)
-                null
-            }
+            // A gate we can't build is not fatal: the endpoint just runs
+            // unvetoed, exactly as it did before this existed.
+            val gate = obtainSpeechGate()
             var firstChunkLogged = false
             // Sherpa-onnx zipformer is tuned for ~100ms chunks. The producer
             // (WakeWordService) writes 10ms chunks because microWakeWord wants
@@ -762,25 +767,25 @@ class SpeechRecognizer @Inject constructor(
      * [transcribe].
      *
      * Shared by the offline-whisper and cloud paths because the difference
-     * between them is only where the decode happens — the capture, the
-     * RMS endpointing and the hard cap are identical, and duplicating that
-     * loop once per backend is how the endpointing rules drift apart.
+     * between them is only where the decode happens: the capture, the
+     * endpointing and the hard cap are identical, and duplicating that loop
+     * once per backend is how the endpointing rules drift apart. When to stop
+     * is [BufferedEndpoint]'s call.
      *
-     * [giveUpWithoutSpeechMs], when set, ends the listen with
-     * [SttState.NoSpeech] if nothing has crossed the speech level by then, and
-     * nothing is transcribed. A quiet wake needs it: without Ari's ready chime,
-     * which is what usually trips the speech level, a wake on pure noise would
-     * otherwise listen for the full 30 s and then upload all of it.
+     * [giveUpWithoutSpeechMs] and [limitMs] are a quiet wake's. The first ends
+     * the listen with [SttState.NoSpeech], untranscribed, if nothing counted as
+     * speech by then; the second transcribes whatever there is.
      *
      * [transcribe] runs off this coroutine's thread and may throw; the caller's
      * wrapper decides what the user hears. It emits the terminal state and
-     * nothing else — tearing the listen down is this loop's job, because only
+     * nothing else. Tearing the listen down is this loop's job, because only
      * the loop holds the job identity that makes the teardown safe.
      */
     private fun startBufferedListening(
         rewindSeconds: Float,
         label: String,
         giveUpWithoutSpeechMs: Long?,
+        limitMs: Long?,
         transcribe: suspend (ShortArray) -> Unit,
     ) {
         val channel = captureBus.arm(rewindSeconds) ?: run {
@@ -795,22 +800,14 @@ class SpeechRecognizer @Inject constructor(
         armListenJob(scope.launch(start = CoroutineStart.LAZY) {
             val owner = coroutineContext.job
             // Buffer everything. Whisper has no streaming partials and no
-            // per-chunk decode — we just accumulate audio until the silence
-            // detector says the user is done, then run one decode.
+            // per-chunk decode: we just accumulate audio until the endpoint
+            // says the user is done, then run one decode.
             val accumulator = ArrayList<ShortArray>(200)
             var totalSamples = 0
-            // RMS-based silence detector. Cheap and self-contained — no
-            // separate VAD model file to download. Refinements (silero VAD
-            // for noisy environments) would be a Phase-2.5 polish item.
-            //
-            // We require at least one chunk above SPEECH_RMS_THRESHOLD
-            // before considering an endpoint, otherwise we'd fire the moment
-            // the user pauses at the start to think. Once speech has
-            // started, MIN_SILENCE_AFTER_SPEECH_MS of below-threshold audio
-            // ends the utterance.
-            var firstSpeechAt: Long? = null
+            var gate = obtainSpeechGate()
+            gate?.beginUtterance()
             val startedAt = System.currentTimeMillis()
-            var lastSpeechAt = startedAt
+            val endpoint = BufferedEndpoint(startedAt, giveUpWithoutSpeechMs, limitMs)
 
             while (isActive) {
                 val incoming = try {
@@ -824,53 +821,47 @@ class SpeechRecognizer @Inject constructor(
                 totalSamples += incoming.size
 
                 val now = System.currentTimeMillis()
-                // The loudest frame rather than the whole chunk: the first chunk
-                // is the 2 s pre-roll, and a "Hey Ari" inside it averaged over
-                // the silence around it can sit below the speech level.
-                val rms = loudestFrameRms(incoming)
-                if (rms >= SPEECH_RMS_THRESHOLD) {
-                    if (firstSpeechAt == null) {
-                        firstSpeechAt = now
-                        Log.d(TAG, "Offline: speech started (rms=$rms)")
-                    }
-                    lastSpeechAt = now
+                // The loudest frame rather than the whole chunk: a "Hey Ari"
+                // inside a pre-roll slice, averaged over the silence around it,
+                // can sit below the speech level.
+                val loud = loudestFrameRms(incoming) >= SPEECH_RMS_THRESHOLD
+                val heard = try {
+                    gate?.heardSpeech(incoming) ?: false
+                } catch (t: Throwable) {
+                    // Carry on by loudness alone, as before the detector was here.
+                    Log.w(TAG, "$label: speech detector failed, listening by loudness alone", t)
+                    gate = null
+                    false
                 }
+                val end = endpoint.next(now, loud, heard, totalSamples) ?: continue
 
-                val firstAt = firstSpeechAt
-                if (firstAt != null) {
-                    val sinceLastSpeech = now - lastSpeechAt
-                    val totalDuration = now - firstAt
-                    if (sinceLastSpeech >= MIN_SILENCE_AFTER_SPEECH_MS &&
-                        totalDuration >= MIN_UTTERANCE_MS
-                    ) {
-                        Log.i(
-                            TAG,
-                            "$label endpoint: silence for ${sinceLastSpeech}ms after ${totalDuration}ms of utterance",
-                        )
-                        transcribe(merge(accumulator, totalSamples))
-                        stopRecording(owner)
-                        return@launch
-                    }
-                }
-
-                if (totalSamples >= MAX_OFFLINE_UTTERANCE_SAMPLES) {
-                    Log.i(TAG, "$label endpoint: hard cap (${totalSamples} samples)")
-                    transcribe(merge(accumulator, totalSamples))
-                    stopRecording(owner)
-                    return@launch
-                }
-
-                if (shouldGiveUp(now, startedAt, firstSpeechAt, giveUpWithoutSpeechMs)) {
-                    Log.i(TAG, "$label: no speech within ${giveUpWithoutSpeechMs}ms, giving up untranscribed")
+                val afterMs = now - startedAt
+                Log.i(TAG, "$label listen ended: ${end.slug} after ${afterMs}ms ($totalSamples samples)")
+                lastListenEnd = ListenEnded(end, afterMs)
+                if (end == ListenEnd.GIVE_UP) {
                     _state.value = SttState.NoSpeech(
                         context.getString(R.string.stt_cloud_error_empty),
                         merge(accumulator, totalSamples),
                     )
-                    stopRecording(owner)
-                    return@launch
+                } else {
+                    transcribe(merge(accumulator, totalSamples))
                 }
+                stopRecording(owner)
+                return@launch
             }
         })
+    }
+
+    /**
+     * The shared [speechGate], built on first use. Called from the listen
+     * coroutine so the ONNX load lands on its background thread, since
+     * startListening() is called from the main thread on the tap-to-talk path.
+     */
+    private fun obtainSpeechGate(): SpeechGate? = speechGate ?: try {
+        SpeechGate(context.assets).also { speechGate = it }
+    } catch (t: Throwable) {
+        Log.w(TAG, "VAD unavailable: listening by loudness alone, endpoint veto disabled", t)
+        null
     }
 
     private fun merge(accumulator: List<ShortArray>, totalSamples: Int): ShortArray {
@@ -1055,27 +1046,12 @@ class SpeechRecognizer @Inject constructor(
         // as it did before frames were looked at separately.
         private const val RMS_FRAME_SAMPLES = 480
 
-        // RMS threshold for "this chunk contains speech". int16 PCM samples
-        // span [-32768, 32767]; quiet speech sits around 1000-3000 RMS,
-        // ambient room noise typically <300. 600 lands comfortably between.
-        // Tune downward if quiet talkers are dropping out, upward if room
-        // noise is triggering false speech detection.
+        // RMS threshold for "this chunk is loud enough to be speech". int16
+        // PCM samples span [-32768, 32767]; ambient room noise is typically
+        // <300. Soft speakers sit below it too, which is why the speech
+        // detector counts as well (BufferedEndpoint); loudness still decides
+        // how long the detector may carry a listen on its own.
         private const val SPEECH_RMS_THRESHOLD = 600.0f
-        // After at least one chunk above SPEECH_RMS_THRESHOLD has been
-        // seen, this much continuous below-threshold audio ends the
-        // utterance. 800 ms is roughly the same window the streaming
-        // path uses for partial-text stability — keeps the perceived
-        // response time consistent across both paths.
-        private const val MIN_SILENCE_AFTER_SPEECH_MS = 800L
-        // Don't fire the endpoint until the utterance is at least this
-        // long. Stops a single noise burst followed by silence from
-        // ending the session before the user has actually said anything.
-        private const val MIN_UTTERANCE_MS = 500L
-        // Hard cap on offline-path utterance length. Whisper's training
-        // window is 30 s; longer audio gets chunked internally and the
-        // first segment dominates accuracy, so we cap at the same point
-        // as a safety net rather than an expected case.
-        private const val MAX_OFFLINE_UTTERANCE_SAMPLES = SAMPLE_RATE * 30
 
         /** The RMS of the loudest [RMS_FRAME_SAMPLES] frame in [samples]. */
         internal fun loudestFrameRms(samples: ShortArray): Float {
@@ -1097,10 +1073,6 @@ class SpeechRecognizer @Inject constructor(
             }
             return sqrt(sumSquares / (to - from)).toFloat()
         }
-
-        /** Whether a buffered listen with [giveUpWithoutSpeechMs] set has waited long enough for speech. */
-        internal fun shouldGiveUp(now: Long, startedAt: Long, firstSpeechAt: Long?, giveUpWithoutSpeechMs: Long?): Boolean =
-            giveUpWithoutSpeechMs != null && firstSpeechAt == null && now - startedAt >= giveUpWithoutSpeechMs
     }
 }
 

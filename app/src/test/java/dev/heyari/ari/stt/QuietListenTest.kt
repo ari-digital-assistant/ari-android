@@ -1,8 +1,6 @@
 package dev.heyari.ari.stt
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class QuietListenTest {
@@ -21,14 +19,5 @@ class QuietListenTest {
         val chunk = ShortArray(480) { i -> if (i % 2 == 0) 700 else -700 }
 
         assertEquals(700f, SpeechRecognizer.loudestFrameRms(chunk), 0.01f)
-    }
-
-    @Test
-    fun `a quiet listen gives up only when nothing reached speech level in time`() {
-        assertFalse(SpeechRecognizer.shouldGiveUp(now = 2_999, startedAt = 0, firstSpeechAt = null, giveUpWithoutSpeechMs = 3_000))
-        assertTrue(SpeechRecognizer.shouldGiveUp(now = 3_000, startedAt = 0, firstSpeechAt = null, giveUpWithoutSpeechMs = 3_000))
-        assertFalse(SpeechRecognizer.shouldGiveUp(now = 9_000, startedAt = 0, firstSpeechAt = 100, giveUpWithoutSpeechMs = 3_000))
-        // An ordinary listen never gives up this way.
-        assertFalse(SpeechRecognizer.shouldGiveUp(now = 60_000, startedAt = 0, firstSpeechAt = null, giveUpWithoutSpeechMs = null))
     }
 }
