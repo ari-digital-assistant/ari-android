@@ -180,6 +180,35 @@ class SettingsRepository @Inject constructor(
     }
 
     /**
+     * The wake model that runs silently next to the live one, logging when it
+     * would have woken Ari and never waking it, or null for none. Off by
+     * default: it is for trying a model in a real home before anyone has to
+     * live with it.
+     */
+    val shadowWakeWordId: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[KEY_SHADOW_WAKE_WORD]
+    }.distinctUntilChanged()
+
+    suspend fun setShadowWakeWordId(id: String?) {
+        context.dataStore.edit { prefs ->
+            if (id == null) prefs.remove(KEY_SHADOW_WAKE_WORD) else prefs[KEY_SHADOW_WAKE_WORD] = id
+        }
+    }
+
+    /**
+     * Whether the shadow model keeps the audio around each of its detections.
+     * Off by default, and apart from the other recording switches: agreeing to
+     * contribute recordings does not turn it on.
+     */
+    val shadowRecordings: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_SHADOW_RECORDINGS] ?: false
+    }.distinctUntilChanged()
+
+    suspend fun setShadowRecordings(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[KEY_SHADOW_RECORDINGS] = enabled }
+    }
+
+    /**
      * Whether Ari may tighten its own sensitivity when it keeps waking for
      * nothing. Default off: it changes behaviour the user did not ask for on
      * the strength of something they did not report.
@@ -848,6 +877,8 @@ class SettingsRepository @Inject constructor(
         private val KEY_TUNE_DURING_NORMAL_USE = booleanPreferencesKey("tune_during_normal_use")
         private val KEY_WAKE_SPEECH_CHECK = booleanPreferencesKey("wake_speech_check")
         private val KEY_QUIET_WAKE = booleanPreferencesKey("quiet_wake")
+        private val KEY_SHADOW_WAKE_WORD = stringPreferencesKey("shadow_wake_word")
+        private val KEY_SHADOW_RECORDINGS = booleanPreferencesKey("shadow_recordings")
         private val KEY_FALSE_WAKE_LOG = stringPreferencesKey("false_wake_log")
         private val KEY_FALSE_WAKE_NOTIFIED_AT = longPreferencesKey("false_wake_notified_at")
         private val KEY_LADDER_TIGHTENED_AT = longPreferencesKey("ladder_tightened_at")

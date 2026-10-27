@@ -48,6 +48,7 @@ class CapturePathsTest {
                 "wake-captures",
                 "wake-captures-rejected",
                 "wake-captures-accepted",
+                "wake-captures-shadow",
                 "wake-samples",
                 "utterance-captures",
             ),

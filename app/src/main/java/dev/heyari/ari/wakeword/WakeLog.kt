@@ -64,6 +64,12 @@ internal const val LOG_PASSED_AFTER_DROP = "passed-after-drop"
 internal const val LOG_CHECK_FAILED = "speech-check-failed"
 internal const val LOG_LISTEN_END = "listen-end"
 internal const val LOG_EARLY_NAME = "early-name"
+internal const val LOG_SHADOW_WAKE = "shadow-wake"
+internal const val LOG_SHADOW_DROPPED = "shadow-dropped"
+internal const val LOG_SHADOW_LABEL = "shadow-label"
+
+/** How close to a live wake a shadow model's detection counts as hearing the same call. */
+internal const val SHADOW_WITH_LIVE_MS = 3_000L
 
 /** One line of the wake log: when, what, and the words that follow. */
 internal data class WakeLogEntry(val at: Long, val kind: String, val args: List<String>)
@@ -102,10 +108,29 @@ internal data class ModelTally(
     val unresolved: Int get() = wakes - outcomes.values.sum() - hidden.values.sum()
 }
 
+/**
+ * What a shadow model did over a stretch of the log: where it would have woken
+ * Ari, with nothing ever shown. Labels come from transcribing the 2 s before
+ * each detection: `name` (the name check passed), `no-name`, `none` (nothing
+ * transcribed), `unlabelled` (no cloud transcription to ask).
+ */
+internal data class ShadowTally(
+    val listeningMs: Long = 0L,
+    val detections: Int = 0,
+    val labels: Map<String, Int> = emptyMap(),
+    /** Detections its speech check dropped: not detections. */
+    val dropped: Int = 0,
+    /** Live wakes Ari accepted, a real call each, while this model ran beside them. */
+    val liveAccepted: Int = 0,
+    /** Of [liveAccepted], those it reacted to within [SHADOW_WITH_LIVE_MS]. */
+    val withLiveAccepted: Int = 0,
+)
+
 internal data class WakeLogSummary(
     val byModel: Map<String, ModelTally>,
     /** Listening spells that never logged a stop, because the process was killed. */
     val unclosed: Int,
+    val shadow: Map<String, ShadowTally> = emptyMap(),
 )
 
 /**
@@ -141,15 +166,27 @@ internal fun summariseWakeLog(
     var openAt = 0L
     var lastSign = 0L
     var pendingWake: String? = null
+    var pendingWakeAt = 0L
     var pendingInWindow = false
+    // The shadow model running in the open spell, if any.
+    var openShadow: String? = null
+    val shadowListening = mutableMapOf<String, Long>()
+    val shadowDetections = mutableMapOf<String, Int>()
+    val shadowLabels = mutableMapOf<String, MutableMap<String, Int>>()
+    val shadowDropped = mutableMapOf<String, Int>()
+    val shadowEvents = mutableMapOf<String, MutableList<Long>>()
+    val acceptedWithShadow = mutableListOf<Pair<Long, String>>()
 
     // True when the spell overlapped the window at all.
     fun close(end: Long): Boolean {
         val model = openModel ?: return false
         openModel = null
+        val shadowModel = openShadow
+        openShadow = null
         val overlap = minOf(end, to) - maxOf(openAt, from)
         if (overlap <= 0) return false
         listening.merge(model, overlap, Long::plus)
+        if (shadowModel != null) shadowListening.merge(shadowModel, overlap, Long::plus)
         return true
     }
 
@@ -158,12 +195,26 @@ internal fun summariseWakeLog(
             LOG_LISTEN_ON -> {
                 if (close(lastSign)) unclosed++
                 openModel = entry.args.firstOrNull()
+                openShadow = shadowOf(entry)
                 openAt = entry.at
             }
             LOG_LISTEN_OFF -> close(entry.at)
+            LOG_SHADOW_WAKE, LOG_SHADOW_DROPPED, LOG_SHADOW_LABEL -> {
+                val model = entry.args.firstOrNull() ?: continue
+                if (entry.kind != LOG_SHADOW_LABEL) shadowEvents.getOrPut(model) { mutableListOf() }.add(entry.at)
+                if (entry.at !in from..to) continue
+                when (entry.kind) {
+                    LOG_SHADOW_WAKE -> shadowDetections.merge(model, 1, Int::plus)
+                    LOG_SHADOW_DROPPED -> shadowDropped.merge(model, 1, Int::plus)
+                    else -> entry.args.getOrNull(1)?.let {
+                        shadowLabels.getOrPut(model) { mutableMapOf() }.merge(it, 1, Int::plus)
+                    }
+                }
+            }
             LOG_WAKE -> {
                 val model = entry.args.firstOrNull() ?: continue
                 pendingWake = model
+                pendingWakeAt = entry.at
                 pendingInWindow = entry.at in from..to
                 if (pendingInWindow) wakes.merge(model, 1, Int::plus)
             }
@@ -183,6 +234,10 @@ internal fun summariseWakeLog(
                 val outcome = entry.args.firstOrNull()?.let(WakeOutcome::fromSlug) ?: continue
                 val into = if (entry.args.getOrNull(1) == "hidden") hidden else outcomes
                 if (pendingInWindow) into.getOrPut(model) { mutableMapOf() }.merge(outcome, 1, Int::plus)
+                val shadowModel = openShadow
+                if (pendingInWindow && outcome == WakeOutcome.ACCEPTED && shadowModel != null) {
+                    acceptedWithShadow.add(pendingWakeAt to shadowModel)
+                }
             }
         }
         if (openModel != null) lastSign = entry.at
@@ -190,6 +245,19 @@ internal fun summariseWakeLog(
     if (close(if (listeningNow) to else lastSign) && !listeningNow) unclosed++
 
     val models = listening.keys + wakes.keys + outcomes.keys + dropped.keys + checkFailed.keys
+    val shadowModels = shadowListening.keys + shadowDetections.keys + shadowDropped.keys
+    val shadow = shadowModels.associateWith { model ->
+        val accepted = acceptedWithShadow.filter { it.second == model }.map { it.first }
+        val events = shadowEvents[model].orEmpty()
+        ShadowTally(
+            listeningMs = shadowListening[model] ?: 0L,
+            detections = shadowDetections[model] ?: 0,
+            labels = shadowLabels[model].orEmpty(),
+            dropped = shadowDropped[model] ?: 0,
+            liveAccepted = accepted.size,
+            withLiveAccepted = accepted.count { t -> events.any { kotlin.math.abs(it - t) <= SHADOW_WITH_LIVE_MS } },
+        )
+    }
     return WakeLogSummary(
         byModel = models.associateWith { model ->
             ModelTally(
@@ -203,13 +271,18 @@ internal fun summariseWakeLog(
             )
         },
         unclosed = unclosed,
+        shadow = shadow,
     )
 }
+
+/** The shadow model a listen-on line names, as `shadow=<id>/...`, or null. */
+private fun shadowOf(entry: WakeLogEntry): String? =
+    entry.args.firstOrNull { it.startsWith("shadow=") }?.removePrefix("shadow=")?.substringBefore('/')
 
 /** [summary] as the lines a bug report carries, under a heading naming [span]. */
 internal fun renderWakeLogSummary(span: String, summary: WakeLogSummary): String = buildString {
     appendLine("--------- wake log, $span")
-    if (summary.byModel.isEmpty()) {
+    if (summary.byModel.isEmpty() && summary.shadow.isEmpty()) {
         appendLine("nothing recorded")
         return@buildString
     }
@@ -238,6 +311,23 @@ internal fun renderWakeLogSummary(span: String, summary: WakeLogSummary): String
             tally.hidden[outcome]?.let { "${outcome.slug} $it" }
         }
         if (quiet.isNotEmpty()) appendLine("  never shown (quiet wake): " + quiet.joinToString(", "))
+    }
+    for ((model, tally) in summary.shadow.toSortedMap()) {
+        val hours = tally.listeningMs / 3_600_000.0
+        append(String.format(Locale.ROOT, "shadow %s: listening %.1f h, %d detections", model, hours, tally.detections))
+        if (tally.listeningMs > 0) {
+            append(String.format(Locale.ROOT, " (%.2f per listening hour)", tally.detections / hours))
+        }
+        appendLine()
+        val parts = listOf("name", "no-name", "none", "unlabelled").mapNotNull { label ->
+            tally.labels[label]?.let { "$label $it" }
+        } + listOfNotNull(
+            tally.dropped.takeIf { it > 0 }?.let { "dropped for no speech $it" },
+            tally.liveAccepted.takeIf { it > 0 }?.let {
+                "fired with ${tally.withLiveAccepted} of $it accepted live wakes"
+            },
+        )
+        if (parts.isNotEmpty()) appendLine("  " + parts.joinToString(", "))
     }
     if (summary.unclosed > 0) {
         appendLine(
@@ -273,21 +363,44 @@ class WakeLog internal constructor(private val file: File) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val lock = Any()
 
+    /**
+     * [fingerprint] is the start of the model file's SHA-256, so a result can be
+     * traced to exactly the file that ran. [shadow] is the model running beside
+     * it, written into the same line so the two can never be paired wrongly.
+     */
     fun listeningStarted(
         model: WakeWordModel,
         sensitivity: WakeWordSensitivity,
         point: OperatingPoint,
         speechCheck: Boolean,
         quietWake: Boolean,
+        fingerprint: String,
+        shadow: ShadowRun? = null,
     ) = record(
         LOG_LISTEN_ON,
-        model.id,
-        sensitivity.name,
-        point.probabilityCutoff.toString(),
-        point.slidingWindowSize.toString(),
-        if (speechCheck) "speech-check=on" else "speech-check=off",
-        if (quietWake) "quiet-wake=on" else "quiet-wake=off",
+        *listOfNotNull(
+            model.id,
+            sensitivity.name,
+            point.probabilityCutoff.toString(),
+            point.slidingWindowSize.toString(),
+            if (speechCheck) "speech-check=on" else "speech-check=off",
+            if (quietWake) "quiet-wake=on" else "quiet-wake=off",
+            "file=$fingerprint",
+            shadow?.let {
+                "shadow=${it.model.id}/${it.sensitivity.name}/${it.point.probabilityCutoff}/" +
+                    "${it.point.slidingWindowSize}/${it.fingerprint}"
+            },
+        ).toTypedArray(),
     )
+
+    /** The shadow model detected the wake word, and its speech check let it through. */
+    fun shadowWake(modelId: String) = record(LOG_SHADOW_WAKE, modelId)
+
+    /** The shadow model detected it, and its speech check dropped it. */
+    fun shadowDropped(modelId: String) = record(LOG_SHADOW_DROPPED, modelId)
+
+    /** What the transcript of a shadow detection's 2 s says: see [ShadowTally]. */
+    fun shadowLabel(modelId: String, label: String) = record(LOG_SHADOW_LABEL, modelId, label)
 
     fun listeningStopped() = record(LOG_LISTEN_OFF)
 

@@ -66,6 +66,12 @@ class WakeWordService : Service() {
     @Inject
     lateinit var wakeLog: WakeLog
 
+    @Inject
+    lateinit var speechRecognizer: dev.heyari.ari.stt.SpeechRecognizer
+
+    @Inject
+    lateinit var wakeCaptureStore: WakeCaptureStore
+
     // Which model the detector was built from, for the wake log. Set before the
     // capture thread starts, which is the only thread that reads it after.
     @Volatile
@@ -90,6 +96,17 @@ class WakeWordService : Service() {
 
     private var audioRecord: AudioRecord? = null
     private var detector: MicroWakeWord? = null
+
+    // The shadow model (ShadowWake.kt): hears what the live one hears, logs what
+    // it would have done, and never wakes Ari. Built and closed with the live
+    // detector; read by the capture thread only after it starts.
+    private var shadowDetector: MicroWakeWord? = null
+    @Volatile
+    private var shadowModelId: String? = null
+    @Volatile
+    private var shadowRecordings = false
+    @Volatile
+    private var lastShadowAt = 0L
     private var captureThread: Thread? = null
 
     // Read/mutated from both StateFlow collectors (state + captureMode) which run
@@ -469,6 +486,10 @@ class WakeWordService : Service() {
             // behaves exactly as it always has.
             resetOnDetection = !speechCheck,
         )
+        // A shadow that will not build costs the live wake word nothing.
+        val shadow = runCatching { buildShadow(liveId = wakeWord.id, speechCheck = speechCheck) }
+            .onFailure { Log.w(TAG, "Shadow wake word would not build", it) }
+            .getOrNull()
 
         val record = openAudioRecord(currentSource)
         // The constructor reports failure through `state`, not by throwing;
@@ -481,6 +502,7 @@ class WakeWordService : Service() {
             record.release()
             detector?.close()
             detector = null
+            closeShadow()
             stopSelf()
             return
         }
@@ -490,7 +512,9 @@ class WakeWordService : Service() {
         isListening = true
         micHot = true
         activeModelId = wakeWord.id
-        wakeLog.listeningStarted(wakeWord, sensitivity, point, speechCheck, quietWake)
+        wakeLog.listeningStarted(
+            wakeWord, sensitivity, point, speechCheck, quietWake, modelFingerprint(modelBuffer), shadow,
+        )
 
         // Its own thread, not a slot on the shared Default dispatcher: read()
         // blocks for a whole buffer period, so parking it on a pool thread the
@@ -517,8 +541,9 @@ class WakeWordService : Service() {
         // the rule measured offline (ari-tools/wakeword/trained/2026-10-07-vad-gate/).
         // A model that cannot load fails open, because a check that cannot run must
         // never cost somebody their wake.
-        fun speechBeforeWake(now: Long): Boolean {
-            if (!pacing.shouldCheck(now)) return false
+        // The check itself, shared by the live and the shadow model: whether there
+        // was speech in the second before now, or null when it cannot run.
+        fun speechNow(): Boolean? {
             if (gate == null && !gateUnavailable) {
                 gate = try {
                     SpeechGate(assets)
@@ -528,17 +553,21 @@ class WakeWordService : Service() {
                     null
                 }
             }
-            val vad = gate ?: run {
-                wakeLog.speechCheckFailed(activeModelId, "unavailable")
-                return true
-            }
+            val vad = gate ?: return null
             // Caught here because this runs on the capture thread, where anything
             // uncaught ends the listening for good.
-            val speech = try {
+            return try {
                 vad.speechInTail(captureBus.peekRecent(SPEECH_CHECK_BUFFER_S), SPEECH_CHECK_TAIL_SAMPLES)
             } catch (t: Throwable) {
                 Log.w(TAG, "Speech check failed, letting the wake through", t)
-                wakeLog.speechCheckFailed(activeModelId, "error")
+                null
+            }
+        }
+
+        fun speechBeforeWake(now: Long): Boolean {
+            if (!pacing.shouldCheck(now)) return false
+            val speech = speechNow() ?: run {
+                wakeLog.speechCheckFailed(activeModelId, if (gateUnavailable) "unavailable" else "error")
                 return true
             }
             if (speech) {
@@ -550,6 +579,31 @@ class WakeWordService : Service() {
                 wakeLog.dropped(activeModelId)
             }
             return false
+        }
+
+        // The shadow model's detection, through the same debounce and speech
+        // check as the live one's, to a log line and a label instead of a wake.
+        val shadowPacing = SpeechCheckPacing()
+        fun shadowReported(shadow: MicroWakeWord) {
+            val id = shadowModelId ?: return
+            val now = System.currentTimeMillis()
+            if (captureBus.armed || now - lastShadowAt < detectionDebounceMs) {
+                shadow.reset()
+                return
+            }
+            if (speechCheck) {
+                if (!shadowPacing.shouldCheck(now)) return
+                // Fails open, as the live check does.
+                if (speechNow() == false) {
+                    if (shadowPacing.dropped(now)) wakeLog.shadowDropped(id)
+                    return
+                }
+                shadowPacing.passed()
+            }
+            lastShadowAt = now
+            shadow.reset()
+            wakeLog.shadowWake(id)
+            labelShadowWake(id, captureBus.peekRecent(SHADOW_CLIP_S), now)
         }
 
         while (isListening) {
@@ -579,6 +633,7 @@ class WakeWordService : Service() {
             // but we do NOT run wake detection.
             if (wakePaused) continue
             val samples = if (read == buffer.size) buffer else buffer.copyOf(read)
+            shadowDetector?.let { if (it.processAudio(samples)) shadowReported(it) }
             if (detector?.processAudio(samples) != true) continue
 
             // Belt-and-braces: don't fire wake while STT is armed.
@@ -641,6 +696,52 @@ class WakeWordService : Service() {
         audioRecord = null
         detector?.close()
         detector = null
+        closeShadow()
+    }
+
+    /**
+     * The shadow model the user picked, on the sensitivity and ladder stored for
+     * it, or null when there is none, it is the live model, or it will not load.
+     */
+    private fun buildShadow(liveId: String, speechCheck: Boolean): ShadowRun? {
+        val id = runBlocking { settingsRepository.shadowWakeWordId.first() } ?: return null
+        val model = WakeWordRegistry.all.firstOrNull { it.id == id && it.id != liveId } ?: return null
+        val sensitivity = WakeWordSensitivity.fromName(runBlocking { settingsRepository.wakeWordSensitivity(model.id).first() })
+        val tuned = model.withLadder(TunedLadder.parse(runBlocking { settingsRepository.wakeLadder(model.id).first() }))
+        val point = tuned.operatingPoint(sensitivity)
+        val buffer = loadModelFromAssets(tuned.assetFilename) ?: return null
+        shadowDetector = MicroWakeWord(
+            modelBuffer = buffer,
+            featureStepSizeMs = tuned.featureStepSizeMs,
+            probabilityCutoff = point.probabilityCutoff,
+            slidingWindowSize = point.slidingWindowSize,
+            resetOnDetection = !speechCheck,
+        )
+        shadowModelId = tuned.id
+        shadowRecordings = runBlocking { settingsRepository.shadowRecordings.first() }
+        Log.i(TAG, "Shadow wake word: ${tuned.id} @ ${sensitivity.name} (cutoff=${point.probabilityCutoff})")
+        return ShadowRun(tuned, sensitivity, point, modelFingerprint(buffer))
+    }
+
+    private fun closeShadow() {
+        shadowDetector?.close()
+        shadowDetector = null
+        shadowModelId = null
+    }
+
+    /**
+     * Label a shadow detection by transcribing [clip], the 2 s before it, and
+     * keep the clip if shadow recordings are on. Off the capture thread: the
+     * request takes half a second or more.
+     */
+    private fun labelShadowWake(modelId: String, clip: ShortArray, at: Long) {
+        val keep = shadowRecordings
+        scope.launch(Dispatchers.IO) {
+            val checked = runCatching { speechRecognizer.checkClipName(clip) }.getOrNull()
+            val label = shadowLabelFor(checked?.first)
+            wakeLog.shadowLabel(modelId, label)
+            if (keep) wakeCaptureStore.saveShadow(clip, modelId, label, checked?.second.orEmpty(), at)
+        }
     }
 
     /**

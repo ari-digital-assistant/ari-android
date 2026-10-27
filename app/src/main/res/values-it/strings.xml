@@ -350,6 +350,11 @@
     <string name="settings_wake_speech_check_blurb">Ari si apre solo se ha appena sentito una voce. Così colpi, vibrazioni e ronzii non lo attivano. Disattivalo se Ari smette di sentirti.</string>
     <string name="settings_quiet_wake_title">Aspetta che Ari senta il suo nome</string>
     <string name="settings_quiet_wake_blurb">Ari resta nascosto e in silenzio finché non ha sentito \"Hey Ari\", così ciò che gli somiglia soltanto non mostra nulla. Compare un attimo più tardi del solito.</string>
+    <string name="settings_shadow_wake_title">Parola di attivazione ombra</string>
+    <string name="settings_shadow_wake_blurb">Fa funzionare in silenzio una seconda parola di attivazione accanto a quella di Ari. Non sveglia mai Ari: annota soltanto quando lo avrebbe fatto, così puoi vedere come si comporta qui prima di passare a essa. Con la trascrizione OpenAI, i due secondi prima di ognuna vengono inviati lì per etichettare ciò che ha sentito.</string>
+    <string name="settings_shadow_wake_off">Disattivata</string>
+    <string name="settings_shadow_recordings_title">Conserva le registrazioni ombra</string>
+    <string name="settings_shadow_recordings_blurb">Conserva quei due secondi su questo telefono, così qualcuno può ascoltarli e controllare le etichette. Mai condivise, a meno che tu non le alleghi a una segnalazione di bug.</string>
     <string name="settings_wakeword_sensitivity_blurb">Sensibilità — quanto facilmente Ari risponde alla tua voce. Se Ari si attiva quando non dovrebbe, abbassa il valore. Se non si attiva quando vuoi, alzalo.</string>
     <string name="sensitivity_tuning_title">Regola la sensibilità</string>
     <string name="sensitivity_tuning_blurb">Ari ti chiederà di dire alcune frasi: a volte la frase di attivazione, a volte no. Quelle che non sono la frase di attivazione sono la metà importante: mostrano ad Ari cosa ignorare. Fallo una volta per ognuno in casa.</string>

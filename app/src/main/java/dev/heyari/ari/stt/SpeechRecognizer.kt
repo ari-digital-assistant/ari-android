@@ -236,17 +236,23 @@ class SpeechRecognizer @Inject constructor(
      * check needs the first two words and they are already in the clip. Null
      * where it cannot run.
      */
-    suspend fun checkNameEarly(pcm: ShortArray): EarlyNameCheck? {
+    suspend fun checkNameEarly(pcm: ShortArray): EarlyNameCheck? = checkClipName(pcm)?.first
+
+    /**
+     * [checkNameEarly] with the transcript it was decided on, blank where there
+     * was none: what the shadow model's labels and recordings carry.
+     */
+    suspend fun checkClipName(pcm: ShortArray): Pair<EarlyNameCheck, String>? {
         val locale = localeProvider.currentLocale()
         val transcript = try {
             cloudTranscriber.transcribeWakeClip(pcm, locale) ?: return null
         } catch (e: CloudSttException) {
             Log.i(TAG, "Early name check: no transcript (${e.failure})")
-            return EarlyNameCheck.NONE
+            return EarlyNameCheck.NONE to ""
         }
         val result = earlyNameCheck(transcript, locale)
         Log.i(TAG, "Early name check: raw='$transcript' -> ${result.slug}")
-        return result
+        return result to transcript
     }
 
     /** Message for a cloud failure, so the user is told which wall they hit. */

@@ -81,6 +81,15 @@ class WakeCaptureStore internal constructor(
     private val acceptedClips =
         AudioClipStore(context, File(baseDir, ACCEPTED_DIR_NAME), MAX_FILES, MAX_BYTES)
 
+    /**
+     * SHADOW: the 2 s before each shadow model detection, kept only while the
+     * shadow recordings switch is on, so someone can check its labels. Apart
+     * from every directory above, and never contributed: ContributionCategory
+     * does not name it.
+     */
+    private val shadowClips =
+        AudioClipStore(context, File(baseDir, SHADOW_DIR_NAME), MAX_FILES, MAX_BYTES)
+
     fun save(
         pcm: ShortArray,
         rawTranscript: String,
@@ -97,8 +106,17 @@ class WakeCaptureStore internal constructor(
         clips.save(clipStem("wake", timestampMs, hook.slug), pcm, rawTranscript)
     }
 
+    /** A shadow model's detection, with its label and the transcript the label came from. */
+    fun saveShadow(pcm: ShortArray, modelId: String, label: String, transcript: String, timestampMs: Long) {
+        shadowClips.save(
+            clipStem("shadow", timestampMs, "$modelId-$label"),
+            pcm,
+            "model: $modelId\nlabel: $label\ntranscript: $transcript\n",
+        )
+    }
+
     fun stats(): ClipStats {
-        val all = listOf(silentClips.stats(), rejectedClips.stats(), acceptedClips.stats())
+        val all = listOf(silentClips.stats(), rejectedClips.stats(), acceptedClips.stats(), shadowClips.stats())
         return ClipStats(all.sumOf { it.count }, all.sumOf { it.totalBytes })
     }
 
@@ -106,6 +124,7 @@ class WakeCaptureStore internal constructor(
         silentClips.clear()
         rejectedClips.clear()
         acceptedClips.clear()
+        shadowClips.clear()
     }
 
     fun shareIntent(): Intent? {
@@ -115,7 +134,7 @@ class WakeCaptureStore internal constructor(
 
     /** Every captured clip and its sidecar, for the share sheet or a bug report. */
     fun files(): List<File> =
-        silentClips.files() + rejectedClips.files() + acceptedClips.files()
+        silentClips.files() + rejectedClips.files() + acceptedClips.files() + shadowClips.files()
 
     // Internal rather than private: ContributionCategory names these
     // directories too, and one definition beats two that can drift apart.
@@ -123,6 +142,7 @@ class WakeCaptureStore internal constructor(
         const val DIR_NAME = "wake-captures"
         const val REJECTED_DIR_NAME = "wake-captures-rejected"
         const val ACCEPTED_DIR_NAME = "wake-captures-accepted"
+        const val SHADOW_DIR_NAME = "wake-captures-shadow"
         const val MAX_FILES = 50
         const val MAX_BYTES = 20L * 1024 * 1024
     }

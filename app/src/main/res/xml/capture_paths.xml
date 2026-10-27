@@ -3,6 +3,7 @@
     <files-path name="wake-captures" path="wake-captures/" />
     <files-path name="wake-captures-rejected" path="wake-captures-rejected/" />
     <files-path name="wake-captures-accepted" path="wake-captures-accepted/" />
+    <files-path name="wake-captures-shadow" path="wake-captures-shadow/" />
     <files-path name="wake-samples" path="wake-samples/" />
     <files-path name="utterance-captures" path="utterance-captures/" />
 </paths>

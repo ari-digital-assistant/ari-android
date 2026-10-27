@@ -15,6 +15,7 @@
     <exclude domain="file" path="wake-captures/" />
     <exclude domain="file" path="wake-captures-rejected/" />
     <exclude domain="file" path="wake-captures-accepted/" />
+    <exclude domain="file" path="wake-captures-shadow/" />
     <exclude domain="file" path="utterance-captures/" />
     <!--
       Deliberately recorded wake-phrase audio (WakeSampleStore). Named

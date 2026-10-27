@@ -119,6 +119,10 @@ data class SettingsState(
     val wakeWordSensitivity: WakeWordSensitivity = WakeWordSensitivity.DEFAULT,
     val wakeSpeechCheck: Boolean = true,
     val quietWake: Boolean = true,
+    /** The models that can run in the shadow: every one but the live model. */
+    val shadowWakeWords: List<WakeWordModel> = emptyList(),
+    val shadowWakeWordId: String? = null,
+    val shadowRecordings: Boolean = false,
     val llmModels: List<LlmModelStatus> = emptyList(),
     val llmDownload: LlmDownloadState = LlmDownloadState.Idle,
     val llmNoneActive: Boolean = true,
@@ -214,6 +218,19 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.quietWake.collect { on ->
                 _state.update { it.copy(quietWake = on) }
+            }
+        }
+        viewModelScope.launch {
+            combine(settingsRepository.activeWakeWordId, settingsRepository.shadowWakeWordId) { live, shadow ->
+                val liveId = WakeWordRegistry.byId(live).id
+                WakeWordRegistry.all.filter { it.id != liveId } to shadow?.takeIf { it != liveId }
+            }.collect { (options, shadow) ->
+                _state.update { it.copy(shadowWakeWords = options, shadowWakeWordId = shadow) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.shadowRecordings.collect { on ->
+                _state.update { it.copy(shadowRecordings = on) }
             }
         }
         viewModelScope.launch(Dispatchers.IO) {
@@ -926,6 +943,21 @@ class SettingsViewModel @Inject constructor(
     fun setQuietWake(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setQuietWake(enabled)
+            WakeWordService.restartIfRunning(application)
+        }
+    }
+
+    /** Null turns the shadow off. Read when the mic opens, like the rest. */
+    fun setShadowWakeWord(id: String?) {
+        viewModelScope.launch {
+            settingsRepository.setShadowWakeWordId(id)
+            WakeWordService.restartIfRunning(application)
+        }
+    }
+
+    fun setShadowRecordings(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setShadowRecordings(enabled)
             WakeWordService.restartIfRunning(application)
         }
     }
