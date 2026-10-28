@@ -19,6 +19,12 @@ import javax.inject.Singleton
  * authority. The first thing every method does is check the
  * authority is actually resolvable.
  *
+ * Tasks.org 15.12+ also ships its own API (`org.tasks.api`, spec at
+ * https://github.com/tasks/tasks/blob/main/CONTENT_PROVIDER.md). It is
+ * preferred over Tasks.org's OpenTasks bridge, which only carries
+ * lists a sync adapter like DAVx5 writes into it: lists Tasks.org
+ * syncs over CalDAV itself never appear there.
+ *
  * This is a **platform wrapper**, not a skill feature. Any skill
  * declaring `Capability::Tasks` can reach it via the `ari::tasks_*`
  * host imports; this Kotlin surface is also used by generic Android
@@ -94,7 +100,7 @@ class TasksProvider @Inject constructor(
     private fun permissionFor(authority: String?, write: Boolean = false): String? {
         val perm = when (authority) {
             "org.dmfs.tasks" -> if (write) "org.dmfs.permission.WRITE_TASKS" else "org.dmfs.permission.READ_TASKS"
-            "org.tasks.opentasks" -> if (write) "org.tasks.permission.WRITE_TASKS" else "org.tasks.permission.READ_TASKS"
+            TASKS_ORG_API, "org.tasks.opentasks" -> if (write) "org.tasks.permission.WRITE_TASKS" else "org.tasks.permission.READ_TASKS"
             else -> return null
         }
         return perm
@@ -130,10 +136,12 @@ class TasksProvider @Inject constructor(
      *
      * No "writable filter" like the calendar helper — OpenTasks
      * doesn't expose access-level distinctions on its public schema,
-     * so we trust whatever the provider hands us.
+     * so we trust whatever the provider hands us. Tasks.org's API
+     * does, so that path drops read-only lists.
      */
     fun listTaskLists(): List<DeviceTaskList> {
         val authority = resolveAuthority() ?: return emptyList()
+        if (authority == TASKS_ORG_API) return listTasksOrgLists()
         val listsUri = Uri.parse("content://$authority/tasklists")
         val out = mutableListOf<DeviceTaskList>()
         val projection = arrayOf(LISTS_ID, LISTS_NAME, LISTS_ACCOUNT_NAME)
@@ -156,6 +164,56 @@ class TasksProvider @Inject constructor(
 
         return out.sortedBy { it.displayName }
     }
+
+    /**
+     * Lists rows carry an account id rather than a name, so the
+     * accounts are read first to fill in [DeviceTaskList.accountName].
+     */
+    private fun listTasksOrgLists(): List<DeviceTaskList> {
+        val accountNames = mutableMapOf<Long, String>()
+        runCatching {
+            context.contentResolver.query(
+                Uri.parse("$TASKS_ORG_API_BASE/accounts"),
+                arrayOf(API_ID, API_ACCOUNT_NAME),
+                null, null, null,
+            )
+        }
+            .onFailure { e -> Log.w(TAG, "Tasks.org account query failed: ${e.message}") }
+            .getOrNull()
+            ?.use { cursor ->
+                while (cursor.moveToNext()) accountNames[cursor.getLong(0)] = cursor.getString(1)
+            }
+
+        // A write to a read-only list throws, and every caller wants a
+        // list to add tasks to.
+        val listsUri = Uri.parse("$TASKS_ORG_API_BASE/lists").buildUpon()
+            .appendQueryParameter("access", "owner")
+            .appendQueryParameter("access", "read_write")
+            .build()
+        val out = mutableListOf<DeviceTaskList>()
+        runCatching {
+            context.contentResolver.query(
+                listsUri,
+                arrayOf(API_ID, API_LIST_TITLE, API_LIST_ACCOUNT_ID),
+                null, null, null,
+            )
+        }
+            .onFailure { e -> Log.w(TAG, "Tasks.org list query failed: ${e.message}") }
+            .getOrNull()
+            ?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    val account = accountNames[cursor.getLong(2)] ?: ""
+                    out.add(DeviceTaskList(cursor.getLong(0), cursor.getString(1), account))
+                }
+            }
+
+        return out.sortedBy { it.displayName }
+    }
+
+    /** Tasks.org's API nests every collection under a version segment. */
+    private fun tasksUri(authority: String): Uri =
+        if (authority == TASKS_ORG_API) Uri.parse("$TASKS_ORG_API_BASE/tasks")
+        else Uri.parse("content://$authority/tasks")
 
     /**
      * The first available task list, or null if none exist (no
@@ -186,9 +244,19 @@ class TasksProvider @Inject constructor(
             Log.w(TAG, "insertTask: no OpenTasks-compatible provider installed")
             return null
         }
-        val tasksUri = Uri.parse("content://$authority/tasks")
+        val tasksUri = tasksUri(authority)
 
-        val values = ContentValues().apply {
+        // Tasks.org's API takes epoch millis in the device zone and has
+        // no tz column. All-day dates are read as local midnight, which
+        // is what the reminder skill sends.
+        val values = if (authority == TASKS_ORG_API) ContentValues().apply {
+            put(API_TASK_LIST_ID, taskListId)
+            put(API_TASK_TITLE, title)
+            if (dueMillis != null) {
+                put(API_TASK_DUE, dueMillis)
+                put(API_TASK_DUE_ALL_DAY, if (dueAllDay) 1 else 0)
+            }
+        } else ContentValues().apply {
             put(TASKS_LIST_ID, taskListId)
             put(TASKS_TITLE, title)
             if (dueMillis != null) {
@@ -254,24 +322,44 @@ class TasksProvider @Inject constructor(
     ): List<DeviceTaskRow> {
         if (limit <= 0 || endMillis <= startMillis) return emptyList()
         val authority = resolveAuthority() ?: return emptyList()
-        val tasksUri = Uri.parse("content://$authority/tasks")
-        val projection = arrayOf(
-            TASKS_ID,
-            TASKS_TITLE,
-            TASKS_DUE,
-            TASKS_IS_ALLDAY,
-            TASKS_LIST_ID,
-        )
-        // OpenTasks soft-deletion column. Filtering with `IS NOT 1`
-        // (rather than `=0`) catches both NULL and 0, in case the
-        // provider stops setting an explicit zero.
-        val selection = "$TASKS_DUE >= ? AND $TASKS_DUE < ? AND ($TASKS_DELETED IS NULL OR $TASKS_DELETED != 1)"
-        val args = arrayOf(startMillis.toString(), endMillis.toString())
-        val sortOrder = "$TASKS_DUE ASC"
+        val tasksUri = tasksUri(authority)
 
         val out = mutableListOf<DeviceTaskRow>()
         runCatching {
-            context.contentResolver.query(tasksUri, projection, selection, args, sortOrder)
+            if (authority == TASKS_ORG_API) {
+                // The API rejects SQL and leaves deleted rows out on
+                // its own. Both range bounds are exclusive, hence the
+                // `- 1` to keep `startMillis` in.
+                val uri = tasksUri.buildUpon()
+                    .appendQueryParameter("due_after", (startMillis - 1).toString())
+                    .appendQueryParameter("due_before", endMillis.toString())
+                    .appendQueryParameter("sort", "due")
+                    .appendQueryParameter("limit", limit.toString())
+                    .build()
+                val projection = arrayOf(
+                    API_ID,
+                    API_TASK_TITLE,
+                    API_TASK_DUE,
+                    API_TASK_DUE_ALL_DAY,
+                    API_TASK_LIST_ID,
+                )
+                context.contentResolver.query(uri, projection, null, null, null)
+            } else {
+                val projection = arrayOf(
+                    TASKS_ID,
+                    TASKS_TITLE,
+                    TASKS_DUE,
+                    TASKS_IS_ALLDAY,
+                    TASKS_LIST_ID,
+                )
+                // OpenTasks soft-deletion column. Filtering with `IS NOT 1`
+                // (rather than `=0`) catches both NULL and 0, in case the
+                // provider stops setting an explicit zero.
+                val selection = "$TASKS_DUE >= ? AND $TASKS_DUE < ? AND ($TASKS_DELETED IS NULL OR $TASKS_DELETED != 1)"
+                val args = arrayOf(startMillis.toString(), endMillis.toString())
+                val sortOrder = "$TASKS_DUE ASC"
+                context.contentResolver.query(tasksUri, projection, selection, args, sortOrder)
+            }
         }
             .onFailure { e -> Log.w(TAG, "task range query failed: ${e.message}") }
             .getOrNull()
@@ -306,11 +394,21 @@ class TasksProvider @Inject constructor(
      * first, then pass them to the delete. Falls back to soft-delete
      * if the account query fails — the user still gets some action,
      * and the sync will eventually clean up.
+     *
+     * Tasks.org's API has one delete mode, which removes the row and
+     * syncs the deletion, so it skips all of the above.
      */
     fun deleteTask(taskId: Long): Boolean {
         val authority = resolveAuthority() ?: return false
-        val tasksBase = Uri.parse("content://$authority/tasks")
-        val rowUri = ContentUris.withAppendedId(tasksBase, taskId)
+        val rowUri = ContentUris.withAppendedId(tasksUri(authority), taskId)
+
+        if (authority == TASKS_ORG_API) {
+            val deleted = runCatching { context.contentResolver.delete(rowUri, null, null) }
+                .onFailure { Log.w(TAG, "task delete failed for id=$taskId: ${it.message}") }
+                .getOrNull()
+                ?: return false
+            return deleted > 0
+        }
 
         val account = runCatching {
             context.contentResolver.query(
@@ -357,13 +455,23 @@ class TasksProvider @Inject constructor(
          *
          * Known entries:
          * - `org.dmfs.tasks` — OpenTasks (the original reference app).
+         * - [TASKS_ORG_API] — Tasks.org 15.12+'s own API. Not
+         *   OpenTasks-shaped, so the methods branch on it.
          * - `org.tasks.opentasks` — Tasks.org (forks the OpenTasks
          *   provider class but registers under its own authority).
+         *   Only reached on Tasks.org releases older than the API.
          */
         private val KNOWN_AUTHORITIES = listOf(
             "org.dmfs.tasks",
+            TASKS_ORG_API,
             "org.tasks.opentasks",
         )
+
+        private const val TASKS_ORG_API = "org.tasks.api"
+
+        // The spec marks v0 unstable: columns may change between
+        // Tasks.org releases.
+        private const val TASKS_ORG_API_BASE = "content://$TASKS_ORG_API/v0"
 
         // Column names taken from the OpenTasks schema documented at
         // https://github.com/dmfs/opentasks/blob/master/opentasks-contract/
@@ -390,5 +498,15 @@ class TasksProvider @Inject constructor(
         // specify an account" check.
         private const val TASKS_ACCOUNT_NAME = "account_name"
         private const val TASKS_ACCOUNT_TYPE = "account_type"
+
+        // Tasks.org API columns, from the spec linked in the class doc.
+        private const val API_ID = "_id"
+        private const val API_ACCOUNT_NAME = "name"
+        private const val API_LIST_TITLE = "title"
+        private const val API_LIST_ACCOUNT_ID = "account_id"
+        private const val API_TASK_TITLE = "title"
+        private const val API_TASK_DUE = "due_date"
+        private const val API_TASK_DUE_ALL_DAY = "due_all_day"
+        private const val API_TASK_LIST_ID = "list_id"
     }
 }
