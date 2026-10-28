@@ -551,7 +551,7 @@
     <string name="skill_panel_calendar_permission_blurb">L\'accesso al calendario serve per elencare i tuoi calendari e salvarci gli eventi.</string>
     <string name="skill_panel_tasks_permission_blurb">L\'accesso alla tua app di attività serve per elencare i tuoi elenchi e salvarci le attività.</string>
     <string name="skill_panel_no_tasks_app_title">Nessuna app di attività compatibile</string>
-    <string name="skill_panel_no_tasks_app_body">Le skill che creano attività passano dal ponte OpenTasks. OpenTasks è consigliata — anche Tasks.org funziona, ma espone solo gli elenchi sincronizzati via CalDAV, non quelli solo locali.</string>
+    <string name="skill_panel_no_tasks_app_body">Le skill che creano attività hanno bisogno di un\'app di attività che condivida i suoi elenchi con Ari. Tasks.org (versione 15.12 o successiva) e OpenTasks lo fanno entrambe.</string>
 
     <!-- TTS settings page -->
     <string name="tts_language_label">Lingua</string>

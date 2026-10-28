@@ -1025,9 +1025,9 @@ private fun DeviceTaskListField(
 
 /**
  * Curated card surfaced when the user picks the Tasks destination on
- * a device with no OpenTasks-compatible app installed. Lists four
+ * a device with no OpenTasks-compatible app installed. Lists the
  * known-good open-source options with deep links to their Play Store
- * pages, plus a generic search fallback. Three or four hand-picked
+ * pages, plus a generic search fallback. A couple of hand-picked
  * apps reads more honestly than a vague "search the store" dump.
  */
 @Composable
@@ -1126,27 +1126,19 @@ private data class TasksAppSuggestion(
 /**
  * Hand-picked OpenTasks-compatible apps, in recommendation order.
  *
- * OpenTasks (the dmfs reference app) leads because it's the only
- * widely-used option that exposes *local* task lists through its
- * ContentProvider — Tasks.org deliberately confines its OpenTasks
- * bridge to CalDAV-synced lists, so a user running Tasks.org with no
- * sync account will find Ari can't see any of their lists. The
- * NoTasksAppCard copy calls that out.
+ * Tasks.org leads: from 15.12 its own API shares every list, local or
+ * synced, and it is actively maintained. jtx Board is left out because
+ * its provider isn't one TasksProvider probes, so Ari would not see it.
  */
 private val TASKS_APP_SUGGESTIONS = listOf(
     TasksAppSuggestion(
-        "org.dmfs.tasks",
-        "OpenTasks",
-        "Recommended — reference implementation, exposes local task lists directly.",
-    ),
-    TasksAppSuggestion(
         "org.tasks",
         "Tasks.org",
-        "Only exposes CalDAV-synced lists to Ari. Local-only lists won't appear.",
+        "Recommended. Shares all its lists with Ari from version 15.12. Older versions only share lists synced through DAVx5.",
     ),
     TasksAppSuggestion(
-        "at.techbee.jtx",
-        "jtx Board",
-        "Journals, notes and tasks in one CalDAV-syncing app.",
+        "org.dmfs.tasks",
+        "OpenTasks",
+        "Reference implementation, exposes local task lists directly.",
     ),
 )
