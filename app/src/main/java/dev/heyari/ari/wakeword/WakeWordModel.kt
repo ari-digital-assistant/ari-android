@@ -130,6 +130,30 @@ object WakeWordRegistry {
     )
 
     /**
+     * Stage 5's candidate (`ari-tools/wakeword/trained/2026-10-27-stage5/step2-c/`):
+     * today's recipe plus mined false fires, hum, notification sounds and
+     * Maltese and French speech, with no household recordings and no near-miss
+     * words, both of which taught it to stop hearing some voices. On a phone
+     * trial against [heyAri], which runs in the shadow.
+     *
+     * Each cutoff hears as many of the 92 marked takes as [heyAri] does at the
+     * same level: 64, 62 and 58. Its kitchen ambient floor is 0.527, so the gaps
+     * are +0.07 / +0.12 / +0.22, narrower than [heyAri]'s; it makes up for it
+     * elsewhere, false-firing 4 to 6 times less than [heyAri] on held-out speech
+     * at MEDIUM. Twenty minutes of kitchen cannot say whether the narrower gap
+     * costs false wakes in the house. The trial can.
+     */
+    private val heyAriStage5 = WakeWordModel(
+        id = "hey_ari_s5c",
+        displayName = "Hey Ari (stage 5, trial)",
+        assetFilename = "hey_ari_s5c.tflite",
+        featureStepSizeMs = 10,
+        high = OperatingPoint(0.60f, 10),
+        medium = OperatingPoint(0.65f, 10),
+        low = OperatingPoint(0.75f, 10),
+    )
+
+    /**
      * Unmeasured, so deliberately left on the ladder the app shipped before
      * operating points became per-model. Neither has been retrained and neither
      * has a household recording to score against; changing their behaviour on
@@ -148,6 +172,7 @@ object WakeWordRegistry {
     val all: List<WakeWordModel> = listOf(
         heyAri,
         heyAriRetrained,
+        heyAriStage5,
         unmeasured("ok_ari", "OK Ari"),
         unmeasured("hey_jarvis", "Hey Jarvis"),
     )
