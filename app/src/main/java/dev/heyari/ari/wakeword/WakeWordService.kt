@@ -587,7 +587,7 @@ class WakeWordService : Service() {
         fun shadowReported(shadow: MicroWakeWord) {
             val id = shadowModelId ?: return
             val now = System.currentTimeMillis()
-            if (captureBus.armed || now - lastShadowAt < detectionDebounceMs) {
+            if (shadowIgnored(now, captureBus.armed, lastDetectionAt, lastShadowAt, detectionDebounceMs)) {
                 shadow.reset()
                 return
             }

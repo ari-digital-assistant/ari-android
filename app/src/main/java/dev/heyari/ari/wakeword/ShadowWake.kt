@@ -26,6 +26,21 @@ data class ShadowRun(
 /** How long before a shadow detection its label and recording cover, as the early name check. */
 internal const val SHADOW_CLIP_S = 2.0f
 
+/**
+ * Whether a shadow detection at [now] is ignored: inside its own debounce, or
+ * while a transcript is armed, when the live model is deaf too. The exception
+ * is the [SHADOW_WITH_LIVE_MS] after a live wake, since the same call can reach
+ * the shadow a moment after the live model has armed the transcript, and
+ * ignoring it there would count a call the shadow heard as one it missed.
+ */
+internal fun shadowIgnored(
+    now: Long,
+    armed: Boolean,
+    lastLiveAt: Long,
+    lastShadowAt: Long,
+    debounceMs: Long,
+): Boolean = now - lastShadowAt < debounceMs || (armed && now - lastLiveAt > SHADOW_WITH_LIVE_MS)
+
 /** The wake log's label for a shadow detection, from the early name check's verdict on its clip. */
 internal fun shadowLabelFor(result: EarlyNameCheck?): String = when (result) {
     EarlyNameCheck.PASS -> "name"
