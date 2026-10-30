@@ -10,6 +10,9 @@ data class OperatingPoint(
     val slidingWindowSize: Int,
 )
 
+/** Which engine runs a model: [MicroWakeWord] or [OpenWakeWord]. */
+enum class WakeEngine { MICRO_WAKE_WORD, OPEN_WAKE_WORD }
+
 /**
  * A wake word model bundled in app assets.
  *
@@ -34,6 +37,7 @@ data class WakeWordModel(
     val high: OperatingPoint,
     val medium: OperatingPoint,
     val low: OperatingPoint,
+    val engine: WakeEngine = WakeEngine.MICRO_WAKE_WORD,
 ) {
     fun operatingPoint(sensitivity: WakeWordSensitivity): OperatingPoint = when (sensitivity) {
         WakeWordSensitivity.HIGH -> high
@@ -154,6 +158,42 @@ object WakeWordRegistry {
     )
 
     /**
+     * An openWakeWord model (`ari-tools/wakeword/models/openwakeword-2026-10-28/`,
+     * `rung2_half`), trained by Keith on openwakeword.com, whose models are for
+     * personal and non-commercial use unless a commercial licence is bought. Its
+     * classifier sits on a speech embedding pretrained on real speech, which is
+     * the likely reason it hears this household where every microWakeWord
+     * retrain went deaf to some of it. On a phone trial against [heyAri], which
+     * runs in the shadow.
+     *
+     * It fires on a single 80 ms score, so the window is 1. Over the twenty
+     * minutes of household ambient the highest score is 0.350. MEDIUM is 0.55,
+     * the cutoff its offline exam ran at: 82 of 92 marked takes, none of the 34
+     * held-out household false wakes, 0.5 false fires an hour on English speech
+     * against [heyAri]'s 52, none on hum. HIGH is 0.50, the loosest swept cutoff
+     * that clears the ambient by the exam's minimum of 0.10, and LOW is 0.65,
+     * [heyAri]'s smallest gap of +0.30. Recall barely moves across them: 83 /
+     * 82 / 81 of the 92 takes (Gail 45 / 44 / 43 of 46; Joe 10 of 15, Keith 16
+     * of 16 and Maryanne 12 of 15 at every level), against [heyAri]'s 64 / 62 /
+     * 58.
+     *
+     * The gaps, +0.15 / +0.20 / +0.30, are narrower than [heyAri]'s, and +0.10
+     * has false-fired in this house before. Twenty minutes of kitchen cannot say
+     * whether +0.20 holds. The trial can.
+     */
+    private val heyAriOpenWakeWord = WakeWordModel(
+        id = "hey_ari_oww",
+        displayName = "Hey Ari (openWakeWord, trial)",
+        assetFilename = "hey_ari_oww.onnx",
+        // openWakeWord's melspectrogram steps 10 ms; only microWakeWord reads this.
+        featureStepSizeMs = 10,
+        high = OperatingPoint(0.50f, 1),
+        medium = OperatingPoint(0.55f, 1),
+        low = OperatingPoint(0.65f, 1),
+        engine = WakeEngine.OPEN_WAKE_WORD,
+    )
+
+    /**
      * Unmeasured, so deliberately left on the ladder the app shipped before
      * operating points became per-model. Neither has been retrained and neither
      * has a household recording to score against; changing their behaviour on
@@ -173,6 +213,7 @@ object WakeWordRegistry {
         heyAri,
         heyAriRetrained,
         heyAriStage5,
+        heyAriOpenWakeWord,
         unmeasured("ok_ari", "OK Ari"),
         unmeasured("hey_jarvis", "Hey Jarvis"),
     )

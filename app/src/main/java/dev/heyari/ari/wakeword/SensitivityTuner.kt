@@ -293,11 +293,11 @@ class SensitivityTuner @Inject constructor(
         modelBuffer: ByteBuffer,
         model: WakeWordModel,
         cutoff: Float,
-    ): Boolean = MicroWakeWord(
+    ): Boolean = model.detector(
         modelBuffer = modelBuffer,
-        featureStepSizeMs = model.featureStepSizeMs,
-        probabilityCutoff = cutoff,
-        slidingWindowSize = model.medium.slidingWindowSize,
+        point = OperatingPoint(cutoff, model.medium.slidingWindowSize),
+        resetOnDetection = true,
+        load = ::loadModel,
     ).use { engine ->
         feed(engine, pcm, runIn)
         feed(engine, pcm, window)
@@ -338,7 +338,7 @@ class SensitivityTuner @Inject constructor(
     }
 
     /** Returns whether the engine fired anywhere in [range]. */
-    private fun feed(engine: MicroWakeWord, pcm: ShortArray, range: IntRange): Boolean {
+    private fun feed(engine: WakeDetector, pcm: ShortArray, range: IntRange): Boolean {
         var detected = false
         var offset = range.first
         while (offset <= range.last) {

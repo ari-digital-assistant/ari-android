@@ -95,12 +95,12 @@ class WakeWordService : Service() {
         ListeningDecision.Listen(listOf(ListeningReason.AlwaysOn))
 
     private var audioRecord: AudioRecord? = null
-    private var detector: MicroWakeWord? = null
+    private var detector: WakeDetector? = null
 
     // The shadow model (ShadowWake.kt): hears what the live one hears, logs what
     // it would have done, and never wakes Ari. Built and closed with the live
     // detector; read by the capture thread only after it starts.
-    private var shadowDetector: MicroWakeWord? = null
+    private var shadowDetector: WakeDetector? = null
     @Volatile
     private var shadowModelId: String? = null
     @Volatile
@@ -475,16 +475,15 @@ class WakeWordService : Service() {
             return
         }
 
-        detector = MicroWakeWord(
+        detector = wakeWord.detector(
             modelBuffer = modelBuffer,
-            featureStepSizeMs = wakeWord.featureStepSizeMs,
-            probabilityCutoff = point.probabilityCutoff,
-            slidingWindowSize = point.slidingWindowSize,
+            point = point,
             // The speech check needs to decline a detection without the engine's
             // cool-off swallowing the phrase that follows it. Every path below
             // that acts on a detection resets the engine itself. Off, the engine
             // behaves exactly as it always has.
             resetOnDetection = !speechCheck,
+            load = ::loadModelFromAssets,
         )
         // A shadow that will not build costs the live wake word nothing.
         val shadow = runCatching { buildShadow(liveId = wakeWord.id, speechCheck = speechCheck) }
@@ -584,7 +583,7 @@ class WakeWordService : Service() {
         // The shadow model's detection, through the same debounce and speech
         // check as the live one's, to a log line and a label instead of a wake.
         val shadowPacing = SpeechCheckPacing()
-        fun shadowReported(shadow: MicroWakeWord) {
+        fun shadowReported(shadow: WakeDetector) {
             val id = shadowModelId ?: return
             val now = System.currentTimeMillis()
             if (shadowIgnored(now, captureBus.armed, lastDetectionAt, lastShadowAt, detectionDebounceMs)) {
@@ -710,12 +709,11 @@ class WakeWordService : Service() {
         val tuned = model.withLadder(TunedLadder.parse(runBlocking { settingsRepository.wakeLadder(model.id).first() }))
         val point = tuned.operatingPoint(sensitivity)
         val buffer = loadModelFromAssets(tuned.assetFilename) ?: return null
-        shadowDetector = MicroWakeWord(
+        shadowDetector = tuned.detector(
             modelBuffer = buffer,
-            featureStepSizeMs = tuned.featureStepSizeMs,
-            probabilityCutoff = point.probabilityCutoff,
-            slidingWindowSize = point.slidingWindowSize,
+            point = point,
             resetOnDetection = !speechCheck,
+            load = ::loadModelFromAssets,
         )
         shadowModelId = tuned.id
         shadowRecordings = runBlocking { settingsRepository.shadowRecordings.first() }

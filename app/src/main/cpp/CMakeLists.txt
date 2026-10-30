@@ -55,7 +55,17 @@ FetchContent_Declare(
     URL_HASH SHA256=91993e7eb2aa56e62e9f4abc1158b2b46333574aa81f1a7431b06df80a42b7fa
 )
 
-FetchContent_MakeAvailable(kissfft tflite_micro flatbuffers gemmlowp ruy)
+# ONNX Runtime's C API headers, for the openWakeWord engine. Headers only: the
+# runtime is the libonnxruntime.so in sherpa-onnx's AAR (app/libs), loaded when
+# the engine starts, so these must be no newer than that one (1.23.2 in
+# sherpa-onnx 1.12.35). The Linux release is simply the smallest that ships them.
+FetchContent_Declare(
+    onnxruntime
+    URL https://github.com/microsoft/onnxruntime/releases/download/v1.23.2/onnxruntime-linux-x64-1.23.2.tgz
+    URL_HASH SHA256=1fa4dcaef22f6f7d5cd81b28c2800414350c10116f5fdd46a2160082551c5f9b
+)
+
+FetchContent_MakeAvailable(kissfft tflite_micro flatbuffers gemmlowp ruy onnxruntime)
 
 # TFLite micro frontend expects kiss_fftr in tools/ subdirectory, but kissfft has it at root.
 # Create tools/ directory with copies of the required files.
@@ -277,5 +287,23 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     tflite_micro_frontend
     tflite_micro_interpreter
     android
+    log
+)
+
+# ------------------------------------------------------------------------------
+# openWakeWord JNI shared library
+# ------------------------------------------------------------------------------
+add_library(openwakeword SHARED
+    OpenWakeWord_jni.cpp
+    OpenWakeWordEngine.cpp
+)
+
+target_include_directories(openwakeword PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${onnxruntime_SOURCE_DIR}/include
+)
+
+target_link_libraries(openwakeword
+    dl
     log
 )
