@@ -53,9 +53,12 @@ OpenWakeWordEngine::OpenWakeWordEngine(
     if (!check(ort_->CreateCpuMemoryInfo(OrtArenaAllocator, OrtMemTypeDefault, &memoryInfo_), "CreateCpuMemoryInfo")) {
         return;
     }
-    if (!createSession(melspectrogram, melspectrogramSize, melspectrogram_, "melspectrogram")) return;
-    if (!createSession(embedding, embeddingSize, embedding_, "embedding")) return;
-    if (!createSession(classifier, classifierSize, classifier_, "classifier")) return;
+    // XNNPACK for the embedding model, which is nearly all the work: on Keith's
+    // phone it cut a frame from 10.0 ms to 7.3 ms on a little core, scoring the
+    // same. Putting the other two models on it as well measured slower.
+    if (!createSession(melspectrogram, melspectrogramSize, melspectrogram_, "melspectrogram", false)) return;
+    if (!createSession(embedding, embeddingSize, embedding_, "embedding", true)) return;
+    if (!createSession(classifier, classifierSize, classifier_, "classifier", false)) return;
 
     const int64_t melInputFull[] = {1, MEL_HISTORY_SAMPLES + CHUNK_SAMPLES};
     const int64_t melInputFirst[] = {1, CHUNK_SAMPLES};
@@ -90,15 +93,21 @@ bool OpenWakeWordEngine::check(OrtStatus* status, const char* what) const {
     return false;
 }
 
-bool OpenWakeWordEngine::createSession(const uint8_t* data, size_t size, Session& out, const char* what) {
+bool OpenWakeWordEngine::createSession(
+    const uint8_t* data, size_t size, Session& out, const char* what, bool xnnpack) {
     OrtSessionOptions* options = nullptr;
     if (!check(ort_->CreateSessionOptions(&options), "CreateSessionOptions")) return false;
     // One thread, and no pool to spin: three small models every 80 ms gain
     // nothing from parallelism that would pay for the wake-ups.
     bool ok = check(ort_->SetIntraOpNumThreads(options, 1), "SetIntraOpNumThreads")
         && check(ort_->SetInterOpNumThreads(options, 1), "SetInterOpNumThreads")
-        && check(ort_->SetSessionExecutionMode(options, ORT_SEQUENTIAL), "SetSessionExecutionMode")
-        && check(ort_->CreateSessionFromArray(env_, data, size, options, &out.session), what);
+        && check(ort_->SetSessionExecutionMode(options, ORT_SEQUENTIAL), "SetSessionExecutionMode");
+    if (ok && xnnpack) {
+        const char* keys[] = {"intra_op_num_threads"};
+        const char* values[] = {"1"};
+        ok = check(ort_->SessionOptionsAppendExecutionProvider(options, "XNNPACK", keys, values, 1), "XNNPACK");
+    }
+    ok = ok && check(ort_->CreateSessionFromArray(env_, data, size, options, &out.session), what);
     ort_->ReleaseSessionOptions(options);
     if (!ok) return false;
 

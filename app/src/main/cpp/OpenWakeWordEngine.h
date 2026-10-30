@@ -21,8 +21,8 @@
  * A detection is one score over the cutoff, with no window mean, which is the
  * rule the laptop scorer (ari-tools exam_oww.py) measured it on.
  *
- * Runs on the ONNX Runtime that sherpa-onnx bundles, loaded at runtime, and
- * single-threaded.
+ * Runs on the ONNX Runtime that sherpa-onnx bundles, loaded at runtime,
+ * single-threaded, with its XNNPACK backend for the embedding model.
  */
 class OpenWakeWordEngine {
 public:
@@ -85,7 +85,7 @@ private:
     };
 
     [[nodiscard]] bool check(OrtStatus* status, const char* what) const;
-    [[nodiscard]] bool createSession(const uint8_t* data, size_t size, Session& out, const char* what);
+    [[nodiscard]] bool createSession(const uint8_t* data, size_t size, Session& out, const char* what, bool xnnpack);
     [[nodiscard]] bool createTensor(float* data, const int64_t* shape, size_t rank, OrtValue** out);
     [[nodiscard]] bool run(const Session& session, const OrtValue* input, OrtValue* output);
     [[nodiscard]] bool processChunk(float* score);
