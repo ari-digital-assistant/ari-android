@@ -70,11 +70,13 @@ class ActionHandler @Inject constructor(
         // (previously these returned early and silently dropped them). The skill
         // may omit `speak` so the frontend can supply platform-appropriate
         // phrasing like "Opening Spotify"; if the skill DID set `speak`, it wins.
+        // Each handler runs before the line is chosen: `speak` replaces what
+        // is said, never whether the action happens.
         var spoken: String? = null
-        env.launchApp?.let { spoken = env.speak ?: handleOpen(it) }
-        env.search?.let { spoken = env.speak ?: handleSearch(it) }
-        env.openUrl?.let { spoken = env.speak ?: handleOpenUrl(it) }
-        env.media?.let { spoken = env.speak ?: handleMedia(it) }
+        env.launchApp?.let { val said = handleOpen(it); spoken = env.speak ?: said }
+        env.search?.let { val said = handleSearch(it); spoken = env.speak ?: said }
+        env.openUrl?.let { val said = handleOpenUrl(it); spoken = env.speak ?: said }
+        env.media?.let { val said = handleMedia(it); spoken = env.speak ?: said }
         env.navigate?.let { nav ->
             when (navigationLauncher.launch(nav)) {
                 NavigationLauncher.LaunchResult.Launched -> spoken = env.speak ?: ""
@@ -84,8 +86,8 @@ class ActionHandler @Inject constructor(
                     return ActionResult.Spoken(say(R.string.action_reply_navigate_no_maps))
             }
         }
-        env.message?.let { spoken = env.speak ?: handleMessage(it) }
-        env.reply?.let { spoken = env.speak ?: handleReply(it) }
+        env.message?.let { val said = handleMessage(it); spoken = env.speak ?: said }
+        env.reply?.let { val said = handleReply(it); spoken = env.speak ?: said }
         env.clipboardText?.let { copyToClipboard(it) }
 
         // Alarm hand-off. On success, fall through to the shared tail below so
