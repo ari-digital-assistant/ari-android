@@ -431,7 +431,7 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="dev.heyari.ari.GEOFENCE_TRANSITION" />
-                <action android:name="dev.heyari.ari.PLACE_PROXIMITY" />
+                <action android:name="dev.heyari.ari.PLACE_NETWORK_FIX" />
             </intent-filter>
         </receiver>
 

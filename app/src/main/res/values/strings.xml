@@ -467,7 +467,7 @@
     <string name="place_fences_play_label">Play Services</string>
     <string name="place_fences_play_blurb">Use Google Play Services for location. Best for battery life, quicker to acquire location.</string>
     <string name="place_fences_platform_label">Android Built-In</string>
-    <string name="place_fences_platform_blurb">Does not use Google Play Services. May acquire locations slower and use more battery life.</string>
+    <string name="place_fences_platform_blurb">Does not use Google Play Services. Checks your location over Wi-Fi and mobile networks every five minutes, never with GPS.</string>
     <string name="place_fences_both_label">Both</string>
     <string name="place_fences_both_blurb">Register both and act on whichever notices first. Recommended on this device.</string>
     <string name="listening_condition_screen_label">Screen is on</string>

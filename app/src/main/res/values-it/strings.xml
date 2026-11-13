@@ -466,7 +466,7 @@
     <string name="place_fences_play_label">Play Services</string>
     <string name="place_fences_play_blurb">Usa Google Play Services per la posizione. Ottimo per la batteria, posizione più rapida da ottenere.</string>
     <string name="place_fences_platform_label">Integrato in Android</string>
-    <string name="place_fences_platform_blurb">Non usa Google Play Services. La posizione può richiedere più tempo e consumare più batteria.</string>
+    <string name="place_fences_platform_blurb">Non usa Google Play Services. Controlla la posizione tramite Wi-Fi e rete mobile ogni cinque minuti, mai con il GPS.</string>
     <string name="place_fences_both_label">Entrambi</string>
     <string name="place_fences_both_blurb">Registra entrambi e usa il primo che se ne accorge. Consigliato su questo dispositivo.</string>
     <string name="listening_condition_screen_label">Schermo acceso</string>
