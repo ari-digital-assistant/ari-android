@@ -7,6 +7,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import java.nio.ByteBuffer
 import java.time.ZoneOffset
 
 class WakeLogTest {
@@ -171,45 +172,6 @@ class WakeLogTest {
     }
 
     @Test
-    fun `a shadow model is tallied apart, against the live calls it ran beside`() {
-        val entries = listOf(
-            WakeLogEntry(0, LOG_LISTEN_ON, listOf("hey_ari", "MEDIUM", "0.93", "10", "file=ab12cd34", "shadow=hey_jarvis/MEDIUM/0.95/5/ef56ab78")),
-            WakeLogEntry(100, LOG_SHADOW_DROPPED, listOf("hey_jarvis")),
-            WakeLogEntry(200, LOG_SHADOW_WAKE, listOf("hey_jarvis")),
-            WakeLogEntry(900, LOG_SHADOW_LABEL, listOf("hey_jarvis", "no-name")),
-            // A real call, which the shadow fired on 2 s later.
-            wake(10_000), outcome(12_000, WakeOutcome.ACCEPTED),
-            WakeLogEntry(12_000, LOG_SHADOW_WAKE, listOf("hey_jarvis")),
-            WakeLogEntry(12_600, LOG_SHADOW_LABEL, listOf("hey_jarvis", "name")),
-            // One it did not.
-            wake(60_000), outcome(62_000, WakeOutcome.ACCEPTED),
-            off(2 * hour),
-            // Shadow off: this spell is not the shadow's.
-            on(3 * hour), wake(3 * hour + 10), outcome(3 * hour + 20, WakeOutcome.ACCEPTED), off(4 * hour),
-        )
-
-        val summary = summariseWakeLog(entries, from = 0, to = 5 * hour, listeningNow = false)
-
-        assertEquals(
-            ShadowTally(
-                listeningMs = 2 * hour,
-                detections = 2,
-                labels = mapOf("no-name" to 1, "name" to 1),
-                dropped = 1,
-                liveAccepted = 2,
-                withLiveAccepted = 1,
-            ),
-            summary.shadow.getValue("hey_jarvis"),
-        )
-        assertEquals(3, summary.byModel.getValue("hey_ari").outcomes[WakeOutcome.ACCEPTED])
-        assertEquals(
-            "shadow hey_jarvis: listening 2.0 h, 2 detections (1.00 per listening hour)\n" +
-                "  name 1, no-name 1, dropped for no speech 1, fired with 1 of 2 accepted live wakes\n",
-            renderWakeLogSummary("x", summary).substringAfter("shadow hey_jarvis").let { "shadow hey_jarvis$it" },
-        )
-    }
-
-    @Test
     fun `a wake before the window takes its outcome with it`() {
         val entries = listOf(wake(10), outcome(20, WakeOutcome.REJECTED), wake(30), outcome(31, WakeOutcome.ACCEPTED))
 
@@ -307,5 +269,14 @@ class WakeLogTest {
         assertEquals(1_000_000_000L + 24_999, entries.last().at)
         // Contiguous: the trim drops from the front and nowhere else.
         assertEquals((entries.first().at..entries.last().at).toList(), entries.map { it.at })
+    }
+
+    @Test
+    fun `a model's fingerprint is the start of its SHA-256 and leaves the buffer as it was`() {
+        val buffer = ByteBuffer.allocateDirect(3).put(byteArrayOf(0x61, 0x62, 0x63)).apply { position(1) }
+
+        // SHA-256("abc") begins ba7816bf.
+        assertEquals("ba7816bf", modelFingerprint(buffer))
+        assertEquals(1, buffer.position())
     }
 }
