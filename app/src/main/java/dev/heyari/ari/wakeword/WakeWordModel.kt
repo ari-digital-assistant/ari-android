@@ -10,6 +10,9 @@ data class OperatingPoint(
     val slidingWindowSize: Int,
 )
 
+/** Which engine runs a model: [MicroWakeWord] or [OpenWakeWord]. */
+enum class WakeEngine { MICRO_WAKE_WORD, OPEN_WAKE_WORD }
+
 /**
  * A wake word model bundled in app assets.
  *
@@ -34,6 +37,7 @@ data class WakeWordModel(
     val high: OperatingPoint,
     val medium: OperatingPoint,
     val low: OperatingPoint,
+    val engine: WakeEngine = WakeEngine.MICRO_WAKE_WORD,
 ) {
     fun operatingPoint(sensitivity: WakeWordSensitivity): OperatingPoint = when (sensitivity) {
         WakeWordSensitivity.HIGH -> high
@@ -96,10 +100,13 @@ object WakeWordRegistry {
      *
      * Twenty minutes cannot price a rate of one false wake an hour. Treat the
      * floor as provisional and raise it when longer ambient says so.
+     *
+     * The default until [heyAriOpenWakeWord] replaced it, and still in the
+     * picker for anyone who wants it back.
      */
     private val heyAri = WakeWordModel(
         id = "hey_ari",
-        displayName = "Hey Ari",
+        displayName = "Hey Ari (previous)",
         assetFilename = "hey_ari.tflite",
         featureStepSizeMs = 10,
         high = OperatingPoint(0.65f, 10),
@@ -108,49 +115,39 @@ object WakeWordRegistry {
     )
 
     /**
-     * A retrain for issue 21, on a phone trial against [heyAri]
-     * (`ari-tools/wakeword/trained/hey_ari-r6b/`). Each cutoff is the one that
-     * hears as many of the 92 marked takes as [heyAri] does at the same level;
-     * there, it fires on 2-4 of the 25 household false wakes held out of its
-     * training, where [heyAri] fires on all 25.
+     * An openWakeWord model (`ari-tools/wakeword/models/openwakeword-2026-10-28/`,
+     * `rung2_half`), trained by Keith on openwakeword.com, whose models are for
+     * personal and non-commercial use unless a commercial licence is bought. Its
+     * classifier sits on a speech embedding pretrained on real speech, which is
+     * the likely reason it hears this household where every microWakeWord
+     * retrain went deaf to some of it.
      *
-     * It breaks this file's rule. The kitchen ambient peaks at 0.999 for this
-     * model, so no cutoff clears it, and it fires once in those ten minutes at
-     * every level, 7:40 in. Ten minutes cannot price that and a few days in the
-     * house can, which is why this is an option to pick rather than the default.
-     */
-    private val heyAriRetrained = WakeWordModel(
-        id = "hey_ari_r6b",
-        displayName = "Hey Ari (retrained, trial)",
-        assetFilename = "hey_ari_r6b.tflite",
-        featureStepSizeMs = 10,
-        high = OperatingPoint(0.97f, 10),
-        medium = OperatingPoint(0.985f, 10),
-        low = OperatingPoint(0.995f, 10),
-    )
-
-    /**
-     * Stage 5's candidate (`ari-tools/wakeword/trained/2026-10-27-stage5/step2-c/`):
-     * today's recipe plus mined false fires, hum, notification sounds and
-     * Maltese and French speech, with no household recordings and no near-miss
-     * words, both of which taught it to stop hearing some voices. On a phone
-     * trial against [heyAri], which runs in the shadow.
+     * It fires on a single 80 ms score, so the window is 1. Over the twenty
+     * minutes of household ambient the highest score is 0.350. MEDIUM is 0.55,
+     * the cutoff its offline exam ran at: 82 of 92 marked takes, none of the 34
+     * held-out household false wakes, 0.5 false fires an hour on English speech
+     * against [heyAri]'s 52, none on hum. HIGH is 0.50, the loosest swept cutoff
+     * that clears the ambient by the exam's minimum of 0.10, and LOW is 0.65,
+     * [heyAri]'s smallest gap of +0.30. Recall barely moves across them: 83 /
+     * 82 / 81 of the 92 takes (Gail 45 / 44 / 43 of 46; Joe 10 of 15, Keith 16
+     * of 16 and Maryanne 12 of 15 at every level), against [heyAri]'s 64 / 62 /
+     * 58.
      *
-     * Each cutoff hears as many of the 92 marked takes as [heyAri] does at the
-     * same level: 64, 62 and 58. Its kitchen ambient floor is 0.527, so the gaps
-     * are +0.07 / +0.12 / +0.22, narrower than [heyAri]'s; it makes up for it
-     * elsewhere, false-firing 4 to 6 times less than [heyAri] on held-out speech
-     * at MEDIUM. Twenty minutes of kitchen cannot say whether the narrower gap
-     * costs false wakes in the house. The trial can.
+     * The gaps, +0.15 / +0.20 / +0.30, are narrower than [heyAri]'s, and +0.10
+     * has false-fired in this house before. A week live in the house (31 Oct to
+     * 7 Nov) answered for +0.20: none of its false wakes was ever shown, and 64
+     * reached the transcriber, against 82 for [heyAri] running beside it.
      */
-    private val heyAriStage5 = WakeWordModel(
-        id = "hey_ari_s5c",
-        displayName = "Hey Ari (stage 5, trial)",
-        assetFilename = "hey_ari_s5c.tflite",
+    private val heyAriOpenWakeWord = WakeWordModel(
+        id = "hey_ari_oww",
+        displayName = "Hey Ari",
+        assetFilename = "hey_ari_oww.onnx",
+        // openWakeWord's melspectrogram steps 10 ms; only microWakeWord reads this.
         featureStepSizeMs = 10,
-        high = OperatingPoint(0.60f, 10),
-        medium = OperatingPoint(0.65f, 10),
-        low = OperatingPoint(0.75f, 10),
+        high = OperatingPoint(0.50f, 1),
+        medium = OperatingPoint(0.55f, 1),
+        low = OperatingPoint(0.65f, 1),
+        engine = WakeEngine.OPEN_WAKE_WORD,
     )
 
     /**
@@ -170,14 +167,13 @@ object WakeWordRegistry {
     )
 
     val all: List<WakeWordModel> = listOf(
+        heyAriOpenWakeWord,
         heyAri,
-        heyAriRetrained,
-        heyAriStage5,
         unmeasured("ok_ari", "OK Ari"),
         unmeasured("hey_jarvis", "Hey Jarvis"),
     )
 
-    val default: WakeWordModel = heyAri
+    val default: WakeWordModel = heyAriOpenWakeWord
 
     fun byId(id: String?): WakeWordModel = all.firstOrNull { it.id == id } ?: default
 }

@@ -1,7 +1,6 @@
 package dev.heyari.ari.wakeword
 
 import android.util.Log
-import java.io.Closeable
 import java.nio.ByteBuffer
 
 /**
@@ -16,7 +15,7 @@ class MicroWakeWord(
     probabilityCutoff: Float,
     slidingWindowSize: Int,
     resetOnDetection: Boolean = true,
-) : Closeable {
+) : WakeDetector {
 
     private var nativeHandle: Long = 0
 
@@ -35,12 +34,12 @@ class MicroWakeWord(
         Log.d(TAG, "MicroWakeWord engine created")
     }
 
-    fun processAudio(samples: ShortArray): Boolean {
+    override fun processAudio(samples: ShortArray): Boolean {
         check(nativeHandle != 0L) { "MicroWakeWord has been closed" }
         return nativeProcessAudio(nativeHandle, samples)
     }
 
-    fun reset() {
+    override fun reset() {
         check(nativeHandle != 0L) { "MicroWakeWord has been closed" }
         nativeReset(nativeHandle)
     }

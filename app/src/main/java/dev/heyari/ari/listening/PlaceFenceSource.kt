@@ -9,7 +9,7 @@ import dev.heyari.ari.R
  * Which fences decide whether the device is at a listening place.
  *
  * Play Services geofencing is the better mechanism — it has dwell handling,
- * batching and power management the platform's proximity alerts do not. But on
+ * batching and power management Ari's own network checks do not. But on
  * GrapheneOS it runs inside sandboxed Play, where two things go wrong: the fix
  * underneath it is vague enough that a 100m home circle never fires reliably,
  * and Ari's process is killed outright whenever gmscompat's own process dies.
@@ -28,7 +28,7 @@ enum class PlaceFenceSource(
         blurbRes = R.string.place_fences_play_blurb,
     ),
 
-    /** The platform's own proximity alerts alone, with no Play Services involved. */
+    /** Ari's own checks on network location alone, with no Play Services involved. */
     PLATFORM(
         labelRes = R.string.place_fences_platform_label,
         blurbRes = R.string.place_fences_platform_blurb,
