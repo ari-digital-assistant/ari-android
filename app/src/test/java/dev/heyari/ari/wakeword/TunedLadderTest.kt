@@ -7,7 +7,7 @@ import org.junit.Test
 
 class TunedLadderTest {
 
-    private val model = WakeWordRegistry.byId("hey_ari")
+    private val model = WakeWordRegistry.default
 
     @Test
     fun `a ladder is spaced a step either side of its middle`() {
@@ -92,7 +92,7 @@ class TunedLadderTest {
 
     @Test
     fun `a ladder for this model replaces every rung and the window`() {
-        val ladder = TunedLadder("hey_ari", 0.60f, 0.70f, 0.80f, 15)
+        val ladder = TunedLadder(model.id, 0.60f, 0.70f, 0.80f, 15)
 
         val tuned = model.withLadder(ladder)
 

@@ -36,7 +36,7 @@ enum class WakeCaptureHook(val slug: String) {
 
 /**
  * Persists audio that falsely triggered the wake word, for a future retrain of
- * `hey_ari.tflite` with real hard negatives.
+ * the wake word model with real hard negatives.
  *
  * App-private storage only, hard-bounded, and gated behind a debug setting that
  * is off by default — the caller checks the setting, this class does not. See

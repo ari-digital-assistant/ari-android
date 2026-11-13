@@ -45,42 +45,37 @@ class WakeWordSensitivityTest {
     }
 
     @Test
-    fun `hey_ari runs at the operating points its own recordings were scored at`() {
-        // Not a restatement of the constants: these three numbers are what
-        // ari-tools/wakeword/baseline measured, and a change here without a new
-        // measurement is the exact mistake that made a retrained model run on
-        // its predecessor's ladder.
-        val model = WakeWordRegistry.byId("hey_ari")
+    fun `the default runs at the operating points its own recordings were scored at`() {
+        // Not a restatement of the constants: these three numbers are what the
+        // cutoff sweep over the 92 marked takes measured, and a change here
+        // without a new measurement is the exact mistake that made a retrained
+        // model run on its predecessor's ladder.
+        val model = WakeWordRegistry.default
 
-        assertEquals(OperatingPoint(0.65f, 10), model.operatingPoint(WakeWordSensitivity.HIGH))
-        assertEquals(OperatingPoint(0.75f, 10), model.operatingPoint(WakeWordSensitivity.MEDIUM))
-        assertEquals(OperatingPoint(0.85f, 10), model.operatingPoint(WakeWordSensitivity.LOW))
+        assertEquals("hey_ari_oww", model.id)
+        assertEquals(OperatingPoint(0.50f, 1), model.operatingPoint(WakeWordSensitivity.HIGH))
+        assertEquals(OperatingPoint(0.55f, 1), model.operatingPoint(WakeWordSensitivity.MEDIUM))
+        assertEquals(OperatingPoint(0.65f, 1), model.operatingPoint(WakeWordSensitivity.LOW))
     }
 
     @Test
-    fun `every hey_ari cutoff clears the loudest household ambient we have measured`() {
-        // The check that was missing when a ladder shipped with its strictest
-        // setting BELOW the noise floor of an ordinary kitchen. Twenty minutes
-        // of household ambient peaks at 0.349 as a mean across a window of 10
-        // (ari-tools/wakeword/baseline), and a cutoff at or under that does not
-        // need bad luck to false-fire — it fires on conversation, by
-        // construction, and no amount of recall makes up for it.
-        //
-        // The floor is provisional: it can only rise as we record more rooms.
-        // If it rises past a cutoff, that cutoff moves. It never sits below.
-        val ambientPeak = 0.349f
-        // Was 0.10, which is what the ladder that false-fired on LOW carried.
-        // A margin the house has already disproved is not a floor worth
-        // asserting, so this is the smallest gap still standing.
-        val minimumMargin = 0.30f
-        val model = WakeWordRegistry.byId("hey_ari")
+    fun `every default cutoff clears the loudest household ambient we have measured`() {
+        // Twenty minutes of household ambient peak at a single score of 0.350
+        // for this model. A cutoff at or under that fires on conversation by
+        // construction, and no amount of recall makes up for it. The floor can
+        // only rise as more rooms are recorded; if it passes a cutoff, the
+        // cutoff moves.
+        val ambientPeak = 0.350f
+        // HIGH's gap, the smallest the ladder has. The exam's own rule was 0.10.
+        val minimumMargin = 0.15f
+        val model = WakeWordRegistry.default
 
         WakeWordSensitivity.entries.forEach { level ->
             val point = model.operatingPoint(level)
             assertTrue(
-                "hey_ari $level sits at ${point.probabilityCutoff}, which household " +
-                    "ambient already reaches ($ambientPeak)",
-                point.probabilityCutoff >= ambientPeak + minimumMargin,
+                "${model.id} $level sits at ${point.probabilityCutoff}, too close to household " +
+                    "ambient ($ambientPeak)",
+                point.probabilityCutoff >= ambientPeak + minimumMargin - 1e-6f,
             )
         }
     }
@@ -98,14 +93,15 @@ class WakeWordSensitivityTest {
     }
 
     @Test
-    fun `hey_ari's points would be nonsense on any other model`() {
-        // The reason this refactor exists. hey_ari's MEDIUM is far below every
-        // other model's loosest setting, so a shared ladder cannot serve both.
-        val heyAri = WakeWordRegistry.byId("hey_ari")
+    fun `the default's points would be nonsense on any other model`() {
+        // The reason operating points are per model. The default's strictest
+        // setting is far below every other model's loosest, so a shared ladder
+        // cannot serve both.
+        val default = WakeWordRegistry.default
         val jarvis = WakeWordRegistry.byId("hey_jarvis")
 
         assertTrue(
-            heyAri.operatingPoint(WakeWordSensitivity.LOW).probabilityCutoff <
+            default.operatingPoint(WakeWordSensitivity.LOW).probabilityCutoff <
                 jarvis.operatingPoint(WakeWordSensitivity.HIGH).probabilityCutoff,
         )
     }

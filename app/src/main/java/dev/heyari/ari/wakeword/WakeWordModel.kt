@@ -64,57 +64,6 @@ data class WakeWordModel(
 
 object WakeWordRegistry {
     /**
-     * Measured on 92 marked takes from four speakers and twenty minutes of
-     * household ambient — a kitchen with four people talking and a living room
-     * — none of which this model had ever heard (`ari-tools/wakeword/baseline/`).
-     * Marks are the speaker's own tap, so the denominator is every take they
-     * meant to make rather than every take something detected.
-     *
-     * Over that ambient the highest mean across a window of 10 is 0.349, so
-     * each cutoff below is quoted by its gap above that floor: HIGH +0.30,
-     * MEDIUM +0.40, LOW +0.50. Recall runs 70% / 67% / 63% across all four
-     * speakers, and the ladder is deliberately flat — this model separates the
-     * phrase from conversation well enough that tightening it buys headroom
-     * almost for free.
-     *
-     * The ladder before this one quoted the same floor at +0.10 / +0.20 /
-     * +0.30 and false-fired in the house inside two days, on LOW — its
-     * strictest setting, with no stricter one left to try. No cutoff in this
-     * whole range fires on the twenty minutes of ambient, so that corpus could
-     * neither predict it nor price the fix; the margin moved because a room
-     * said so, not because a recording did. Whatever wakes it has never been
-     * recorded, and until it has, every number here is a floor rather than an
-     * answer.
-     *
-     * It replaced a ladder of 0.95 / 0.985 / 0.99 that had been here since
-     * April, inherited rather than measured. That one sat 0.64 clear of the
-     * floor and cost the quietest speaker in the household more than half her
-     * wakes — 18 of 46 against 29 — while barely touching the loudest, who
-     * went 13 of 16 to 14 of 16. A wake word that only answers the person who
-     * set it up is the failure this ladder exists to prevent, and it is
-     * invisible if you only ever test it yourself. She keeps 25 of those 46
-     * here, and the loudest speaker is unchanged at 14 of 16 — as he is at
-     * every cutoff up to 0.95, which is why tightening costs him nothing and
-     * her four takes. Past 0.95 she drops to 18 and that is where the ladder
-     * stops.
-     *
-     * Twenty minutes cannot price a rate of one false wake an hour. Treat the
-     * floor as provisional and raise it when longer ambient says so.
-     *
-     * The default until [heyAriOpenWakeWord] replaced it, and still in the
-     * picker for anyone who wants it back.
-     */
-    private val heyAri = WakeWordModel(
-        id = "hey_ari",
-        displayName = "Hey Ari (previous)",
-        assetFilename = "hey_ari.tflite",
-        featureStepSizeMs = 10,
-        high = OperatingPoint(0.65f, 10),
-        medium = OperatingPoint(0.75f, 10),
-        low = OperatingPoint(0.85f, 10),
-    )
-
-    /**
      * An openWakeWord model (`ari-tools/wakeword/models/openwakeword-2026-10-28/`,
      * `rung2_half`), trained by Keith on openwakeword.com, whose models are for
      * personal and non-commercial use unless a commercial licence is bought. Its
@@ -122,21 +71,24 @@ object WakeWordRegistry {
      * the likely reason it hears this household where every microWakeWord
      * retrain went deaf to some of it.
      *
+     * It replaced the microWakeWord `hey_ari`, called the old model below.
+     *
      * It fires on a single 80 ms score, so the window is 1. Over the twenty
      * minutes of household ambient the highest score is 0.350. MEDIUM is 0.55,
      * the cutoff its offline exam ran at: 82 of 92 marked takes, none of the 34
      * held-out household false wakes, 0.5 false fires an hour on English speech
-     * against [heyAri]'s 52, none on hum. HIGH is 0.50, the loosest swept cutoff
-     * that clears the ambient by the exam's minimum of 0.10, and LOW is 0.65,
-     * [heyAri]'s smallest gap of +0.30. Recall barely moves across them: 83 /
-     * 82 / 81 of the 92 takes (Gail 45 / 44 / 43 of 46; Joe 10 of 15, Keith 16
-     * of 16 and Maryanne 12 of 15 at every level), against [heyAri]'s 64 / 62 /
-     * 58.
+     * against the old model's 52, none on hum. HIGH is 0.50, the loosest swept
+     * cutoff that clears the ambient by the exam's minimum of 0.10, and LOW is
+     * 0.65, the old model's smallest gap of +0.30. Recall barely moves across
+     * them: 83 / 82 / 81 of the 92 takes (Gail 45 / 44 / 43 of 46; Joe 10 of
+     * 15, Keith 16 of 16 and Maryanne 12 of 15 at every level), against the old
+     * model's 64 / 62 / 58.
      *
-     * The gaps, +0.15 / +0.20 / +0.30, are narrower than [heyAri]'s, and +0.10
-     * has false-fired in this house before. A week live in the house (31 Oct to
-     * 7 Nov) answered for +0.20: none of its false wakes was ever shown, and 64
-     * reached the transcriber, against 82 for [heyAri] running beside it.
+     * The gaps, +0.15 / +0.20 / +0.30, are narrower than the old model's, and
+     * +0.10 has false-fired in this house before. A week live in the house (31
+     * Oct to 7 Nov) answered for +0.20: none of its false wakes was ever shown,
+     * and 64 reached the transcriber, against 82 for the old model running
+     * beside it.
      */
     private val heyAriOpenWakeWord = WakeWordModel(
         id = "hey_ari_oww",
@@ -168,7 +120,6 @@ object WakeWordRegistry {
 
     val all: List<WakeWordModel> = listOf(
         heyAriOpenWakeWord,
-        heyAri,
         unmeasured("ok_ari", "OK Ari"),
         unmeasured("hey_jarvis", "Hey Jarvis"),
     )

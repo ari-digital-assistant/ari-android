@@ -6,7 +6,7 @@ import org.junit.Test
 
 class FalseWakeRemedyTest {
 
-    private val model = WakeWordRegistry.byId("hey_ari")
+    private val model = WakeWordRegistry.default
 
     @Test
     fun `the ladder is declared strictest-last, which is what stepping down relies on`() {
@@ -82,7 +82,7 @@ class FalseWakeRemedyTest {
     @Test
     fun `a phone already at the ceiling is told so instead of being nudged`() {
         val pinned = model.withLadder(
-            TunedLadder("hey_ari", 0.90f, 0.93f, TunedLadder.MAX_CUTOFF, 10)
+            TunedLadder(model.id, 0.90f, 0.93f, TunedLadder.MAX_CUTOFF, model.medium.slidingWindowSize)
         )
 
         assertEquals(

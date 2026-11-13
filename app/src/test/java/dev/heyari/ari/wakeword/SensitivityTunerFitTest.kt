@@ -15,7 +15,7 @@ import org.junit.Test
  */
 class SensitivityTunerFitTest {
 
-    private val model = WakeWordRegistry.byId("hey_ari")
+    private val model = WakeWordRegistry.default
 
     @Test
     fun `nothing spoken yet is null, not a ladder built from no evidence`() {
