@@ -346,6 +346,7 @@
 
     <!-- Settings section blurbs -->
     <string name="settings_wakeword_blurb">La frase a cui Ari risponde. \"Hey Jarvis\" è il modello microWakeWord originale, incluso come fallback.</string>
+    <string name="settings_wakeword_recommended">%1$s (consigliata)</string>
     <string name="settings_wake_speech_check_title">Ignora le attivazioni senza voce</string>
     <string name="settings_wake_speech_check_blurb">Ari si apre solo se ha appena sentito una voce. Così colpi, vibrazioni e ronzii non lo attivano. Disattivalo se Ari smette di sentirti.</string>
     <string name="settings_quiet_wake_title">Aspetta che Ari senta il suo nome</string>

@@ -68,6 +68,7 @@ import dev.heyari.ari.ui.settings.ModelStatus
 import dev.heyari.ari.ui.settings.PermissionStatus
 import dev.heyari.ari.ui.settings.WakeWordOption
 import dev.heyari.ari.wakeword.WakeWordModel
+import dev.heyari.ari.wakeword.WakeWordRegistry
 import dev.heyari.ari.wakeword.WakeWordSensitivity
 import java.util.Locale
 
@@ -295,7 +296,11 @@ internal fun WakeWordSection(
                         modifier = Modifier.minimumInteractiveComponentSize(),
                     )
                     Text(
-                        text = option.model.displayName,
+                        text = if (option.model.id == WakeWordRegistry.default.id) {
+                            stringResource(R.string.settings_wakeword_recommended, option.model.displayName)
+                        } else {
+                            option.model.displayName
+                        },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
