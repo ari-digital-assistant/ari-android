@@ -188,6 +188,13 @@ object SttModelRegistry {
     fun onDeviceFor(locale: String): SttModel = onDeviceChoicesFor(locale).first()
 
     /**
+     * [current] if it can transcribe [locale], else the recommended model: a
+     * choice made in settings outlives a trip to the cloud and back.
+     */
+    fun onDeviceFor(locale: String, current: SttModel?): SttModel =
+        current?.takeIf { it in onDeviceChoicesFor(locale) } ?: onDeviceFor(locale)
+
+    /**
      * Model ids this build no longer ships. An install whose active id is in
      * here has to be migrated — [byId] returns null for it, which would leave
      * the user with no recogniser at all rather than a degraded one.

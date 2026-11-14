@@ -563,8 +563,8 @@ class SettingsViewModel @Inject constructor(
      * now rather than at next launch.
      *
      * Picking on-device also resolves and starts the download for the user's
-     * language — they chose "on device", not "Zipformer vs Whisper", so
-     * selecting the model is our job (see [SttModelRegistry.onDeviceFor]).
+     * language: the model they chose in settings if it serves the language,
+     * else the recommended one (see [SttModelRegistry.onDeviceFor]).
      */
     fun setSttMode(mode: SttMode) {
         viewModelScope.launch {
@@ -574,7 +574,10 @@ class SettingsViewModel @Inject constructor(
                 if (mode == SttMode.SYSTEM_SERVICE) chooseSttService()?.let(ComponentName::unflattenFromString) else null,
             )
             if (mode == SttMode.ON_DEVICE) {
-                val model = SttModelRegistry.onDeviceFor(settingsRepository.activeLocale.first())
+                val model = SttModelRegistry.onDeviceFor(
+                    settingsRepository.activeLocale.first(),
+                    SttModelRegistry.byId(settingsRepository.activeSttModelId.first()),
+                )
                 selectAndDownloadModel(model)
             }
         }

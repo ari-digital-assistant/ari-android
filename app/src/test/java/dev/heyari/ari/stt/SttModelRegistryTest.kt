@@ -34,6 +34,14 @@ class SttModelRegistryTest {
         assertEquals(SttModelRegistry.WHISPER_TURBO, SttModelRegistry.onDeviceFor(""))
     }
 
+    @Test fun a_chosen_model_is_kept_while_it_serves_the_language() {
+        val ultra = SttModelRegistry.PARAKEET_ULTRA
+        assertEquals(ultra, SttModelRegistry.onDeviceFor("en", ultra))
+        assertEquals(SttModelRegistry.KROKO, SttModelRegistry.onDeviceFor("en", null))
+        // Kroko cannot transcribe Italian, so it gives way to the recommendation.
+        assertEquals(ultra, SttModelRegistry.onDeviceFor("it", SttModelRegistry.KROKO))
+    }
+
     @Test fun settings_choices_lead_with_the_recommended_model() {
         assertEquals(
             listOf(SttModelRegistry.KROKO, SttModelRegistry.PARAKEET_ULTRA),

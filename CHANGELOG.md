@@ -45,6 +45,8 @@ Changes since the closed-test beta uploaded to Google Play on 2026-11-13
 - The on-device assistant works as soon as its model finishes downloading, instead of
   only after Ari restarts.
 - A wake heard as "Hayari" passes the name check.
+- Switching transcription back to On device keeps the speech model you chose, instead of
+  returning to the recommended one.
 - The chat scrolls to a reply that replaces the thinking dots
   ([#24](https://github.com/ari-digital-assistant/ari-android/issues/24)).
 - The glow behind the message box no longer pushes the conversation up on some screens
