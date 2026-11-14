@@ -58,6 +58,7 @@ import dev.heyari.ari.di.EngineHolder
 import dev.heyari.ari.voice.VoiceSession
 import dev.heyari.ari.voice.VoiceState
 import dev.heyari.ari.voice.shouldPersistFacts
+import uniffi.ari_ffi.AssistantRegistry
 import uniffi.ari_ffi.FfiLocationStatus
 import uniffi.ari_ffi.FfiResponse
 import uniffi.ari_ffi.SkillRegistry
@@ -85,6 +86,7 @@ class ConversationViewModel @Inject constructor(
     private val locationProvider: LocationProvider,
     private val voiceSession: VoiceSession,
     private val skillRegistry: SkillRegistry,
+    private val assistantRegistry: AssistantRegistry,
     private val reportSender: dev.heyari.ari.reporting.ReportSender,
     private val application: Application,
 ) : ViewModel() {
@@ -710,6 +712,8 @@ class ConversationViewModel @Inject constructor(
     private fun refreshEmptyState() {
         viewModelScope.launch(Dispatchers.IO) {
             val installed = runCatching { skillRegistry.listInstalled() }.getOrDefault(emptyList())
+            val assistantIds = runCatching { assistantRegistry.listAssistants().map { it.id }.toSet() }
+                .getOrDefault(emptySet())
             val locale = Locale.getDefault().language
             val examples = installed.map { s ->
                 runCatching {
@@ -724,7 +728,7 @@ class ConversationViewModel @Inject constructor(
             val hour = java.time.LocalTime.now().hour
             _state.update {
                 it.copy(
-                    emptyMode = emptyStateMode(installed.size),
+                    emptyMode = emptyStateMode(installed.map { it.id }, assistantIds),
                     greeting = greetingModel(name, hour),
                     suggestionChips = chips,
                 )

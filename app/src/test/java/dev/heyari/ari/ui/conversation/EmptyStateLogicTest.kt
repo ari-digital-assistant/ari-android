@@ -71,7 +71,30 @@ class EmptyStateLogicTest {
         assertEquals(listOf("R", "a"), out)
     }
 
-    @Test fun zero_skills_is_first_run() = assertEquals(EmptyMode.FirstRun, emptyStateMode(0))
-    @Test fun one_skill_is_set_up() = assertEquals(EmptyMode.SetUp, emptyStateMode(1))
-    @Test fun many_skills_is_set_up() = assertEquals(EmptyMode.SetUp, emptyStateMode(6))
+    private val assistants = setOf(
+        "dev.heyari.assistant.local",
+        "dev.heyari.assistant.chatgpt",
+        "dev.heyari.assistant.claude",
+        "dev.heyari.assistant.gemini",
+    )
+
+    @Test fun zero_skills_is_first_run() =
+        assertEquals(EmptyMode.FirstRun, emptyStateMode(emptyList(), assistants))
+    @Test fun one_skill_is_set_up() =
+        assertEquals(EmptyMode.SetUp, emptyStateMode(listOf("dev.heyari.timer"), assistants))
+    @Test fun many_skills_is_set_up() = assertEquals(
+        EmptyMode.SetUp,
+        emptyStateMode(List(6) { "dev.heyari.skill$it" }, assistants),
+    )
+    @Test fun only_assistant_skills_is_still_first_run() = assertEquals(
+        EmptyMode.FirstRun,
+        emptyStateMode(
+            listOf("dev.heyari.assistant.chatgpt", "dev.heyari.assistant.claude", "dev.heyari.assistant.gemini"),
+            assistants,
+        ),
+    )
+    @Test fun an_assistant_and_one_skill_is_set_up() = assertEquals(
+        EmptyMode.SetUp,
+        emptyStateMode(listOf("dev.heyari.assistant.chatgpt", "dev.heyari.weather"), assistants),
+    )
 }

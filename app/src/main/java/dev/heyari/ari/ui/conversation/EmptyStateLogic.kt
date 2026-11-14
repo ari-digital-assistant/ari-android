@@ -44,5 +44,12 @@ enum class EmptyMode { FirstRun, SetUp }
 /** Below this many installed skills, show the "browse skills" first-run face. */
 private const val SKILL_THRESHOLD = 1
 
-fun emptyStateMode(installedSkillCount: Int): EmptyMode =
-    if (installedSkillCount < SKILL_THRESHOLD) EmptyMode.FirstRun else EmptyMode.SetUp
+/**
+ * Assistant skills (ChatGPT, Gemini, Claude) don't count: they answer
+ * questions, which Ari does out of the box, so with nothing else installed Ari
+ * is still bare and the first-run face still applies. [assistantIds] are the
+ * assistant registry's ids, which for an installed assistant skill is its
+ * skill id.
+ */
+fun emptyStateMode(installedSkillIds: List<String>, assistantIds: Set<String>): EmptyMode =
+    if (installedSkillIds.count { it !in assistantIds } < SKILL_THRESHOLD) EmptyMode.FirstRun else EmptyMode.SetUp

@@ -28,10 +28,10 @@ import dev.heyari.ari.R
  * the message list when there's no conversation yet. Two faces, chosen by
  * [mode]:
  *
- *  - [EmptyMode.FirstRun] — zero skills installed. Leads with a "Hi, I'm
- *    Ari" intro and a Browse-skills call-to-action card, plus a nudge that
- *    the user can just start typing.
- *  - [EmptyMode.SetUp] — at least one skill installed. Shows a (optionally
+ *  - [EmptyMode.FirstRun]: no skills installed, or only assistant skills.
+ *    Leads with a "Hi, I'm Ari" intro and a Browse-skills call-to-action
+ *    card, plus a nudge that the user can just start typing.
+ *  - [EmptyMode.SetUp]: at least one other skill installed. Shows a (optionally
  *    name- and time-of-day-aware) greeting and a row of suggestion chips
  *    sourced generically from installed skills' declared examples. Tapping a
  *    chip submits it immediately as a turn.
