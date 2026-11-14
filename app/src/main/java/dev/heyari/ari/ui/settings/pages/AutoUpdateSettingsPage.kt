@@ -35,13 +35,13 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import dev.heyari.ari.R
 import dev.heyari.ari.models.ModelTarget
 import dev.heyari.ari.models.ModelUpdate
+import dev.heyari.ari.ui.formatBytes
 import dev.heyari.ari.ui.settings.AutoUpdateState
 import dev.heyari.ari.ui.settings.AutoUpdateViewModel
 import dev.heyari.ari.ui.settings.InstalledModelRow
 import dev.heyari.ari.ui.settings.components.SettingsScaffold
 import java.time.Duration
 import java.time.Instant
-import java.util.Locale
 
 @Composable
 fun AutoUpdateSettingsPage(
@@ -307,14 +307,4 @@ private fun formatLastChecked(instant: Instant?): String {
         ago.toDays() < 1 -> stringResource(R.string.auto_update_last_checked_hours, ago.toHours().toInt())
         else -> stringResource(R.string.auto_update_last_checked_days, ago.toDays().toInt())
     }
-}
-
-private fun formatBytes(bytes: Long): String {
-    if (bytes < 1024) return "$bytes B"
-    val kb = bytes / 1024.0
-    if (kb < 1024) return String.format(Locale.US, "%.0f KB", kb)
-    val mb = kb / 1024.0
-    if (mb < 1024) return String.format(Locale.US, "%.0f MB", mb)
-    val gb = mb / 1024.0
-    return String.format(Locale.US, "%.2f GB", gb)
 }

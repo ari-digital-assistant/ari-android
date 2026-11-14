@@ -39,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.heyari.ari.R
 import dev.heyari.ari.bugreport.AttachmentKind
 import dev.heyari.ari.bugreport.AttachmentOffer
+import dev.heyari.ari.ui.formatBytes
 import dev.heyari.ari.ui.settings.components.SettingsScaffold
 
 /**
@@ -471,10 +472,4 @@ private fun AttachmentOffer.summary(): String = when (kind) {
         pluralStringResource(R.plurals.bug_report_recordings, fileCount, fileCount),
         formatBytes(bytes),
     )
-}
-
-private fun formatBytes(bytes: Long): String = when {
-    bytes >= 1024 * 1024 -> "%.1f MB".format(bytes / (1024.0 * 1024.0))
-    bytes >= 1024 -> "${bytes / 1024} KB"
-    else -> "$bytes B"
 }

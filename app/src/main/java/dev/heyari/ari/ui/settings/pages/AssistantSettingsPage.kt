@@ -37,6 +37,7 @@ import dev.heyari.ari.di.EngineModule
 import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.llm.LlmModelRegistry
 import dev.heyari.ari.ui.components.SkillSettingsPanel
+import dev.heyari.ari.ui.formatBytes
 import dev.heyari.ari.ui.settings.AssistantUiEntry
 import dev.heyari.ari.ui.settings.SettingsViewModel
 import dev.heyari.ari.ui.settings.components.SettingsScaffold
@@ -401,14 +402,5 @@ private fun BuiltinModelSection(
                 }
             }
         }
-    }
-}
-
-private fun formatBytes(bytes: Long): String {
-    return when {
-        bytes >= 1_000_000_000 -> "%.1f GB".format(bytes / 1_000_000_000.0)
-        bytes >= 1_000_000 -> "%.0f MB".format(bytes / 1_000_000.0)
-        bytes >= 1_000 -> "%.0f KB".format(bytes / 1_000.0)
-        else -> "$bytes B"
     }
 }

@@ -63,6 +63,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import dev.heyari.ari.stt.SttMode
 import dev.heyari.ari.stt.SttModel
 import dev.heyari.ari.ui.components.MicDisclosureDialog
+import dev.heyari.ari.ui.formatBytes
 import dev.heyari.ari.ui.settings.LlmModelStatus
 import dev.heyari.ari.ui.settings.ModelStatus
 import dev.heyari.ari.ui.settings.PermissionStatus
@@ -1239,14 +1240,4 @@ private fun LlmModelRow(
             }
         }
     }
-}
-
-private fun formatBytes(bytes: Long): String {
-    if (bytes < 1024) return "$bytes B"
-    val kb = bytes / 1024.0
-    if (kb < 1024) return String.format(Locale.US, "%.0f KB", kb)
-    val mb = kb / 1024.0
-    if (mb < 1024) return String.format(Locale.US, "%.0f MB", mb)
-    val gb = mb / 1024.0
-    return String.format(Locale.US, "%.2f GB", gb)
 }

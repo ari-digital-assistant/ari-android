@@ -37,6 +37,7 @@ import dev.heyari.ari.R
 import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.llm.LlmModel
 import dev.heyari.ari.llm.LlmModelRegistry
+import dev.heyari.ari.ui.formatBytes
 import dev.heyari.ari.ui.settings.SettingsViewModel
 import dev.heyari.ari.ui.theme.LocalAriSemanticColors
 import java.util.Locale
@@ -340,14 +341,4 @@ private fun LlmTierRow(
             }
         }
     }
-}
-
-private fun formatBytes(bytes: Long): String {
-    if (bytes < 1024) return "$bytes B"
-    val kb = bytes / 1024.0
-    if (kb < 1024) return String.format(Locale.US, "%.0f KB", kb)
-    val mb = kb / 1024.0
-    if (mb < 1024) return String.format(Locale.US, "%.0f MB", mb)
-    val gb = mb / 1024.0
-    return String.format(Locale.US, "%.2f GB", gb)
 }

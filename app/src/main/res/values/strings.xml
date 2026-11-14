@@ -708,7 +708,7 @@
     <string name="model_stt_whisper_turbo_name">Multilingual speech model</string>
     <string name="model_stt_whisper_turbo_desc">1 GB. Works offline, 99 languages.</string>
     <string name="model_llm_small_name">Small (Gemma 3 1B)</string>
-    <string name="model_llm_small_desc">Fast and efficient (~769 MB download, 4 GB+ RAM). Used exclusively for skill routing.</string>
+    <string name="model_llm_small_desc">Fast and efficient (~806 MB download, 4 GB+ RAM). Used exclusively for skill routing.</string>
     <string name="model_llm_medium_name">Medium (Gemma 4 E2B)</string>
     <string name="model_llm_medium_desc">A good balance of performance and capability (~3.1 GB download, 6 GB+ RAM). Suitable for a wide range of tasks.</string>
     <string name="model_llm_large_name">Large (Gemma 4 E4B)</string>
