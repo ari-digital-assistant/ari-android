@@ -733,19 +733,25 @@ class ConversationViewModel @Inject constructor(
     }
 
     private fun refreshOnboarding() {
+        val hasMic = ContextCompat.checkSelfPermission(
+            application, Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+
         // If the user completed (or skipped) the onboarding wizard, they've
-        // made their choices. Don't nag them with the setup card.
+        // made their choices, so the card stays away with one exception: a
+        // missing microphone. Settings restored from a backup (Seedvault,
+        // Google) arrive with the wizard marked done but no permissions,
+        // because Android doesn't restore those on reinstall. Without this the
+        // restored user gets no prompt at all; the card's menu leads to the
+        // Permissions page, which shows the rest.
         val onboardingDone = kotlinx.coroutines.runBlocking {
             settingsRepository.onboardingCompleted.first()
         }
         if (onboardingDone) {
-            _state.update { it.copy(needsSetup = false) }
+            _state.update { it.copy(needsSetup = if (it.setupChecked) !hasMic else false) }
             return
         }
 
-        val hasMic = ContextCompat.checkSelfPermission(
-            application, Manifest.permission.RECORD_AUDIO
-        ) == PackageManager.PERMISSION_GRANTED
         val hasModel = speechRecognizer.isModelLoaded
         // SAW is required for the wake word to keep working over the lock screen
         // on every detection (it grants UID-wide Background Activity Launch
