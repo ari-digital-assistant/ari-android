@@ -33,7 +33,7 @@ android {
         // five test uploads in a week is 1..5 against a versionName that
         // never budges.
         versionCode = 2
-        versionName = "0.1.0"
+        versionName = "0.1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
