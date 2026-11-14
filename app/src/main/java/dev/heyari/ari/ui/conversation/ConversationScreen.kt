@@ -50,6 +50,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -170,6 +171,12 @@ fun ConversationScreen(
 
     LaunchedEffect(messages.size, state.isThinking) {
         if (messages.isNotEmpty()) {
+            // A reply swaps in for the thinking dots in a single frame, and this
+            // effect starts before that frame is laid out. The list still holds
+            // the old layout's "can't scroll forward" flag, so a scroll issued
+            // now is dropped and a reply taller than the dots stays cut off
+            // below the fold. Waiting one frame lets the new layout land first.
+            withFrameNanos { }
             listState.animateScrollToItem(messages.size - 1)
         }
     }
