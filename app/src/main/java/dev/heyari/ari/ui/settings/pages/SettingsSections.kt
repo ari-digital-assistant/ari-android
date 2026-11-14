@@ -140,7 +140,15 @@ internal fun PermissionsSection(
 
         PermissionRow(
             label = stringResource(R.string.permission_lockscreen_label),
-            description = stringResource(R.string.permission_lockscreen_description),
+            // Android blocks this toggle for apps installed from a downloaded
+            // APK (the GitHub release) until the user allows restricted
+            // settings, and its denial dialog only links to a help page.
+            description = if (permissions.systemAlertWindow) {
+                stringResource(R.string.permission_lockscreen_description)
+            } else {
+                stringResource(R.string.permission_lockscreen_description) + "\n\n" +
+                    stringResource(R.string.permission_lockscreen_restricted_help)
+            },
             granted = permissions.systemAlertWindow,
             required = true,
             actionLabel = stringResource(
