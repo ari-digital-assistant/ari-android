@@ -13,6 +13,7 @@ import dev.heyari.ari.data.AutoUpdatePreferences
 import dev.heyari.ari.data.SecretStore
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.llm.LlmDownloadManager
+import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.llm.LlmModelRegistry
 import dev.heyari.ari.locale.AriFfiLocaleProvider
 import dev.heyari.ari.location.AriFfiLocationProvider
@@ -25,6 +26,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -294,7 +296,34 @@ class EngineHolder @Inject constructor(
         // touched assistant Settings.
         assistantRegistry.applyToEngine(engine)
 
+        loadLlmWhenItArrives(engine)
+
         return engine
+    }
+
+    /**
+     * Load the built-in assistant's model when its download finishes. The
+     * first-run wizard selects the model before downloading it, and settings
+     * only loads a model when the selection changes, so a 3 GB download that
+     * finished after the wizard closed sat unloaded until the next cold start
+     * and every question fell through to "didn't understand" (2026-11-14).
+     *
+     * The state replays the last finished download when this subscribes, so
+     * this also runs once at start, after [build] has set the same path. That
+     * costs nothing: the model loads lazily, on first use.
+     */
+    private fun loadLlmWhenItArrives(engine: AriEngine) {
+        scope.launch {
+            llmDownloadManager.state.distinctUntilChanged().collect { state ->
+                if (state !is LlmDownloadState.Completed) return@collect
+                if (settingsRepository.activeAssistantId.first() != EngineModule.BUILTIN_ASSISTANT_ID) return@collect
+                if (settingsRepository.activeLlmModelId.first() != state.modelId) return@collect
+                val model = LlmModelRegistry.byId(state.modelId) ?: return@collect
+                if (!llmDownloadManager.isDownloaded(model)) return@collect
+                val ok = engine.loadLlmModel(llmDownloadManager.modelFile(model).absolutePath)
+                Log.i(TAG, if (ok) "LLM path set after download: ${model.id}" else "LLM path invalid: ${model.id}")
+            }
+        }
     }
 
     private companion object {

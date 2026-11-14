@@ -991,11 +991,10 @@ class SettingsViewModel @Inject constructor(
      * the choice as `activeLlmModelId` so the engine can load it.
      */
     fun selectLlmModel(model: LlmModel) {
-        // Persist the user's choice immediately — even if the file isn't
-        // on disk yet. The load/unload observer below picks up the model
-        // and feeds it to the engine once isDownloaded becomes true.
-        // Without this, an onboarding user whose SettingsViewModel is
-        // torn down before the download completes loses the selection.
+        // Persist the user's choice immediately, even if the file isn't on
+        // disk yet: EngineHolder loads it into the engine when the download
+        // finishes. Without this, an onboarding user whose SettingsViewModel
+        // is torn down before the download completes loses the selection.
         viewModelScope.launch {
             settingsRepository.setActiveLlmModelId(model.id)
             // Mirror the size into model_tier on the built-in assistant
