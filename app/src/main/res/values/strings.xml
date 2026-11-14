@@ -430,6 +430,10 @@
     <string name="settings_stt_mode_openai_blurb">Most accurate. Needs an API key and a connection.</string>
     <string name="settings_stt_mode_self_hosted_title">Self-hosted Whisper</string>
     <string name="settings_stt_mode_self_hosted_blurb">Your own server. Accurate, and your audio stays on your network.</string>
+    <string name="settings_stt_mode_service_title">Phone\'s speech service</string>
+    <string name="settings_stt_mode_service_blurb">A speech recognition app you\'ve installed, such as Marmalade STT.</string>
+    <string name="settings_stt_service_blurb">Ari hands the app its own recording, so nothing you say is lost. The app has to accept it, and Google\'s speech services don\'t. Whether your audio leaves the phone depends on the app.</string>
+    <string name="settings_stt_service_none">No speech recognition app is installed. Marmalade STT, on F-Droid, works with Ari.</string>
     <string name="settings_stt_openai_blurb">Paste your OpenAI API key. Nothing else to set up.</string>
     <string name="settings_stt_self_hosted_blurb">Any OpenAI-compatible transcription endpoint — whisper.cpp, faster-whisper, or Home Assistant\'s Whisper add-on.</string>
     <string name="settings_stt_cloud_endpoint_label">Endpoint URL</string>
@@ -543,6 +547,8 @@
     <string name="stt_cloud_error_auth">The transcription server rejected the API key.</string>
     <string name="stt_cloud_error_server">The transcription server returned an error.</string>
     <string name="stt_cloud_error_empty">I didn\'t catch any speech in that.</string>
+    <string name="stt_service_error_refused">That speech app won\'t take audio from Ari. Pick another in Settings.</string>
+    <string name="stt_service_error_failed">The speech app couldn\'t transcribe that.</string>
     <string name="skill_panel_retry">Retry</string>
     <string name="skill_panel_no_options">No options found.</string>
     <string name="skill_panel_query_failed">Couldn\'t complete the request.</string>

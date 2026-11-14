@@ -1,7 +1,10 @@
 package dev.heyari.ari.stt
 
+import android.content.ComponentName
 import android.content.Context
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import com.k2fsa.sherpa.onnx.EndpointConfig
 import com.k2fsa.sherpa.onnx.EndpointRule
 import com.k2fsa.sherpa.onnx.FeatureConfig
@@ -22,6 +25,7 @@ import dev.heyari.ari.voice.WakeMatch
 import dev.heyari.ari.voice.matchWakePhrase
 import dev.heyari.ari.voice.stripWakePhrase
 import dev.heyari.ari.voice.wakeVerdict
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +41,7 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.sqrt
@@ -206,10 +211,33 @@ class SpeechRecognizer @Inject constructor(
         }
     }
 
-    /** Ready to transcribe — a local model is warm, or cloud is selected
-     *  (which needs nothing loaded). */
+    /**
+     * The recognition service [SttMode.SYSTEM_SERVICE] hands Ari's audio to, or
+     * null when Ari transcribes itself or through the cloud. Set by
+     * [SttModelLoader] beside [cloudMode]; a service set here wins over it.
+     */
+    @Volatile
+    var systemService: ComponentName? = null
+        private set
+
+    /**
+     * Route transcription to [component], or away from any service with null.
+     * Releases a loaded local recogniser on the way in, for the reason
+     * [setCloudMode] does.
+     */
+    fun setSystemService(component: ComponentName?) {
+        if (systemService == component) return
+        systemService = component
+        if (component != null) {
+            synchronized(loadLock) { unload() }
+            Log.i(TAG, "STT routed to ${component.flattenToShortString()}; local recogniser released")
+        }
+    }
+
+    /** Ready to transcribe: a local model is warm, or cloud or a system
+     *  service is selected (which need nothing loaded). */
     val isModelLoaded: Boolean
-        get() = cloudMode || onlineRecognizer != null || offlineRecognizer != null
+        get() = cloudMode || systemService != null || onlineRecognizer != null || offlineRecognizer != null
 
     /**
      * True when the loaded recogniser is the online streaming one. Hosts need
@@ -220,7 +248,7 @@ class SpeechRecognizer @Inject constructor(
      * therefore cut every offline utterance short.
      */
     val isStreaming: Boolean
-        get() = !cloudMode && onlineRecognizer != null
+        get() = !cloudMode && systemService == null && onlineRecognizer != null
 
     /**
      * Whether [checkNameEarly] might run: on cloud transcription only. Of the
@@ -476,7 +504,8 @@ class SpeechRecognizer @Inject constructor(
      *
      * Dispatches to the streaming or buffered code path based on which
      * recogniser is loaded. [giveUpWithoutSpeechMs] and [limitMs] are a quiet
-     * wake's, and only the buffered path has them: see [BufferedEndpoint].
+     * wake's. The buffered path has both (see [BufferedEndpoint]); a system
+     * service has only [limitMs], as it gives up on silence by itself.
      */
     fun startListening(
         rewindSeconds: Float = DEFAULT_REWIND_SECONDS,
@@ -488,8 +517,11 @@ class SpeechRecognizer @Inject constructor(
 
         val online = onlineRecognizer
         val offline = offlineRecognizer
+        val service = systemService
 
         when {
+            service != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
+                startServiceListening(service, rewindSeconds, limitMs)
             // Cloud first: it needs no local model, so checking it last would
             // mean a leftover recogniser from a previous on-device session
             // silently won after the user switched to cloud.
@@ -537,6 +569,85 @@ class SpeechRecognizer @Inject constructor(
                 nameMatched = wakeVerdict(match, locale),
             )
         }
+    }
+
+    /**
+     * Hand the listen to [component], fed from the [CaptureBus] like every other
+     * path, pre-roll and all, so the transcript keeps "Hey Ari" for the name
+     * check. The service finds the end of speech itself; [limitMs], a quiet
+     * wake's, ends the audio sooner so that it has to.
+     */
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private fun startServiceListening(component: ComponentName, rewindSeconds: Float, limitMs: Long?) {
+        val channel = captureBus.arm(rewindSeconds) ?: run {
+            Log.e(TAG, "CaptureBus already armed, refusing to start listening")
+            _state.value = SttState.Error("Audio bus busy")
+            return
+        }
+
+        _state.value = SttState.Listening("")
+        val locale = localeProvider.currentLocale()
+        Log.i(TAG, "STT (${component.flattenToShortString()}) listening started (rewindSeconds=$rewindSeconds)")
+
+        armListenJob(scope.launch(start = CoroutineStart.LAZY) {
+            val owner = coroutineContext.job
+            // Everything handed over, for the false-trigger and debug captures
+            // the other paths feed too. Written by the feed, read by callbacks
+            // on the main thread.
+            val heard = ArrayList<ShortArray>(200)
+            var heardSamples = 0
+            fun heardSoFar(): ShortArray = synchronized(heard) { merge(heard, heardSamples) }
+            val ended = CompletableDeferred<Unit>()
+            val session = SystemSpeechSession(
+                context = context,
+                component = component,
+                language = serviceLanguageTag(locale, Locale.getDefault()),
+                onPartial = { text ->
+                    streamingPartial(matchWakePhrase(text, locale), locale)?.let { _state.value = it }
+                },
+                onFinal = { text ->
+                    val match = matchWakePhrase(text, locale)
+                    Log.i(TAG, "Service transcript: raw='$text' cleaned='${match.text}'")
+                    _state.value = SttState.Done(
+                        text = match.text,
+                        parallel = null,
+                        audio = heardSoFar(),
+                        raw = text,
+                        nameMatched = wakeVerdict(match, locale),
+                    )
+                    ended.complete(Unit)
+                },
+                onError = { error ->
+                    _state.value = when (serviceFailure(error)) {
+                        ServiceFailure.NO_SPEECH ->
+                            SttState.NoSpeech(context.getString(R.string.stt_cloud_error_empty), heardSoFar())
+                        ServiceFailure.REFUSED -> SttState.Error(context.getString(R.string.stt_service_error_refused))
+                        ServiceFailure.FAILED -> SttState.Error(context.getString(R.string.stt_service_error_failed))
+                    }
+                    ended.complete(Unit)
+                },
+            )
+            session.start()
+            val startedAt = System.currentTimeMillis()
+            val feed = launch(Dispatchers.IO) {
+                for (chunk in channel) {
+                    synchronized(heard) {
+                        heard.add(chunk)
+                        heardSamples += chunk.size
+                    }
+                    if (!session.write(chunk)) break
+                    if (limitMs != null && System.currentTimeMillis() - startedAt >= limitMs) break
+                }
+                session.finishAudio()
+            }
+            try {
+                ended.await()
+            } finally {
+                feed.cancel()
+                session.close()
+            }
+            stopRecording(owner)
+        })
     }
 
     private fun startOnlineListening(rec: OnlineRecognizer, rewindSeconds: Float) {

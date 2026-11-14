@@ -1,5 +1,6 @@
 package dev.heyari.ari.ui.settings.pages
 
+import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -40,6 +41,7 @@ fun SttSettingsPage(
             SttModeSection(
                 mode = state.sttMode,
                 onSelect = viewModel::setSttMode,
+                withSystemService = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU,
             )
             when (state.sttMode) {
                 SttMode.ON_DEVICE -> ModelsSection(
@@ -49,6 +51,11 @@ fun SttSettingsPage(
                     onCancel = viewModel::cancelDownload,
                     onDelete = viewModel::deleteModel,
                     onSelect = viewModel::selectModel,
+                )
+                SttMode.SYSTEM_SERVICE -> SystemSttSection(
+                    services = state.sttServices,
+                    selected = state.sttService,
+                    onSelect = viewModel::setSttService,
                 )
                 else -> CloudSttSection(
                     mode = state.sttMode,

@@ -1,5 +1,6 @@
 package dev.heyari.ari.stt
 
+import android.content.ComponentName
 import android.util.Log
 import dev.heyari.ari.data.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
@@ -102,9 +103,18 @@ class SttModelLoader @Inject constructor(
         // Mode first. Cloud needs nothing downloaded, and applying it here
         // rather than at each call site means a mode change taking effect is
         // the same code path as a model change — one place to be wrong.
-        val cloud = settingsRepository.sttMode.first().isCloud
-        speechRecognizer.setCloudMode(cloud)
-        if (cloud) return Outcome.Loaded
+        val mode = settingsRepository.sttMode.first()
+        speechRecognizer.setCloudMode(mode.isCloud)
+        if (mode.isCloud) {
+            speechRecognizer.setSystemService(null)
+            return Outcome.Loaded
+        }
+        if (mode == SttMode.SYSTEM_SERVICE) {
+            val service = settingsRepository.sttService.first()?.let(ComponentName::unflattenFromString)
+            speechRecognizer.setSystemService(service)
+            return if (service != null) Outcome.Loaded else Outcome.NotInstalled
+        }
+        speechRecognizer.setSystemService(null)
 
         val model = activeDownloadedModel()
         return when (decide(speechRecognizer.isModelLoaded, model != null)) {

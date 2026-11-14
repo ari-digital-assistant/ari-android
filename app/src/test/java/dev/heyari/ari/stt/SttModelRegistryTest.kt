@@ -61,6 +61,8 @@ class SttModelRegistryTest {
         assertTrue(!SttMode.ON_DEVICE.isCloud)
         assertTrue(SttMode.OPENAI.isCloud)
         assertTrue(SttMode.SELF_HOSTED.isCloud)
+        // Ari sends the audio nowhere; what the service does is its own affair.
+        assertTrue(!SttMode.SYSTEM_SERVICE.isCloud)
     }
 
     @Test fun unknown_mode_slug_falls_back_to_on_device() {

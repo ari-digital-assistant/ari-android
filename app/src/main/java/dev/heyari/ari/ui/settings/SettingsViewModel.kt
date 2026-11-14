@@ -5,6 +5,7 @@ import android.app.Application
 import android.app.LocaleManager
 import android.util.Log
 import android.app.NotificationManager
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -26,6 +27,7 @@ import dev.heyari.ari.llm.LlmModelRegistry
 import dev.heyari.ari.stt.CloudTranscriber
 import dev.heyari.ari.stt.ModelDownloadManager
 import dev.heyari.ari.stt.ModelDownloadState
+import dev.heyari.ari.stt.RecognitionServiceOption
 import dev.heyari.ari.listening.ListeningCondition
 import dev.heyari.ari.listening.ListeningMode
 import dev.heyari.ari.listening.ListeningPlace
@@ -37,6 +39,7 @@ import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.stt.SttMode
 import dev.heyari.ari.stt.SttModel
 import dev.heyari.ari.stt.SttModelRegistry
+import dev.heyari.ari.stt.installedRecognitionServices
 import dev.heyari.ari.tts.SpeechOutput
 import dev.heyari.ari.wakeword.WakeWordModel
 import dev.heyari.ari.wakeword.WakeWordRegistry
@@ -142,6 +145,10 @@ data class SettingsState(
     val cloudSttModel: String = "",
     /** API key for it. Blank is legitimate — a self-hosted endpoint needs none. */
     val cloudSttApiKey: String = "",
+    /** The recognition service [SttMode.SYSTEM_SERVICE] uses, as a flattened component. */
+    val sttService: String? = null,
+    /** The recognition services installed on the phone, Ari's own left out. */
+    val sttServices: List<RecognitionServiceOption> = emptyList(),
     /** When Ari is allowed to open the microphone. */
     val listeningMode: ListeningMode = ListeningMode.DEFAULT,
     /** The conditions ticked under [ListeningMode.CUSTOM]. */
@@ -455,6 +462,14 @@ class SettingsViewModel @Inject constructor(
                 _state.update { it.copy(cloudSttModel = model) }
             }
         }
+        viewModelScope.launch {
+            settingsRepository.sttService.collect { service ->
+                _state.update { it.copy(sttService = service) }
+            }
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            _state.update { it.copy(sttServices = installedRecognitionServices(application)) }
+        }
         viewModelScope.launch(Dispatchers.IO) {
             val stored = secretStore.get(
                 CloudTranscriber.SECRET_SCOPE,
@@ -555,9 +570,34 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.setSttMode(mode)
             speechRecognizer.setCloudMode(mode.isCloud)
+            speechRecognizer.setSystemService(
+                if (mode == SttMode.SYSTEM_SERVICE) chooseSttService()?.let(ComponentName::unflattenFromString) else null,
+            )
             if (mode == SttMode.ON_DEVICE) {
                 val model = SttModelRegistry.onDeviceFor(settingsRepository.activeLocale.first())
                 selectAndDownloadModel(model)
+            }
+        }
+    }
+
+    /**
+     * The saved service if it is still installed, else the first installed one,
+     * saved, so the mode works the moment it is picked. Null when there is none.
+     */
+    private suspend fun chooseSttService(): String? {
+        val installed = withContext(Dispatchers.IO) { installedRecognitionServices(application) }
+        _state.update { it.copy(sttServices = installed) }
+        val saved = settingsRepository.sttService.first()
+        if (saved != null && installed.any { it.component == saved }) return saved
+        return installed.firstOrNull()?.component?.also { settingsRepository.setSttService(it) }
+    }
+
+    fun setSttService(component: String) {
+        _state.update { it.copy(sttService = component) }
+        viewModelScope.launch {
+            settingsRepository.setSttService(component)
+            if (settingsRepository.sttMode.first() == SttMode.SYSTEM_SERVICE) {
+                speechRecognizer.setSystemService(ComponentName.unflattenFromString(component))
             }
         }
     }

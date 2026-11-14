@@ -429,6 +429,10 @@
     <string name="settings_stt_mode_openai_blurb">Il più preciso. Richiede una chiave API e una connessione.</string>
     <string name="settings_stt_mode_self_hosted_title">Whisper self-hosted</string>
     <string name="settings_stt_mode_self_hosted_blurb">Il tuo server. Preciso, e il tuo audio resta sulla tua rete.</string>
+    <string name="settings_stt_mode_service_title">Servizio vocale del telefono</string>
+    <string name="settings_stt_mode_service_blurb">Un\'app di riconoscimento vocale che hai installato, come Marmalade STT.</string>
+    <string name="settings_stt_service_blurb">Ari passa all\'app la propria registrazione, così non si perde nulla di ciò che dici. L\'app deve accettarla, e i servizi vocali di Google non lo fanno. Se l\'audio lascia il telefono dipende dall\'app.</string>
+    <string name="settings_stt_service_none">Non è installata nessuna app di riconoscimento vocale. Marmalade STT, su F-Droid, funziona con Ari.</string>
     <string name="settings_stt_openai_blurb">Incolla la tua chiave API di OpenAI. Non serve altro.</string>
     <string name="settings_stt_self_hosted_blurb">Qualsiasi endpoint di trascrizione compatibile con OpenAI: whisper.cpp, faster-whisper o il componente aggiuntivo Whisper di Home Assistant.</string>
     <string name="settings_stt_cloud_endpoint_label">URL dell\'endpoint</string>
@@ -542,6 +546,8 @@
     <string name="stt_cloud_error_auth">Il server di trascrizione ha rifiutato la chiave API.</string>
     <string name="stt_cloud_error_server">Il server di trascrizione ha restituito un errore.</string>
     <string name="stt_cloud_error_empty">Non ho sentito parlare.</string>
+    <string name="stt_service_error_refused">Quell\'app vocale non accetta l\'audio di Ari. Scegline un\'altra nelle Impostazioni.</string>
+    <string name="stt_service_error_failed">L\'app vocale non è riuscita a trascriverlo.</string>
     <string name="skill_panel_retry">Riprova</string>
     <string name="skill_panel_no_options">Nessuna opzione trovata.</string>
     <string name="skill_panel_query_failed">Impossibile completare la richiesta.</string>

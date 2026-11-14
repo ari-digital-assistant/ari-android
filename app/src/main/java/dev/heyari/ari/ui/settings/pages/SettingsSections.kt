@@ -57,6 +57,7 @@ import dev.heyari.ari.ui.theme.LocalAriSemanticColors
 import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.llm.LlmModel
 import dev.heyari.ari.stt.ModelDownloadState
+import dev.heyari.ari.stt.RecognitionServiceOption
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -838,7 +839,9 @@ internal fun LanguageSection(
 
 /**
  * The whole STT choice: on device, or cloud. Shared by the settings page and
- * the onboarding wizard so both offer the same two options in the same words.
+ * the onboarding wizard so both offer the same options in the same words.
+ * [withSystemService] adds a speech app on the phone, which only settings
+ * offers, and only from Android 13, where an app can be handed Ari's audio.
  *
  * Which local model backs on-device is not part of it: the user's language
  * narrows the models down, and [ModelsSection] lists them (see
@@ -848,6 +851,7 @@ internal fun LanguageSection(
 internal fun SttModeSection(
     mode: SttMode,
     onSelect: (SttMode) -> Unit,
+    withSystemService: Boolean = false,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SttModeCard(
@@ -868,6 +872,44 @@ internal fun SttModeSection(
             blurb = stringResource(R.string.settings_stt_mode_self_hosted_blurb),
             onClick = { onSelect(SttMode.SELF_HOSTED) },
         )
+        if (withSystemService) {
+            SttModeCard(
+                selected = mode == SttMode.SYSTEM_SERVICE,
+                title = stringResource(R.string.settings_stt_mode_service_title),
+                blurb = stringResource(R.string.settings_stt_mode_service_blurb),
+                onClick = { onSelect(SttMode.SYSTEM_SERVICE) },
+            )
+        }
+    }
+}
+
+/** The speech apps [SttMode.SYSTEM_SERVICE] can hand Ari's audio to. */
+@Composable
+internal fun SystemSttSection(
+    services: List<RecognitionServiceOption>,
+    selected: String?,
+    onSelect: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = stringResource(R.string.settings_stt_service_blurb),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (services.isEmpty()) {
+            Text(
+                text = stringResource(R.string.settings_stt_service_none),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        services.forEach { option ->
+            SttModeCard(
+                selected = option.component == selected,
+                title = option.label,
+                blurb = option.component.substringBefore('/'),
+                onClick = { onSelect(option.component) },
+            )
+        }
     }
 }
 

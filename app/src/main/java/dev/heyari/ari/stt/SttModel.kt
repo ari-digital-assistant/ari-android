@@ -25,12 +25,23 @@ enum class SttMode {
      * if the server asks for one.
      */
     SELF_HOSTED,
+
+    /**
+     * A speech recognition app installed on the phone (Marmalade STT and the
+     * like), handed Ari's own audio through Android's `SpeechRecognizer`. Only
+     * an app that accepts handed-over audio works; Google's don't
+     * (ari-android#28).
+     */
+    SYSTEM_SERVICE,
     ;
 
     val slug: String get() = name.lowercase()
 
-    /** True for anything that transcribes off the device. */
-    val isCloud: Boolean get() = this != ON_DEVICE
+    /**
+     * True for the modes where Ari sends audio to a server itself. A system
+     * service may or may not, but that is the service's business, not Ari's.
+     */
+    val isCloud: Boolean get() = this == OPENAI || this == SELF_HOSTED
 
     companion object {
         /**

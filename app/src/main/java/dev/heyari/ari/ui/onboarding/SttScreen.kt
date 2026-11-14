@@ -20,6 +20,7 @@ import dev.heyari.ari.ui.settings.SettingsViewModel
 import dev.heyari.ari.ui.settings.pages.CloudSttSection
 import dev.heyari.ari.ui.settings.pages.ModelsSection
 import dev.heyari.ari.ui.settings.pages.SttModeSection
+import dev.heyari.ari.ui.settings.pages.SystemSttSection
 
 @Composable
 fun SttScreen(
@@ -65,6 +66,13 @@ fun SttScreen(
                 onCancel = settingsViewModel::cancelDownload,
                 onDelete = settingsViewModel::deleteModel,
                 onSelect = settingsViewModel::selectModel,
+            )
+            // Not offered here, but a wizard run again after picking it in
+            // settings still has to show what is in use.
+            SttMode.SYSTEM_SERVICE -> SystemSttSection(
+                services = state.sttServices,
+                selected = state.sttService,
+                onSelect = settingsViewModel::setSttService,
             )
             else -> CloudSttSection(
                 mode = state.sttMode,

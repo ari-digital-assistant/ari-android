@@ -92,6 +92,18 @@ class SettingsRepository @Inject constructor(
         context.dataStore.edit { prefs -> prefs[KEY_CLOUD_STT_MODEL] = model.trim() }
     }
 
+    /**
+     * The recognition service [SttMode.SYSTEM_SERVICE] uses, as a flattened
+     * `ComponentName`. Null until the user picks one.
+     */
+    val sttService: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[KEY_STT_SERVICE]
+    }.distinctUntilChanged()
+
+    suspend fun setSttService(component: String) {
+        context.dataStore.edit { prefs -> prefs[KEY_STT_SERVICE] = component }
+    }
+
     val activeSttModelId: Flow<String?> = context.dataStore.data.map { prefs ->
         prefs[KEY_ACTIVE_STT_MODEL]
     }.distinctUntilChanged()
@@ -841,6 +853,7 @@ class SettingsRepository @Inject constructor(
         private val KEY_STT_MODE = stringPreferencesKey("stt_mode")
         private val KEY_CLOUD_STT_ENDPOINT = stringPreferencesKey("cloud_stt_endpoint")
         private val KEY_CLOUD_STT_MODEL = stringPreferencesKey("cloud_stt_model")
+        private val KEY_STT_SERVICE = stringPreferencesKey("stt_service")
         private val KEY_ACTIVE_STT_MODEL = stringPreferencesKey("active_stt_model")
         private val KEY_ACTIVE_WAKE_WORD = stringPreferencesKey("active_wake_word")
         private val KEY_WAKE_WORD_SENSITIVITY = stringPreferencesKey("wake_word_sensitivity")

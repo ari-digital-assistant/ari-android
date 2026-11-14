@@ -17,6 +17,9 @@ Changes since the closed-test beta uploaded to Google Play on 2026-11-13
   ([#26](https://github.com/ari-digital-assistant/ari-android/issues/26)).
 - Settings lists every on-device speech model that can transcribe your language, marks
   the recommended one, and names the model in each description.
+- Phone's speech service: on Android 13 and up, Ari can hand its recording to a speech
+  recognition app installed on the phone, such as Marmalade STT, from Settings
+  ([#28](https://github.com/ari-digital-assistant/ari-android/issues/28)).
 - The lock-screen permission in Settings explains how to allow restricted settings when
   Ari was installed from an APK
   ([#24](https://github.com/ari-digital-assistant/ari-android/issues/24)).
