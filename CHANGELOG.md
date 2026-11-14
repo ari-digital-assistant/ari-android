@@ -40,6 +40,16 @@ Changes since the closed-test beta uploaded to Google Play on 2026-11-13
 - File sizes are shown in decimal units everywhere
   ([#24](https://github.com/ari-digital-assistant/ari-android/issues/24)).
 - Downloaded models are left out of cloud backups.
+- The on-device assistant answers two to three times faster on most phones: Ari now
+  picks the build of its maths code that suits the phone's processor, instead of one
+  built for the oldest. The Medium model answers in about 3 s rather than 8 on a Pixel
+  10 Pro Fold ([#32](https://github.com/ari-digital-assistant/ari-android/issues/32)).
+- Settings > Debug shows the device, its chip and memory, which processor build the
+  assistant runs, and Ari's versions, with a button to copy them. Bug reports carry
+  the chip and the assistant's processor build.
+- The message box says whether Ari is listening: "Ari is listening. Say “Hey Ari” or
+  type" while the wake word is on, "Ari is not listening. Type your query" while it is
+  off. The glow behind it holds steady while Ari waits, and only moves during a turn.
 - Speech recognition runs on sherpa-onnx 2.0.1. The wake word now uses ONNX Runtime's
   standard CPU backend, since XNNPACK is no longer in the bundled runtime.
 - The on-device assistant runs on a newer llama.cpp (llama-cpp-2 0.1.161).
@@ -54,6 +64,12 @@ Changes since the closed-test beta uploaded to Google Play on 2026-11-13
   opening line ([#30](https://github.com/ari-digital-assistant/ari-android/issues/30)).
 - A long conversation no longer makes the on-device assistant fail; it drops the oldest
   exchanges to make room.
+- An open, idle Ari no longer uses half a processor core: the glow behind the message
+  box redrew the screen 120 times a second, even with nothing happening
+  ([#32](https://github.com/ari-digital-assistant/ari-android/issues/32)).
+- The on-device assistant gives short answers such as "Paris." or "1945." instead of
+  saying it didn't understand
+  ([#32](https://github.com/ari-digital-assistant/ari-android/issues/32)).
 - Assistant replies, on-device and cloud, no longer show markdown such as `**bold**`;
   bullets show as "•"
   ([#30](https://github.com/ari-digital-assistant/ari-android/issues/30)).

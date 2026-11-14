@@ -16,11 +16,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
@@ -52,17 +51,19 @@ fun ThinkingIndicator(modifier: Modifier = Modifier) {
                 if (motion) {
                     val t = rememberInfiniteTransition(label = "dots")
                     repeat(3) { i ->
-                        val a by t.animateFloat(
+                        val a = t.animateFloat(
                             initialValue = 0.3f,
                             targetValue = 1f,
                             animationSpec = infiniteRepeatable(tween(500, delayMillis = i * 150), RepeatMode.Reverse),
                             label = "dot$i",
                         )
-                        Dot(alpha = a)
+                        // Read in the layer, not here: a repaint per frame
+                        // rather than a recomposition (ari-android#32).
+                        Dot(alpha = { a.value })
                     }
                 } else {
                     // Static fallback: three steady dots, no infinite transition.
-                    repeat(3) { Dot(alpha = 0.6f) }
+                    repeat(3) { Dot(alpha = { 0.6f }) }
                 }
             }
         }
@@ -70,11 +71,11 @@ fun ThinkingIndicator(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun Dot(alpha: Float) {
+private fun Dot(alpha: () -> Float) {
     Box(
         Modifier
             .size(6.dp)
-            .alpha(alpha)
+            .graphicsLayer { this.alpha = alpha() }
             .background(MaterialTheme.colorScheme.primary, CircleShape),
     )
 }

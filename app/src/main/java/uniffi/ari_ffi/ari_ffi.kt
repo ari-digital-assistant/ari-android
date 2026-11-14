@@ -968,6 +968,8 @@ internal object IntegrityCheckingUniffiLib {
     }
     external fun uniffi_ari_ffi_checksum_func_engine_version(
     ): Short
+    external fun uniffi_ari_ffi_checksum_func_on_device_cpu_info(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_cancel_pending_reply(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_current_locale(
@@ -1416,6 +1418,8 @@ external fun uniffi_ari_ffi_fn_method_skillregistry_uninstall_skill_by_id(`ptr`:
 ): Unit
 external fun uniffi_ari_ffi_fn_func_engine_version(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_on_device_cpu_info(uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 external fun ffi_ari_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun ffi_ari_ffi_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1536,6 +1540,9 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_func_engine_version() != 10576.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_on_device_cpu_info() != 26519.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_cancel_pending_reply() != 705.toShort()) {
@@ -9722,6 +9729,64 @@ public object FfiConverterTypeFfiContactChannel: FfiConverterRustBuffer<FfiConta
 
 
 
+/**
+ * The on-device assistant's CPU code and the CPU it runs on, for bug
+ * reports and the debug screen.
+ */
+data class FfiCpuInfo (
+    /**
+     * Which build of llama.cpp's CPU code is loaded: "ARMv8.6", "ARMv8.2",
+     * "ARMv8.0", or "built in" off Android arm64. Null when none would load,
+     * or in a build without the on-device assistant.
+     */
+    var `build`: kotlin.String?
+    , 
+    /**
+     * What that build uses, in words.
+     */
+    var `buildDescription`: kotlin.String?
+    , 
+    /**
+     * The CPU features this device reports that llama.cpp can use.
+     */
+    var `features`: List<kotlin.String>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiCpuInfo: FfiConverterRustBuffer<FfiCpuInfo> {
+    override fun read(buf: ByteBuffer): FfiCpuInfo {
+        return FfiCpuInfo(
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterSequenceString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiCpuInfo) = (
+            FfiConverterOptionalString.allocationSize(value.`build`) +
+            FfiConverterOptionalString.allocationSize(value.`buildDescription`) +
+            FfiConverterSequenceString.allocationSize(value.`features`)
+    )
+
+    override fun write(value: FfiCpuInfo, buf: ByteBuffer) {
+            FfiConverterOptionalString.write(value.`build`, buf)
+            FfiConverterOptionalString.write(value.`buildDescription`, buf)
+            FfiConverterSequenceString.write(value.`features`, buf)
+    }
+}
+
+
+
 data class FfiInsertCalendarEventParams (
     var `calendarId`: kotlin.ULong
     , 
@@ -11522,6 +11587,21 @@ public object FfiConverterMapStringTypeFfiLocalizedDisplay: FfiConverterRustBuff
             return FfiConverterString.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_ari_ffi_fn_func_engine_version(
+    
+        _status)
+}
+    )
+    }
+    
+
+        /**
+         * Which llama.cpp CPU build the on-device assistant runs on, loading it if
+         * no model has yet (a few MB, once per process), and this CPU's features
+         * (ari-android#32).
+         */ fun `onDeviceCpuInfo`(): FfiCpuInfo {
+            return FfiConverterTypeFfiCpuInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_on_device_cpu_info(
     
         _status)
 }

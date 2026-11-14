@@ -295,7 +295,8 @@
     <string name="download_button_with_size">Download %1$s</string>
 
     <!-- Conversation screen -->
-    <string name="conversation_input_placeholder">Ask Ari something…</string>
+    <string name="conversation_input_placeholder">Ari is not listening. Type your query</string>
+    <string name="conversation_input_placeholder_listening">Ari is listening. Say “%1$s” or type</string>
     <!-- TODO(i18n): add values-it/ translation -->
     <string name="conversation_listening_placeholder">I\'m listening…</string>
     <!-- TODO(i18n): add values-it/ translations -->
@@ -822,6 +823,25 @@
     <string name="my_reports_footnote">This list lives on this phone only. Uninstalling Ari means you can no longer withdraw from here, and anything still stored is removed automatically 90 days after you sent it.</string>
     <string name="settings_my_reports_title">My Reports</string>
     <string name="settings_my_reports_blurb">Bug reports you\'ve sent from this phone. View one on GitHub, or withdraw it.</string>
+    <string name="settings_device_info_title">This device</string>
+    <string name="settings_device_info_copy">Copy</string>
+    <string name="settings_device_info_copied">Device details copied</string>
+    <string name="settings_device_info_loading">Reading device details…</string>
+    <string name="settings_device_info_device">Device</string>
+    <string name="settings_device_info_chip">Chip</string>
+    <string name="settings_device_info_android">Android</string>
+    <string name="settings_device_info_memory">Memory</string>
+    <string name="settings_device_info_cpu">Processor</string>
+    <string name="settings_device_info_cpu_value">%1$d cores, %2$s</string>
+    <string name="settings_device_info_cpu_build">Assistant CPU build</string>
+    <string name="settings_device_info_cpu_build_none">None loaded</string>
+    <string name="settings_device_info_cpu_features">CPU features</string>
+    <string name="settings_device_info_none">None</string>
+    <string name="settings_device_info_ari">Ari</string>
+    <string name="settings_device_info_engine">Engine</string>
+    <string name="settings_device_info_assistant">Assistant</string>
+    <string name="settings_device_info_llm">On-device model</string>
+    <string name="settings_device_info_speech">Speech recognition</string>
     <string name="crash_prompt_title">Ari crashed last time</string>
     <string name="crash_prompt_body">Sending a report is the fastest way to get it fixed. You\'ll see exactly what\'s included before anything is sent.</string>
     <string name="crash_prompt_report">Report it</string>

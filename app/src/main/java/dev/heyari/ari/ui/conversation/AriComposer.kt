@@ -37,6 +37,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.heyari.ari.R
 
@@ -44,8 +45,9 @@ import dev.heyari.ari.R
  * Composer-centric input row: a pill-shaped text field with a single trailing
  * action button. The button swaps between Mic (blank input → start dictation),
  * Send (non-blank input), and a live pulsing recording light (while dictating →
- * tap to stop), per [composerAction]. While dictating, the field placeholder
- * also switches to "I'm listening…".
+ * tap to stop), per [composerAction]. The placeholder says whether Ari is
+ * listening: "I'm listening…" while dictating, otherwise whether the wake
+ * word is armed (see [composerPlaceholder]).
  */
 @Composable
 fun AriComposer(
@@ -56,6 +58,8 @@ fun AriComposer(
     onStop: () -> Unit,
     isDictating: Boolean,
     micEnabled: Boolean,
+    wakeArmed: Boolean,
+    wakePhrase: String,
     ambientState: AmbientState,
     modifier: Modifier = Modifier,
 ) {
@@ -71,10 +75,14 @@ fun AriComposer(
                 .ambientComposerBorder(ambientState),
             placeholder = {
                 Text(
-                    stringResource(
-                        if (isDictating) R.string.conversation_listening_placeholder
-                        else R.string.conversation_input_placeholder
-                    )
+                    when (composerPlaceholder(isDictating, wakeArmed)) {
+                        ComposerPlaceholder.Dictating -> stringResource(R.string.conversation_listening_placeholder)
+                        ComposerPlaceholder.WakeArmed ->
+                            stringResource(R.string.conversation_input_placeholder_listening, wakePhrase)
+                        ComposerPlaceholder.NotListening -> stringResource(R.string.conversation_input_placeholder)
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             },
             singleLine = true,
@@ -140,4 +148,18 @@ private fun RecordingIndicator() {
             .background(MaterialTheme.colorScheme.primary, CircleShape)
             .semantics { contentDescription = stopLabel },
     )
+}
+
+/** Which placeholder the composer shows. */
+internal enum class ComposerPlaceholder { Dictating, WakeArmed, NotListening }
+
+/**
+ * Dictation wins, since the mic is open for this field. Otherwise the field
+ * says whether the wake word is armed: with Ari's glow now steady while it
+ * waits (ari-android#32), the words carry that it is listening.
+ */
+internal fun composerPlaceholder(isDictating: Boolean, wakeArmed: Boolean): ComposerPlaceholder = when {
+    isDictating -> ComposerPlaceholder.Dictating
+    wakeArmed -> ComposerPlaceholder.WakeArmed
+    else -> ComposerPlaceholder.NotListening
 }

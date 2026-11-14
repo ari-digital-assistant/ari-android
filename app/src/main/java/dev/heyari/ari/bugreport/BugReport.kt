@@ -36,6 +36,8 @@ data class AppInfo(
 data class SetupInfo(
     val assistant: String? = null,
     val model: String? = null,
+    /** Which llama.cpp CPU build runs the on-device model (ari-android#32). */
+    val modelCpu: String? = null,
     val stt: String? = null,
     val tts: String? = null,
     val wake: String? = null,
@@ -44,6 +46,10 @@ data class SetupInfo(
 data class DeviceInfo(
     val model: String,
     val androidVersion: String,
+    /** The system-on-chip, e.g. "Google Tensor G5". Null before Android 12. */
+    val chip: String? = null,
+    /** CPU features llama.cpp can use, e.g. "dot product". */
+    val cpuFeatures: List<String> = emptyList(),
     val fingerprint: String? = null,
     val ramFreeMb: Int? = null,
     val storageFreeMb: Int? = null,
@@ -103,6 +109,7 @@ fun BugReport.toWireJson(): JSONObject = JSONObject().apply {
     put("setup", JSONObject().apply {
         putIfPresent("assistant", setup.assistant)
         putIfPresent("model", setup.model)
+        putIfPresent("modelCpu", setup.modelCpu)
         putIfPresent("stt", setup.stt)
         putIfPresent("tts", setup.tts)
         putIfPresent("wake", setup.wake)
@@ -111,6 +118,8 @@ fun BugReport.toWireJson(): JSONObject = JSONObject().apply {
     put("device", JSONObject().apply {
         put("model", device.model)
         put("androidVersion", device.androidVersion)
+        putIfPresent("chip", device.chip)
+        put("cpuFeatures", JSONArray(device.cpuFeatures))
         putIfPresent("fingerprint", device.fingerprint)
         putIfPresent("ramFreeMb", device.ramFreeMb)
         putIfPresent("storageFreeMb", device.storageFreeMb)

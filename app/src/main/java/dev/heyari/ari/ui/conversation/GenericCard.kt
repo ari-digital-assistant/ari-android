@@ -40,6 +40,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -238,6 +239,8 @@ private fun CountdownDigits(text: String, color: Color, blink: Boolean) {
     // Split on the last ':' so only the seconds-separator blinks, and only
     // when the timer is actually counting down (not at 0 / not ringing).
     val colonIx = text.lastIndexOf(':')
+    // A State, read in the colon's layer: a repaint per frame rather than a
+    // recomposition of the whole countdown (ari-android#32).
     val alpha = if (blink) {
         val transition = rememberInfiniteTransition(label = "colon")
         transition.animateFloat(
@@ -248,9 +251,9 @@ private fun CountdownDigits(text: String, color: Color, blink: Boolean) {
                 repeatMode = RepeatMode.Reverse,
             ),
             label = "colonAlpha",
-        ).value
+        )
     } else {
-        1f
+        null
     }
     val style = MaterialTheme.typography.displayLarge.copy(
         fontFamily = FontFamily.Monospace,
@@ -273,7 +276,12 @@ private fun CountdownDigits(text: String, color: Color, blink: Boolean) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(text = text.substring(0, colonIx), style = style, color = color)
-        Text(text = ":", style = style, color = color.copy(alpha = alpha))
+        Text(
+            text = ":",
+            style = style,
+            color = color,
+            modifier = Modifier.graphicsLayer { this.alpha = alpha?.value ?: 1f },
+        )
         Text(text = text.substring(colonIx + 1), style = style, color = color)
     }
 }

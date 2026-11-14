@@ -16,6 +16,8 @@ data class ConversationState(
      * control and the ambient aura should say so.
      */
     val isListening: Boolean = false,
+    /** The armed wake phrase, e.g. "Hey Ari", for the composer's placeholder. */
+    val wakePhrase: String = "Hey Ari",
     /** Drives which segment of the top-bar [dev.heyari.ari.ui.conversation.ListeningModeSwitch] is selected. */
     val listeningMode: ListeningMode = ListeningMode.DEFAULT,
     val wakeWordDetected: Boolean = false,

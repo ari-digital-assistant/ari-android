@@ -48,6 +48,23 @@ class BugReportWireTest {
     }
 
     @Test
+    fun carries_the_chip_and_the_assistant_cpu_build() {
+        val json = report(
+            setup = SetupInfo(model = "gemma4-e2b-q4", modelCpu = "ARMv8.6 (dot product)"),
+            device = DeviceInfo(
+                model = "Pixel 10 Pro Fold",
+                androidVersion = "17",
+                chip = "Google Tensor G5",
+                cpuFeatures = listOf("dot product", "int8 matrix multiply"),
+            ),
+        ).toWireJson()
+        assertEquals("ARMv8.6 (dot product)", json.getJSONObject("setup").getString("modelCpu"))
+        val device = json.getJSONObject("device")
+        assertEquals("Google Tensor G5", device.getString("chip"))
+        assertEquals("int8 matrix multiply", device.getJSONArray("cpuFeatures").getString(1))
+    }
+
+    @Test
     fun omits_absent_fields_rather_than_sending_blanks() {
         val json = report().toWireJson()
         assertFalse(json.has("privateNote"))
@@ -55,7 +72,9 @@ class BugReportWireTest {
         val device = json.getJSONObject("device")
         assertFalse(device.has("ramFreeMb"))
         assertFalse(device.has("batteryExempt"))
+        assertFalse(device.has("chip"))
         assertFalse(json.getJSONObject("setup").has("assistant"))
+        assertFalse(json.getJSONObject("setup").has("modelCpu"))
     }
 
     @Test

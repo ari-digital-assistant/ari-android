@@ -3,14 +3,31 @@ package dev.heyari.ari.ui.conversation
 import dev.heyari.ari.voice.VoiceState
 
 enum class VoicePhase { Idle, Listening, Thinking, Speaking }
-enum class AmbientState { Idle, Listening, Thinking, Speaking }
+enum class AmbientState {
+    /** Nothing happening and the wake word off. */
+    Idle,
+
+    /**
+     * The wake word is armed and Ari is waiting for it, between turns. Drawn
+     * as a steady glow: a pulse here ran for as long as the screen stayed
+     * open, and on a 120 Hz display it cost a constant half a core
+     * (ari-android#32). The placeholder says that Ari is listening.
+     */
+    Armed,
+    Listening,
+    Thinking,
+    Speaking,
+    ;
+
+    /** Only a turn in progress animates; Idle and Armed hold still. */
+    val animates: Boolean get() = this == Listening || this == Thinking || this == Speaking
+}
 
 /**
- * Precedence: Speaking > Thinking > Listening > Idle.
+ * Precedence: Speaking > Thinking > Listening > Armed > Idle.
  *  - `textThinking`: the typed-path processing flag.
  *  - `wakeArmed`: the "Hey Ari" always-listening switch is ON. When armed (and
- *    not otherwise busy) the field shows the Listening treatment — the switch
- *    being on IS Ari listening, so the border reflects it directly.
+ *    not otherwise busy) the field shows the steady Armed treatment.
  *  - `voicePhase`: momentary voice-capture phase from the pipeline.
  */
 fun deriveAmbientState(
@@ -20,7 +37,8 @@ fun deriveAmbientState(
 ): AmbientState = when {
     voicePhase == VoicePhase.Speaking -> AmbientState.Speaking
     voicePhase == VoicePhase.Thinking || textThinking -> AmbientState.Thinking
-    voicePhase == VoicePhase.Listening || wakeArmed -> AmbientState.Listening
+    voicePhase == VoicePhase.Listening -> AmbientState.Listening
+    wakeArmed -> AmbientState.Armed
     else -> AmbientState.Idle
 }
 

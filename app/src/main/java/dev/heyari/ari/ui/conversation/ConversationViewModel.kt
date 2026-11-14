@@ -38,6 +38,7 @@ import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.stt.SttModelLoader
 import dev.heyari.ari.tts.SpeechOutput
 import dev.heyari.ari.tts.pleaseWaitPhrase
+import dev.heyari.ari.wakeword.WakeWordRegistry
 import dev.heyari.ari.wakeword.WakeWordService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
@@ -238,6 +239,12 @@ class ConversationViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.listeningMode.collect { mode ->
                 _state.update { it.copy(listeningMode = mode) }
+            }
+        }
+
+        viewModelScope.launch {
+            settingsRepository.activeWakeWordId.collect { id ->
+                _state.update { it.copy(wakePhrase = WakeWordRegistry.byId(id).displayName) }
             }
         }
 

@@ -17,9 +17,18 @@ class AmbientStateTest {
     @Test fun thinking_beats_listening() =
         assertEquals(AmbientState.Thinking, deriveAmbientState(VoicePhase.Listening, textThinking = true, wakeArmed = false))
 
-    // Wake-word "listening mode" switch: when armed, the field reflects Listening.
-    @Test fun wake_armed_maps_to_listening() =
-        assertEquals(AmbientState.Listening, deriveAmbientState(VoicePhase.Idle, textThinking = false, wakeArmed = true))
+    // Wake-word "listening mode" switch: armed between turns is the steady
+    // Armed state, not the animated Listening one (ari-android#32).
+    @Test fun wake_armed_maps_to_armed() =
+        assertEquals(AmbientState.Armed, deriveAmbientState(VoicePhase.Idle, textThinking = false, wakeArmed = true))
+    @Test fun a_voice_turn_beats_wake_armed() =
+        assertEquals(AmbientState.Listening, deriveAmbientState(VoicePhase.Listening, textThinking = false, wakeArmed = true))
+    @Test fun only_a_turn_in_progress_animates() {
+        assertEquals(
+            listOf(AmbientState.Listening, AmbientState.Thinking, AmbientState.Speaking),
+            AmbientState.entries.filter { it.animates },
+        )
+    }
     @Test fun thinking_beats_wake_armed() =
         assertEquals(AmbientState.Thinking, deriveAmbientState(VoicePhase.Idle, textThinking = true, wakeArmed = true))
     @Test fun speaking_beats_wake_armed() =

@@ -15,6 +15,7 @@ import dev.heyari.ari.BuildConfig
 import dev.heyari.ari.data.SecretStore
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.data.conversation.ConversationLogRepository
+import dev.heyari.ari.diagnostics.DiagnosticsCollector
 import dev.heyari.ari.stt.UtteranceCaptureStore
 import dev.heyari.ari.wakeword.WakeCaptureStore
 import dev.heyari.ari.wakeword.WakeLog
@@ -82,6 +83,7 @@ class BugReportCollector @Inject constructor(
     private val wakeCaptures: WakeCaptureStore,
     private val utteranceCaptures: UtteranceCaptureStore,
     private val wakeLog: WakeLog,
+    private val diagnostics: DiagnosticsCollector,
 ) {
 
     /**
@@ -109,6 +111,7 @@ class BugReportCollector @Inject constructor(
     suspend fun setupInfo(): SetupInfo = SetupInfo(
         assistant = settings.activeAssistantId.first(),
         model = settings.activeLlmModelId.first(),
+        modelCpu = diagnostics.collect().cpuBuildSummary,
         stt = settings.activeSttModelId.first() ?: settings.cloudSttModel.first().ifBlank { null },
         tts = settings.activeTtsVoice.first(),
         wake = settings.activeWakeWordId.first(),
@@ -122,7 +125,8 @@ class BugReportCollector @Inject constructor(
      * exemption is the other half: most "the wake word just stopped" reports
      * are a doze policy rather than a defect.
      */
-    fun deviceInfo(): DeviceInfo {
+    suspend fun deviceInfo(): DeviceInfo {
+        val facts = diagnostics.collect()
         val memory = ActivityManager.MemoryInfo().also {
             context.getSystemService(ActivityManager::class.java)?.getMemoryInfo(it)
         }
@@ -130,6 +134,8 @@ class BugReportCollector @Inject constructor(
         return DeviceInfo(
             model = "${Build.MANUFACTURER} ${Build.MODEL}",
             androidVersion = Build.VERSION.RELEASE ?: Build.VERSION.SDK_INT.toString(),
+            chip = facts.chip,
+            cpuFeatures = facts.cpuFeatures,
             fingerprint = Build.FINGERPRINT,
             ramFreeMb = (memory.availMem / (1024 * 1024)).toInt().takeIf { memory.availMem > 0 },
             storageFreeMb = (context.filesDir.usableSpace / (1024 * 1024)).toInt(),
@@ -288,8 +294,15 @@ class BugReportCollector @Inject constructor(
             "logcat was not readable on this device"
         }
         val wakes = wakeLog.report(System.currentTimeMillis(), listeningNow = WakeWordService.micHot)
-        LogScrubber(knownSecrets()).scrub(recentExits() + wakes + raw)
+        LogScrubber(knownSecrets()).scrub(deviceHeader() + recentExits() + wakes + raw)
     }
+
+    /**
+     * The device and what Ari runs on it, the debug screen's facts, so a log
+     * read without its report still says which phone and which CPU build.
+     */
+    private suspend fun deviceHeader(): String =
+        "--------- beginning of device\n" + diagnostics.collect().toText() + "\n"
 
     /**
      * Why Ari's last few processes ended, straight from the platform.

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -23,8 +24,14 @@ import androidx.compose.ui.unit.dp
 
 /**
  * Bottom "presence" aura layered behind the composer. Its intensity and breath
- * period follow [state]: a slow faint breath at Idle, a lively pulse while
- * Listening, a medium pulse while Thinking, a quicker rhythm while Speaking.
+ * period follow [state]: a faint steady tint at Idle, a steady glow while
+ * Armed, a lively pulse while Listening, a medium pulse while Thinking, a
+ * quicker rhythm while Speaking.
+ *
+ * The pulse is read only while drawing (see [pulse]), so it repaints the aura
+ * without recomposing anything: read during composition, it rebuilt this
+ * part of the screen every frame, half a core on a 120 Hz phone
+ * (ari-android#32).
  *
  * Reduce-motion aware: when the system animator scale is 0 (Developer Options →
  * "Animator duration scale: off", or accessibility reduce-motion), the aura
@@ -42,22 +49,16 @@ fun AmbientField(state: AmbientState, modifier: Modifier = Modifier) {
     val accent = androidx.compose.material3.MaterialTheme.colorScheme.primary
 
     val (baseAlpha, period) = when (state) {
-        AmbientState.Idle -> 0.10f to 5500
+        AmbientState.Idle -> 0.08f to 0
+        AmbientState.Armed -> 0.20f to 0
         AmbientState.Listening -> 0.26f to 1600
         AmbientState.Thinking -> 0.16f to 2200
         AmbientState.Speaking -> 0.24f to 1100
     }
-    val alpha = if (!motion) baseAlpha else {
-        val t = rememberInfiniteTransition(label = "aura")
-        val v by t.animateFloat(
-            initialValue = baseAlpha * 0.5f, targetValue = baseAlpha,
-            animationSpec = infiniteRepeatable(tween(period, easing = LinearEasing), RepeatMode.Reverse),
-            label = "auraAlpha",
-        )
-        v
-    }
+    val pulse = pulse(motion && state.animates, baseAlpha, period, "aura")
     Box(
         modifier = modifier.fillMaxWidth().height(120.dp).drawBehind {
+            val alpha = pulse?.value ?: baseAlpha
             // An ellipse, not a circle: a circle wide enough to span the screen
             // is still over half lit at the top edge, which draws a hard line
             // across the messages the aura sits behind. Squashing it so the
@@ -92,6 +93,22 @@ fun animationsEnabled(context: android.content.Context): Boolean =
         context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f
     ) != 0f
 
+/**
+ * A breath between half of [peak] and [peak] over [periodMs], or null when
+ * [animate] is off. Returned as a [State] so callers read it inside their
+ * draw lambda, which repaints on each frame without recomposing.
+ */
+@Composable
+private fun pulse(animate: Boolean, peak: Float, periodMs: Int, label: String): State<Float>? {
+    if (!animate) return null
+    return rememberInfiniteTransition(label = label).animateFloat(
+        initialValue = peak * 0.5f,
+        targetValue = peak,
+        animationSpec = infiniteRepeatable(tween(periodMs, easing = LinearEasing), RepeatMode.Reverse),
+        label = "${label}Alpha",
+    )
+}
+
 /** Corner radius of the composer pill; the border is drawn to match it. */
 private val COMPOSER_CORNER = 24.dp
 
@@ -100,6 +117,7 @@ private val COMPOSER_CORNER = 24.dp
  * [AmbientField]'s bottom aura, drawn on the input pill itself:
  *
  *  - **Idle** — a quiet static outline.
+ *  - **Armed**: a steady accent outline, listening for the wake word.
  *  - **Listening** — a bright accent band sweeps across a tinted base, fast.
  *  - **Thinking** — a softer band sweeps across a fainter base, slower.
  *  - **Speaking** — a solid accent stroke whose alpha + width pulse.
@@ -117,7 +135,7 @@ fun Modifier.ambientComposerBorder(state: AmbientState, cornerRadius: Dp = COMPO
     val accent = MaterialTheme.colorScheme.primary
     val outline = MaterialTheme.colorScheme.outline
 
-    if (state == AmbientState.Idle || !motion) {
+    if (!state.animates || !motion) {
         val color = if (state == AmbientState.Idle) outline.copy(alpha = 0.6f)
         else accent.copy(alpha = 0.7f)
         return this.drawBehind {
@@ -133,9 +151,11 @@ fun Modifier.ambientComposerBorder(state: AmbientState, cornerRadius: Dp = COMPO
         AmbientState.Listening -> 1400
         AmbientState.Thinking -> 2000
         AmbientState.Speaking -> 1000
-        AmbientState.Idle -> 1400
+        AmbientState.Idle, AmbientState.Armed -> 1400
     }
     val transition = rememberInfiniteTransition(label = "composerBorder")
+    // Delegated, but only ever read inside drawBehind below: a repaint per
+    // frame, never a recomposition.
     val phase by transition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
@@ -191,22 +211,16 @@ fun Modifier.ambientCardHalo(
     val accent = MaterialTheme.colorScheme.primary
 
     val (baseAlpha, period) = when (state) {
-        AmbientState.Idle -> 0.06f to 5500
+        AmbientState.Idle -> 0.06f to 0
+        AmbientState.Armed -> 0.16f to 0
         AmbientState.Listening -> 0.22f to 1600
         AmbientState.Thinking -> 0.14f to 2200
         AmbientState.Speaking -> 0.20f to 1100
     }
-    val alpha = if (!motion) baseAlpha else {
-        val t = rememberInfiniteTransition(label = "halo")
-        val v by t.animateFloat(
-            initialValue = baseAlpha * 0.5f, targetValue = baseAlpha,
-            animationSpec = infiniteRepeatable(tween(period, easing = LinearEasing), RepeatMode.Reverse),
-            label = "haloAlpha",
-        )
-        v
-    }
+    val pulse = pulse(motion && state.animates, baseAlpha, period, "halo")
 
     return this.drawBehind {
+        val alpha = pulse?.value ?: baseAlpha
         val insetPx = inset.toPx()
         val bleedPx = maxBleed.toPx()
         val cornerPx = cornerRadius.toPx()

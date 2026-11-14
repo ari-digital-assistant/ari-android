@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uniffi.ari_ffi.AriEngine
+import uniffi.ari_ffi.onDeviceCpuInfo
 import uniffi.ari_ffi.AriEngineBuilder
 import uniffi.ari_ffi.AssistantRegistry
 import uniffi.ari_ffi.FfiResponse
@@ -197,6 +198,21 @@ class EngineHolder @Inject constructor(
         val personality = settingsRepository.personality.first()
         engine.setPersonality(personality)
         Log.i(TAG, "conversation length=$conversationLength, personality ${personality.length} chars")
+
+        // Which llama.cpp CPU build the on-device assistant runs on, picked
+        // for this phone's processor (ari-android#32). Asking loads it now,
+        // a few MB, so a phone where none will load says so in the log
+        // before anyone asks the assistant anything.
+        runCatching { onDeviceCpuInfo() }
+            .onSuccess { cpu ->
+                Log.i(
+                    TAG,
+                    "assistant CPU build: ${cpu.build ?: "none loaded"}" +
+                        (cpu.buildDescription?.let { " ($it)" } ?: "") +
+                        "; CPU features: ${cpu.features.joinToString().ifEmpty { "none reported" }}",
+                )
+            }
+            .onFailure { Log.w(TAG, "could not read the assistant CPU build", it) }
 
         // Remembered facts persist across restarts (the engine's fact list is
         // in-memory). Load the durable copy from DataStore before any input is

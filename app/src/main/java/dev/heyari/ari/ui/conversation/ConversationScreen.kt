@@ -394,6 +394,8 @@ fun ConversationScreen(
                     onStop = { viewModel.stopDictation() },
                     isDictating = state.isDictating,
                     micEnabled = state.sttReady,
+                    wakeArmed = state.isListening,
+                    wakePhrase = state.wakePhrase,
                     ambientState = ambient,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)

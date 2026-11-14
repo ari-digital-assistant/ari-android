@@ -301,7 +301,8 @@
     <string name="download_button_with_size">Scarica %1$s</string>
 
     <!-- Conversation screen -->
-    <string name="conversation_input_placeholder">Chiedi qualcosa ad Ari…</string>
+    <string name="conversation_input_placeholder">Ari non è in ascolto. Scrivi la tua richiesta</string>
+    <string name="conversation_input_placeholder_listening">Ari è in ascolto. Di\' «%1$s» o scrivi</string>
     <string name="conversation_open_menu">Apri menu</string>
     <string name="conversation_voice_disabled_body">Le funzioni vocali richiedono il permesso per il microfono e un modello vocale scaricato. Puoi comunque scrivere le richieste qui sotto.</string>
     <string name="conversation_setup_needed_title">Configurazione necessaria</string>
@@ -813,6 +814,25 @@
     <string name="my_reports_footnote">Questo elenco esiste solo su questo telefono. Se disinstalli Ari non potrai più ritirare da qui, e ciò che è ancora conservato viene rimosso automaticamente 90 giorni dopo l\'invio.</string>
     <string name="settings_my_reports_title">Le mie segnalazioni</string>
     <string name="settings_my_reports_blurb">Le segnalazioni che hai inviato da questo telefono. Aprine una su GitHub oppure ritirala.</string>
+    <string name="settings_device_info_title">Questo dispositivo</string>
+    <string name="settings_device_info_copy">Copia</string>
+    <string name="settings_device_info_copied">Dettagli del dispositivo copiati</string>
+    <string name="settings_device_info_loading">Lettura dei dettagli del dispositivo…</string>
+    <string name="settings_device_info_device">Dispositivo</string>
+    <string name="settings_device_info_chip">Chip</string>
+    <string name="settings_device_info_android">Android</string>
+    <string name="settings_device_info_memory">Memoria</string>
+    <string name="settings_device_info_cpu">Processore</string>
+    <string name="settings_device_info_cpu_value">%1$d core, %2$s</string>
+    <string name="settings_device_info_cpu_build">Build CPU dell\'assistente</string>
+    <string name="settings_device_info_cpu_build_none">Nessuna caricata</string>
+    <string name="settings_device_info_cpu_features">Funzioni della CPU</string>
+    <string name="settings_device_info_none">Nessuno</string>
+    <string name="settings_device_info_ari">Ari</string>
+    <string name="settings_device_info_engine">Motore</string>
+    <string name="settings_device_info_assistant">Assistente</string>
+    <string name="settings_device_info_llm">Modello sul dispositivo</string>
+    <string name="settings_device_info_speech">Riconoscimento vocale</string>
     <string name="crash_prompt_title">Ari si è chiuso in modo imprevisto</string>
     <string name="crash_prompt_body">Inviare una segnalazione è il modo più rapido per farlo correggere. Vedrai esattamente cosa viene incluso prima di inviare qualsiasi cosa.</string>
     <string name="crash_prompt_report">Segnala</string>
