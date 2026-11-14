@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -57,11 +58,25 @@ fun AmbientField(state: AmbientState, modifier: Modifier = Modifier) {
     }
     Box(
         modifier = modifier.fillMaxWidth().height(120.dp).drawBehind {
-            drawRect(brush = Brush.radialGradient(
-                colors = listOf(accent.copy(alpha = alpha), Color.Transparent),
-                center = Offset(size.width / 2f, size.height * 1.3f),
-                radius = size.width * 0.9f,
-            ))
+            // An ellipse, not a circle: a circle wide enough to span the screen
+            // is still over half lit at the top edge, which draws a hard line
+            // across the messages the aura sits behind. Squashing it so the
+            // vertical radius ends exactly at the top keeps the width and
+            // fades to nothing by the edge.
+            val center = Offset(size.width / 2f, size.height * 1.3f)
+            val radius = size.height * 1.3f
+            val stretch = size.width * 0.9f / radius
+            scale(scaleX = stretch, scaleY = 1f, pivot = center) {
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(accent.copy(alpha = alpha), Color.Transparent),
+                        center = center,
+                        radius = radius,
+                    ),
+                    topLeft = Offset(center.x - size.width / (2f * stretch), 0f),
+                    size = Size(size.width / stretch, size.height),
+                )
+            }
         }
     )
 }

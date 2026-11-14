@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -53,6 +54,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import dev.heyari.ari.R
@@ -370,10 +372,19 @@ fun ConversationScreen(
                 textThinking = state.isThinking,
                 wakeArmed = state.isListening,
             )
-            Box(modifier = Modifier.fillMaxWidth()) {
+            // The composer alone must set this Box's height. If the taller aura
+            // set it, the list would stop short of the composer by the
+            // difference: nothing with 3-button navigation and the keyboard
+            // closed, but up to 48dp of dead band with gesture navigation or
+            // the keyboard open. So the aura overflows upward instead, and
+            // zIndex draws this Box before the list so the overflow sits
+            // behind the messages.
+            Box(modifier = Modifier.fillMaxWidth().zIndex(-1f)) {
                 AmbientField(
                     state = ambient,
-                    modifier = Modifier.align(Alignment.BottomCenter),
+                    modifier = Modifier
+                        .matchParentSize()
+                        .wrapContentHeight(Alignment.Bottom, unbounded = true),
                 )
                 AriComposer(
                     value = state.inputText,
