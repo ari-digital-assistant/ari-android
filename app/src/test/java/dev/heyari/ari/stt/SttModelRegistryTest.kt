@@ -20,12 +20,30 @@ class SttModelRegistryTest {
         assertEquals(SttModelRegistry.KROKO, SttModelRegistry.onDeviceFor("en_US"))
     }
 
-    @Test fun non_english_gets_whisper_turbo() {
-        // Kroko is English-only, so every other locale must land on the
-        // multilingual model or the user has no on-device option at all.
-        assertEquals(SttModelRegistry.WHISPER_TURBO, SttModelRegistry.onDeviceFor("it"))
-        assertEquals(SttModelRegistry.WHISPER_TURBO, SttModelRegistry.onDeviceFor("mt"))
-        assertEquals(SttModelRegistry.WHISPER_TURBO, SttModelRegistry.onDeviceFor("de-CH"))
+    @Test fun parakeet_languages_get_parakeet_ultra() {
+        assertEquals(SttModelRegistry.PARAKEET_ULTRA, SttModelRegistry.onDeviceFor("it"))
+        assertEquals(SttModelRegistry.PARAKEET_ULTRA, SttModelRegistry.onDeviceFor("mt"))
+        assertEquals(SttModelRegistry.PARAKEET_ULTRA, SttModelRegistry.onDeviceFor("de-CH"))
+    }
+
+    @Test fun other_languages_get_whisper_turbo() {
+        // Kroko is English-only and Parakeet European-only, so every other
+        // locale must land on Whisper or the user has no on-device option.
+        assertEquals(SttModelRegistry.WHISPER_TURBO, SttModelRegistry.onDeviceFor("ja"))
+        assertEquals(SttModelRegistry.WHISPER_TURBO, SttModelRegistry.onDeviceFor("zh-Hans"))
+        assertEquals(SttModelRegistry.WHISPER_TURBO, SttModelRegistry.onDeviceFor(""))
+    }
+
+    @Test fun settings_choices_lead_with_the_recommended_model() {
+        assertEquals(
+            listOf(SttModelRegistry.KROKO, SttModelRegistry.PARAKEET_ULTRA),
+            SttModelRegistry.onDeviceChoicesFor("en-GB"),
+        )
+        assertEquals(
+            listOf(SttModelRegistry.PARAKEET_ULTRA, SttModelRegistry.WHISPER_TURBO),
+            SttModelRegistry.onDeviceChoicesFor("it"),
+        )
+        assertEquals(listOf(SttModelRegistry.WHISPER_TURBO), SttModelRegistry.onDeviceChoicesFor("ja"))
     }
 
     @Test fun retired_model_does_not_resolve() {

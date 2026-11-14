@@ -51,8 +51,8 @@ enum class SttMode {
  * Models are downloaded into [filesDir]/models/<id>/ on demand. Encoder/decoder/joiner
  * filenames are kept distinct so int8 and fp32 variants of the same family can coexist.
  *
- * `joinerFile` is nullable: streaming Zipformer-transducer models (Kroko, Nemotron) have
- * a separate joiner network, while encoder-decoder models (Whisper) do not.
+ * `joinerFile` is nullable: transducer models (Kroko, Parakeet) have a separate joiner
+ * network, while encoder-decoder models (Whisper) do not.
  */
 data class SttModel(
     val id: String,
@@ -97,8 +97,8 @@ object SttModelRegistry {
 
     /**
      * OpenAI's whisper-large-v3-turbo, exported to ONNX and int8-quantised
-     * by csukuangfj. Multilingual (99 languages) — the only on-device option
-     * for non-English speech today.
+     * by csukuangfj. Multilingual (99 languages): the on-device model for the
+     * languages [PARAKEET_ULTRA] does not cover.
      *
      * Encoder-decoder architecture, no joiner. Non-streaming: the full
      * utterance is buffered and decoded in one shot at end-of-speech, so
@@ -121,22 +121,60 @@ object SttModelRegistry {
         manifestUrl = "https://github.com/ari-digital-assistant/ari-tools/releases/download/stt-whisper-turbo-latest/manifest.json",
     )
 
-    val all = listOf(KROKO, WHISPER_TURBO)
+    /**
+     * Moondream's Parakeet Ultra, a further-trained NVIDIA Parakeet TDT 0.6B
+     * v3, exported to ONNX and int8-quantised by csukuangfj. CC-BY-4.0.
+     *
+     * Buffered like Whisper: no partials, one decode at end of speech. On the
+     * November 2026 bench (ari-android#26) it matched Whisper Turbo on Italian
+     * at a ninth of the decode time, and beat Kroko on English accuracy, but
+     * without Kroko's live partials, at nine times the download.
+     */
+    val PARAKEET_ULTRA = SttModel(
+        id = "parakeet-ultra-int8-2026-11",
+        displayNameRes = R.string.model_stt_parakeet_ultra_name,
+        descriptionRes = R.string.model_stt_parakeet_ultra_desc,
+        totalBytes = 670_600_000L,
+        encoderFile = "encoder.int8.onnx",
+        decoderFile = "decoder.int8.onnx",
+        joinerFile = "joiner.int8.onnx",
+        baseUrl = "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-ultra-int8/resolve/main",
+        modelType = "nemo_transducer",
+        manifestUrl = "https://github.com/ari-digital-assistant/ari-tools/releases/download/stt-parakeet-ultra-latest/manifest.json",
+    )
+
+    /** The 25 languages of Parakeet TDT v3, which Ultra is trained from. */
+    private val PARAKEET_LANGUAGES = setOf(
+        "bg", "cs", "da", "de", "el", "en", "es", "et", "fi", "fr", "hr", "hu", "it",
+        "lt", "lv", "mt", "nl", "pl", "pt", "ro", "ru", "sk", "sl", "sv", "uk",
+    )
+
+    val all = listOf(KROKO, PARAKEET_ULTRA, WHISPER_TURBO)
 
     fun byId(id: String?): SttModel? = all.firstOrNull { it.id == id }
 
     /**
-     * The on-device model for [locale]. Users choose between on-device and
-     * cloud, not between architectures — the language decides which local
-     * model can actually serve them, so picking it is our job, not theirs.
+     * The on-device models that can transcribe [locale], recommended first.
+     * Users choose between on-device and cloud; the language decides which
+     * local models can serve them, and the first-run wizard only ever offers
+     * the first. Settings shows them all.
      *
      * [KROKO] is English-only (the `-en-` in its upstream repo name is
-     * literal), so every other locale gets [WHISPER_TURBO], the only
-     * multilingual on-device option. That costs non-English users ~1 GB
-     * instead of 71 MB, which is the price of not forcing them to the cloud.
+     * literal) and stays first for English: it is small and streams.
+     * [PARAKEET_ULTRA] leads for the other languages it covers, and every
+     * remaining language has only [WHISPER_TURBO].
      */
-    fun onDeviceFor(locale: String): SttModel =
-        if (locale.startsWith("en")) KROKO else WHISPER_TURBO
+    fun onDeviceChoicesFor(locale: String): List<SttModel> {
+        val language = locale.lowercase().substringBefore('-').substringBefore('_')
+        return when {
+            language == "en" -> listOf(KROKO, PARAKEET_ULTRA)
+            language in PARAKEET_LANGUAGES -> listOf(PARAKEET_ULTRA, WHISPER_TURBO)
+            else -> listOf(WHISPER_TURBO)
+        }
+    }
+
+    /** The recommended on-device model for [locale]: see [onDeviceChoicesFor]. */
+    fun onDeviceFor(locale: String): SttModel = onDeviceChoicesFor(locale).first()
 
     /**
      * Model ids this build no longer ships. An install whose active id is in

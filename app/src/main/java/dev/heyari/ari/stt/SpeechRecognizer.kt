@@ -8,6 +8,7 @@ import com.k2fsa.sherpa.onnx.FeatureConfig
 import com.k2fsa.sherpa.onnx.OfflineModelConfig
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
+import com.k2fsa.sherpa.onnx.OfflineTransducerModelConfig
 import com.k2fsa.sherpa.onnx.OfflineWhisperModelConfig
 import com.k2fsa.sherpa.onnx.OnlineModelConfig
 import com.k2fsa.sherpa.onnx.OnlineRecognizer
@@ -98,10 +99,10 @@ internal fun shouldEndpoint(
  *   as the user speaks, custom partial-text-stability endpointing, parallel-stream
  *   second opinion. The English path.
  *
- * - **Offline buffered** (Whisper-turbo, encoder-decoder): no partials, endpointing
+ * - **Offline buffered** (Whisper Turbo, Parakeet Ultra): no partials, endpointing
  *   by loudness and the speech detector ([BufferedEndpoint]), full-utterance decode
  *   in one shot at end of speech.
- *   The path for every non-English language.
+ *   The path for every language but English on Kroko.
  *
  * Dispatch on [SttModel.modelType] at [loadModel] time. Callers (VoiceSession,
  * onboarding flow) don't need to know which path is active — both produce the
@@ -268,10 +269,11 @@ class SpeechRecognizer @Inject constructor(
      * Releases any previously loaded model.
      *
      * Dispatch on [SttModel.modelType]: zipformer / zipformer2 → online streaming
-     * recogniser; whisper → offline encoder-decoder recogniser. For whisper the
-     * recogniser is constructed against the user's currently-active locale, and
-     * a locale change between calls forces a reload (whisper bakes the language
-     * into its config — there's no per-decode override).
+     * recogniser; whisper and nemo_transducer → offline recogniser. For whisper
+     * the recogniser is constructed against the user's currently-active locale,
+     * and a locale change between calls forces a reload (whisper bakes the
+     * language into its config, with no per-decode override). Parakeet
+     * finds the language itself.
      */
     fun loadModel(model: SttModel, modelDir: File) {
         // Fast path — no lock contention if the model is already loaded
@@ -295,7 +297,7 @@ class SpeechRecognizer @Inject constructor(
             unload()
 
             when (model.modelType) {
-                "whisper" -> loadOfflineWhisperModel(model, modelDir)
+                "whisper", "nemo_transducer" -> loadOfflineModel(model, modelDir)
                 "zipformer", "zipformer2" -> loadOnlineModel(model, modelDir)
                 else -> throw IllegalArgumentException(
                     "Unknown STT modelType: ${model.modelType} (id=${model.id})",
@@ -306,8 +308,8 @@ class SpeechRecognizer @Inject constructor(
 
     private fun isLoadedWithMatchingConfig(model: SttModel): Boolean {
         if (loadedModelId != model.id || !isModelLoaded) return false
-        // Online transducer models have no per-locale config — id match
-        // is sufficient.
+        // Transducer models have no per-locale config, so an id match
+        // is enough.
         if (model.modelType != "whisper") return true
         // Whisper bakes the language into its recogniser config. A locale
         // change requires a fresh load even when the model id matches.
@@ -381,19 +383,20 @@ class SpeechRecognizer @Inject constructor(
         Log.i(TAG, "Online recogniser warmed in ${System.currentTimeMillis() - warmupStart}ms")
     }
 
-    private fun loadOfflineWhisperModel(model: SttModel, modelDir: File) {
+    private fun loadOfflineModel(model: SttModel, modelDir: File) {
         val encoder = File(modelDir, model.encoderFile)
         val decoder = File(modelDir, model.decoderFile)
+        val joiner = model.joinerFile?.let { File(modelDir, it) }
         val tokens = File(modelDir, model.tokensFile)
 
-        require(encoder.isFile && decoder.isFile && tokens.isFile) {
-            "Whisper model files missing in ${modelDir.absolutePath}"
+        require(encoder.isFile && decoder.isFile && tokens.isFile && joiner?.isFile != false) {
+            "Model files missing in ${modelDir.absolutePath}"
         }
 
         val locale = localeProvider.currentLocale()
-        val config = OfflineRecognizerConfig(
-            featConfig = FeatureConfig(sampleRate = SAMPLE_RATE, featureDim = 80, dither = 0.0f),
-            modelConfig = OfflineModelConfig(
+        val whisper = model.modelType == "whisper"
+        val modelConfig = if (whisper) {
+            OfflineModelConfig(
                 whisper = OfflineWhisperModelConfig(
                     encoder = encoder.absolutePath,
                     decoder = decoder.absolutePath,
@@ -401,22 +404,38 @@ class SpeechRecognizer @Inject constructor(
                     task = "transcribe",
                 ),
                 tokens = tokens.absolutePath,
-                modelType = "whisper",
+                modelType = model.modelType,
                 numThreads = 2,
                 provider = "cpu",
-            ),
+            )
+        } else {
+            OfflineModelConfig(
+                transducer = OfflineTransducerModelConfig(
+                    encoder = encoder.absolutePath,
+                    decoder = decoder.absolutePath,
+                    joiner = requireNotNull(joiner) { "Transducer model ${model.id} has null joinerFile" }.absolutePath,
+                ),
+                tokens = tokens.absolutePath,
+                modelType = model.modelType,
+                numThreads = 2,
+                provider = "cpu",
+            )
+        }
+        val config = OfflineRecognizerConfig(
+            featConfig = FeatureConfig(sampleRate = SAMPLE_RATE, featureDim = 80, dither = 0.0f),
+            modelConfig = modelConfig,
             decodingMethod = "greedy_search",
         )
 
-        Log.i(TAG, "Loading sherpa-onnx whisper model: ${model.id} (lang=$locale)")
+        Log.i(TAG, "Loading sherpa-onnx offline model: ${model.id} (lang=$locale)")
         val loaded = OfflineRecognizer(assetManager = null, config = config)
         offlineRecognizer = loaded
-        offlineLocale = locale
+        offlineLocale = if (whisper) locale else null
         loadedModelId = model.id
-        Log.i(TAG, "Whisper model loaded: ${model.id} (lang=$locale)")
+        Log.i(TAG, "Offline model loaded: ${model.id}")
 
-        // Warm up the recogniser: first whisper decode pays graph init +
-        // tensor arena allocation, ~2-4s on a phone CPU. Burn it here on
+        // Warm up the recogniser: the first decode pays graph init + tensor
+        // arena allocation, ~2-4s on a phone CPU for Whisper. Burn it here on
         // the loading thread rather than on the first user utterance.
         val warmupStart = System.currentTimeMillis()
         val warmupStream = loaded.createStream()
@@ -431,7 +450,7 @@ class SpeechRecognizer @Inject constructor(
         } finally {
             warmupStream.release()
         }
-        Log.i(TAG, "Whisper recogniser warmed in ${System.currentTimeMillis() - warmupStart}ms")
+        Log.i(TAG, "Offline recogniser warmed in ${System.currentTimeMillis() - warmupStart}ms")
     }
 
     fun unload() {
@@ -476,8 +495,8 @@ class SpeechRecognizer @Inject constructor(
             // silently won after the user switched to cloud.
             cloudMode -> startCloudListening(rewindSeconds, giveUpWithoutSpeechMs, limitMs)
             online != null -> startOnlineListening(online, rewindSeconds)
-            offline != null -> startBufferedListening(rewindSeconds, "offline whisper", giveUpWithoutSpeechMs, limitMs) { pcm ->
-                decodeWhisperAndEmit(offline, pcm)
+            offline != null -> startBufferedListening(rewindSeconds, "offline", giveUpWithoutSpeechMs, limitMs) { pcm ->
+                decodeOfflineAndEmit(offline, pcm)
             }
             else -> {
                 Log.e(TAG, "startListening called but no model loaded")
@@ -902,7 +921,7 @@ class SpeechRecognizer @Inject constructor(
         return merged
     }
 
-    private suspend fun decodeWhisperAndEmit(rec: OfflineRecognizer, merged: ShortArray) {
+    private suspend fun decodeOfflineAndEmit(rec: OfflineRecognizer, merged: ShortArray) {
         // Hand-off signal between "we heard you stop talking" and "we
         // have a transcript". Posted before the (CPU-heavy) decode so
         // VoiceSession can flip its overlay to Thinking — otherwise
@@ -927,11 +946,11 @@ class SpeechRecognizer @Inject constructor(
 
         val locale = localeProvider.currentLocale()
         val match = matchWakePhrase(transcript, locale)
-        Log.i(TAG, "Whisper transcript: raw='$transcript' cleaned='${match.text}'")
+        Log.i(TAG, "Offline transcript: raw='$transcript' cleaned='${match.text}'")
 
-        // No parallel stream: whisper has no second decoder to disagree with.
-        // The audio is still carried — not for a retry (whisper already saw the
-        // whole utterance), but so the host can persist it for debug capture.
+        // No parallel stream: an offline model has no second decoder to disagree
+        // with. The audio is still carried, not for a retry (the model already
+        // saw the whole utterance) but so the host can persist it for debug capture.
         _state.value = SttState.Done(
             text = match.text,
             parallel = null,

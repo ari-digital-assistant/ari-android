@@ -623,6 +623,8 @@ internal fun ModelsSection(
         models.forEach { status ->
             ModelRow(
                 status = status,
+                // Only worth saying when there is something to choose between.
+                labelRecommended = status.recommended && models.size > 1,
                 downloadState = downloadState,
                 onDownload = { onDownload(status.model) },
                 onCancel = onCancel,
@@ -636,6 +638,7 @@ internal fun ModelsSection(
 @Composable
 private fun ModelRow(
     status: ModelStatus,
+    labelRecommended: Boolean,
     downloadState: ModelDownloadState,
     onDownload: () -> Unit,
     onCancel: () -> Unit,
@@ -677,8 +680,9 @@ private fun ModelRow(
                     Spacer(Modifier.width(48.dp))
                 }
                 Column(modifier = Modifier.weight(1f)) {
+                    val name = stringResource(status.model.displayNameRes)
                     Text(
-                        text = stringResource(status.model.displayNameRes),
+                        text = if (labelRecommended) stringResource(R.string.settings_stt_model_recommended, name) else name,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
@@ -836,8 +840,9 @@ internal fun LanguageSection(
  * The whole STT choice: on device, or cloud. Shared by the settings page and
  * the onboarding wizard so both offer the same two options in the same words.
  *
- * Which local model backs on-device is not shown, because it is not a choice —
- * the user's language decides it (see [SttModelRegistry.onDeviceFor]).
+ * Which local model backs on-device is not part of it: the user's language
+ * narrows the models down, and [ModelsSection] lists them (see
+ * [SttModelRegistry.onDeviceChoicesFor]).
  */
 @Composable
 internal fun SttModeSection(

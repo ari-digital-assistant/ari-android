@@ -56,8 +56,10 @@ fun SttScreen(
         Spacer(Modifier.height(12.dp))
 
         when (state.sttMode) {
+            // The wizard offers only the recommended model for the language;
+            // the alternatives are in settings.
             SttMode.ON_DEVICE -> ModelsSection(
-                models = state.models,
+                models = state.models.filter { it.recommended },
                 downloadState = state.download,
                 onDownload = settingsViewModel::downloadModel,
                 onCancel = settingsViewModel::cancelDownload,

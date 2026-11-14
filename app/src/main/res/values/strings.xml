@@ -421,7 +421,8 @@
     <string name="settings_utterance_capture_title">Keep command recordings</string>
     <string name="settings_utterance_capture_blurb">Keep a recording of everything you say to Ari, next to every transcript the recogniser produced for it, so mis-hearings can be traced back to the audio. Recordings stay on this device unless you share them below or attach them to a bug report, and are capped at 100 clips.</string>
     <string name="settings_utterance_capture_export_chooser">Export command recordings</string>
-    <string name="settings_stt_models_blurb">The speech model for your language. Downloaded once, then it works offline.</string>
+    <string name="settings_stt_models_blurb">Speech models for your language. Each downloads once, then works offline.</string>
+    <string name="settings_stt_model_recommended">%1$s (recommended)</string>
     <string name="settings_language_blurb">The language Ari listens and speaks in. Changing this updates the assistant\'s replies and the app\'s chrome — you may need to swap your speech-to-text model below if it doesn\'t support the new language.</string>
     <string name="settings_stt_mode_on_device_title">On device</string>
     <string name="settings_stt_mode_on_device_blurb">Transcribes on your phone. Works offline.</string>
@@ -708,6 +709,8 @@
     <string name="model_stt_kroko_desc">71 MB. Works offline.</string>
     <string name="model_stt_whisper_turbo_name">Multilingual speech model</string>
     <string name="model_stt_whisper_turbo_desc">1 GB. Works offline, 99 languages.</string>
+    <string name="model_stt_parakeet_ultra_name">European speech model</string>
+    <string name="model_stt_parakeet_ultra_desc">671 MB. Works offline, 25 European languages. Your words appear once you finish speaking.</string>
     <string name="model_llm_small_name">Small (Gemma 3 1B)</string>
     <string name="model_llm_small_desc">Fast and efficient (~806 MB download, 4 GB+ RAM). Used exclusively for skill routing.</string>
     <string name="model_llm_medium_name">Medium (Gemma 4 E2B)</string>

@@ -74,6 +74,8 @@ data class ModelStatus(
     val model: SttModel,
     val downloaded: Boolean,
     val active: Boolean,
+    /** The model [SttModelRegistry.onDeviceFor] picks for the user's language. */
+    val recommended: Boolean,
 )
 
 data class WakeWordOption(
@@ -771,23 +773,24 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
-     * What the on-device section shows: the model for the user's language,
-     * plus any other model still sitting on disk so they can reclaim the space.
+     * What the on-device section shows: the models that can serve the user's
+     * language, recommended first, plus any other model still sitting on disk
+     * so they can reclaim the space.
      *
-     * Deliberately not the whole registry — the user picks on-device or cloud,
-     * and listing every architecture invites them to choose one they can't use
-     * (Kroko cannot transcribe Italian).
+     * Deliberately not the whole registry: listing every architecture invites
+     * the user to choose one they can't use (Kroko cannot transcribe Italian).
      */
     private fun buildModelList(activeId: String?): List<ModelStatus> {
         val locale = _state.value.activeLocale
-        val forLocale = SttModelRegistry.onDeviceFor(locale)
+        val forLocale = SttModelRegistry.onDeviceChoicesFor(locale)
         val alsoOnDisk = SttModelRegistry.all
-            .filter { it != forLocale && downloadManager.isDownloaded(it) }
-        return (listOf(forLocale) + alsoOnDisk).map { model ->
+            .filter { it !in forLocale && downloadManager.isDownloaded(it) }
+        return (forLocale + alsoOnDisk).map { model ->
             ModelStatus(
                 model = model,
                 downloaded = downloadManager.isDownloaded(model),
                 active = model.id == activeId,
+                recommended = model == forLocale.first(),
             )
         }
     }

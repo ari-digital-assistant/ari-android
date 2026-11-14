@@ -518,7 +518,7 @@ class VoiceSession @Inject constructor(
                 // Streaming path only. The short window measures *silence*, and
                 // only the streaming recogniser gives us silence to measure —
                 // it refreshes lastActivityAt on every non-blank partial. The
-                // offline whisper path (every non-English locale) emits no
+                // buffered path (Whisper, Parakeet) emits no
                 // partials at all between arm and endpoint, so there 8 s would
                 // be a hard cap on the whole utterance and would cut Italian
                 // speakers off mid-sentence. They keep the 30 s window, which
@@ -833,7 +833,7 @@ class VoiceSession @Inject constructor(
         var usedText = text
 
         // --- Layer 2 + 3 retries apply to the online streaming path only ---
-        // The offline whisper path (non-English locales) sees the full
+        // The buffered path (Whisper, Parakeet) sees the full
         // utterance before committing any token, so there's nothing for a
         // parallel decoder or a re-decode to improve. Layer 2 skips itself
         // (whisper emits parallel = null); Layer 3 is gated on isStreaming,

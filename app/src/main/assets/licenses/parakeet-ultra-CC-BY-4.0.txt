@@ -1,0 +1,11 @@
+The European speech model is Parakeet Ultra by Moondream
+(https://huggingface.co/moondream/parakeet-ultra), a further-trained version of
+NVIDIA's Parakeet TDT 0.6B v3 (https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3).
+
+Both are licensed under the Creative Commons Attribution 4.0 International
+licence (CC BY 4.0): https://creativecommons.org/licenses/by/4.0/
+
+Ari downloads the sherpa-onnx project's export of it
+(https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-ultra-int8),
+which is converted to ONNX and quantised to 8 bits. The model is not otherwise
+changed. It is provided as-is, without warranties of any kind.

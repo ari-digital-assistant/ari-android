@@ -420,7 +420,8 @@
     <string name="settings_utterance_capture_title">Conserva le registrazioni dei comandi</string>
     <string name="settings_utterance_capture_blurb">Conserva una registrazione di tutto ciò che dici ad Ari, insieme a ogni trascrizione prodotta dal riconoscimento vocale, per risalire dall\'audio agli errori di comprensione. Le registrazioni restano su questo dispositivo a meno che tu non le condivida qui sotto o le alleghi a una segnalazione di bug, e sono limitate a 100 clip.</string>
     <string name="settings_utterance_capture_export_chooser">Esporta le registrazioni dei comandi</string>
-    <string name="settings_stt_models_blurb">Il modello vocale per la tua lingua. Si scarica una volta, poi funziona offline.</string>
+    <string name="settings_stt_models_blurb">I modelli vocali per la tua lingua. Ognuno si scarica una volta, poi funziona offline.</string>
+    <string name="settings_stt_model_recommended">%1$s (consigliato)</string>
     <string name="settings_language_blurb">La lingua in cui Ari ascolta e parla. Cambiarla aggiorna le risposte dell\'assistente e i testi dell\'app — potresti dover sostituire il modello di riconoscimento vocale qui sotto se non supporta la nuova lingua.</string>
     <string name="settings_stt_mode_on_device_title">Sul dispositivo</string>
     <string name="settings_stt_mode_on_device_blurb">Trascrive sul telefono. Funziona offline.</string>
@@ -700,6 +701,8 @@
     <string name="model_stt_kroko_desc">71 MB. Funziona offline.</string>
     <string name="model_stt_whisper_turbo_name">Modello vocale multilingue</string>
     <string name="model_stt_whisper_turbo_desc">1 GB. Funziona offline, 99 lingue.</string>
+    <string name="model_stt_parakeet_ultra_name">Modello vocale europeo</string>
+    <string name="model_stt_parakeet_ultra_desc">671 MB. Funziona offline, 25 lingue europee. Le tue parole compaiono quando hai finito di parlare.</string>
     <string name="model_llm_small_name">Piccolo (Gemma 3 1B)</string>
     <string name="model_llm_small_desc">Veloce ed efficiente (~806 MB di download, 4 GB+ di RAM). Usato esclusivamente per il routing delle skill.</string>
     <string name="model_llm_medium_name">Medio (Gemma 4 E2B)</string>
