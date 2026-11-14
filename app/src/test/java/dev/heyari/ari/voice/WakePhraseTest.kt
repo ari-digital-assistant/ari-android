@@ -75,6 +75,14 @@ class WakePhraseTest {
     }
 
     @Test
+    fun `kroko's fused hayari is a match`() {
+        // Real wake, 2026-11-14: the streaming quiet wake turned it away unseen.
+        val match = matchWakePhrase("Hayari, why is the sky blue")
+        assertTrue(match.nameMatched)
+        assertEquals("why is the sky blue", match.text)
+    }
+
+    @Test
     fun `a lone R straight after the opener is a match`() {
         // Real capture, 2026-10-10: a genuine wake the old check rejected.
         val match = matchWakePhrase("Hey, R, turn on the kitchen lights.")

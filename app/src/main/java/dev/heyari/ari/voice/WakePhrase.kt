@@ -64,10 +64,13 @@ object WakeMishearTable {
 //      a query with "ok" — accepted cost.
 private val BASE_OPENERS = listOf("hey", "ok", "okay", "hi", "hello")
 // No "re": it matched the tail of every "we're" and "you're", and both false
-// wakes Ari answered in September were exactly that.
+// wakes Ari answered in September were exactly that. "hayari" is Kroko's fused
+// "Hey Ari", 2 of 163 recorded wakes on the November bench; two words, "Hay
+// Ari", already pass on the stray-word allowance, and "hay" stays out of the
+// openers so a command starting "hay fever" keeps its first word.
 private val BASE_NAMES = listOf(
     "ari", "ary", "arie", "arrie", "airy", "harry", "hari", "hairy", "ara",
-    "ori", "orie", "ray", "rae", "jarvis", "jarviz",
+    "ori", "orie", "ray", "rae", "jarvis", "jarviz", "hayari",
 )
 
 // Names too short or too common to trust on their own, accepted only straight
