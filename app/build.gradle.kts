@@ -203,7 +203,7 @@ dependencies {
     ksp(libs.androidx.hilt.compiler)
 
     implementation("net.java.dev.jna:jna:5.17.0@aar")
-    implementation(files("libs/sherpa-onnx-1.12.35.aar"))
+    implementation(files("libs/sherpa-onnx-2.0.1.aar"))
     implementation(libs.richtext.commonmark)
     implementation(libs.richtext.ui.material3)
     implementation(libs.play.services.location)

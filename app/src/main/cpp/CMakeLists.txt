@@ -57,8 +57,8 @@ FetchContent_Declare(
 
 # ONNX Runtime's C API headers, for the openWakeWord engine. Headers only: the
 # runtime is the libonnxruntime.so in sherpa-onnx's AAR (app/libs), loaded when
-# the engine starts, so these must be no newer than that one (1.23.2 in
-# sherpa-onnx 1.12.35). The Linux release is simply the smallest that ships them.
+# the engine starts, so these must be no newer than that one (1.28.2 in
+# sherpa-onnx 2.0.1). The Linux release is simply the smallest that ships them.
 FetchContent_Declare(
     onnxruntime
     URL https://github.com/microsoft/onnxruntime/releases/download/v1.23.2/onnxruntime-linux-x64-1.23.2.tgz
