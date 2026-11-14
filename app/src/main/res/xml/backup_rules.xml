@@ -29,4 +29,12 @@
       Restoring the file alone yields ciphertext nothing can read.
     -->
     <exclude domain="sharedpref" path="ari_secrets.xml" />
+    <!--
+      Downloaded speech and language models (ModelDownloadManager,
+      LlmDownloadManager). Tens of MB to several GB, and every one can be
+      downloaded again from its manifest. Google's cloud backup refuses an app
+      whose data passes 25 MB, so keeping them in would silently stop the
+      backup of everything else.
+    -->
+    <exclude domain="file" path="models/" />
 </full-backup-content>

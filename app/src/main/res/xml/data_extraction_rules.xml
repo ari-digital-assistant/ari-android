@@ -30,6 +30,14 @@
           nothing can read.
         -->
         <exclude domain="sharedpref" path="ari_secrets.xml" />
+        <!--
+          Downloaded speech and language models (ModelDownloadManager,
+          LlmDownloadManager). Tens of MB to several GB, and every one can be
+          downloaded again from its manifest. Google's cloud backup refuses an app
+          whose data passes 25 MB, so keeping them in would silently stop the
+          backup of everything else.
+        -->
+        <exclude domain="file" path="models/" />
     </cloud-backup>
     <device-transfer>
         <!-- Same audio, same promise — and no quota to hide behind here. -->
@@ -40,5 +48,7 @@
         <exclude domain="file" path="wake-samples/" />
         <!-- Same credentials — and the Keystore key doesn't move either. -->
         <exclude domain="sharedpref" path="ari_secrets.xml" />
+        <!-- Models stay in: no quota here, and copying them saves the new
+             phone a multi-GB download. -->
     </device-transfer>
 </data-extraction-rules>
