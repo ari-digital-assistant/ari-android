@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -12,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import dev.heyari.ari.R
+import dev.heyari.ari.ui.settings.SettingsTransferViewModel
 import dev.heyari.ari.ui.settings.SettingsViewModel
 import dev.heyari.ari.ui.settings.components.SettingsScaffold
 
@@ -19,6 +22,7 @@ import dev.heyari.ari.ui.settings.components.SettingsScaffold
 fun GeneralSettingsPage(
     onBack: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
+    transferViewModel: SettingsTransferViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
     SettingsScaffold(
@@ -29,6 +33,7 @@ fun GeneralSettingsPage(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -41,6 +46,7 @@ fun GeneralSettingsPage(
                 enabled = state.startOnBoot,
                 onToggle = viewModel::setStartOnBoot,
             )
+            SettingsBackupSection(viewModel = transferViewModel)
         }
     }
 }

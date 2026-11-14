@@ -29,6 +29,13 @@ Changes since the closed-test beta uploaded to Google Play on 2026-11-13
 - The lock-screen permission in Settings explains how to allow restricted settings when
   Ari was installed from an APK
   ([#24](https://github.com/ari-digital-assistant/ari-android/issues/24)).
+- Settings export and import, in Settings > General and on the first-run wizard's
+  welcome screen: a JSON file carries your settings, listening places and installed
+  skills. Importing installs the skills and downloads the models the settings use, then
+  restarts Ari. API keys and sign-ins are left out
+  ([#33](https://github.com/ari-digital-assistant/ari-android/issues/33)).
+- The home screen reminds you when your listening places need location access, or when
+  your assistant or OpenAI transcription has no API key, with a button to fix it.
 
 ### Changed
 

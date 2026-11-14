@@ -33,6 +33,7 @@ import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.reflect.KClass
 
 private const val ASSISTANT_CONFIG_PREFIX = "assistant_config_"
 private const val CONTRIBUTION_WATERMARK_PREFIX = "contrib_watermark_"
@@ -635,6 +636,40 @@ class SettingsRepository @Inject constructor(
     data class AssistantConfigEntry(val skillId: String, val key: String, val value: String)
 
     /**
+     * Every setting a settings export carries, by stored name, minus the skill
+     * settings named in [secretFields] as (skillId, key). Secrets belong in
+     * [SecretStore], but a build before it wrote some here in plain text.
+     */
+    suspend fun exportedSettings(secretFields: Set<Pair<String, String>>): Map<String, Any> {
+        val secretNames = secretFields.mapTo(HashSet()) { (skillId, key) ->
+            "$ASSISTANT_CONFIG_PREFIX${skillId}_$key"
+        }
+        return context.dataStore.data.first().asMap()
+            .mapKeys { it.key.name }
+            .filter { (name, value) -> exportedType(name)?.isInstance(value) == true && name !in secretNames }
+    }
+
+    /**
+     * Replace every exported setting with [values]. One the file leaves out
+     * goes back to its default, so this phone ends up set up like the one
+     * that wrote the file. A value of the wrong type, or a language this build
+     * doesn't have, is skipped.
+     */
+    suspend fun replaceExportedSettings(values: Map<String, Any>) {
+        context.dataStore.edit { prefs ->
+            prefs.asMap().keys.filter { exportedType(it.name) != null }.forEach { prefs -= it }
+            for ((name, value) in values) {
+                if (exportedType(name)?.isInstance(value) != true) continue
+                if (name == KEY_ACTIVE_LOCALE.name && !SupportedLocales.isSupported(value as String)) continue
+                when (value) {
+                    is Boolean -> prefs[booleanPreferencesKey(name)] = value
+                    is String -> prefs[stringPreferencesKey(name)] = value
+                }
+            }
+        }
+    }
+
+    /**
      * A random id for this installation, minted on first use.
      *
      * Attached to bug reports so several reports from the same tester can be
@@ -929,5 +964,31 @@ class SettingsRepository @Inject constructor(
         private val KEY_LISTENING_SCHEDULES = stringPreferencesKey("listening_schedules")
         private val KEY_LISTENING_PLACES = stringPreferencesKey("listening_places")
         private val KEY_PENDING_LISTENING_SETUP = booleanPreferencesKey("pending_listening_setup")
+
+        // The user's choices, which a settings export carries. Everything else
+        // here belongs to this phone and stays behind: SettingsExportKeysTest
+        // lists it, and fails when a new key is in neither list.
+        private val EXPORTED_STRINGS = listOf(
+            KEY_STT_MODE, KEY_CLOUD_STT_ENDPOINT, KEY_CLOUD_STT_MODEL, KEY_STT_SERVICE,
+            KEY_ACTIVE_STT_MODEL, KEY_ACTIVE_WAKE_WORD, KEY_WAKE_WORD_SENSITIVITY,
+            KEY_ACTIVE_LLM_MODEL, KEY_ACTIVE_ASSISTANT, KEY_ACTIVE_TTS_VOICE, KEY_ACTIVE_LOCALE,
+            KEY_CONVERSATION_LENGTH, KEY_PERSONALITY, KEY_REMEMBERED_FACTS,
+            KEY_LISTENING_MODE, KEY_LISTENING_CONDITIONS, KEY_LISTENING_SCHEDULES, KEY_LISTENING_PLACES,
+        ).mapTo(HashSet()) { it.name }
+        private val EXPORTED_BOOLEANS = listOf(
+            KEY_TUNE_DURING_NORMAL_USE, KEY_WAKE_SPEECH_CHECK, KEY_QUIET_WAKE, KEY_START_ON_BOOT,
+            KEY_KEEP_WAKE_AUDIO, KEY_KEEP_FALSE_TRIGGER_AUDIO, KEY_KEEP_UTTERANCE_AUDIO, KEY_KEEP_EVERYTHING_AUDIO,
+            KEY_SHARE_WAKE_AUDIO, KEY_SHARE_FALSE_TRIGGER_AUDIO, KEY_SHARE_UTTERANCE_AUDIO, KEY_SHARE_EVERYTHING_AUDIO,
+            KEY_BARGE_IN_ENABLED, KEY_CONVERSATION_MEMORY_ENABLED,
+        ).mapTo(HashSet()) { it.name }
+        /** Skill settings, and each wake model's sensitivity (but not its ladder). */
+        private val EXPORTED_STRING_PREFIXES = listOf(ASSISTANT_CONFIG_PREFIX, "${KEY_WAKE_WORD_SENSITIVITY.name}_")
+
+        /** The type of the exported setting stored as [name], or null when it stays on this phone. */
+        internal fun exportedType(name: String): KClass<*>? = when {
+            name in EXPORTED_BOOLEANS -> Boolean::class
+            name in EXPORTED_STRINGS || EXPORTED_STRING_PREFIXES.any { name.startsWith(it) } -> String::class
+            else -> null
+        }
     }
 }

@@ -32,6 +32,10 @@ import dev.heyari.ari.bugreport.CrashRecorder
 import dev.heyari.ari.bugreport.captureWindow
 import dev.heyari.ari.R
 import dev.heyari.ari.data.SettingsRepository
+import dev.heyari.ari.data.restartAri
+import dev.heyari.ari.ui.settings.SettingsTransferViewModel
+import dev.heyari.ari.ui.settings.pages.IMPORT_MIME_TYPES
+import dev.heyari.ari.ui.settings.pages.ImportDialog
 import dev.heyari.ari.ui.settings.AdviceMode
 import dev.heyari.ari.ui.settings.pages.FalseWakeAdvicePage
 import androidx.compose.foundation.layout.Box
@@ -246,6 +250,15 @@ fun AriNavHost(
                 },
                 onOpenListeningSettings = {
                     navController.navigate(Routes.SETTINGS_LISTENING) { launchSingleTop = true }
+                },
+                onOpenListeningPlaces = {
+                    navController.navigate(Routes.SETTINGS_LISTENING_PLACES) { launchSingleTop = true }
+                },
+                onOpenSkillSettings = { id ->
+                    navController.navigate(Routes.skillDetail(id, "installed")) { launchSingleTop = true }
+                },
+                onOpenSpeechSettings = {
+                    navController.navigate(Routes.SETTINGS_STT) { launchSingleTop = true }
                 },
             )
         }
@@ -513,9 +526,27 @@ fun AriNavHost(
             composable(Routes.ONBOARDING_WELCOME) {
                 val graphEntry = remember(it) { navController.getBackStackEntry("onboarding") }
                 val onboardingViewModel: OnboardingViewModel = hiltViewModel(graphEntry)
+                val transferViewModel: SettingsTransferViewModel = hiltViewModel(graphEntry)
+                val importState by transferViewModel.importState.collectAsStateWithLifecycle()
+                val importLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.OpenDocument(),
+                ) { uri -> uri?.let(transferViewModel::import) }
+                // The file made the wizard's choices; permissions are the one
+                // thing it can't carry, so that is where the wizard picks up.
+                ImportDialog(
+                    state = importState,
+                    doneLabel = stringResource(R.string.action_continue),
+                    onDone = {
+                        onboardingViewModel.setImported()
+                        transferViewModel.dismissImport()
+                        navController.navigate(Routes.ONBOARDING_PERMISSIONS)
+                    },
+                    onDismiss = transferViewModel::dismissImport,
+                )
                 WelcomeScreen(
                     onboardingViewModel = onboardingViewModel,
                     onGetStarted = { navController.navigate(Routes.ONBOARDING_PERMISSIONS) },
+                    onImport = { importLauncher.launch(IMPORT_MIME_TYPES) },
                     onSkip = {
                         onboardingViewModel.completeOnboarding()
                         navController.navigate(Routes.CONVERSATION) {
@@ -540,11 +571,17 @@ fun AriNavHost(
                     ActivityResultContracts.RequestPermission()
                 ) { settingsViewModel.refreshPermissions() }
 
+                val imported = onboardingViewModel.state.collectAsStateWithLifecycle().value.imported
+
                 PermissionsScreen(
                     settingsViewModel = settingsViewModel,
                     onboardingViewModel = onboardingViewModel,
-                    onNext = { navController.navigate(Routes.ONBOARDING_WAKE_WORD) },
-                    onNextMicDenied = { navController.navigate(Routes.ONBOARDING_ASSISTANT) },
+                    onNext = {
+                        navController.navigate(if (imported) Routes.ONBOARDING_COMPLETE else Routes.ONBOARDING_WAKE_WORD)
+                    },
+                    onNextMicDenied = {
+                        navController.navigate(if (imported) Routes.ONBOARDING_COMPLETE else Routes.ONBOARDING_ASSISTANT)
+                    },
                     onBack = { navController.popBackStack() },
                     onRequestRecordAudio = {
                         recordAudioLauncher.launch(Manifest.permission.RECORD_AUDIO)
@@ -643,9 +680,13 @@ fun AriNavHost(
                 CompleteScreen(
                     onboardingViewModel = onboardingViewModel,
                     onDone = {
-                        navController.navigate(Routes.CONVERSATION) {
-                            popUpTo("onboarding") { inclusive = true }
-                            launchSingleTop = true
+                        if (onboardingViewModel.state.value.imported) {
+                            restartAri(context)
+                        } else {
+                            navController.navigate(Routes.CONVERSATION) {
+                                popUpTo("onboarding") { inclusive = true }
+                                launchSingleTop = true
+                            }
                         }
                     },
                     onBrowseCloudSkills = {

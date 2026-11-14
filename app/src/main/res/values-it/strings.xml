@@ -203,6 +203,7 @@
     <string name="onboarding_get_started">Inizia</string>
     <string name="onboarding_skip">Salta</string>
     <string name="onboarding_next">Avanti</string>
+    <string name="onboarding_import_settings">Importa le impostazioni da un file</string>
     <string name="onboarding_back">Indietro</string>
     <string name="onboarding_done">Fatto</string>
 
@@ -296,6 +297,7 @@
     <string name="action_open_settings">Apri impostazioni</string>
     <string name="action_later">Più tardi</string>
     <string name="action_continue">Continua</string>
+    <string name="action_ok">OK</string>
     <string name="action_yes">Sì</string>
     <string name="action_no">No</string>
     <string name="download_button_with_size">Scarica %1$s</string>
@@ -312,6 +314,14 @@
     <string name="conversation_listening_setup_title">Completa la configurazione dell\'ascolto</string>
     <string name="conversation_listening_setup_body">Hai scelto un orario o un luogo durante la configurazione ma non ne hai ancora aggiunto uno. Ari non ascolterà secondo quella condizione finché non lo fai.</string>
     <string name="conversation_listening_setup_button">Configura l\'ascolto</string>
+    <string name="conversation_places_location_title">I tuoi luoghi di ascolto richiedono la posizione</string>
+    <string name="conversation_places_location_body">Ari ascolta nei tuoi luoghi, ma senza l\'accesso alla posizione non sa quando ti trovi in uno di essi. Consentilo nella pagina Luoghi.</string>
+    <string name="conversation_places_location_button">Consenti la posizione</string>
+    <string name="conversation_assistant_key_title">%1$s richiede una chiave API</string>
+    <string name="conversation_assistant_key_body">%1$s è il tuo assistente, ma non ha ancora una chiave API, quindi non può risponderti. Aggiungi la chiave nella pagina delle sue impostazioni.</string>
+    <string name="conversation_speech_key_title">Il riconoscimento vocale richiede una chiave</string>
+    <string name="conversation_speech_key_body">Ari trascrive la voce con OpenAI, ma non c\'è ancora una chiave API, quindi non può capire cosa dici.</string>
+    <string name="conversation_add_key_button">Aggiungi la chiave</string>
     <string name="conversation_downloading_header">Scaricamento in background</string>
     <string name="conversation_downloading_stt_model">Modello di riconoscimento vocale</string>
     <string name="conversation_downloading_llm_model">Modello assistente</string>
@@ -457,6 +467,22 @@
     <string name="settings_start_on_boot_blurb">Quando il dispositivo si avvia, Ari inizierà ad ascoltare la parola di attivazione automaticamente. Consuma un po\' più di batteria poiché il microfono resta sempre attivo — lascia disattivato se preferisci avviare Ari manualmente.</string>
     <string name="settings_default_assistant_title">Assistente digitale predefinito</string>
     <string name="settings_default_assistant_blurb">Imposta Ari come assistente digitale predefinito per poterlo richiamare con il gesto di assist (pressione lunga su tasto Home o accensione).</string>
+    <string name="settings_backup_title">Backup delle impostazioni</string>
+    <string name="settings_backup_blurb">Salva in un file le impostazioni e le skill che usi, oppure caricale da un file. Chiavi API e accessi restano esclusi.</string>
+    <string name="settings_backup_export">Esporta</string>
+    <string name="settings_backup_import">Importa</string>
+    <string name="settings_backup_exported">Impostazioni esportate</string>
+    <string name="settings_backup_export_failed">Impossibile salvare il file delle impostazioni</string>
+    <string name="settings_import_working">Importazione delle impostazioni…</string>
+    <string name="settings_import_done_title">Impostazioni importate</string>
+    <string name="settings_import_done_secrets">Chiavi API e accessi non sono nel file. Inseriscili di nuovo nelle impostazioni di ciascuna skill.</string>
+    <string name="settings_import_done_downloads">Scaricamento in background: %1$s</string>
+    <string name="settings_import_done_failed_skills">Queste skill non sono state installate. Riprova da Skill: %1$s</string>
+    <string name="settings_import_restart">Riavvia Ari</string>
+    <string name="settings_import_failed_title">Impossibile importare le impostazioni</string>
+    <string name="settings_import_not_an_export">Quel file non è un\'esportazione delle impostazioni di Ari.</string>
+    <string name="settings_import_from_newer">Quel file viene da una versione più recente di Ari. Aggiorna Ari, poi riprova.</string>
+    <string name="settings_import_unreadable">Impossibile leggere quel file.</string>
     <string name="settings_llm_blurb">Scegli un modello linguistico sul dispositivo. Quando attivo, Ari può rispondere a domande generiche e instradare i comandi mal compresi allo skill giusto. I modelli più grandi danno risposte migliori ma occupano più spazio e RAM.</string>
     <string name="settings_llm_none_title">Nessuno</string>
     <string name="settings_llm_none_blurb">Nessun LLM sul dispositivo. Ari risponde solo tramite skill abbinati.</string>

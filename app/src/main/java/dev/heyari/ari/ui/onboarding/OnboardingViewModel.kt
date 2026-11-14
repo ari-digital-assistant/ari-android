@@ -42,6 +42,12 @@ data class OnboardingState(
      * skipping the STT model picker for non-English users).
      */
     val selectedLocale: String? = null,
+    /**
+     * True once settings came in from an export. The wizard then skips the
+     * screens whose choices the file made, and restarts Ari at the end so
+     * the engine reads them.
+     */
+    val imported: Boolean = false,
 )
 
 enum class AssistantChoice { NONE, ON_DEVICE, CLOUD }
@@ -85,6 +91,10 @@ class OnboardingViewModel @Inject constructor(
 
     fun setSelectedLlmModelId(id: String?) {
         _state.update { it.copy(selectedLlmModelId = id) }
+    }
+
+    fun setImported() {
+        _state.update { it.copy(imported = true) }
     }
 
     /**

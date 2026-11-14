@@ -80,6 +80,10 @@ fun ConversationScreen(
      */
     onOpenAssistantSkills: () -> Unit = {},
     onOpenListeningSettings: () -> Unit = {},
+    onOpenListeningPlaces: () -> Unit = {},
+    /** Opens an installed skill's page, where its settings and keys live. */
+    onOpenSkillSettings: (skillId: String) -> Unit = {},
+    onOpenSpeechSettings: () -> Unit = {},
     viewModel: ConversationViewModel = hiltViewModel(),
     updateBannerViewModel: UpdateBannerViewModel = hiltViewModel(),
 ) {
@@ -229,12 +233,52 @@ fun ConversationScreen(
                 OnboardingCard(onOpenMenu = onOpenMenu)
             }
 
+            // Cloud was picked in the wizard, but no cloud assistant is
+            // installed and active yet. Cleared once any assistant is picked.
             if (state.needsCloudAssistantSetup) {
-                CloudAssistantSetupCard(onOpenSkills = onOpenAssistantSkills)
+                SetupReminderCard(
+                    title = stringResource(R.string.conversation_cloud_setup_title),
+                    body = stringResource(R.string.conversation_cloud_setup_body),
+                    buttonLabel = stringResource(R.string.conversation_cloud_setup_button),
+                    onClick = onOpenAssistantSkills,
+                )
             }
 
+            // Schedule or Places was ticked in the wizard, which has no room
+            // for a time picker or a map, and none has been added yet.
             if (state.needsListeningSetup) {
-                ListeningSetupCard(onOpenListeningSettings = onOpenListeningSettings)
+                SetupReminderCard(
+                    title = stringResource(R.string.conversation_listening_setup_title),
+                    body = stringResource(R.string.conversation_listening_setup_body),
+                    buttonLabel = stringResource(R.string.conversation_listening_setup_button),
+                    onClick = onOpenListeningSettings,
+                )
+            }
+
+            // Grants and keys an import or a restore can't bring with it.
+            if (state.setupGaps.placesNeedLocation) {
+                SetupReminderCard(
+                    title = stringResource(R.string.conversation_places_location_title),
+                    body = stringResource(R.string.conversation_places_location_body),
+                    buttonLabel = stringResource(R.string.conversation_places_location_button),
+                    onClick = onOpenListeningPlaces,
+                )
+            }
+            state.setupGaps.assistantNeedingKey?.let { assistant ->
+                SetupReminderCard(
+                    title = stringResource(R.string.conversation_assistant_key_title, assistant.name),
+                    body = stringResource(R.string.conversation_assistant_key_body, assistant.name),
+                    buttonLabel = stringResource(R.string.conversation_add_key_button),
+                    onClick = { onOpenSkillSettings(assistant.skillId) },
+                )
+            }
+            if (state.setupGaps.speechNeedsKey) {
+                SetupReminderCard(
+                    title = stringResource(R.string.conversation_speech_key_title),
+                    body = stringResource(R.string.conversation_speech_key_body),
+                    buttonLabel = stringResource(R.string.conversation_add_key_button),
+                    onClick = onOpenSpeechSettings,
+                )
             }
 
             UpdateBanners(
@@ -455,18 +499,16 @@ private fun OnboardingCard(onOpenMenu: () -> Unit) {
 }
 
 /**
- * Empty-state hint for users who picked the Cloud assistant option
- * during onboarding but haven't installed and activated a cloud
- * assistant skill yet. Without this nudge they get a "Scusa, non ho
- * capito"-class fallback for any non-skill-matched query and have no
- * signal that the install step is still pending.
- *
- * Cleared automatically (via `selectAssistant`) once the user picks
- * any assistant — the underlying flag in
- * `SettingsRepository.pendingCloudAssistantSetup` flips to `false`.
+ * A warning card for setup that still needs doing, with one button that goes
+ * where it gets done. Each card clears itself once its condition stops holding.
  */
 @Composable
-private fun CloudAssistantSetupCard(onOpenSkills: () -> Unit) {
+private fun SetupReminderCard(
+    title: String,
+    body: String,
+    buttonLabel: String,
+    onClick: () -> Unit,
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -484,21 +526,21 @@ private fun CloudAssistantSetupCard(onOpenSkills: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = stringResource(R.string.conversation_cloud_setup_title),
+                    text = title,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onTertiaryContainer,
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = stringResource(R.string.conversation_cloud_setup_body),
+                text = body,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onTertiaryContainer,
             )
             Spacer(modifier = Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(
-                    onClick = onOpenSkills,
+                    onClick = onClick,
                     // A TextButton defaults its label to `primary`, which has
                     // nothing to do with the tertiary container it sits on —
                     // under dynamic colour that lands pink text on a yellow card.
@@ -506,62 +548,7 @@ private fun CloudAssistantSetupCard(onOpenSkills: () -> Unit) {
                         contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                     ),
                 ) {
-                    Text(stringResource(R.string.conversation_cloud_setup_button))
-                }
-            }
-        }
-    }
-}
-
-/**
- * Reminder for a user who ticked Schedule or Places under Custom listening
- * during onboarding but hasn't configured one yet — the wizard has no room for
- * a time picker or a map, so this is where that setup actually happens.
- * Cleared by [dev.heyari.ari.ui.settings.SettingsViewModel.checkPendingListeningSetup]
- * the moment a schedule or place exists, mirroring [CloudAssistantSetupCard].
- */
-@Composable
-private fun ListeningSetupCard(onOpenListeningSettings: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-        ),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.Warning,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = stringResource(R.string.conversation_listening_setup_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer,
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.conversation_listening_setup_body),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onTertiaryContainer,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(
-                    onClick = onOpenListeningSettings,
-                    // A TextButton defaults its label to `primary`, which has
-                    // nothing to do with the tertiary container it sits on —
-                    // under dynamic colour that lands pink text on a yellow card.
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                    ),
-                ) {
-                    Text(stringResource(R.string.conversation_listening_setup_button))
+                    Text(buttonLabel)
                 }
             }
         }

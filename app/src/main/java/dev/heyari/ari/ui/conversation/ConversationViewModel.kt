@@ -18,6 +18,7 @@ import dev.heyari.ari.actions.AlertVoiceIntercept
 import dev.heyari.ari.actions.CardActionVoiceIntercept
 import dev.heyari.ari.actions.CardAlarmScheduler
 import dev.heyari.ari.data.SettingsRepository
+import dev.heyari.ari.data.SetupGapFinder
 import dev.heyari.ari.listening.ListeningMode
 import dev.heyari.ari.data.conversation.ConversationLogRepository
 import dev.heyari.ari.data.card.Card
@@ -89,6 +90,7 @@ class ConversationViewModel @Inject constructor(
     private val skillRegistry: SkillRegistry,
     private val assistantRegistry: AssistantRegistry,
     private val reportSender: dev.heyari.ari.reporting.ReportSender,
+    private val setupGapFinder: SetupGapFinder,
     private val application: Application,
 ) : ViewModel() {
 
@@ -704,6 +706,11 @@ class ConversationViewModel @Inject constructor(
         // Re-derive the empty state so installing a skill or teaching Ari
         // your name (both possible while we were away) is reflected on return.
         refreshEmptyState()
+        // A key or a location grant added in Settings clears its card on return.
+        viewModelScope.launch {
+            val gaps = setupGapFinder.find()
+            _state.update { it.copy(setupGaps = gaps) }
+        }
     }
 
     /**

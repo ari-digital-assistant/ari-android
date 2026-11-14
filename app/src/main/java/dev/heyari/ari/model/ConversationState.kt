@@ -1,5 +1,6 @@
 package dev.heyari.ari.model
 
+import dev.heyari.ari.data.SetupGaps
 import dev.heyari.ari.listening.ListeningMode
 import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.stt.ModelDownloadState
@@ -43,6 +44,8 @@ data class ConversationState(
      * a schedule or place exists (or the condition is unticked).
      */
     val needsListeningSetup: Boolean = false,
+    /** Grants and keys the settings need that this phone doesn't have. Each drives a reminder card. */
+    val setupGaps: SetupGaps = SetupGaps(),
     /**
      * Transient "still working" signal. Flipped true when processInput
      * blocks past [dev.heyari.ari.ui.conversation.ConversationViewModel]'s

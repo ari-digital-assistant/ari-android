@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -36,6 +37,7 @@ fun WelcomeScreen(
     onboardingViewModel: OnboardingViewModel,
     onGetStarted: () -> Unit,
     onSkip: () -> Unit,
+    onImport: () -> Unit,
     onBack: (() -> Unit)? = null,
 ) {
     val wizardState by onboardingViewModel.state.collectAsStateWithLifecycle()
@@ -95,6 +97,15 @@ fun WelcomeScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.fillMaxWidth(),
         )
+
+        if (!wizardState.isRevisit) {
+            Spacer(Modifier.height(16.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                OutlinedButton(onClick = onImport) {
+                    Text(stringResource(R.string.onboarding_import_settings))
+                }
+            }
+        }
 
         if (BuildConfig.ARI_TESTING) {
             Spacer(Modifier.height(24.dp))
