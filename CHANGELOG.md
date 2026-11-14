@@ -44,6 +44,11 @@ Changes since the closed-test beta uploaded to Google Play on 2026-11-13
   saying "Sorry, I didn't understand that".
 - The on-device assistant works as soon as its model finishes downloading, instead of
   only after Ari restarts.
+- The on-device assistant gives the whole of a list, instead of stopping after its
+  opening line ([#30](https://github.com/ari-digital-assistant/ari-android/issues/30)).
+- Assistant replies, on-device and cloud, no longer show markdown such as `**bold**`;
+  bullets show as "•"
+  ([#30](https://github.com/ari-digital-assistant/ari-android/issues/30)).
 - A wake heard as "Hayari" passes the name check.
 - Switching transcription back to On device keeps the speech model you chose, instead of
   returning to the recommended one.
