@@ -20,6 +20,12 @@ Changes since the closed-test beta uploaded to Google Play on 2026-11-13
 - Phone's speech service: on Android 13 and up, Ari can hand its recording to a speech
   recognition app installed on the phone, such as Marmalade STT, from Settings
   ([#28](https://github.com/ari-digital-assistant/ari-android/issues/28)).
+- Personality, in Settings > Conversation: describe how Ari should talk, and the
+  on-device or cloud assistant answers in that style
+  ([#31](https://github.com/ari-digital-assistant/ari-android/issues/31)).
+- How long Ari remembers, in Settings > Conversation: Short (five exchanges, forgotten
+  after 90 seconds, as before), Medium (ten, 5 minutes) or Long (twenty, 15 minutes)
+  ([#31](https://github.com/ari-digital-assistant/ari-android/issues/31)).
 - The lock-screen permission in Settings explains how to allow restricted settings when
   Ari was installed from an APK
   ([#24](https://github.com/ari-digital-assistant/ari-android/issues/24)).
@@ -46,6 +52,8 @@ Changes since the closed-test beta uploaded to Google Play on 2026-11-13
   only after Ari restarts.
 - The on-device assistant gives the whole of a list, instead of stopping after its
   opening line ([#30](https://github.com/ari-digital-assistant/ari-android/issues/30)).
+- A long conversation no longer makes the on-device assistant fail; it drops the oldest
+  exchanges to make room.
 - Assistant replies, on-device and cloud, no longer show markdown such as `**bold**`;
   bullets show as "•"
   ([#30](https://github.com/ari-digital-assistant/ari-android/issues/30)).

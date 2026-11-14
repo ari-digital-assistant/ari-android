@@ -529,6 +529,27 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    /** How much conversation Ari keeps and for how long. Default [ConversationLength.SHORT]. */
+    val conversationLength: Flow<ConversationLength> = context.dataStore.data.map { prefs ->
+        ConversationLength.fromSlug(prefs[KEY_CONVERSATION_LENGTH])
+    }.distinctUntilChanged()
+
+    suspend fun setConversationLength(length: ConversationLength) {
+        context.dataStore.edit { prefs -> prefs[KEY_CONVERSATION_LENGTH] = length.slug }
+    }
+
+    /**
+     * How the user wants assistant answers to sound, in their own words.
+     * Empty (the default) leaves Ari's own voice.
+     */
+    val personality: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[KEY_PERSONALITY].orEmpty()
+    }.distinctUntilChanged()
+
+    suspend fun setPersonality(personality: String) {
+        context.dataStore.edit { prefs -> prefs[KEY_PERSONALITY] = personality }
+    }
+
     /**
      * Durable personal facts the user explicitly asked Ari to remember. Stored
      * as a JSON array string. Empty when nothing has been remembered.
@@ -893,6 +914,8 @@ class SettingsRepository @Inject constructor(
         private val KEY_BARGE_IN_ENABLED = booleanPreferencesKey("barge_in_enabled")
         private val KEY_CONVERSATION_MEMORY_ENABLED =
             booleanPreferencesKey("conversation_memory_enabled")
+        private val KEY_CONVERSATION_LENGTH = stringPreferencesKey("conversation_length")
+        private val KEY_PERSONALITY = stringPreferencesKey("personality")
         private val KEY_REMEMBERED_FACTS = stringPreferencesKey("remembered_facts")
         private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         private val KEY_INSTALL_ID = stringPreferencesKey("install_id")

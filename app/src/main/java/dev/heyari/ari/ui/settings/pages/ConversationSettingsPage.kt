@@ -9,11 +9,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -23,9 +25,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import dev.heyari.ari.R
+import dev.heyari.ari.data.ConversationLength
+import dev.heyari.ari.data.MAX_PERSONALITY_CHARS
 import dev.heyari.ari.ui.settings.SettingsViewModel
 import dev.heyari.ari.ui.settings.components.SettingsScaffold
 
@@ -72,6 +77,24 @@ fun ConversationSettingsPage(
                     color = MaterialTheme.colorScheme.error,
                 )
             }
+            AnimatedVisibility(visible = state.conversationMemoryEnabled) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.settings_conversation_length_title))
+                    Text(
+                        text = stringResource(R.string.settings_conversation_length_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    ConversationLength.entries.forEach { length ->
+                        ListeningModeCard(
+                            selected = state.conversationLength == length,
+                            title = stringResource(length.titleRes),
+                            blurb = stringResource(length.blurbRes),
+                            onClick = { viewModel.setConversationLength(length) },
+                        )
+                    }
+                }
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -88,6 +111,34 @@ fun ConversationSettingsPage(
                 Switch(
                     checked = state.bargeInEnabled,
                     onCheckedChange = viewModel::setBargeInEnabled,
+                )
+            }
+            HorizontalDivider()
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.settings_personality_title))
+                Text(
+                    text = stringResource(R.string.settings_personality_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = state.personality,
+                    onValueChange = viewModel::setPersonality,
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text(stringResource(R.string.settings_personality_placeholder)) },
+                    supportingText = {
+                        Text(
+                            stringResource(
+                                R.string.settings_personality_count,
+                                state.personality.length,
+                                MAX_PERSONALITY_CHARS,
+                            ),
+                        )
+                    },
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                    minLines = 3,
+                    maxLines = 6,
                 )
             }
             HorizontalDivider()

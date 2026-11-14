@@ -192,6 +192,12 @@ class EngineHolder @Inject constructor(
         engine.setConversationMemoryEnabled(memoryEnabled)
         Log.i(TAG, "conversation memory enabled=$memoryEnabled")
 
+        val conversationLength = settingsRepository.conversationLength.first()
+        engine.setConversationLength(conversationLength.ffi)
+        val personality = settingsRepository.personality.first()
+        engine.setPersonality(personality)
+        Log.i(TAG, "conversation length=$conversationLength, personality ${personality.length} chars")
+
         // Remembered facts persist across restarts (the engine's fact list is
         // in-memory). Load the durable copy from DataStore before any input is
         // processed so an assistant reply can recall them on turn one.

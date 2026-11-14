@@ -17,6 +17,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.heyari.ari.data.ConversationLength
+import dev.heyari.ari.data.MAX_PERSONALITY_CHARS
 import dev.heyari.ari.data.SecretStore
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.di.EngineModule
@@ -54,10 +56,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
@@ -132,6 +136,9 @@ data class SettingsState(
     val startOnBoot: Boolean = false,
     val bargeInEnabled: Boolean = true,
     val conversationMemoryEnabled: Boolean = true,
+    val conversationLength: ConversationLength = ConversationLength.SHORT,
+    /** The personality field as typed; see [SettingsViewModel.setPersonality]. */
+    val personality: String = "",
     val rememberedFacts: List<String> = emptyList(),
     val ttsVoices: List<TtsVoiceOption> = emptyList(),
     val activeTtsVoice: String? = null,
@@ -187,6 +194,7 @@ class SettingsViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
+    private val personalityEdits = MutableStateFlow<String?>(null)
     val state: StateFlow<SettingsState> = _state.asStateFlow()
 
     /** Tracks which LLM model id is currently loaded in the engine, to avoid redundant loads. */
@@ -384,6 +392,28 @@ class SettingsViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
+            settingsRepository.conversationLength.collect { length ->
+                _state.update { it.copy(conversationLength = length) }
+            }
+        }
+
+        // Read once, not collected: the field is the source of truth while
+        // the user types, and a saved value arriving back mid-typing would
+        // overwrite what they typed since.
+        viewModelScope.launch {
+            val saved = settingsRepository.personality.first()
+            _state.update { it.copy(personality = saved) }
+            // One writer, so saves land in the order they were typed.
+            personalityEdits.filterNotNull().collect { text ->
+                // Leaving the page cancels this scope; a save under way finishes.
+                withContext(NonCancellable) {
+                    settingsRepository.setPersonality(text)
+                    engineHolder.engine().setPersonality(text)
+                }
+            }
+        }
+
+        viewModelScope.launch {
             settingsRepository.rememberedFacts.collect { facts ->
                 _state.update { it.copy(rememberedFacts = facts) }
             }
@@ -490,6 +520,20 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.setBargeInEnabled(enabled)
         }
+    }
+
+    fun setConversationLength(length: ConversationLength) {
+        viewModelScope.launch {
+            settingsRepository.setConversationLength(length)
+            engineHolder.engine().setConversationLength(length.ffi)
+        }
+    }
+
+    /** Edits save as they are typed, so leaving the page loses nothing. */
+    fun setPersonality(text: String) {
+        val capped = text.take(MAX_PERSONALITY_CHARS)
+        _state.update { it.copy(personality = capped) }
+        personalityEdits.value = capped
     }
 
     fun setConversationMemoryEnabled(enabled: Boolean) {

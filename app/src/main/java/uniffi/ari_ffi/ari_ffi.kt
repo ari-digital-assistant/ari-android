@@ -986,9 +986,13 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_set_conversation_active(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_set_conversation_length(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_set_conversation_memory_enabled(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_set_installed_apps(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_set_personality(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_set_remembered_facts(
     ): Short
@@ -1182,9 +1186,13 @@ external fun uniffi_ari_ffi_fn_method_ariengine_remembered_facts(`ptr`: Long,uni
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ariengine_set_conversation_active(`ptr`: Long,`active`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+external fun uniffi_ari_ffi_fn_method_ariengine_set_conversation_length(`ptr`: Long,`length`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_set_conversation_memory_enabled(`ptr`: Long,`enabled`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_set_installed_apps(`ptr`: Long,`apps`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ariengine_set_personality(`ptr`: Long,`personality`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_set_remembered_facts(`ptr`: Long,`facts`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
@@ -1557,10 +1565,16 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_conversation_active() != 9093.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_conversation_length() != 6955.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_conversation_memory_enabled() != 38505.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_installed_apps() != 58081.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_personality() != 62102.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_remembered_facts() != 53816.toShort()) {
@@ -2390,6 +2404,13 @@ public interface AriEngineInterface {
     fun `setConversationActive`(`active`: kotlin.Boolean)
     
     /**
+     * How much conversation the engine keeps, and for how long. Mirrors
+     * the Android `conversationLength` setting; hydrated at engine build and
+     * written through when the user changes it.
+     */
+    fun `setConversationLength`(`length`: FfiConversationLength)
+    
+    /**
      * Master switch for conversation memory (cross-turn context + "Let's
      * Talk" mode). Mirrors the Android `conversationMemoryEnabled` setting;
      * hydrated at engine build and written through when the user toggles it.
@@ -2403,6 +2424,13 @@ public interface AriEngineInterface {
      * pushes this at build time and refreshes it on app install/uninstall.
      */
     fun `setInstalledApps`(`apps`: List<FfiAppEntry>)
+    
+    /**
+     * How assistant answers should sound, in the user's words; blank for
+     * Ari's own voice. Mirrors the Android `personality` setting; hydrated
+     * at engine build and written through when the user edits it.
+     */
+    fun `setPersonality`(`personality`: kotlin.String)
     
     /**
      * Replace the engine's durable personal facts. Mirrors the Android
@@ -2739,6 +2767,23 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
 
     
     /**
+     * How much conversation the engine keeps, and for how long. Mirrors
+     * the Android `conversationLength` setting; hydrated at engine build and
+     * written through when the user changes it.
+     */override fun `setConversationLength`(`length`: FfiConversationLength)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_set_conversation_length(
+        it,
+        FfiConverterTypeFfiConversationLength.lower(`length`),_status)
+}
+    }
+    
+    
+
+    
+    /**
      * Master switch for conversation memory (cross-turn context + "Let's
      * Talk" mode). Mirrors the Android `conversationMemoryEnabled` setting;
      * hydrated at engine build and written through when the user toggles it.
@@ -2767,6 +2812,23 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     UniffiLib.uniffi_ari_ffi_fn_method_ariengine_set_installed_apps(
         it,
         FfiConverterSequenceTypeFfiAppEntry.lower(`apps`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * How assistant answers should sound, in the user's words; blank for
+     * Ari's own voice. Mirrors the Android `personality` setting; hydrated
+     * at engine build and written through when the user edits it.
+     */override fun `setPersonality`(`personality`: kotlin.String)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_set_personality(
+        it,
+        FfiConverterString.lower(`personality`),_status)
 }
     }
     
@@ -10369,6 +10431,44 @@ public object FfiConverterTypeFfiTaskRow: FfiConverterRustBuffer<FfiTaskRow> {
             FfiConverterULong.write(value.`listId`, buf)
     }
 }
+
+
+
+/**
+ * The user's conversation-length setting; see [`ConversationLength`].
+ */
+
+enum class FfiConversationLength {
+    
+    SHORT,
+    MEDIUM,
+    LONG;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiConversationLength: FfiConverterRustBuffer<FfiConversationLength> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiConversationLength.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiConversationLength) = 4UL
+
+    override fun write(value: FfiConversationLength, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
 
 
 
