@@ -78,6 +78,15 @@ internal fun wakeNameVerdict(nameHeardEarly: Boolean, nameMatched: Boolean?): Bo
     if (nameHeardEarly) true else nameMatched
 
 /**
+ * Whether a partial shows a quiet wake: it holds the name, or the locale forms
+ * no verdict, where nothing will ever say no and hiding would only lose a real
+ * call. Showing is all it decides; the whole transcript is still judged. The
+ * buffered paths' empty partial never shows one, which keeps their quiet wakes
+ * hidden until the transcript is in.
+ */
+internal fun partialRevealsWake(partial: SttState.Listening): Boolean = partial.nameMatched != false
+
+/**
  * Post-hoc wake verification. The 64 KB detector fires on phonetic shape and
  * saturates its confidence even when it's wrong, so the threshold has no
  * headroom left; sherpa — which is already transcribing the same audio via the
@@ -277,8 +286,8 @@ class VoiceSession @Inject constructor(
 
     // True while a quiet wake runs unseen: no overlay, no chime, and nothing
     // counted towards the false-wake warning, since nobody saw it. Cleared by
-    // reveal() the moment a name check passes, early or on the whole
-    // transcript, or by dismiss().
+    // reveal() the moment a name check passes, early, on a streaming partial or
+    // on the whole transcript, or by dismiss().
     @Volatile
     private var hidden: Boolean = false
 
@@ -329,10 +338,11 @@ class VoiceSession @Inject constructor(
      * the overlay: no overlay and no chime until a name check has passed, so a
      * false wake shows nothing at all. On OpenAI transcription the 2 s ending at
      * the wake are checked at once, on their own, so a real call shows while it
-     * is still being spoken; otherwise the whole transcript is checked. Only a
-     * recogniser that hands over the whole transcript (cloud, Whisper) can be
-     * heard out before anything shows; the streaming one and a cold start open
-     * the overlay at once, as an ordinary wake.
+     * is still being spoken; otherwise the whole transcript is checked. The
+     * streaming recogniser shows the overlay, with the chime, on the first
+     * partial that holds the name, and turns the wake away unseen if none has
+     * by [QUIET_NAME_WAIT_MS]. A cold start opens the overlay at once, as an
+     * ordinary wake.
      */
     fun start(verifyWake: Boolean, quiet: Boolean = false) {
         if (sessionJob?.isActive == true) {
@@ -356,7 +366,7 @@ class VoiceSession @Inject constructor(
         // collector doesn't see Idle and finish itself (the lock-screen race
         // the wake path must avoid): Listening when warm, Preparing when cold.
         val modelLoaded = speechRecognizer.isModelLoaded
-        hidden = quiet && verifyWake && modelLoaded && !speechRecognizer.isStreaming
+        hidden = quiet && verifyWake && modelLoaded
         nameHeardEarly = false
         if (quiet && !hidden) VoiceOverlayLauncher.launch(context, verifyWake = true)
         val waitPhrase = if (modelLoaded) null else pleaseWaitPhrase(context)
@@ -431,6 +441,30 @@ class VoiceSession @Inject constructor(
                             nameHeardEarly = true
                             reveal()
                         }
+                    }
+                }
+
+                // The streaming recogniser asks on every partial instead (see
+                // the Listening branch below), and a wake that has not named
+                // itself in time is turned away unseen. A name heard later could
+                // not pass the check anyway: it only looks at the first words.
+                val armedAt = System.currentTimeMillis()
+                var lastPartial = ""
+                if (hidden && speechRecognizer.isStreaming) {
+                    val generation = armedGeneration
+                    launch {
+                        delay(QUIET_NAME_WAIT_MS)
+                        if (!hidden || !wakeOutcomePending || turnGeneration != generation) return@launch
+                        Log.w(TAG, "Wake rejected: no name within $QUIET_NAME_WAIT_MS ms, partial='$lastPartial'")
+                        val heardSpeech = lastPartial.isNotBlank()
+                        captureFalseTrigger(
+                            wakePreroll,
+                            lastPartial,
+                            if (heardSpeech) dev.heyari.ari.wakeword.WakeCaptureHook.REJECTED
+                            else dev.heyari.ari.wakeword.WakeCaptureHook.SILENT,
+                        )
+                        endWake(if (heardSpeech) WakeOutcome.REJECTED else WakeOutcome.SILENT)
+                        dismiss()
                     }
                 }
 
@@ -512,6 +546,19 @@ class VoiceSession @Inject constructor(
                             is SttState.Listening -> {
                                 if (sttState.partial.isNotBlank()) {
                                     lastActivityAt = System.currentTimeMillis()
+                                }
+                                lastPartial = sttState.partial
+                                if (hidden && partialRevealsWake(sttState)) {
+                                    // Not nameHeardEarly: the whole transcript
+                                    // is this partial with more on the end, so it
+                                    // is the better judge. A partial can end
+                                    // mid-word, "Hey Ari" on the way to "Hey
+                                    // Arianna".
+                                    val slug = if (sttState.nameMatched == true) EarlyNameCheck.PASS.slug
+                                    else EarlyNameCheck.NONE.slug
+                                    wakeLog.earlyNameCheck(slug, System.currentTimeMillis() - armedAt, inTime = true)
+                                    reveal()
+                                    startReadyCue()
                                 }
                                 _state.update { VoiceState.Listening(sttState.partial) }
                             }
@@ -1371,6 +1418,12 @@ class VoiceSession @Inject constructor(
         // television talks on. The longest real command on the test phone took
         // 2.9 s after the wake (2026-10-17).
         private const val QUIET_LISTEN_LIMIT_MS = 6_000L
+        // How long a quiet wake on the streaming recogniser waits for a partial
+        // holding the name. The whole pre-roll, "Hey Ari" in it, is decoded the
+        // moment the listen arms, so a real call names itself in the first
+        // partials; the wake log's early-name lines show how soon. The wait is
+        // also how long the wake word stays off for a false wake nobody sees.
+        private const val QUIET_NAME_WAIT_MS = 3_000L
         // How long a spoken answer stays on the overlay at minimum, for replies
         // short enough that TTS finishes before the user has read them.
         private const val MIN_RESPONSE_DWELL_MS = 3_000L

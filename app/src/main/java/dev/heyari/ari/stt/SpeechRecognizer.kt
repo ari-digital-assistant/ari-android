@@ -17,6 +17,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.R
 import dev.heyari.ari.audio.CaptureBus
 import dev.heyari.ari.locale.AriFfiLocaleProvider
+import dev.heyari.ari.voice.WakeMatch
 import dev.heyari.ari.voice.matchWakePhrase
 import dev.heyari.ari.voice.stripWakePhrase
 import dev.heyari.ari.voice.wakeVerdict
@@ -676,9 +677,7 @@ class SpeechRecognizer @Inject constructor(
                     val partialMatch = matchWakePhrase(rawPartial, locale)
                     val cleanedPartial = partialMatch.text
                     Log.d(TAG, "decode: fed=${merged.size} raw='$rawPartial' cleaned='$cleanedPartial'")
-                    if (cleanedPartial.isNotEmpty()) {
-                        _state.value = SttState.Listening(cleanedPartial)
-                    }
+                    streamingPartial(partialMatch, locale)?.let { _state.value = it }
 
                     if (cleanedPartial != lastCleaned) {
                         lastCleaned = cleanedPartial
@@ -1122,9 +1121,28 @@ internal fun earlyNameCheck(transcript: String, locale: String): EarlyNameCheck 
         null -> EarlyNameCheck.NONE
     }
 
+/**
+ * The streaming recogniser's partial for [match], or null when there is nothing
+ * to show. A partial that is only the name still shows, empty: a quiet wake
+ * reveals itself on the name, and a bare "Hey Ari" has nothing after it.
+ */
+internal fun streamingPartial(match: WakeMatch, locale: String): SttState.Listening? {
+    val nameMatched = wakeVerdict(match, locale)
+    if (match.text.isEmpty() && nameMatched == false) return null
+    return SttState.Listening(match.text, nameMatched)
+}
+
 sealed interface SttState {
     data object Idle : SttState
-    data class Listening(val partial: String) : SttState
+
+    /**
+     * @param partial The transcript so far, wake phrase stripped.
+     * @param nameMatched Whether the partial holds the wake name, decided as
+     *   [Done.nameMatched] is for the whole transcript. Only the streaming
+     *   recogniser has partials to judge; the buffered paths' one empty partial
+     *   holds no name.
+     */
+    data class Listening(val partial: String, val nameMatched: Boolean? = false) : SttState
     /**
      * Offline path only. Emitted between endpoint detection and the
      * whisper decode result. Lets the host flip its UI to a "thinking"

@@ -1,5 +1,6 @@
 package dev.heyari.ari.voice
 
+import dev.heyari.ari.stt.SttState
 import dev.heyari.ari.stt.UtteranceOutcome
 import dev.heyari.ari.stt.UtteranceTurn
 import org.junit.Assert.assertEquals
@@ -120,6 +121,20 @@ class VoiceSessionTest {
         assertTrue(shouldAcceptWake(verifyWake = true, raw = raw, nameMatched = wakeNameVerdict(true, false)))
         assertFalse(shouldAcceptWake(verifyWake = true, raw = raw, nameMatched = wakeNameVerdict(false, false)))
         assertEquals(null, wakeNameVerdict(false, null))
+    }
+
+    @Test
+    fun `a quiet wake shows on a partial with the name, or where no verdict is possible`() {
+        assertTrue(partialRevealsWake(SttState.Listening("what time is it", nameMatched = true)))
+        assertTrue(partialRevealsWake(SttState.Listening("", nameMatched = null)))
+        assertFalse(partialRevealsWake(SttState.Listening("we're going out", nameMatched = false)))
+    }
+
+    @Test
+    fun `the buffered paths' empty partial keeps a quiet wake hidden`() {
+        // Cloud and Whisper emit this once at arm. Were it to show the wake, a
+        // false one would be seen before its transcript was in.
+        assertFalse(partialRevealsWake(SttState.Listening("")))
     }
 
     @Test
