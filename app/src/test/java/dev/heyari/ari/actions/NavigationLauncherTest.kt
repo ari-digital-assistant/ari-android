@@ -21,6 +21,22 @@ class NavigationLauncherTest {
     }
 
     @Test
+    fun saved_home_turn_by_turn_asks_google_for_the_place() {
+        assertEquals(
+            listOf("google.navigation:place=home", "geo:0,0?q=casa"),
+            NavigationLauncher.navUris("casa", "turn_by_turn", "home"),
+        )
+    }
+
+    @Test
+    fun saved_home_in_default_app_searches_the_destination() {
+        assertEquals(
+            listOf("geo:0,0?q=home"),
+            NavigationLauncher.navUris("home", "default_app", "home"),
+        )
+    }
+
+    @Test
     fun null_mode_defaults_to_geo() {
         assertEquals(
             listOf("geo:0,0?q=home"),

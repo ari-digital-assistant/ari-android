@@ -24,6 +24,16 @@ class NavigateActionParseTest {
         val n = parse("""{"v":1,"navigate":{"destination":"asda"}}""")!!.navigate!!
         assertEquals("asda", n.destination)
         assertNull(n.mode)
+        assertNull(n.place)
+    }
+
+    @Test
+    fun parses_saved_place() {
+        val n = parse(
+            """{"v":1,"navigate":{"destination":"casa","mode":"turn_by_turn","place":"home"}}"""
+        )!!.navigate!!
+        assertEquals("casa", n.destination)
+        assertEquals("home", n.place)
     }
 
     @Test

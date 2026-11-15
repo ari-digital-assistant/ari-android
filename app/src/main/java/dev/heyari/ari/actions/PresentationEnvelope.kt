@@ -25,10 +25,14 @@ data class MediaAction(
     val mute: Boolean? = null,
 )
 
-/** A navigation action from the engine. `mode` is "default_app" (or null) / "turn_by_turn". */
+/**
+ * A navigation action from the engine. `mode` is "default_app" (or null) / "turn_by_turn".
+ * [place] is "home" when the destination is the user's saved home, else null.
+ */
 data class NavigateAction(
     val destination: String,
     val mode: String?,
+    val place: String? = null,
 )
 
 /**
@@ -182,6 +186,7 @@ data class PresentationEnvelope(
                             NavigateAction(
                                 destination = dest,
                                 mode = o.optStringOrNull("mode"),
+                                place = o.optStringOrNull("place"),
                             )
                         }
                     },

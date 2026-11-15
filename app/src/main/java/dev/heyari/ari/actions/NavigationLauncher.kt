@@ -27,7 +27,7 @@ class NavigationLauncher @Inject constructor(
 
     fun launch(action: NavigateAction): LaunchResult {
         val encoded = Uri.encode(action.destination)
-        for (uri in navUris(encoded, action.mode)) {
+        for (uri in navUris(encoded, action.mode, action.place)) {
             if (startView(uri)) return LaunchResult.Launched
         }
         return LaunchResult.NoMapsApp
@@ -52,10 +52,15 @@ class NavigationLauncher @Inject constructor(
          * already-URL-encoded destination. `turn_by_turn` starts Google Maps
          * turn-by-turn, falling back to the vendor-neutral `geo:` view if no app
          * handles it; anything else (incl. null) uses `geo:` only.
+         *
+         * A saved [place] ("home") goes to Google Maps as `place=`, which routes
+         * to the address saved in the user's Google account. `geo:` has no such
+         * notion, so the default-app path searches for [encoded] as before.
          */
-        fun navUris(encoded: String, mode: String?): List<String> =
+        fun navUris(encoded: String, mode: String?, place: String? = null): List<String> =
             if (mode == "turn_by_turn") {
-                listOf("google.navigation:q=$encoded", "geo:0,0?q=$encoded")
+                val google = if (place != null) "google.navigation:place=$place" else "google.navigation:q=$encoded"
+                listOf(google, "geo:0,0?q=$encoded")
             } else {
                 listOf("geo:0,0?q=$encoded")
             }

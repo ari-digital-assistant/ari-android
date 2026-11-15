@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- "Take me home" in turn-by-turn mode goes to the home saved in Google Maps when the
+  navigation skill has no Home address set.
+
 ### Fixed
 
 - The chat's "2 minutes ago" labels follow Ari's language rather than the phone's, so an
