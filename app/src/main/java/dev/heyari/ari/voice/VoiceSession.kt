@@ -830,19 +830,17 @@ class VoiceSession @Inject constructor(
         // dispatch. If the engine asks another question, rearm flips it back on.
         awaitingReply = false
 
-        // An on-device answer can arrive a sentence at a time while the model
-        // writes the rest (ari-android#37): Ari starts speaking the first one
-        // straight away and the overlay fills in alongside.
+        // An on-device answer can arrive while the model writes it
+        // (ari-android#37): the overlay shows the words as they come, and Ari
+        // speaks each finished sentence straight away. A dismiss cancels the
+        // turn but the model writes on regardless, hence the isActive checks.
         val reply = speechOutput.Reply()
         val turnJob = currentCoroutineContext()[Job]
-        var shown = ""
-        var response = engineHolder.processInput(text) { sentence ->
-            // A dismiss cancels the turn; the model writes on regardless.
-            if (turnJob?.isActive == false) return@processInput
-            shown += sentence
-            _state.value = VoiceState.Responding(shown)
-            reply.sentence(sentence)
-        }
+        var response = engineHolder.processInput(
+            text,
+            onText = { soFar -> if (turnJob?.isActive != false) _state.value = VoiceState.Responding(soFar) },
+            onSentence = { sentence -> if (turnJob?.isActive != false) reply.sentence(sentence) },
+        )
         var usedText = text
 
         // --- Layer 2 + 3 retries apply to the online streaming path only ---

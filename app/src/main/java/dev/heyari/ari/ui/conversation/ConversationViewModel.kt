@@ -359,23 +359,33 @@ class ConversationViewModel @Inject constructor(
                 speechOutput.speak(pleaseWaitPhrase(application))
             }
 
-            // An on-device answer can arrive a sentence at a time while the
-            // model writes the rest (ari-android#37): each is spoken at once
-            // and fills in the answer's bubble.
+            // An on-device answer can arrive while the model writes it
+            // (ari-android#37): its bubble shows the words as they come, and
+            // each finished sentence is spoken at once. A reset cancels the
+            // turn but the model writes on regardless, hence the isActive checks.
             var answer: Message? = null
+            var spoken = false
             val response = try {
-                engineHolder.processInput(text) { sentence ->
-                    // A reset cancels the turn; the model writes on regardless.
-                    if (!isActive) return@processInput
-                    fillerJob.cancel()
-                    _state.update { it.copy(isThinking = false) }
-                    val previous = answer
-                    val bubble = previous?.copy(text = previous.text + sentence)
-                        ?: Message(text = sentence, isFromUser = false)
-                    if (previous == null) logRepository.append(bubble) else logRepository.replace(bubble)
-                    answer = bubble
-                    speechOutput.speak(sentence)
-                }
+                engineHolder.processInput(
+                    text,
+                    onText = { soFar ->
+                        if (isActive) {
+                            _state.update { it.copy(isThinking = false) }
+                            val previous = answer
+                            val bubble = previous?.copy(text = soFar)
+                                ?: Message(text = soFar, isFromUser = false)
+                            if (previous == null) logRepository.append(bubble) else logRepository.replace(bubble)
+                            answer = bubble
+                        }
+                    },
+                    onSentence = { sentence ->
+                        if (isActive) {
+                            fillerJob.cancel()
+                            spoken = true
+                            speechOutput.speak(sentence)
+                        }
+                    },
+                )
             } finally {
                 fillerJob.cancel()
                 _state.update { it.copy(isThinking = false) }
@@ -418,12 +428,13 @@ class ConversationViewModel @Inject constructor(
                 is FfiResponse.NotUnderstood -> response.body
             }
 
-            // Already spoken a sentence at a time: the bubble just takes the
-            // finished answer.
+            // Already shown as it was written: the bubble takes the finished
+            // answer, which is read out now unless its sentences already were.
             answer?.let {
                 logRepository.replace(
                     it.copy(text = bubbleText ?: responseText, attachments = attachments, skillId = skillId)
                 )
+                if (!spoken && responseText.isNotBlank()) speechOutput.speak(responseText)
                 return@launch
             }
 

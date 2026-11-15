@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Ari starts speaking an on-device assistant answer as soon as its first sentence is
-  ready, instead of waiting for the whole answer. The chat bubble and the voice overlay
-  fill in a sentence at a time
+- On-device assistant answers appear in the chat bubble and the voice overlay word by
+  word as the model writes them, and Ari starts speaking as soon as the first sentence
+  is finished instead of waiting for the whole answer
   ([#37](https://github.com/ari-digital-assistant/ari-android/issues/37)).
 
 ### Fixed

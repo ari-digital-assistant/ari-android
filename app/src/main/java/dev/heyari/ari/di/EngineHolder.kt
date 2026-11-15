@@ -35,7 +35,7 @@ import uniffi.ari_ffi.onDeviceCpuInfo
 import uniffi.ari_ffi.AriEngineBuilder
 import uniffi.ari_ffi.AssistantRegistry
 import uniffi.ari_ffi.FfiResponse
-import uniffi.ari_ffi.FfiSentenceSink
+import uniffi.ari_ffi.FfiAnswerSink
 import uniffi.ari_ffi.SkillSettingsStore
 import java.io.File
 import javax.inject.Inject
@@ -129,17 +129,23 @@ class EngineHolder @Inject constructor(
         withContext(Dispatchers.Default) { engine().processInput(input) }
 
     /**
-     * [processInput], handing an on-device answer to [onSentence] a sentence
-     * at a time while the model is still writing it (ari-android#37). If any
+     * [processInput], handing an on-device answer over while the model is
+     * still writing it (ari-android#37): [onText] gets the words so far, each
+     * call replacing the last, and [onSentence] each finished sentence. If any
      * sentence arrives the whole answer does, before this returns, so the
-     * caller speaks the sentences instead of the response. [onSentence] runs
-     * on the engine's thread with the engine locked: it must not call back in.
+     * caller speaks the sentences instead of the response. Both run on the
+     * engine's thread with the engine locked: they must not call back in.
      */
-    suspend fun processInput(input: String, onSentence: (String) -> Unit): FfiResponse =
+    suspend fun processInput(
+        input: String,
+        onText: (String) -> Unit,
+        onSentence: (String) -> Unit,
+    ): FfiResponse =
         withContext(Dispatchers.Default) {
             engine().processInputStreaming(
                 input,
-                object : FfiSentenceSink {
+                object : FfiAnswerSink {
+                    override fun text(soFar: String) = onText(soFar)
                     override fun sentence(text: String) = onSentence(text)
                 },
             )
