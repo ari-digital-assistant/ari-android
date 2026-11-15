@@ -746,6 +746,15 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    /** The versionCode whose release notes this install has shown or skipped, or 0. */
+    val whatsNewSeenVersion: Flow<Long> = context.dataStore.data.map { prefs ->
+        prefs[KEY_WHATS_NEW_SEEN_VERSION] ?: 0L
+    }.distinctUntilChanged()
+
+    suspend fun setWhatsNewSeenVersion(versionCode: Long) {
+        context.dataStore.edit { prefs -> prefs[KEY_WHATS_NEW_SEEN_VERSION] = versionCode }
+    }
+
     /** The user's chosen TTS voice name, or null for system default. */
     val activeTtsVoice: Flow<String?> = context.dataStore.data.map { prefs ->
         prefs[KEY_ACTIVE_TTS_VOICE]
@@ -953,6 +962,7 @@ class SettingsRepository @Inject constructor(
         private val KEY_PERSONALITY = stringPreferencesKey("personality")
         private val KEY_REMEMBERED_FACTS = stringPreferencesKey("remembered_facts")
         private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
+        private val KEY_WHATS_NEW_SEEN_VERSION = longPreferencesKey("whats_new_seen_version")
         private val KEY_INSTALL_ID = stringPreferencesKey("install_id")
         private val KEY_FILED_REPORTS = stringPreferencesKey("filed_bug_reports")
         private val KEY_FAB_X = floatPreferencesKey("bug_report_fab_x")

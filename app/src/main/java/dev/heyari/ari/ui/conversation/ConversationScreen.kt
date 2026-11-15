@@ -45,6 +45,8 @@ import dev.heyari.ari.listening.ListeningMode
 import dev.heyari.ari.model.ConversationState
 import dev.heyari.ari.ui.components.AriTopBar
 import dev.heyari.ari.ui.components.MicDisclosureDialog
+import dev.heyari.ari.ui.whatsnew.WhatsNewDialog
+import dev.heyari.ari.ui.whatsnew.WhatsNewViewModel
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -86,6 +88,7 @@ fun ConversationScreen(
     onOpenSpeechSettings: () -> Unit = {},
     viewModel: ConversationViewModel = hiltViewModel(),
     updateBannerViewModel: UpdateBannerViewModel = hiltViewModel(),
+    whatsNewViewModel: WhatsNewViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val messages by viewModel.messages.collectAsStateWithLifecycle()
@@ -148,6 +151,11 @@ fun ConversationScreen(
             if (hasAudio) permissionLauncher.launch(needed.toTypedArray())
             else pendingVoicePermissions = needed
         }
+    }
+
+    val showWhatsNew by whatsNewViewModel.show.collectAsStateWithLifecycle()
+    if (showWhatsNew) {
+        WhatsNewDialog(onDismiss = whatsNewViewModel::dismiss)
     }
 
     pendingVoicePermissions?.let { needed ->

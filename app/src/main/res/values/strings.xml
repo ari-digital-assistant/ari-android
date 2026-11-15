@@ -932,4 +932,16 @@
         <item quantity="one">Ari woke up once in the last day when nobody was talking to it.</item>
         <item quantity="other">Ari woke up %1$d times in the last day when nobody was talking to it.</item>
     </plurals>
+
+    <!-- What's new, shown once after an update. %1$s is the version, e.g. 0.1.2.
+         The per-release lines are rewritten each release; see WhatsNew.kt. -->
+    <string name="whats_new_title">What\'s new in Ari %1$s</string>
+    <string name="whats_new_dismiss">Got it</string>
+    <string name="whats_new_skill_updates">Some of this comes as skill updates. Install them from the banner on the home screen when it appears.</string>
+    <string name="whats_new_0_1_2_italian_title">Better Italian</string>
+    <string name="whats_new_0_1_2_italian_body">Timers work in Italian, music understands many more ways of asking, and the chat\'s “2 minutes ago” follows Ari\'s language.</string>
+    <string name="whats_new_0_1_2_directions_title">Easier directions</string>
+    <string name="whats_new_0_1_2_directions_body">Ask for directions in many more ways, like “I want to go to Rome” or “start navigation to the station”.</string>
+    <string name="whats_new_0_1_2_home_title">Take me home</string>
+    <string name="whats_new_0_1_2_home_body">Add your home address in the Navigation skill\'s settings. Without one, turn-by-turn uses the home saved in Google Maps.</string>
 </resources>

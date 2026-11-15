@@ -24,6 +24,8 @@ class SettingsExportKeysTest {
         "onboarding_completed", "pending_cloud_assistant_setup", "pending_listening_setup",
         // Depends on how this phone runs Play Services.
         "place_fence_source",
+        // Which release notes this install has already shown.
+        "whats_new_seen_version",
     )
 
     private val declaredKeys: List<String> =
