@@ -15,7 +15,6 @@ Changes since 0.1.1, uploaded to Google Play internal testing as versionCode 3.
 
 - What's new: the first launch after an update shows a short list of what changed in
   this release, once. Testers no longer need an email for each new build.
-
 - "Take me home" in turn-by-turn mode goes to the home saved in Google Maps when the
   navigation skill has no Home address set.
 
