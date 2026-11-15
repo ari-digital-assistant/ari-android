@@ -2,6 +2,11 @@ package dev.heyari.ari.ui.conversation
 
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.icu.text.DateFormat
+import android.icu.text.DisplayContext
+import android.icu.text.RelativeDateTimeFormatter
+import android.icu.util.ULocale
+import android.text.format.DateUtils
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -36,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -45,6 +51,7 @@ import dev.heyari.ari.data.card.CardAction
 import dev.heyari.ari.data.card.CardStateRepository
 import dev.heyari.ari.model.Attachment
 import dev.heyari.ari.model.Message
+import java.util.Date
 
 private val BIG = 18.dp
 private val TAIL = 4.dp
@@ -201,20 +208,50 @@ fun MessageBubble(
 
 /**
  * Quiet relative-time label for the group divider. Under a minute reads as a
- * plain "now" (DateUtils would say the clunky "0 minutes ago"); beyond that
- * [android.text.format.DateUtils] gives a localised "5 minutes ago" etc.
+ * plain "now" (ICU would say the clunky "0 minutes ago"); beyond that ICU gives
+ * a localised "5 minutes ago", "Yesterday", "3 days ago", and a date past a week.
+ *
+ * Not [android.text.format.DateUtils]: it formats in the phone's language, so
+ * an Italian Ari on an English phone read "2 minutes ago" (ari-android#35).
+ * [LocalLocale] carries the per-app locale.
  */
 @Composable
 private fun formatTimestamp(ts: Long): String {
-    val now = System.currentTimeMillis()
-    return if (now - ts < android.text.format.DateUtils.MINUTE_IN_MILLIS) {
-        stringResource(R.string.conversation_timestamp_now)
-    } else {
-        android.text.format.DateUtils.getRelativeTimeSpanString(
-            ts,
-            now,
-            android.text.format.DateUtils.MINUTE_IN_MILLIS,
-        ).toString()
+    val elapsed = System.currentTimeMillis() - ts
+    if (elapsed < DateUtils.MINUTE_IN_MILLIS) {
+        return stringResource(R.string.conversation_timestamp_now)
+    }
+    val locale = ULocale.forLocale(LocalLocale.current.platformLocale)
+    val relative = remember(locale) {
+        RelativeDateTimeFormatter.getInstance(
+            locale,
+            null,
+            RelativeDateTimeFormatter.Style.LONG,
+            DisplayContext.CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE,
+        )
+    }
+    val days = elapsed / DateUtils.DAY_IN_MILLIS
+    return when {
+        elapsed < DateUtils.HOUR_IN_MILLIS -> relative.format(
+            (elapsed / DateUtils.MINUTE_IN_MILLIS).toDouble(),
+            RelativeDateTimeFormatter.Direction.LAST,
+            RelativeDateTimeFormatter.RelativeUnit.MINUTES,
+        )
+        elapsed < DateUtils.DAY_IN_MILLIS -> relative.format(
+            (elapsed / DateUtils.HOUR_IN_MILLIS).toDouble(),
+            RelativeDateTimeFormatter.Direction.LAST,
+            RelativeDateTimeFormatter.RelativeUnit.HOURS,
+        )
+        days == 1L -> relative.format(
+            RelativeDateTimeFormatter.Direction.LAST,
+            RelativeDateTimeFormatter.AbsoluteUnit.DAY,
+        )
+        days < 7 -> relative.format(
+            days.toDouble(),
+            RelativeDateTimeFormatter.Direction.LAST,
+            RelativeDateTimeFormatter.RelativeUnit.DAYS,
+        )
+        else -> DateFormat.getInstanceForSkeleton(DateFormat.ABBR_MONTH_DAY, locale).format(Date(ts))
     }
 }
 

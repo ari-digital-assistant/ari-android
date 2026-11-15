@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The chat's "2 minutes ago" labels follow Ari's language rather than the phone's, so an
+  Italian Ari on an English phone says "2 minuti fa"
+  ([#35](https://github.com/ari-digital-assistant/ari-android/issues/35)).
+
 ## [0.1.1] - 2026-11-14
 
 Changes since 0.1.0, the closed-test beta uploaded to Google Play on 2026-11-13
