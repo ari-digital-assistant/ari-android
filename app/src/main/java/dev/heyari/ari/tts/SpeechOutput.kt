@@ -147,17 +147,57 @@ class SpeechOutput(
         // silent, and speaking its empty reply here killed the phase-2 answer
         // the conversation viewmodel had just queued.
         if (text.isBlank()) return
+        awaitUtterance(queue(text, TextToSpeech.QUEUE_FLUSH), text.length)
+    }
+
+    /**
+     * A reply for the voice session, which may arrive a sentence at a time
+     * while the engine is still writing it (ari-android#37). The first
+     * sentence cuts off whatever is playing, as [speakAndAwait] does; the
+     * rest queue behind it.
+     */
+    inner class Reply {
+        private var lastId: String? = null
+        private var queuedChars = 0
+
+        fun sentence(text: String) {
+            if (!ready) {
+                Log.w(TAG, "TTS not ready, dropping: $text")
+                return
+            }
+            val mode = if (lastId == null) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
+            lastId = queue(text, mode)
+            queuedChars += text.length
+        }
+
+        /**
+         * Wait for the last sentence to finish, or, for a reply that didn't
+         * come a sentence at a time, [speakAndAwait] the whole [text].
+         */
+        suspend fun speakAndAwait(text: String) {
+            val id = lastId ?: return this@SpeechOutput.speakAndAwait(text)
+            awaitUtterance(id, queuedChars)
+        }
+    }
+
+    /** Hand [text] to the engine under a fresh id [awaitUtterance] can wait on. */
+    private fun queue(text: String, mode: Int): String {
         val id = "ari-${utteranceId.incrementAndGet()}"
-        val done = CompletableDeferred<Unit>()
-        pendingDone[id] = done
-        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, id)
+        pendingDone[id] = CompletableDeferred()
+        tts.speak(text, mode, null, id)
+        return id
+    }
+
+    private suspend fun awaitUtterance(id: String, chars: Int) {
+        // Gone already: it finished before anyone waited.
+        val done = pendingDone[id] ?: return
         // Last resort for an engine that goes silent on us — roughly twice
         // how long the text takes to read at the default rate. The ceiling is
         // deliberately far beyond any real reply: callers treat a timeout as
         // "finished speaking", so a tight cap cuts a long answer off mid-word
         // rather than protecting anything. Cancellation, not this, is what ends
         // an utterance early.
-        val maxMs = (text.length * 120L).coerceIn(4_000L, 120_000L)
+        val maxMs = (chars * 120L).coerceIn(4_000L, 120_000L)
         if (withTimeoutOrNull(maxMs) { done.await() } == null) {
             Log.w(TAG, "speakAndAwait timed out after ${maxMs}ms for id=$id")
         }

@@ -33,6 +33,15 @@ class ConversationLogRepository @Inject constructor() {
         _messages.update { it + message }
     }
 
+    /**
+     * Put [message] in place of the logged message with the same id, as an
+     * answer's bubble fills in a sentence at a time. Nothing happens if it
+     * has gone, cleared by a reset mid-answer.
+     */
+    fun replace(message: Message) {
+        _messages.update { list -> list.map { if (it.id == message.id) message else it } }
+    }
+
     fun clear() {
         _messages.update { emptyList() }
     }

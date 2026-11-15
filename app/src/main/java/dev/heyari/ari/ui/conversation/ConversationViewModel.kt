@@ -359,8 +359,23 @@ class ConversationViewModel @Inject constructor(
                 speechOutput.speak(pleaseWaitPhrase(application))
             }
 
+            // An on-device answer can arrive a sentence at a time while the
+            // model writes the rest (ari-android#37): each is spoken at once
+            // and fills in the answer's bubble.
+            var answer: Message? = null
             val response = try {
-                engineHolder.processInput(text)
+                engineHolder.processInput(text) { sentence ->
+                    // A reset cancels the turn; the model writes on regardless.
+                    if (!isActive) return@processInput
+                    fillerJob.cancel()
+                    _state.update { it.copy(isThinking = false) }
+                    val previous = answer
+                    val bubble = previous?.copy(text = previous.text + sentence)
+                        ?: Message(text = sentence, isFromUser = false)
+                    if (previous == null) logRepository.append(bubble) else logRepository.replace(bubble)
+                    answer = bubble
+                    speechOutput.speak(sentence)
+                }
             } finally {
                 fillerJob.cancel()
                 _state.update { it.copy(isThinking = false) }
@@ -401,6 +416,15 @@ class ConversationViewModel @Inject constructor(
                 // Text-input path: no STT to retry, so NotUnderstood is just
                 // the apology body as-is.
                 is FfiResponse.NotUnderstood -> response.body
+            }
+
+            // Already spoken a sentence at a time: the bubble just takes the
+            // finished answer.
+            answer?.let {
+                logRepository.replace(
+                    it.copy(text = bubbleText ?: responseText, attachments = attachments, skillId = skillId)
+                )
+                return@launch
             }
 
             // Skip rendering an empty bubble. Layer C phase-1 envelopes

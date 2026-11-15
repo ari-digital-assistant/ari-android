@@ -27,6 +27,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -829,7 +830,19 @@ class VoiceSession @Inject constructor(
         // dispatch. If the engine asks another question, rearm flips it back on.
         awaitingReply = false
 
-        var response = engineHolder.processInput(text)
+        // An on-device answer can arrive a sentence at a time while the model
+        // writes the rest (ari-android#37): Ari starts speaking the first one
+        // straight away and the overlay fills in alongside.
+        val reply = speechOutput.Reply()
+        val turnJob = currentCoroutineContext()[Job]
+        var shown = ""
+        var response = engineHolder.processInput(text) { sentence ->
+            // A dismiss cancels the turn; the model writes on regardless.
+            if (turnJob?.isActive == false) return@processInput
+            shown += sentence
+            _state.value = VoiceState.Responding(shown)
+            reply.sentence(sentence)
+        }
         var usedText = text
 
         // --- Layer 2 + 3 retries apply to the online streaming path only ---
@@ -959,7 +972,7 @@ class VoiceSession @Inject constructor(
 
         if (exit) {
             // Speak the ack, then leave the mode and close the session.
-            speechOutput.speakAndAwait(responseText)
+            reply.speakAndAwait(responseText)
             talkMode = false
             bargeInActive = false
             _captureMode.value = CaptureMode.NORMAL
@@ -1001,7 +1014,7 @@ class VoiceSession @Inject constructor(
             // a superseded/cancelled job must not touch its successor's state.
             val thisJob = scope.launch {
                 try {
-                    speechOutput.speakAndAwait(responseText)
+                    reply.speakAndAwait(responseText)
                 } finally {
                     if (ownsSpeakingFlag(currentJob = ttsJob, thisJob = coroutineContext[Job])) {
                         speaking = false
@@ -1018,10 +1031,10 @@ class VoiceSession @Inject constructor(
             // otherwise ingest the tail of Ari's own prompt and it would answer
             // its own question ("…to use, Apple Music"). rearmForReply() then
             // opens the mic with zero rewind for the same reason.
-            speechOutput.speakAndAwait(responseText)
+            reply.speakAndAwait(responseText)
             rearmForReply()
         } else {
-            speakThenDismiss(responseText)
+            speakThenDismiss(responseText, reply)
         }
     }
 
@@ -1031,10 +1044,11 @@ class VoiceSession @Inject constructor(
      * Waits on the utterance itself rather than guessing its length from the
      * character count: [dismiss] stops the TTS engine, so a reply that outran
      * the guess — a full forecast easily does — got its last few words cut off.
+     * An answer [reply] already started a sentence at a time is waited out.
      */
-    private suspend fun speakThenDismiss(text: String) {
+    private suspend fun speakThenDismiss(text: String, reply: SpeechOutput.Reply = speechOutput.Reply()) {
         val spokenFrom = System.currentTimeMillis()
-        speechOutput.speakAndAwait(text)
+        reply.speakAndAwait(text)
         // A floor, not a ceiling: "Yes" is spoken and done inside a second, and
         // the overlay would blink out before anyone could read it.
         delay(MIN_RESPONSE_DWELL_MS - (System.currentTimeMillis() - spokenFrom))

@@ -35,6 +35,7 @@ import uniffi.ari_ffi.onDeviceCpuInfo
 import uniffi.ari_ffi.AriEngineBuilder
 import uniffi.ari_ffi.AssistantRegistry
 import uniffi.ari_ffi.FfiResponse
+import uniffi.ari_ffi.FfiSentenceSink
 import uniffi.ari_ffi.SkillSettingsStore
 import java.io.File
 import javax.inject.Inject
@@ -126,6 +127,23 @@ class EngineHolder @Inject constructor(
      */
     suspend fun processInput(input: String): FfiResponse =
         withContext(Dispatchers.Default) { engine().processInput(input) }
+
+    /**
+     * [processInput], handing an on-device answer to [onSentence] a sentence
+     * at a time while the model is still writing it (ari-android#37). If any
+     * sentence arrives the whole answer does, before this returns, so the
+     * caller speaks the sentences instead of the response. [onSentence] runs
+     * on the engine's thread with the engine locked: it must not call back in.
+     */
+    suspend fun processInput(input: String, onSentence: (String) -> Unit): FfiResponse =
+        withContext(Dispatchers.Default) {
+            engine().processInputStreaming(
+                input,
+                object : FfiSentenceSink {
+                    override fun sentence(text: String) = onSentence(text)
+                },
+            )
+        }
 
     /** Start the background build without waiting. Call once at app start. */
     fun warmUp() {

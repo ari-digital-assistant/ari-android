@@ -37,6 +37,32 @@ class ConversationLogRepositoryTest {
     }
 
     @Test
+    fun `replace swaps the message with the same id in place`() {
+        val repo = ConversationLogRepository()
+        val user = Message(text = "top two footballers", isFromUser = true)
+        val answer = Message(text = "Top two:", isFromUser = false)
+        repo.append(user)
+        repo.append(answer)
+
+        val filled = answer.copy(text = "Top two:\n• Lionel Messi: Argentina.")
+        repo.replace(filled)
+
+        assertEquals(listOf(user, filled), repo.messages.value)
+    }
+
+    @Test
+    fun `replace after a clear adds nothing back`() {
+        val repo = ConversationLogRepository()
+        val answer = Message(text = "Top two:", isFromUser = false)
+        repo.append(answer)
+        repo.clear()
+
+        repo.replace(answer.copy(text = "Top two:\n• Lionel Messi: Argentina."))
+
+        assertEquals(emptyList<Message>(), repo.messages.value)
+    }
+
+    @Test
     fun `concurrent appends all land`() = runBlocking {
         val repo = ConversationLogRepository()
 
