@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The medium and large on-device models answer questions like "top 5 footballers"
+  instead of saying they can't reach live information, and a question about several
+  things gets an answer for every one of them
+  ([#37](https://github.com/ari-digital-assistant/ari-android/issues/37),
+  [#38](https://github.com/ari-digital-assistant/ari-android/issues/38)).
 - A model download that gets interrupted now resumes where it stopped. A slow download
   of the medium or large model used to start again from zero every ten minutes and
   never finish. It now shows its progress in a notification, and Settings says when
