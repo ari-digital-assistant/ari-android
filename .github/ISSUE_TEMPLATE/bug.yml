@@ -29,7 +29,7 @@ body:
     attributes:
       label: Ari version
       description: Settings › About, or the version on the release you installed.
-      placeholder: "0.1.2"
+      placeholder: "0.1.3"
     validations:
       required: true
 

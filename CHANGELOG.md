@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-11-15
+
+Changes since 0.1.2.
+
 ### Added
 
 - On-device assistant answers appear in the chat bubble and the voice overlay word by
