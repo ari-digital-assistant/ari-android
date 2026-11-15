@@ -927,10 +927,10 @@
     <string name="whats_new_title">Novità di Ari %1$s</string>
     <string name="whats_new_dismiss">Ho capito</string>
     <string name="whats_new_skill_updates">Alcune novità arrivano come aggiornamenti delle skill. Installali dal banner nella schermata principale quando compare.</string>
-    <string name="whats_new_0_1_2_italian_title">Italiano migliore</string>
-    <string name="whats_new_0_1_2_italian_body">I timer funzionano in italiano, la musica capisce molti più modi di chiedere e nella chat compare «2 minuti fa» anche su un telefono in inglese.</string>
-    <string name="whats_new_0_1_2_directions_title">Indicazioni più facili</string>
-    <string name="whats_new_0_1_2_directions_body">Chiedi indicazioni in molti più modi, come «voglio andare a Roma» o «avvia il navigatore per la stazione».</string>
-    <string name="whats_new_0_1_2_home_title">Portami a casa</string>
-    <string name="whats_new_0_1_2_home_body">Aggiungi l\'indirizzo di casa nelle impostazioni della skill Navigazione. Senza indirizzo, la navigazione passo-passo usa la casa salvata in Google Maps.</string>
+    <string name="whats_new_0_1_3_streaming_title">Risposte mentre vengono scritte</string>
+    <string name="whats_new_0_1_3_streaming_body">Le parole di una risposta sul dispositivo compaiono man mano che il modello le scrive, e Ari inizia a parlare dopo la prima frase invece di aspettare tutta la risposta.</string>
+    <string name="whats_new_0_1_3_answers_title">Risposte migliori</string>
+    <string name="whats_new_0_1_3_answers_body">I modelli medio e grande rispondono a domande come «i 5 animali più veloci» invece di dire che non possono, e rispondono a ogni parte di una domanda su più cose.</string>
+    <string name="whats_new_0_1_3_downloads_title">Download che riprendono</string>
+    <string name="whats_new_0_1_3_downloads_body">Se il download del modello medio o grande si interrompe, riprende da dove si era fermato, con l\'avanzamento in una notifica.</string>
 </resources>

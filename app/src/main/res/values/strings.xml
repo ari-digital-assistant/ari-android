@@ -943,10 +943,10 @@
     <string name="whats_new_title">What\'s new in Ari %1$s</string>
     <string name="whats_new_dismiss">Got it</string>
     <string name="whats_new_skill_updates">Some of this comes as skill updates. Install them from the banner on the home screen when it appears.</string>
-    <string name="whats_new_0_1_2_italian_title">Better Italian</string>
-    <string name="whats_new_0_1_2_italian_body">Timers work in Italian, music understands many more ways of asking, and the chat\'s “2 minutes ago” follows Ari\'s language.</string>
-    <string name="whats_new_0_1_2_directions_title">Easier directions</string>
-    <string name="whats_new_0_1_2_directions_body">Ask for directions in many more ways, like “I want to go to Rome” or “start navigation to the station”.</string>
-    <string name="whats_new_0_1_2_home_title">Take me home</string>
-    <string name="whats_new_0_1_2_home_body">Add your home address in the Navigation skill\'s settings. Without one, turn-by-turn uses the home saved in Google Maps.</string>
+    <string name="whats_new_0_1_3_streaming_title">Answers as they\'re written</string>
+    <string name="whats_new_0_1_3_streaming_body">The words of an on-device answer appear as the model writes them, and Ari starts speaking after the first sentence instead of waiting for the whole answer.</string>
+    <string name="whats_new_0_1_3_answers_title">Better answers</string>
+    <string name="whats_new_0_1_3_answers_body">The medium and large models answer questions like “top 5 fastest animals” instead of saying they can\'t, and answer every part of a question about several things.</string>
+    <string name="whats_new_0_1_3_downloads_title">Downloads that resume</string>
+    <string name="whats_new_0_1_3_downloads_body">If a download of the medium or large model is interrupted, it picks up where it stopped, with its progress in a notification.</string>
 </resources>

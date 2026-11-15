@@ -2,9 +2,9 @@ package dev.heyari.ari.ui.whatsnew
 
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Directions
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.ui.graphics.vector.ImageVector
 import dev.heyari.ari.R
 
@@ -16,12 +16,12 @@ import dev.heyari.ari.R
  * them shows nothing rather than the previous release's news.
  */
 internal object WhatsNew {
-    const val VERSION = "0.1.2"
+    const val VERSION = "0.1.3"
 
     val items = listOf(
-        WhatsNewItem(Icons.Default.Translate, R.string.whats_new_0_1_2_italian_title, R.string.whats_new_0_1_2_italian_body),
-        WhatsNewItem(Icons.Default.Directions, R.string.whats_new_0_1_2_directions_title, R.string.whats_new_0_1_2_directions_body),
-        WhatsNewItem(Icons.Default.Home, R.string.whats_new_0_1_2_home_title, R.string.whats_new_0_1_2_home_body),
+        WhatsNewItem(Icons.Default.RecordVoiceOver, R.string.whats_new_0_1_3_streaming_title, R.string.whats_new_0_1_3_streaming_body),
+        WhatsNewItem(Icons.Default.Lightbulb, R.string.whats_new_0_1_3_answers_title, R.string.whats_new_0_1_3_answers_body),
+        WhatsNewItem(Icons.Default.Download, R.string.whats_new_0_1_3_downloads_title, R.string.whats_new_0_1_3_downloads_body),
     )
 
     /**
@@ -29,7 +29,7 @@ internal object WhatsNew {
      * with the app. True when some of [items] arrive that way, so the dialog
      * says where to get them.
      */
-    const val NEEDS_SKILL_UPDATES = true
+    const val NEEDS_SKILL_UPDATES = false
 }
 
 internal data class WhatsNewItem(
