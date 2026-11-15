@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.3] - 2026-11-15
 
-Changes since 0.1.2.
+Changes since 0.1.2, uploaded to Google Play internal testing as versionCode 5.
 
 ### Added
 
