@@ -334,7 +334,11 @@ private fun LlmTierRow(
                         .padding(top = 8.dp),
                 )
                 Text(
-                    text = "${formatBytes(downloadState.bytesSoFar)} / ${formatBytes(downloadState.totalBytes)} (${String.format(Locale.US, "%.0f", progress * 100)}%)",
+                    text = if (downloadState.waiting) {
+                        stringResource(R.string.llm_download_waiting, formatBytes(downloadState.bytesSoFar), formatBytes(downloadState.totalBytes))
+                    } else {
+                        "${formatBytes(downloadState.bytesSoFar)} / ${formatBytes(downloadState.totalBytes)} (${String.format(Locale.US, "%.0f", progress * 100)}%)"
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(start = 48.dp, top = 4.dp),
                 )

@@ -14,6 +14,13 @@
       category for that.
     -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!--
+      On-device model downloads run as WorkManager foreground work
+      (LlmDownloadWorker), which lifts the ten-minute cap on background jobs
+      so a multi-GB model can finish in one go. dataSync is the category for
+      a user-requested download. See SystemForegroundService below.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <!--
@@ -494,6 +501,12 @@
                 android:value="androidx.startup"
                 tools:node="remove" />
         </provider>
+
+        <!-- WorkManager's foreground host, typed for LlmDownloadWorker's downloads. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
 
         <!--
           Grants read access to the debug audio captures for the share sheet

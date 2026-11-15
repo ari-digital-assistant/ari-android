@@ -21,7 +21,17 @@ import javax.inject.Singleton
 
 sealed interface LlmDownloadState {
     data object Idle : LlmDownloadState
-    data class Downloading(val modelId: String, val bytesSoFar: Long, val totalBytes: Long) : LlmDownloadState
+    /**
+     * [waiting] is a download that has run before and is queued to resume:
+     * stopped by Android's time limit, a lost network, or a retry backing
+     * off. [bytesSoFar] is then what the partial file already holds.
+     */
+    data class Downloading(
+        val modelId: String,
+        val bytesSoFar: Long,
+        val totalBytes: Long,
+        val waiting: Boolean = false,
+    ) : LlmDownloadState
     data class Failed(val modelId: String, val error: String) : LlmDownloadState
     data class Completed(val modelId: String) : LlmDownloadState
 }
@@ -68,12 +78,22 @@ class LlmDownloadManager @Inject constructor(
     fun cancel() {
         requestedModelId.value = null
         workManager.cancelUniqueWork(UNIQUE_WORK_NAME)
+        // A running worker drops its own partial on cancel; one queued to
+        // resume isn't running to do it.
+        llmRoot.walk().filter { it.name.endsWith(".part") }.forEach { it.delete() }
     }
+
+    private fun partialBytes(model: LlmModel): Long =
+        modelDir(model).listFiles { f -> f.name.endsWith(".part") }
+            ?.maxOfOrNull { it.length() } ?: 0L
 
     fun download(model: LlmModel) {
         requestedModelId.value = model.id
         val request = OneTimeWorkRequestBuilder<LlmDownloadWorker>()
             .setInputData(workDataOf(LlmDownloadWorker.KEY_MODEL_ID to model.id))
+            // Lets [state] name the model of queued work after a process
+            // restart has cleared the requested-id latch.
+            .addTag(MODEL_TAG_PREFIX + model.id)
             .setConstraints(
                 Constraints.Builder()
                     .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -102,6 +122,12 @@ class LlmDownloadManager @Inject constructor(
 
     private fun mapToState(infos: List<WorkInfo>, requestedId: String?): LlmDownloadState {
         val info = infos.firstOrNull()
+        val modelId = requestedId
+            ?: info?.tags?.firstOrNull { it.startsWith(MODEL_TAG_PREFIX) }?.removePrefix(MODEL_TAG_PREFIX)
+        // Only queued work needs the partial's size, and progress ticks ten
+        // times a second while running, so don't stat the disk for those.
+        val queued = info?.state == WorkInfo.State.ENQUEUED || info?.state == WorkInfo.State.BLOCKED
+        val model = if (queued) LlmModelRegistry.byId(modelId) else null
         return resolveState(
             workState = info?.state,
             progressModelId = info?.progress?.getString(LlmDownloadWorker.KEY_MODEL_ID) ?: "",
@@ -109,13 +135,17 @@ class LlmDownloadManager @Inject constructor(
             totalBytes = info?.progress?.getLong(LlmDownloadWorker.KEY_TOTAL_BYTES, 0L) ?: 0L,
             outputModelId = info?.outputData?.getString(LlmDownloadWorker.KEY_MODEL_ID) ?: "",
             error = info?.outputData?.getString(LlmDownloadWorker.KEY_ERROR),
-            requestedId = requestedId,
+            requestedId = modelId,
+            runAttemptCount = info?.runAttemptCount ?: 0,
+            partialBytes = model?.let { partialBytes(it) } ?: 0L,
+            modelTotalBytes = model?.totalBytes ?: 0L,
         )
     }
 
     companion object {
         private const val TAG = "LlmDownloadManager"
         private const val UNIQUE_WORK_NAME = "llm-model-download"
+        private const val MODEL_TAG_PREFIX = "llm-model:"
 
         /**
          * Pure mapping from a WorkManager work state (+ the optimistic
@@ -131,6 +161,9 @@ class LlmDownloadManager @Inject constructor(
             outputModelId: String,
             error: String?,
             requestedId: String?,
+            runAttemptCount: Int,
+            partialBytes: Long,
+            modelTotalBytes: Long,
         ): LlmDownloadState = when (workState) {
             null ->
                 if (requestedId != null) LlmDownloadState.Downloading(requestedId, 0L, 0L)
@@ -141,7 +174,11 @@ class LlmDownloadManager @Inject constructor(
                     bytesSoFar, totalBytes,
                 )
             WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED ->
-                LlmDownloadState.Downloading(requestedId.orEmpty(), 0L, 0L)
+                if (runAttemptCount > 0) {
+                    LlmDownloadState.Downloading(requestedId.orEmpty(), partialBytes, modelTotalBytes, waiting = true)
+                } else {
+                    LlmDownloadState.Downloading(requestedId.orEmpty(), 0L, 0L)
+                }
             WorkInfo.State.SUCCEEDED -> LlmDownloadState.Completed(outputModelId)
             WorkInfo.State.FAILED -> LlmDownloadState.Failed(outputModelId, error ?: "Unknown error")
             WorkInfo.State.CANCELLED -> LlmDownloadState.Idle

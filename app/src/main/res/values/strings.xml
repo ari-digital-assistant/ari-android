@@ -331,6 +331,7 @@
     <string name="conversation_downloading_header">Downloading in the background</string>
     <string name="conversation_downloading_stt_model">Voice recognition model</string>
     <string name="conversation_downloading_llm_model">Assistant model</string>
+    <string name="llm_download_waiting">Paused at %1$s of %2$s, will resume automatically</string>
 
     <!-- Voice overlay -->
     <string name="voice_overlay_title">Ari</string>
@@ -635,6 +636,10 @@
     <string name="notif_channel_boot_description">Shown when Ari needs your tap to start listening after boot</string>
     <string name="notif_channel_model_updates_name">Model updates</string>
     <string name="notif_channel_model_updates_description">Notifies you when on-device model updates are available.</string>
+    <string name="notif_channel_model_downloads_name">Model downloads</string>
+    <string name="notif_channel_model_downloads_description">Shows progress while an on-device model downloads.</string>
+    <string name="notif_model_download_title">Downloading %1$s</string>
+    <string name="notif_model_download_progress">%1$s of %2$s</string>
     <string name="notif_channel_skill_updates_name">Skill updates</string>
     <string name="notif_channel_skill_updates_description">Notifies you when updates are available for installed skills.</string>
 

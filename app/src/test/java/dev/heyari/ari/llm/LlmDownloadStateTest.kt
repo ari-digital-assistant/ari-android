@@ -25,8 +25,12 @@ class LlmDownloadStateTest {
         outputModelId: String = "",
         error: String? = null,
         requestedId: String? = null,
+        runAttemptCount: Int = 0,
+        partialBytes: Long = 0L,
+        modelTotalBytes: Long = 0L,
     ) = LlmDownloadManager.resolveState(
         workState, progressModelId, bytesSoFar, totalBytes, outputModelId, error, requestedId,
+        runAttemptCount, partialBytes, modelTotalBytes,
     )
 
     @Test
@@ -55,6 +59,37 @@ class LlmDownloadStateTest {
         assertEquals(
             LlmDownloadState.Downloading("gemma-medium", 0L, 0L),
             resolve(WorkInfo.State.BLOCKED, requestedId = "gemma-medium"),
+        )
+    }
+
+    // Issue #36: a download stopped mid-way (Android's ten-minute cap, a lost
+    // network) goes back to ENQUEUED. It must show where the partial file has
+    // got to and that it's paused, not drop back to an empty bar.
+    @Test
+    fun enqueuedAfterARun_isWaitingAtThePartialSize() {
+        assertEquals(
+            LlmDownloadState.Downloading("gemma-medium", 1_500_000_000L, 3_110_000_000L, waiting = true),
+            resolve(
+                WorkInfo.State.ENQUEUED,
+                requestedId = "gemma-medium",
+                runAttemptCount = 1,
+                partialBytes = 1_500_000_000L,
+                modelTotalBytes = 3_110_000_000L,
+            ),
+        )
+    }
+
+    @Test
+    fun enqueuedBeforeAnyRun_isNotWaiting() {
+        assertEquals(
+            LlmDownloadState.Downloading("gemma-medium", 0L, 0L),
+            resolve(
+                WorkInfo.State.ENQUEUED,
+                requestedId = "gemma-medium",
+                runAttemptCount = 0,
+                partialBytes = 1_500_000_000L,
+                modelTotalBytes = 3_110_000_000L,
+            ),
         )
     }
 

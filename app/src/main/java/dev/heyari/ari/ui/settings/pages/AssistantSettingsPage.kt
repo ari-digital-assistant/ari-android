@@ -358,8 +358,13 @@ private fun BuiltinModelSection(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = "${formatBytes(dl.bytesSoFar)} / ${formatBytes(dl.totalBytes)}",
+                            text = if (dl.waiting) {
+                                stringResource(R.string.llm_download_waiting, formatBytes(dl.bytesSoFar), formatBytes(dl.totalBytes))
+                            } else {
+                                "${formatBytes(dl.bytesSoFar)} / ${formatBytes(dl.totalBytes)}"
+                            },
                             style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.weight(1f),
                         )
                         TextButton(onClick = onCancel) {
                             Text(stringResource(R.string.action_cancel))

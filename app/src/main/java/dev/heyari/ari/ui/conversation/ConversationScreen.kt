@@ -45,6 +45,7 @@ import dev.heyari.ari.listening.ListeningMode
 import dev.heyari.ari.model.ConversationState
 import dev.heyari.ari.ui.components.AriTopBar
 import dev.heyari.ari.ui.components.MicDisclosureDialog
+import dev.heyari.ari.ui.formatBytes
 import dev.heyari.ari.ui.whatsnew.WhatsNewDialog
 import dev.heyari.ari.ui.whatsnew.WhatsNewViewModel
 import androidx.compose.runtime.Composable
@@ -626,6 +627,12 @@ private fun DownloadRow(label: String, state: Any) {
             }
             is dev.heyari.ari.llm.LlmDownloadState.Downloading -> {
                 Text(label, style = MaterialTheme.typography.bodySmall)
+                if (state.waiting) {
+                    Text(
+                        stringResource(R.string.llm_download_waiting, formatBytes(state.bytesSoFar), formatBytes(state.totalBytes)),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
                 if (state.totalBytes > 0) {
                     val progress = state.bytesSoFar.toFloat() / state.totalBytes.toFloat()
                     androidx.compose.material3.LinearProgressIndicator(

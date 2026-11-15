@@ -325,6 +325,7 @@
     <string name="conversation_downloading_header">Scaricamento in background</string>
     <string name="conversation_downloading_stt_model">Modello di riconoscimento vocale</string>
     <string name="conversation_downloading_llm_model">Modello assistente</string>
+    <string name="llm_download_waiting">In pausa (%1$s di %2$s), riprenderà automaticamente</string>
     <string name="conversation_listening_placeholder">Sto ascoltando…</string>
     <string name="conversation_send">Invia</string>
     <string name="conversation_talk">Parla con Ari</string>
@@ -634,6 +635,10 @@
     <string name="notif_channel_boot_description">Mostrato quando Ari ha bisogno di un tocco per iniziare ad ascoltare dopo l\'accensione</string>
     <string name="notif_channel_model_updates_name">Aggiornamenti modelli</string>
     <string name="notif_channel_model_updates_description">Avvisa quando sono disponibili aggiornamenti per i modelli sul dispositivo.</string>
+    <string name="notif_channel_model_downloads_name">Download dei modelli</string>
+    <string name="notif_channel_model_downloads_description">Mostra l\'avanzamento mentre si scarica un modello sul dispositivo.</string>
+    <string name="notif_model_download_title">Scaricamento di %1$s</string>
+    <string name="notif_model_download_progress">%1$s di %2$s</string>
     <string name="notif_channel_skill_updates_name">Aggiornamenti skill</string>
     <string name="notif_channel_skill_updates_description">Avvisa quando sono disponibili aggiornamenti per gli skill installati.</string>
 

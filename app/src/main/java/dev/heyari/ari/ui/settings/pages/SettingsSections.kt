@@ -1255,8 +1255,13 @@ private fun LlmModelRow(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = "${formatBytes(dl.bytesSoFar)} / ${formatBytes(dl.totalBytes)} (${String.format(Locale.US, "%.0f", progress * 100)}%)",
+                            text = if (dl.waiting) {
+                                stringResource(R.string.llm_download_waiting, formatBytes(dl.bytesSoFar), formatBytes(dl.totalBytes))
+                            } else {
+                                "${formatBytes(dl.bytesSoFar)} / ${formatBytes(dl.totalBytes)} (${String.format(Locale.US, "%.0f", progress * 100)}%)"
+                            },
                             style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.weight(1f),
                         )
                         TextButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) }
                     }
