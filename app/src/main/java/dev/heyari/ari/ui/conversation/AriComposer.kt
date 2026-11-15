@@ -19,6 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -37,6 +38,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.heyari.ari.R
@@ -83,6 +85,13 @@ fun AriComposer(
                     },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    // Italian runs longer than English and was cut off on a
+                    // Pixel 9 Pro (ari-android#35). Shrink to fit, down to
+                    // bodySmall's size; past that, ellipsis.
+                    autoSize = TextAutoSize.StepBased(
+                        minFontSize = MaterialTheme.typography.bodySmall.fontSize,
+                        maxFontSize = LocalTextStyle.current.fontSize,
+                    ),
                 )
             },
             singleLine = true,
