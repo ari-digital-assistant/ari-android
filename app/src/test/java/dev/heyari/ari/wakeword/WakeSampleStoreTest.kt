@@ -1,5 +1,6 @@
 package dev.heyari.ari.wakeword
 
+import dev.heyari.ari.BuildConfig
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -30,7 +31,7 @@ class WakeSampleStoreTest {
             background: tv
             durationMs: 94200
             marks: 1200,5400
-            app: 0.1.0
+            app: ${BuildConfig.VERSION_NAME}
 
             """.trimIndent(),
             sidecar,
