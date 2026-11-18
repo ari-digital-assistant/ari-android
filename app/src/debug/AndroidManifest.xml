@@ -21,5 +21,10 @@
         <receiver
             android:name="dev.heyari.ari.debug.LocationProbeReceiver"
             android:exported="true" />
+
+        <!-- Runs the bug-report reply check on demand, from adb. -->
+        <receiver
+            android:name="dev.heyari.ari.debug.CheckRepliesReceiver"
+            android:exported="true" />
     </application>
 </manifest>
