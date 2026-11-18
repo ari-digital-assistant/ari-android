@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Saying or typing "clear history", "start over" or "new conversation" clears the chat
   and Ari's memory of it, leaving just Ari's "Done, fresh start." Remembered facts stay
   ([#40](https://github.com/ari-digital-assistant/ari-android/issues/40)).
+- Testing builds check twice a day for replies to the bug reports sent from the phone,
+  and show a notification that opens the issue when someone has replied.
 
 ### Fixed
 

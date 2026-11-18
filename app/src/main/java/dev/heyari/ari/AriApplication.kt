@@ -11,6 +11,7 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
 import dev.heyari.ari.bugreport.CrashRecorder
+import dev.heyari.ari.bugreport.ReportReplyWorker
 import dev.heyari.ari.contrib.ContributionUploader
 import dev.heyari.ari.data.AutoUpdatePreferences
 import dev.heyari.ari.data.SettingsRepository
@@ -87,6 +88,8 @@ class AriApplication : Application(), Configuration.Provider {
         )
         // Idempotent — KEEP policy means reinstalls don't reset the schedule.
         SkillUpdateWorker.schedule(this)
+        // Only testing builds can file bug reports, so only they have replies to hear about.
+        if (BuildConfig.ARI_TESTING) ReportReplyWorker.schedule(this)
         scheduleModelUpdateWorker()
         scheduleContributionWorker()
         NotificationChannels.ensureAll(this)

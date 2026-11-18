@@ -727,6 +727,16 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    suspend fun setSeenReplies(reportId: String, replies: Int) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_FILED_REPORTS] = encodeReports(
+                decodeReports(prefs[KEY_FILED_REPORTS]).map {
+                    if (it.reportId == reportId) it.copy(seenReplies = replies) else it
+                }
+            )
+        }
+    }
+
     suspend fun removeFiledReport(reportId: String) {
         context.dataStore.edit { prefs ->
             prefs[KEY_FILED_REPORTS] = encodeReports(

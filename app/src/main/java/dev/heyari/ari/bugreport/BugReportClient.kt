@@ -60,6 +60,21 @@ class BugReportClient @Inject constructor() {
             }
         }
 
+    /**
+     * How many people have replied on the report's issue, or null when the
+     * server no longer recognises it: withdrawn, or past its 90 days. Anything
+     * else, such as no network, throws, and is worth asking again later.
+     */
+    suspend fun replies(reportId: String, deleteToken: String): Int? =
+        withContext(Dispatchers.IO) {
+            val body = JSONObject().put("deleteToken", deleteToken)
+            try {
+                postJson("$BASE/$reportId/status", body)?.optInt("replies")
+            } catch (rejected: ReportRejected) {
+                null
+            }
+        }
+
     private fun create(report: BugReport): CreatedReport {
         val response = postJson(BASE, report.toWireJson())
             ?: error("the server accepted the report but said nothing back")

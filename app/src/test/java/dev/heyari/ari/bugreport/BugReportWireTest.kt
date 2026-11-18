@@ -200,4 +200,17 @@ class BugReportWireTest {
         assertEquals("logcat", upload.getString("kind"))
         assertEquals(AttachmentKind.LOGCAT.contentType, upload.getString("contentType"))
     }
+
+    @Test
+    fun a_report_stored_before_reply_tracking_has_seen_no_replies() {
+        // The shape 0.1.3 wrote: no "seen". Its replies so far are all new.
+        val stored = """[{"id":"r_1","token":"tok","issue":39,"url":"https://gh/39","title":"t","at":5}]"""
+        assertEquals(0, decodeReports(stored).single().seenReplies)
+    }
+
+    @Test
+    fun seen_replies_survive_a_save_and_load() {
+        val report = FiledReportRecord("r_1", "tok", 40, "https://gh/40", "t", 5L, seenReplies = 2)
+        assertEquals(listOf(report), decodeReports(encodeReports(listOf(report))))
+    }
 }

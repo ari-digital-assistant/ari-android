@@ -642,6 +642,9 @@
     <string name="notif_model_download_progress">%1$s of %2$s</string>
     <string name="notif_channel_skill_updates_name">Skill updates</string>
     <string name="notif_channel_skill_updates_description">Notifies you when updates are available for installed skills.</string>
+    <string name="notif_channel_report_replies_name">Bug report replies</string>
+    <string name="notif_channel_report_replies_description">Notifies you when someone replies to a bug report you sent.</string>
+    <string name="notif_report_reply_title">Someone replied to your bug report</string>
 
     <!-- Notification content -->
     <string name="notif_skill_updates_open_to_review">Open Ari to review and install.</string>

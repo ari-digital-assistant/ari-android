@@ -21,6 +21,8 @@ data class FiledReportRecord(
     val issueUrl: String,
     val title: String,
     val filedAtMillis: Long,
+    /** Replies already notified about, so [ReportReplyWorker] only announces new ones. */
+    val seenReplies: Int = 0,
 ) {
     /**
      * When the stored files go, whether or not anybody asks. Derived rather
@@ -50,6 +52,7 @@ internal fun encodeReports(reports: List<FiledReportRecord>): String {
                 put("url", report.issueUrl)
                 put("title", report.title)
                 put("at", report.filedAtMillis)
+                put("seen", report.seenReplies)
             }
         )
     }
@@ -71,6 +74,7 @@ internal fun decodeReports(raw: String?): List<FiledReportRecord> {
                 issueUrl = url,
                 title = obj.optString("title"),
                 filedAtMillis = obj.optLong("at"),
+                seenReplies = obj.optInt("seen"),
             )
         }
     } catch (e: JSONException) {
