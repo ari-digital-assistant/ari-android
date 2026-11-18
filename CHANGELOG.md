@@ -7,12 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Saying or typing "clear history", "start over" or "new conversation" clears the chat
+  and Ari's memory of it, leaving just Ari's "Done, fresh start." Remembered facts stay
+  ([#40](https://github.com/ari-digital-assistant/ari-android/issues/40)).
+
 ### Fixed
 
 - Navigating quickly, such as opening a skill and backing out straight away, could
   leave a screen frozen halfway off the edge. Taps that land while a screen is still
   sliding in or out are now ignored
   ([#39](https://github.com/ari-digital-assistant/ari-android/issues/39)).
+- `/clear` now makes the assistant forget the cleared chat too, instead of answering
+  follow-ups about it for up to 15 minutes afterwards
+  ([#40](https://github.com/ari-digital-assistant/ari-android/issues/40)).
 
 ## [0.1.3] - 2026-11-15
 

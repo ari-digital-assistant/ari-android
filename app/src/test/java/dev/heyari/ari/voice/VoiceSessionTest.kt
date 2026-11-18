@@ -21,7 +21,7 @@ class VoiceSessionTest {
 
     @Test
     fun `Text with rearm true re-arms`() {
-        assertTrue(shouldRearm(FfiResponse.Text(body = "Which one?", rearm = true, enterConversation = false, exitConversation = false, factsChanged = false)))
+        assertTrue(shouldRearm(FfiResponse.Text(body = "Which one?", rearm = true, enterConversation = false, exitConversation = false, factsChanged = false, clearConversation = false)))
     }
 
     @Test
@@ -35,6 +35,7 @@ class VoiceSessionTest {
                     enterConversation = false,
                     exitConversation = false,
                     factsChanged = false,
+                    clearConversation = false,
                 )
             )
         )
@@ -42,7 +43,7 @@ class VoiceSessionTest {
 
     @Test
     fun `Text with rearm false does not re-arm`() {
-        assertFalse(shouldRearm(FfiResponse.Text(body = "Playing.", rearm = false, enterConversation = false, exitConversation = false, factsChanged = false)))
+        assertFalse(shouldRearm(FfiResponse.Text(body = "Playing.", rearm = false, enterConversation = false, exitConversation = false, factsChanged = false, clearConversation = false)))
     }
 
     @Test
@@ -56,6 +57,7 @@ class VoiceSessionTest {
                     enterConversation = false,
                     exitConversation = false,
                     factsChanged = false,
+                    clearConversation = false,
                 )
             )
         )
@@ -73,18 +75,26 @@ class VoiceSessionTest {
 
     @Test
     fun shouldEnterConversation_trueOnlyWhenFlagSet() {
-        assertTrue(shouldEnterConversation(FfiResponse.Text("Okay, I'm listening.", false, true, false, false)))
-        assertTrue(shouldEnterConversation(FfiResponse.Action("{}", "skill", false, true, false, false)))
-        assertFalse(shouldEnterConversation(FfiResponse.Text("hi", false, false, false, false)))
+        assertTrue(shouldEnterConversation(FfiResponse.Text("Okay, I'm listening.", false, true, false, false, false)))
+        assertTrue(shouldEnterConversation(FfiResponse.Action("{}", "skill", false, true, false, false, false)))
+        assertFalse(shouldEnterConversation(FfiResponse.Text("hi", false, false, false, false, false)))
         assertFalse(shouldEnterConversation(FfiResponse.NotUnderstood("?")))
     }
 
     @Test
     fun shouldExitConversation_trueOnlyWhenFlagSet() {
-        assertTrue(shouldExitConversation(FfiResponse.Text("Okay.", false, false, true, false)))
-        assertTrue(shouldExitConversation(FfiResponse.Action("{}", "skill", false, false, true, false)))
-        assertFalse(shouldExitConversation(FfiResponse.Text("hi", false, false, false, false)))
+        assertTrue(shouldExitConversation(FfiResponse.Text("Okay.", false, false, true, false, false)))
+        assertTrue(shouldExitConversation(FfiResponse.Action("{}", "skill", false, false, true, false, false)))
+        assertFalse(shouldExitConversation(FfiResponse.Text("hi", false, false, false, false, false)))
         assertFalse(shouldExitConversation(FfiResponse.NotUnderstood("?")))
+    }
+
+    @Test
+    fun shouldClearConversation_trueOnlyWhenFlagSet() {
+        assertTrue(shouldClearConversation(FfiResponse.Text("Done, fresh start.", false, false, false, false, true)))
+        assertTrue(shouldClearConversation(FfiResponse.Action("{}", "skill", false, false, false, false, true)))
+        assertFalse(shouldClearConversation(FfiResponse.Text("hi", false, false, false, false, false)))
+        assertFalse(shouldClearConversation(FfiResponse.NotUnderstood("?")))
     }
 
     @Test
@@ -147,7 +157,7 @@ class VoiceSessionTest {
 
     @Test
     fun `a retry-corrected transcript is recorded as a rescue`() {
-        val answered = FfiResponse.Text("Sunny.", false, false, false, false)
+        val answered = FfiResponse.Text("Sunny.", false, false, false, false, false)
         assertEquals(UtteranceOutcome.RESCUED, utteranceOutcome(answered, corrected = true))
         assertEquals(UtteranceOutcome.ANSWERED, utteranceOutcome(answered, corrected = false))
     }
@@ -163,9 +173,9 @@ class VoiceSessionTest {
     fun `the response label names the skill that answered`() {
         assertEquals(
             "action(dev.heyari.music)",
-            responseLabel(FfiResponse.Action("{\"v\":1}", "dev.heyari.music", false, false, false, false)),
+            responseLabel(FfiResponse.Action("{\"v\":1}", "dev.heyari.music", false, false, false, false, false)),
         )
-        assertEquals("text", responseLabel(FfiResponse.Text("Playing.", false, false, false, false)))
+        assertEquals("text", responseLabel(FfiResponse.Text("Playing.", false, false, false, false, false)))
         assertEquals("binary(image/png)", responseLabel(FfiResponse.Binary("image/png", ByteArray(4))))
         assertEquals("not-understood", responseLabel(FfiResponse.NotUnderstood("?")))
     }

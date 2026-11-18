@@ -1000,6 +1000,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_cancel_pending_reply(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_clear_conversation(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_current_locale(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_load_llm_model(
@@ -1206,6 +1208,8 @@ external fun uniffi_ari_ffi_fn_constructor_ariengine_new(uniffi_out_err: UniffiR
 external fun uniffi_ari_ffi_fn_constructor_ariengine_with_log_sink(`sink`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
 external fun uniffi_ari_ffi_fn_method_ariengine_cancel_pending_reply(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ariengine_clear_conversation(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_current_locale(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1593,6 +1597,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_cancel_pending_reply() != 705.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_clear_conversation() != 57984.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_current_locale() != 7320.toShort()) {
@@ -2375,6 +2382,13 @@ public interface AriEngineInterface {
     fun `cancelPendingReply`()
     
     /**
+     * Forget the conversation so far, as a spoken "clear history" does. The
+     * frontend calls this when the user clears the chat by other means, so
+     * the assistant doesn't answer follow-ups about what was just cleared.
+     */
+    fun `clearConversation`()
+    
+    /**
      * Construct with the full set of host-supplied platform
      * providers. This is the constructor the Android frontend uses
      * at startup so any skill that declares the `tasks`, `calendar`
@@ -2651,6 +2665,23 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     callWithHandle {
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_ari_ffi_fn_method_ariengine_cancel_pending_reply(
+        it,
+        _status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Forget the conversation so far, as a spoken "clear history" does. The
+     * frontend calls this when the user clears the chat by other means, so
+     * the assistant doesn't answer follow-ups about what was just cleared.
+     */override fun `clearConversation`()
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_clear_conversation(
         it,
         _status)
 }
@@ -11207,13 +11238,17 @@ sealed class FfiResponse {
      * `facts_changed` true means this turn mutated the engine's durable
      * personal facts (a remember/forget) — the host should re-read
      * `remembered_facts()` and persist the snapshot.
+     * `clear_conversation` true means the user cleared the conversation this
+     * turn ("clear history") and the engine has already forgotten it; the
+     * host clears its chat log to match.
      */
     data class Text(
         val `body`: kotlin.String, 
         val `rearm`: kotlin.Boolean, 
         val `enterConversation`: kotlin.Boolean, 
         val `exitConversation`: kotlin.Boolean, 
-        val `factsChanged`: kotlin.Boolean) : FfiResponse()
+        val `factsChanged`: kotlin.Boolean, 
+        val `clearConversation`: kotlin.Boolean) : FfiResponse()
         
     {
         
@@ -11240,7 +11275,8 @@ sealed class FfiResponse {
         val `rearm`: kotlin.Boolean, 
         val `enterConversation`: kotlin.Boolean, 
         val `exitConversation`: kotlin.Boolean, 
-        val `factsChanged`: kotlin.Boolean) : FfiResponse()
+        val `factsChanged`: kotlin.Boolean, 
+        val `clearConversation`: kotlin.Boolean) : FfiResponse()
         
     {
         
@@ -11296,10 +11332,12 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
                 FfiConverterBoolean.read(buf),
                 FfiConverterBoolean.read(buf),
                 FfiConverterBoolean.read(buf),
+                FfiConverterBoolean.read(buf),
                 )
             2 -> FfiResponse.Action(
                 FfiConverterString.read(buf),
                 FfiConverterString.read(buf),
+                FfiConverterBoolean.read(buf),
                 FfiConverterBoolean.read(buf),
                 FfiConverterBoolean.read(buf),
                 FfiConverterBoolean.read(buf),
@@ -11326,6 +11364,7 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
                 + FfiConverterBoolean.allocationSize(value.`enterConversation`)
                 + FfiConverterBoolean.allocationSize(value.`exitConversation`)
                 + FfiConverterBoolean.allocationSize(value.`factsChanged`)
+                + FfiConverterBoolean.allocationSize(value.`clearConversation`)
             )
         }
         is FfiResponse.Action -> {
@@ -11338,6 +11377,7 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
                 + FfiConverterBoolean.allocationSize(value.`enterConversation`)
                 + FfiConverterBoolean.allocationSize(value.`exitConversation`)
                 + FfiConverterBoolean.allocationSize(value.`factsChanged`)
+                + FfiConverterBoolean.allocationSize(value.`clearConversation`)
             )
         }
         is FfiResponse.Binary -> {
@@ -11366,6 +11406,7 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
                 FfiConverterBoolean.write(value.`enterConversation`, buf)
                 FfiConverterBoolean.write(value.`exitConversation`, buf)
                 FfiConverterBoolean.write(value.`factsChanged`, buf)
+                FfiConverterBoolean.write(value.`clearConversation`, buf)
                 Unit
             }
             is FfiResponse.Action -> {
@@ -11376,6 +11417,7 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
                 FfiConverterBoolean.write(value.`enterConversation`, buf)
                 FfiConverterBoolean.write(value.`exitConversation`, buf)
                 FfiConverterBoolean.write(value.`factsChanged`, buf)
+                FfiConverterBoolean.write(value.`clearConversation`, buf)
                 Unit
             }
             is FfiResponse.Binary -> {

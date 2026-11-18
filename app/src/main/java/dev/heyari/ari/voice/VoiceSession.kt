@@ -146,6 +146,16 @@ internal fun shouldPersistFacts(response: FfiResponse): Boolean = when (response
 }
 
 /**
+ * Did the user clear the conversation this turn ("clear history")? The engine
+ * has already forgotten it; the caller clears the chat log to match.
+ */
+internal fun shouldClearConversation(response: FfiResponse): Boolean = when (response) {
+    is FfiResponse.Text -> response.clearConversation
+    is FfiResponse.Action -> response.clearConversation
+    else -> false
+}
+
+/**
  * Which kind of turn produced this utterance, for the debug capture sidecar.
  * Sampled at the top of a turn: [awaitingReply] is consumed part-way through
  * dispatch, and [talkMode] is set by the response that *enters* continuous
@@ -954,7 +964,12 @@ class VoiceSession @Inject constructor(
         // raw `text`. NotUnderstood replies are logged too, matching the text
         // path. Silent Layer-C phase-1 envelopes produce a blank responseText
         // with no attachments and are skipped, same as the text path.
-        logRepository.append(Message(text = usedText, isFromUser = true, source = InputSource.Voice))
+        // A cleared conversation leaves only Ari's ack, as on the text path.
+        if (shouldClearConversation(response)) {
+            logRepository.clear()
+        } else {
+            logRepository.append(Message(text = usedText, isFromUser = true, source = InputSource.Voice))
+        }
         if (responseText.isNotBlank() || attachments.isNotEmpty()) {
             logRepository.append(
                 Message(

@@ -59,6 +59,7 @@ import kotlinx.coroutines.launch
 import dev.heyari.ari.di.EngineHolder
 import dev.heyari.ari.voice.VoiceSession
 import dev.heyari.ari.voice.VoiceState
+import dev.heyari.ari.voice.shouldClearConversation
 import dev.heyari.ari.voice.shouldPersistFacts
 import uniffi.ari_ffi.AssistantRegistry
 import uniffi.ari_ffi.FfiLocationStatus
@@ -281,9 +282,14 @@ class ConversationViewModel @Inject constructor(
      * clear the conversation log (so the adaptive empty state renders again),
      * and clear the input + transient thinking indicator. Live cards/alarms
      * are background state and deliberately left running.
+     *
+     * The engine forgets the conversation too, or the assistant would go on
+     * answering follow-ups about the chat that just vanished. Off Main: a
+     * cancelled turn's model call still holds the engine until it finishes.
      */
     private fun handleReset() {
         activeTurn?.cancel()
+        viewModelScope.launch(Dispatchers.Default) { engineHolder.peek()?.clearConversation() }
         logRepository.clear()
         _state.update { it.copy(inputText = "", isThinking = false, wakeWordDetected = false) }
     }
@@ -405,6 +411,11 @@ class ConversationViewModel @Inject constructor(
                 // next resume.
                 refreshEmptyState()
             }
+
+            // "Clear history": the engine has already forgotten the
+            // conversation, so the log goes too, request included, leaving
+            // just the ack appended below.
+            if (shouldClearConversation(response)) logRepository.clear()
 
             var attachments: List<Attachment> = emptyList()
             // Only action responses carry an id; a plain Text answer is
