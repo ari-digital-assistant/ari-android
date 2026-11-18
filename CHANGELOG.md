@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Navigating quickly, such as opening a skill and backing out straight away, could
+  leave a screen frozen halfway off the edge. Taps that land while a screen is still
+  sliding in or out are now ignored
+  ([#39](https://github.com/ari-digital-assistant/ari-android/issues/39)).
+
 ## [0.1.3] - 2026-11-15
 
 Changes since 0.1.2, uploaded to Google Play internal testing as versionCode 5.

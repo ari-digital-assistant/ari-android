@@ -14,7 +14,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.dropUnlessResumed
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -218,6 +220,11 @@ fun AriNavHost(
             .fillMaxSize()
             .onSizeChanged { container = it },
     ) {
+    // Tap-driven navigation goes through dropUnlessResumed, or the same
+    // RESUMED check where the callback takes arguments. An entry only
+    // reaches RESUMED once its slide has settled, and a navigate or pop
+    // landing mid-slide can leave NavHost's transition frozen partway, the
+    // screen stuck half off the edge (ari-android#39).
     NavHost(
         navController = navController,
         startDestination = startDestination,
@@ -234,30 +241,36 @@ fun AriNavHost(
             slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right)
         },
     ) {
-        composable(Routes.CONVERSATION) {
+        composable(Routes.CONVERSATION) { entry ->
             ConversationScreen(
-                onOpenMenu = { navController.navigate(Routes.MENU) { launchSingleTop = true } },
-                onOpenAutoUpdate = {
+                onOpenMenu = dropUnlessResumed {
+                    navController.navigate(Routes.MENU) { launchSingleTop = true }
+                },
+                onOpenAutoUpdate = dropUnlessResumed {
                     navController.navigate(Routes.SETTINGS_AUTO_UPDATE) { launchSingleTop = true }
                 },
-                onOpenSkills = {
+                onOpenSkills = dropUnlessResumed {
                     navController.navigate(Routes.skills()) { launchSingleTop = true }
                 },
-                onOpenAssistantSkills = {
+                onOpenAssistantSkills = dropUnlessResumed {
                     navController.navigate(Routes.skills(type = "assistant")) {
                         launchSingleTop = true
                     }
                 },
-                onOpenListeningSettings = {
+                onOpenListeningSettings = dropUnlessResumed {
                     navController.navigate(Routes.SETTINGS_LISTENING) { launchSingleTop = true }
                 },
-                onOpenListeningPlaces = {
+                onOpenListeningPlaces = dropUnlessResumed {
                     navController.navigate(Routes.SETTINGS_LISTENING_PLACES) { launchSingleTop = true }
                 },
                 onOpenSkillSettings = { id ->
-                    navController.navigate(Routes.skillDetail(id, "installed")) { launchSingleTop = true }
+                    if (entry.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                        navController.navigate(Routes.skillDetail(id, "installed")) {
+                            launchSingleTop = true
+                        }
+                    }
                 },
-                onOpenSpeechSettings = {
+                onOpenSpeechSettings = dropUnlessResumed {
                     navController.navigate(Routes.SETTINGS_STT) { launchSingleTop = true }
                 },
             )
@@ -270,39 +283,63 @@ fun AriNavHost(
             popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right) },
         ) {
             MenuScreen(
-                onBack = { navController.popBackStack() },
-                onOpenSettings = { navController.navigate(Routes.SETTINGS) { launchSingleTop = true } },
-                onOpenSkills = { navController.navigate(Routes.skills()) { launchSingleTop = true } },
-                onOpenAbout = { navController.navigate(Routes.ABOUT) { launchSingleTop = true } },
-                onOpenSetupWizard = { navController.navigate("onboarding") { launchSingleTop = true } },
+                onBack = dropUnlessResumed { navController.popBackStack() },
+                onOpenSettings = dropUnlessResumed {
+                    navController.navigate(Routes.SETTINGS) { launchSingleTop = true }
+                },
+                onOpenSkills = dropUnlessResumed {
+                    navController.navigate(Routes.skills()) { launchSingleTop = true }
+                },
+                onOpenAbout = dropUnlessResumed {
+                    navController.navigate(Routes.ABOUT) { launchSingleTop = true }
+                },
+                onOpenSetupWizard = dropUnlessResumed {
+                    navController.navigate("onboarding") { launchSingleTop = true }
+                },
             )
         }
         composable(Routes.SETTINGS) {
             SettingsScreen(
-                onBack = { navController.popBackStack() },
-                onOpenGeneral = { navController.navigate(Routes.SETTINGS_GENERAL) },
-                onOpenPermissions = { navController.navigate(Routes.SETTINGS_PERMISSIONS) },
-                onOpenWakeWord = { navController.navigate(Routes.SETTINGS_WAKEWORD) },
-                onOpenListening = { navController.navigate(Routes.SETTINGS_LISTENING) },
-                onOpenStt = { navController.navigate(Routes.SETTINGS_STT) },
-                onOpenTts = { navController.navigate(Routes.SETTINGS_TTS) },
-                onOpenConversation = { navController.navigate(Routes.SETTINGS_CONVERSATION) },
-                onOpenLlm = { navController.navigate(Routes.SETTINGS_LLM) },
-                onOpenAutoUpdate = { navController.navigate(Routes.SETTINGS_AUTO_UPDATE) },
-                onOpenDeveloper = { navController.navigate(Routes.SETTINGS_DEVELOPER) },
-                onOpenDebug = { navController.navigate(Routes.SETTINGS_DEBUG) },
+                onBack = dropUnlessResumed { navController.popBackStack() },
+                onOpenGeneral = dropUnlessResumed {
+                    navController.navigate(Routes.SETTINGS_GENERAL)
+                },
+                onOpenPermissions = dropUnlessResumed {
+                    navController.navigate(Routes.SETTINGS_PERMISSIONS)
+                },
+                onOpenWakeWord = dropUnlessResumed {
+                    navController.navigate(Routes.SETTINGS_WAKEWORD)
+                },
+                onOpenListening = dropUnlessResumed {
+                    navController.navigate(Routes.SETTINGS_LISTENING)
+                },
+                onOpenStt = dropUnlessResumed { navController.navigate(Routes.SETTINGS_STT) },
+                onOpenTts = dropUnlessResumed { navController.navigate(Routes.SETTINGS_TTS) },
+                onOpenConversation = dropUnlessResumed {
+                    navController.navigate(Routes.SETTINGS_CONVERSATION)
+                },
+                onOpenLlm = dropUnlessResumed { navController.navigate(Routes.SETTINGS_LLM) },
+                onOpenAutoUpdate = dropUnlessResumed {
+                    navController.navigate(Routes.SETTINGS_AUTO_UPDATE)
+                },
+                onOpenDeveloper = dropUnlessResumed {
+                    navController.navigate(Routes.SETTINGS_DEVELOPER)
+                },
+                onOpenDebug = dropUnlessResumed { navController.navigate(Routes.SETTINGS_DEBUG) },
             )
         }
         composable(Routes.SETTINGS_GENERAL) {
-            GeneralSettingsPage(onBack = { navController.popBackStack() })
+            GeneralSettingsPage(onBack = dropUnlessResumed { navController.popBackStack() })
         }
         composable(Routes.SETTINGS_PERMISSIONS) {
-            PermissionsSettingsPage(onBack = { navController.popBackStack() })
+            PermissionsSettingsPage(onBack = dropUnlessResumed { navController.popBackStack() })
         }
         composable(Routes.SETTINGS_WAKEWORD) {
             WakeWordSettingsPage(
-                onBack = { navController.popBackStack() },
-                onTune = { navController.navigate(Routes.SETTINGS_WAKEWORD_TUNE) },
+                onBack = dropUnlessResumed { navController.popBackStack() },
+                onTune = dropUnlessResumed {
+                    navController.navigate(Routes.SETTINGS_WAKEWORD_TUNE)
+                },
             )
         }
         composable(
@@ -322,29 +359,43 @@ fun AriNavHost(
             }.getOrDefault(AdviceMode.BURST)
             FalseWakeAdvicePage(
                 mode = mode,
+                // Unguarded: the page closes itself from a LaunchedEffect,
+                // which can fire before its own slide has settled.
                 onDone = { navController.popBackStack() },
             )
         }
         composable(Routes.SETTINGS_WAKEWORD_TUNE) {
-            SensitivityTuningPage(onBack = { navController.popBackStack() })
+            SensitivityTuningPage(onBack = dropUnlessResumed { navController.popBackStack() })
         }
         composable(Routes.SETTINGS_LISTENING) {
             ListeningSettingsPage(
-                onBack = { navController.popBackStack() },
-                onOpenSchedules = { navController.navigate(Routes.SETTINGS_LISTENING_SCHEDULES) },
-                onOpenPlaces = { navController.navigate(Routes.SETTINGS_LISTENING_PLACES) },
+                onBack = dropUnlessResumed { navController.popBackStack() },
+                onOpenSchedules = dropUnlessResumed {
+                    navController.navigate(Routes.SETTINGS_LISTENING_SCHEDULES)
+                },
+                onOpenPlaces = dropUnlessResumed {
+                    navController.navigate(Routes.SETTINGS_LISTENING_PLACES)
+                },
             )
         }
-        composable(Routes.SETTINGS_LISTENING_SCHEDULES) {
+        composable(Routes.SETTINGS_LISTENING_SCHEDULES) { entry ->
             ListeningSchedulesPage(
-                onBack = { navController.popBackStack() },
-                onOpenEditor = { id -> navController.navigate(Routes.scheduleEdit(id)) },
+                onBack = dropUnlessResumed { navController.popBackStack() },
+                onOpenEditor = { id ->
+                    if (entry.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                        navController.navigate(Routes.scheduleEdit(id))
+                    }
+                },
             )
         }
-        composable(Routes.SETTINGS_LISTENING_PLACES) {
+        composable(Routes.SETTINGS_LISTENING_PLACES) { entry ->
             ListeningPlacesPage(
-                onBack = { navController.popBackStack() },
-                onOpenEditor = { id -> navController.navigate(Routes.placeEdit(id)) },
+                onBack = dropUnlessResumed { navController.popBackStack() },
+                onOpenEditor = { id ->
+                    if (entry.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                        navController.navigate(Routes.placeEdit(id))
+                    }
+                },
             )
         }
         composable(
@@ -359,7 +410,7 @@ fun AriNavHost(
         ) { entry ->
             ScheduleEditorScreen(
                 scheduleId = entry.arguments?.getString("id"),
-                onBack = { navController.popBackStack() },
+                onBack = dropUnlessResumed { navController.popBackStack() },
             )
         }
         composable(
@@ -374,46 +425,48 @@ fun AriNavHost(
         ) { entry ->
             PlaceEditorScreen(
                 placeId = entry.arguments?.getString("id"),
-                onBack = { navController.popBackStack() },
+                onBack = dropUnlessResumed { navController.popBackStack() },
             )
         }
         composable(Routes.SETTINGS_STT) {
-            SttSettingsPage(onBack = { navController.popBackStack() })
+            SttSettingsPage(onBack = dropUnlessResumed { navController.popBackStack() })
         }
         composable(Routes.SETTINGS_TTS) {
-            TtsSettingsPage(onBack = { navController.popBackStack() })
+            TtsSettingsPage(onBack = dropUnlessResumed { navController.popBackStack() })
         }
         composable(Routes.SETTINGS_CONVERSATION) {
-            ConversationSettingsPage(onBack = { navController.popBackStack() })
+            ConversationSettingsPage(onBack = dropUnlessResumed { navController.popBackStack() })
         }
         composable(Routes.SETTINGS_LLM) {
             AssistantSettingsPage(
-                onBack = { navController.popBackStack() },
-                onOpenSkills = {
+                onBack = dropUnlessResumed { navController.popBackStack() },
+                onOpenSkills = dropUnlessResumed {
                     navController.navigate(Routes.skills(type = "assistant")) { launchSingleTop = true }
                 },
             )
         }
         composable(Routes.SETTINGS_AUTO_UPDATE) {
-            AutoUpdateSettingsPage(onBack = { navController.popBackStack() })
+            AutoUpdateSettingsPage(onBack = dropUnlessResumed { navController.popBackStack() })
         }
         composable(Routes.SETTINGS_DEVELOPER) {
-            DeveloperSettingsPage(onBack = { navController.popBackStack() })
+            DeveloperSettingsPage(onBack = dropUnlessResumed { navController.popBackStack() })
         }
         composable(Routes.SETTINGS_DEBUG) {
             DebugSettingsPage(
-                onBack = { navController.popBackStack() },
-                onOpenMyReports = { navController.navigate(Routes.MY_REPORTS) },
-                onOpenWakeSamples = { navController.navigate(Routes.WAKE_SAMPLES) },
+                onBack = dropUnlessResumed { navController.popBackStack() },
+                onOpenMyReports = dropUnlessResumed { navController.navigate(Routes.MY_REPORTS) },
+                onOpenWakeSamples = dropUnlessResumed {
+                    navController.navigate(Routes.WAKE_SAMPLES)
+                },
             )
         }
         composable(Routes.WAKE_SAMPLES) {
-            WakeSamplesPage(onBack = { navController.popBackStack() })
+            WakeSamplesPage(onBack = dropUnlessResumed { navController.popBackStack() })
         }
         composable(Routes.MY_REPORTS) {
             val context = LocalContext.current
             MyReportsPage(
-                onBack = { navController.popBackStack() },
+                onBack = dropUnlessResumed { navController.popBackStack() },
                 onOpenIssue = { url ->
                     context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                 },
@@ -422,7 +475,7 @@ fun AriNavHost(
         composable(Routes.BUG_REPORT) {
             val context = LocalContext.current
             BugReportScreen(
-                onClose = { navController.popBackStack() },
+                onClose = dropUnlessResumed { navController.popBackStack() },
                 // The filed issue opens in a browser rather than in-app: it is
                 // a public page on somebody else's site, and pretending
                 // otherwise is how a webview ends up owning a login flow.
@@ -443,9 +496,11 @@ fun AriNavHost(
         ) { entry ->
             val typeFilter = entry.arguments?.getString("type")
             SkillsScreen(
-                onBack = { navController.popBackStack() },
+                onBack = dropUnlessResumed { navController.popBackStack() },
                 onOpenDetail = { id, source ->
-                    navController.navigate(Routes.skillDetail(id, source))
+                    if (entry.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                        navController.navigate(Routes.skillDetail(id, source))
+                    }
                 },
                 initialTypeFilter = typeFilter,
                 consumeShowInstalledTabFlag = {
@@ -470,7 +525,7 @@ fun AriNavHost(
             SkillDetailScreen(
                 skillId = skillId,
                 source = source,
-                onBack = { navController.popBackStack() },
+                onBack = dropUnlessResumed { navController.popBackStack() },
                 onJustInstalledFromBrowse = {
                     // Hand a one-shot flag back to whichever screen
                     // pushed us here. SkillsScreen reads this on
@@ -485,7 +540,7 @@ fun AriNavHost(
             )
         }
         composable(Routes.ABOUT) {
-            AboutScreen(onBack = { navController.popBackStack() })
+            AboutScreen(onBack = dropUnlessResumed { navController.popBackStack() })
         }
 
         // ── Onboarding wizard (nested graph for shared ViewModel) ──
@@ -510,8 +565,10 @@ fun AriNavHost(
                 val onboardingViewModel: OnboardingViewModel = hiltViewModel(graphEntry)
                 LanguageScreen(
                     onboardingViewModel = onboardingViewModel,
-                    onNext = { navController.navigate(Routes.ONBOARDING_WELCOME) },
-                    onBack = {
+                    onNext = dropUnlessResumed {
+                        navController.navigate(Routes.ONBOARDING_WELCOME)
+                    },
+                    onBack = dropUnlessResumed {
                         // Revisit-only back: returns to conversation
                         // without committing onboarding (the user
                         // already completed it once).
@@ -545,16 +602,18 @@ fun AriNavHost(
                 )
                 WelcomeScreen(
                     onboardingViewModel = onboardingViewModel,
-                    onGetStarted = { navController.navigate(Routes.ONBOARDING_PERMISSIONS) },
+                    onGetStarted = dropUnlessResumed {
+                        navController.navigate(Routes.ONBOARDING_PERMISSIONS)
+                    },
                     onImport = { importLauncher.launch(IMPORT_MIME_TYPES) },
-                    onSkip = {
+                    onSkip = dropUnlessResumed {
                         onboardingViewModel.completeOnboarding()
                         navController.navigate(Routes.CONVERSATION) {
                             popUpTo("onboarding") { inclusive = true }
                             launchSingleTop = true
                         }
                     },
-                    onBack = { navController.popBackStack() },
+                    onBack = dropUnlessResumed { navController.popBackStack() },
                 )
             }
 
@@ -576,13 +635,13 @@ fun AriNavHost(
                 PermissionsScreen(
                     settingsViewModel = settingsViewModel,
                     onboardingViewModel = onboardingViewModel,
-                    onNext = {
+                    onNext = dropUnlessResumed {
                         navController.navigate(if (imported) Routes.ONBOARDING_COMPLETE else Routes.ONBOARDING_WAKE_WORD)
                     },
-                    onNextMicDenied = {
+                    onNextMicDenied = dropUnlessResumed {
                         navController.navigate(if (imported) Routes.ONBOARDING_COMPLETE else Routes.ONBOARDING_ASSISTANT)
                     },
-                    onBack = { navController.popBackStack() },
+                    onBack = dropUnlessResumed { navController.popBackStack() },
                     onRequestRecordAudio = {
                         recordAudioLauncher.launch(Manifest.permission.RECORD_AUDIO)
                     },
@@ -606,14 +665,16 @@ fun AriNavHost(
                 WakeWordScreen(
                     settingsViewModel = settingsViewModel,
                     onboardingViewModel = onboardingViewModel,
-                    onTune = { navController.navigate(Routes.SETTINGS_WAKEWORD_TUNE) },
-                    onNext = {
+                    onTune = dropUnlessResumed {
+                        navController.navigate(Routes.SETTINGS_WAKEWORD_TUNE)
+                    },
+                    onNext = dropUnlessResumed {
                         if (wizardState.startListeningNow) {
                             WakeWordService.start(context)
                         }
                         navController.navigate(Routes.ONBOARDING_LISTENING)
                     },
-                    onBack = { navController.popBackStack() },
+                    onBack = dropUnlessResumed { navController.popBackStack() },
                 )
             }
 
@@ -628,8 +689,8 @@ fun AriNavHost(
                     // picker — it is on-device vs cloud, which is a real
                     // choice in every language. Which local model serves
                     // on-device is still decided for them.
-                    onNext = { navController.navigate(Routes.ONBOARDING_STT) },
-                    onBack = { navController.popBackStack() },
+                    onNext = dropUnlessResumed { navController.navigate(Routes.ONBOARDING_STT) },
+                    onBack = dropUnlessResumed { navController.popBackStack() },
                 )
             }
 
@@ -638,8 +699,10 @@ fun AriNavHost(
                 val settingsViewModel: SettingsViewModel = hiltViewModel(graphEntry)
                 SttScreen(
                     settingsViewModel = settingsViewModel,
-                    onNext = { navController.navigate(Routes.ONBOARDING_ASSISTANT) },
-                    onBack = { navController.popBackStack() },
+                    onNext = dropUnlessResumed {
+                        navController.navigate(Routes.ONBOARDING_ASSISTANT)
+                    },
+                    onBack = dropUnlessResumed { navController.popBackStack() },
                 )
             }
 
@@ -652,8 +715,10 @@ fun AriNavHost(
                     onboardingViewModel = onboardingViewModel,
                     // AssistantScreen.onPrimary commits the router decision
                     // from the chosen assistant + locale before this fires.
-                    onNext = { navController.navigate(Routes.ONBOARDING_GENERAL) },
-                    onBack = { navController.popBackStack() },
+                    onNext = dropUnlessResumed {
+                        navController.navigate(Routes.ONBOARDING_GENERAL)
+                    },
+                    onBack = dropUnlessResumed { navController.popBackStack() },
                 )
             }
 
@@ -662,15 +727,19 @@ fun AriNavHost(
                 val settingsViewModel: SettingsViewModel = hiltViewModel(graphEntry)
                 GeneralScreen(
                     settingsViewModel = settingsViewModel,
-                    onNext = { navController.navigate(Routes.ONBOARDING_RECORDINGS) },
-                    onBack = { navController.popBackStack() },
+                    onNext = dropUnlessResumed {
+                        navController.navigate(Routes.ONBOARDING_RECORDINGS)
+                    },
+                    onBack = dropUnlessResumed { navController.popBackStack() },
                 )
             }
 
             composable(Routes.ONBOARDING_RECORDINGS) {
                 RecordingsScreen(
-                    onNext = { navController.navigate(Routes.ONBOARDING_COMPLETE) },
-                    onBack = { navController.popBackStack() },
+                    onNext = dropUnlessResumed {
+                        navController.navigate(Routes.ONBOARDING_COMPLETE)
+                    },
+                    onBack = dropUnlessResumed { navController.popBackStack() },
                 )
             }
 
@@ -679,7 +748,7 @@ fun AriNavHost(
                 val onboardingViewModel: OnboardingViewModel = hiltViewModel(graphEntry)
                 CompleteScreen(
                     onboardingViewModel = onboardingViewModel,
-                    onDone = {
+                    onDone = dropUnlessResumed {
                         if (onboardingViewModel.state.value.imported) {
                             restartAri(context)
                         } else {
@@ -689,7 +758,7 @@ fun AriNavHost(
                             }
                         }
                     },
-                    onBrowseCloudSkills = {
+                    onBrowseCloudSkills = dropUnlessResumed {
                         onboardingViewModel.completeOnboarding()
                         // Land on the conversation screen as the back-stack
                         // root first (popping the onboarding graph), THEN push
@@ -720,6 +789,8 @@ fun AriNavHost(
                 onMoved = { x, y ->
                     scope.launch { settingsRepository.setBugReportFabPosition(x, y) }
                 },
+                // Unguarded: a stuck transition never resumes its entry, and
+                // that is exactly the screen someone will want to report.
                 onClick = {
                     // Captured before navigating: a moment later the screen
                     // worth photographing is the report form.
