@@ -334,6 +334,7 @@
     <string name="conversation_talk">Parla con Ari</string>
     <string name="conversation_stop_dictation">Ferma la dettatura</string>
     <string name="conversation_timestamp_now">ora</string>
+    <string name="conversation_forgotten_note">Ari ha dimenticato la conversazione qui sopra</string>
     <string name="listening_mode_switch_never_description">Non ascoltare mai</string>
     <string name="listening_mode_switch_custom_description">Ascolta secondo un orario</string>
     <string name="listening_mode_switch_always_description">Ascolta sempre</string>

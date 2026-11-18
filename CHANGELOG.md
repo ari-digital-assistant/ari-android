@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- When Ari forgets the conversation after a quiet spell (90 seconds on the Short
+  setting), a faded note in the chat says so. The messages themselves stay until you
+  clear them ([#51](https://github.com/ari-digital-assistant/ari-android/issues/51)).
+
 ## [0.1.4] - 2026-11-18
 
 Changes since 0.1.3, uploaded to Google Play internal testing as versionCode 6.

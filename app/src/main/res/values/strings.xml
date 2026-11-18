@@ -311,6 +311,7 @@
     <string name="conversation_stop_dictation">Stop dictation</string>
     <!-- TODO(i18n): add values-it/ translation -->
     <string name="conversation_timestamp_now">now</string>
+    <string name="conversation_forgotten_note">Ari has forgotten the conversation above</string>
     <string name="conversation_open_menu">Open menu</string>
     <string name="listening_mode_switch_never_description">Never listen</string>
     <string name="listening_mode_switch_custom_description">Listen on a schedule</string>

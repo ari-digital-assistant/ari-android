@@ -20,4 +20,11 @@ data class Message(
      * unattributed turn says so rather than guessing.
      */
     val skillId: String? = null,
+    /**
+     * A note about the chat itself rather than a turn in it, shown centred and
+     * faded: so far only that Ari has forgotten the conversation above
+     * ([dev.heyari.ari.data.conversation.ConversationLapseWatcher]). Always
+     * with [isFromUser] false.
+     */
+    val isNote: Boolean = false,
 )

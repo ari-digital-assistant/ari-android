@@ -41,6 +41,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
@@ -80,6 +85,11 @@ fun MessageBubble(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
             )
+        }
+
+        if (message.isNote) {
+            ConversationNote(message.text)
+            return@Column
         }
 
         Row(
@@ -210,6 +220,40 @@ fun MessageBubble(
                 }
             }
         }
+    }
+}
+
+/**
+ * A note about the chat rather than a turn in it: centred, faded, and in a
+ * dashed outline so it doesn't read as something Ari said.
+ */
+@Composable
+private fun ConversationNote(text: String) {
+    val outline = MaterialTheme.colorScheme.outline
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .widthIn(max = 300.dp)
+                .alpha(0.7f)
+                .drawBehind {
+                    drawRoundRect(
+                        color = outline,
+                        cornerRadius = CornerRadius(BIG.toPx()),
+                        style = Stroke(
+                            width = 1.dp.toPx(),
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx())),
+                        ),
+                    )
+                }
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+        )
     }
 }
 

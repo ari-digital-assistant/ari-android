@@ -1002,6 +1002,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_clear_conversation(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_conversation_memory(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_current_locale(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_load_llm_model(
@@ -1217,6 +1219,8 @@ external fun uniffi_ari_ffi_fn_method_ariengine_cancel_pending_reply(`ptr`: Long
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_clear_conversation(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+external fun uniffi_ari_ffi_fn_method_ariengine_conversation_memory(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ariengine_current_locale(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ariengine_load_llm_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1612,6 +1616,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_clear_conversation() != 57984.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_conversation_memory() != 14092.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_current_locale() != 7320.toShort()) {
@@ -2410,6 +2417,13 @@ public interface AriEngineInterface {
     fun `clearConversation`()
     
     /**
+     * Whether Ari still remembers the conversation, and for how much longer,
+     * so the chat can say when it has been forgotten (ari-android#51).
+     * Reading it doesn't keep the conversation alive.
+     */
+    fun `conversationMemory`(): FfiConversationMemory
+    
+    /**
      * Construct with the full set of host-supplied platform
      * providers. This is the constructor the Android frontend uses
      * at startup so any skill that declares the `tasks`, `calendar`
@@ -2728,6 +2742,24 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
 }
     }
     
+    
+
+    
+    /**
+     * Whether Ari still remembers the conversation, and for how much longer,
+     * so the chat can say when it has been forgotten (ari-android#51).
+     * Reading it doesn't keep the conversation alive.
+     */override fun `conversationMemory`(): FfiConversationMemory {
+            return FfiConverterTypeFfiConversationMemory.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_conversation_memory(
+        it,
+        _status)
+}
+    }
+    )
+    }
     
 
     
@@ -11112,6 +11144,96 @@ public object FfiConverterTypeFfiConversationLength: FfiConverterRustBuffer<FfiC
 
     override fun write(value: FfiConversationLength, buf: ByteBuffer) {
         buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * Whether Ari still remembers the conversation; see [`ConversationMemory`].
+ */
+sealed class FfiConversationMemory {
+    
+    object None : FfiConversationMemory()
+    
+    
+    data class Live(
+        val `forgottenInMs`: kotlin.ULong) : FfiConversationMemory()
+        
+    {
+        
+
+        companion object
+    }
+    
+    object Lapsed : FfiConversationMemory()
+    
+    
+
+    
+
+    
+    
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiConversationMemory : FfiConverterRustBuffer<FfiConversationMemory>{
+    override fun read(buf: ByteBuffer): FfiConversationMemory {
+        return when(buf.getInt()) {
+            1 -> FfiConversationMemory.None
+            2 -> FfiConversationMemory.Live(
+                FfiConverterULong.read(buf),
+                )
+            3 -> FfiConversationMemory.Lapsed
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: FfiConversationMemory) = when(value) {
+        is FfiConversationMemory.None -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiConversationMemory.Live -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterULong.allocationSize(value.`forgottenInMs`)
+            )
+        }
+        is FfiConversationMemory.Lapsed -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: FfiConversationMemory, buf: ByteBuffer) {
+        when(value) {
+            is FfiConversationMemory.None -> {
+                buf.putInt(1)
+                Unit
+            }
+            is FfiConversationMemory.Live -> {
+                buf.putInt(2)
+                FfiConverterULong.write(value.`forgottenInMs`, buf)
+                Unit
+            }
+            is FfiConversationMemory.Lapsed -> {
+                buf.putInt(3)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
     }
 }
 

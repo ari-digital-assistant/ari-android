@@ -84,6 +84,7 @@ class EngineHolder @Inject constructor(
     private val appLauncher: dev.heyari.ari.actions.AppLauncher,
     private val tasksProvider: dev.heyari.ari.tasks.TasksProvider,
     private val skillRegistry: uniffi.ari_ffi.SkillRegistry,
+    private val lapseWatcher: dev.heyari.ari.data.conversation.ConversationLapseWatcher,
 ) {
     // SupervisorJob isolates siblings but does not swallow: an exception from
     // anything launched here otherwise reaches the default uncaught handler
@@ -124,10 +125,14 @@ class EngineHolder @Inject constructor(
      *
      * Turns go through here rather than `engine().processInput(...)` so the
      * dispatcher is decided once, in one place, instead of at each call site.
-     * Three of the four had it wrong.
+     * Three of the four had it wrong. Being the one place every turn passes,
+     * it also restarts the watch for the conversation being forgotten.
      */
     suspend fun processInput(input: String): FfiResponse =
-        withContext(Dispatchers.Default) { engine().processInput(input) }
+        withContext(Dispatchers.Default) {
+            val engine = engine()
+            engine.processInput(input).also { lapseWatcher.turnFinished(engine::conversationMemory) }
+        }
 
     /**
      * [processInput], handing an on-device answer over while the model is
@@ -143,13 +148,14 @@ class EngineHolder @Inject constructor(
         onSentence: (String) -> Unit,
     ): FfiResponse =
         withContext(Dispatchers.Default) {
-            engine().processInputStreaming(
+            val engine = engine()
+            engine.processInputStreaming(
                 input,
                 object : FfiAnswerSink {
                     override fun text(soFar: String) = onText(soFar)
                     override fun sentence(text: String) = onSentence(text)
                 },
-            )
+            ).also { lapseWatcher.turnFinished(engine::conversationMemory) }
         }
 
     /** Start the background build without waiting. Call once at app start. */

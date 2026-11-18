@@ -385,7 +385,7 @@ class BugReportCollector @Inject constructor(
     private fun conversationJson(): String = JSONArray().apply {
         conversation.messages.value.forEach { message ->
             put(JSONObject().apply {
-                put("from", if (message.isFromUser) "user" else "ari")
+                put("from", when { message.isFromUser -> "user"; message.isNote -> "note"; else -> "ari" })
                 put("text", message.text)
             })
         }
