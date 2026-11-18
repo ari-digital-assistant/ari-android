@@ -1,6 +1,7 @@
 package dev.heyari.ari.ui.settings
 
 import android.Manifest
+import android.app.ActivityManager
 import android.app.Application
 import android.app.LocaleManager
 import android.util.Log
@@ -26,6 +27,8 @@ import dev.heyari.ari.llm.LlmDownloadManager
 import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.llm.LlmModel
 import dev.heyari.ari.llm.LlmModelRegistry
+import dev.heyari.ari.llm.MemoryFit
+import dev.heyari.ari.llm.PhoneMemory
 import dev.heyari.ari.stt.CloudTranscriber
 import dev.heyari.ari.stt.ModelDownloadManager
 import dev.heyari.ari.stt.ModelDownloadState
@@ -94,6 +97,10 @@ data class LlmModelStatus(
     val model: LlmModel,
     val downloaded: Boolean,
     val active: Boolean,
+    /** How the model suits this phone's memory; null when Android won't say. */
+    val fit: MemoryFit? = null,
+    /** The biggest model that fits this phone comfortably. */
+    val recommended: Boolean = false,
 )
 
 data class AssistantUiEntry(
@@ -129,6 +136,8 @@ data class SettingsState(
     val wakeSpeechCheck: Boolean = true,
     val quietWake: Boolean = true,
     val llmModels: List<LlmModelStatus> = emptyList(),
+    /** The memory this phone was sold with, in GB; null when Android won't say. */
+    val phoneMemoryGb: Int? = null,
     val llmDownload: LlmDownloadState = LlmDownloadState.Idle,
     val llmNoneActive: Boolean = true,
     val activeAssistantId: String? = null,
@@ -196,6 +205,11 @@ class SettingsViewModel @Inject constructor(
     private val _state = MutableStateFlow(SettingsState())
     private val personalityEdits = MutableStateFlow<String?>(null)
     val state: StateFlow<SettingsState> = _state.asStateFlow()
+
+    /** The phone's memory as sold, which grades the on-device models (ari-android#42). */
+    private val phoneMemoryGb: Int? = ActivityManager.MemoryInfo()
+        .also { application.getSystemService(ActivityManager::class.java)?.getMemoryInfo(it) }
+        .let { PhoneMemory.soldGb(it.totalMem) }
 
     /** Tracks which LLM model id is currently loaded in the engine, to avoid redundant loads. */
     @Volatile
@@ -282,6 +296,7 @@ class SettingsViewModel @Inject constructor(
                 _state.update {
                     it.copy(
                         llmModels = buildLlmModelList(llmId),
+                        phoneMemoryGb = phoneMemoryGb,
                         llmDownload = dlState,
                     )
                 }
@@ -1043,11 +1058,14 @@ class SettingsViewModel @Inject constructor(
     // ── LLM model management (used by built-in assistant) ─────────────
 
     private fun buildLlmModelList(activeId: String?): List<LlmModelStatus> {
+        val recommended = phoneMemoryGb?.let { PhoneMemory.recommended(LlmModelRegistry.all, it) }
         return LlmModelRegistry.all.map { model ->
             LlmModelStatus(
                 model = model,
                 downloaded = llmDownloadManager.isDownloaded(model),
                 active = model.id == activeId,
+                fit = phoneMemoryGb?.let { PhoneMemory.fit(model, it) },
+                recommended = model == recommended,
             )
         }
     }

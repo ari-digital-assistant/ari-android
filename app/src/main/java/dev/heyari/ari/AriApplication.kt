@@ -184,16 +184,28 @@ class AriApplication : Application(), Configuration.Provider {
         }
     }
 
+    /**
+     * Frees the on-device model's memory when Android asks Ari to shrink,
+     * keeping the assistant set so the next question loads it again.
+     *
+     * Only from `TRIM_MEMORY_BACKGROUND` up. Android 14 and later no longer
+     * send the "running low" levels, and `TRIM_MEMORY_UI_HIDDEN` (20) only
+     * means Ari's screen closed. This used to test `>= RUNNING_LOW` (10),
+     * which UI_HIDDEN passes, and remove the model outright: leaving Ari's
+     * screen switched the on-device assistant off until Ari restarted
+     * (ari-android#42). The engine already drops an idle model after a
+     * minute, so nothing is lost by ignoring UI_HIDDEN.
+     */
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
-            // Best-effort: if the engine hasn't been built yet there's no
-            // mmap to release, so a null peek is a no-op rather than forcing
-            // a (blocking) build on a memory-pressure callback.
-            engineHolder.peek()?.let {
-                Log.i(TAG, "Memory pressure (level=$level), unloading LLM")
-                it.unloadLlmModel()
-            }
+        if (level < ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) return
+        // A null peek means no engine yet, so no model to free, and building
+        // one here would be the opposite of what Android asked for. Off the
+        // main thread: releasing waits for an answer in progress to finish.
+        val engine = engineHolder.peek() ?: return
+        scope.launch {
+            Log.i(TAG, "Memory pressure (level=$level), freeing the on-device model")
+            engine.releaseLlmMemory()
         }
     }
 

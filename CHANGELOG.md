@@ -16,9 +16,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and show a notification that opens the issue when someone has replied.
 - Skills > Browse has a "Hide installed" filter, which stays on until you turn it off
   ([#41](https://github.com/ari-digital-assistant/ari-android/issues/41)).
+- The on-device assistant's models say how much memory each uses while answering,
+  measured on a phone, and how that suits this phone: the page says how much memory the
+  phone has and marks the biggest model that fits comfortably as recommended. A model
+  that would leave little room for other apps asks before downloading, and one that's
+  too big for the phone can't be downloaded. Models already downloaded stay
+  ([#42](https://github.com/ari-digital-assistant/ari-android/issues/42)).
 
 ### Fixed
 
+- Leaving Ari's screen switched the on-device assistant off until Ari restarted, and
+  questions asked afterwards weren't answered. Ari meant to free the model's memory when
+  the phone runs low, but the check also caught the screen closing, and it removed the
+  model rather than freeing it. Ari now frees the memory only when Android asks, and the
+  next question loads the model again
+  ([#42](https://github.com/ari-digital-assistant/ari-android/issues/42)).
 - Navigating quickly, such as opening a skill and backing out straight away, could
   leave a screen frozen halfway off the edge. Taps that land while a screen is still
   sliding in or out are now ignored

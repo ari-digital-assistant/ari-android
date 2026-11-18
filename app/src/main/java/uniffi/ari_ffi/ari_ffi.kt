@@ -1014,6 +1014,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_query_skill_setting(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_release_llm_memory(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_reload_community_skills(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_remembered_facts(
@@ -1223,6 +1225,8 @@ external fun uniffi_ari_ffi_fn_method_ariengine_process_input_streaming(`ptr`: L
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ariengine_query_skill_setting(`ptr`: Long,`skillId`: RustBuffer.ByValue,`field`: RustBuffer.ByValue,`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_ariengine_release_llm_memory(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_reload_community_skills(`ptr`: Long,`skillStoreDir`: RustBuffer.ByValue,`storageDir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Int
 external fun uniffi_ari_ffi_fn_method_ariengine_remembered_facts(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -1620,6 +1624,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_query_skill_setting() != 51025.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_release_llm_memory() != 34574.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_reload_community_skills() != 23146.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1650,7 +1657,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_settings_action() != 45712.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_ariengine_unload_llm_model() != 46360.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_unload_llm_model() != 37580.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_arienginebuilder_authorize() != 22452.toShort()) {
@@ -2451,6 +2458,13 @@ public interface AriEngineInterface {
     fun `querySkillSetting`(`skillId`: kotlin.String, `field`: kotlin.String, `values`: Map<kotlin.String, kotlin.String>): FfiSettingsQueryResult
     
     /**
+     * Free the loaded model's memory but keep it set, so the next question
+     * loads it again. Blocks until any answer in progress finishes, so
+     * don't call it on the main thread.
+     */
+    fun `releaseLlmMemory`()
+    
+    /**
      * Rebuild the engine's skill set from scratch: the 6 built-in Rust
      * skills plus every community skill on disk under `skill_store_dir`.
      *
@@ -2544,7 +2558,10 @@ public interface AriEngineInterface {
     
     /**
      * Remove the LLM fallback. If a model is currently loaded in RAM,
-     * it is dropped and the memory is freed.
+     * it is dropped and the memory is freed. The on-device assistant
+     * stops answering until [`Self::load_llm_model`] is called again, so
+     * this is for switching or deleting models: to free memory, use
+     * [`Self::release_llm_memory`].
      */
     fun `unloadLlmModel`()
     
@@ -2819,6 +2836,23 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
 
     
     /**
+     * Free the loaded model's memory but keep it set, so the next question
+     * loads it again. Blocks until any answer in progress finishes, so
+     * don't call it on the main thread.
+     */override fun `releaseLlmMemory`()
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_release_llm_memory(
+        it,
+        _status)
+}
+    }
+    
+    
+
+    
+    /**
      * Rebuild the engine's skill set from scratch: the 6 built-in Rust
      * skills plus every community skill on disk under `skill_store_dir`.
      *
@@ -3015,7 +3049,10 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     
     /**
      * Remove the LLM fallback. If a model is currently loaded in RAM,
-     * it is dropped and the memory is freed.
+     * it is dropped and the memory is freed. The on-device assistant
+     * stops answering until [`Self::load_llm_model`] is called again, so
+     * this is for switching or deleting models: to free memory, use
+     * [`Self::release_llm_memory`].
      */override fun `unloadLlmModel`()
         = 
     callWithHandle {

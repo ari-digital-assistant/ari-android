@@ -495,6 +495,14 @@
     <string name="settings_llm_cloud_nudge_body">Install a cloud assistant skill (ChatGPT, Claude, Gemini, etc.) from the skill browser to add it as an option here.</string>
     <string name="settings_llm_cloud_privacy">Your questions will be sent to a third-party server.</string>
     <string name="settings_llm_model_picker_blurb">Choose a model to download. Smaller models are faster but less capable.</string>
+    <string name="llm_phone_memory">This phone has %1$d GB of memory.</string>
+    <string name="llm_model_recommended">%1$s (recommended)</string>
+    <string name="llm_memory_fits">Uses about %1$s of memory while answering.</string>
+    <string name="llm_memory_tight">Uses about %1$s of this phone\'s %2$d GB while answering, so other apps may close.</string>
+    <string name="llm_memory_too_big">Needs a phone with at least %1$d GB of memory.</string>
+    <string name="llm_tight_dialog_title">Download %1$s?</string>
+    <string name="llm_tight_dialog_body">%1$s uses about %2$s of this phone\'s %3$d GB of memory while it answers. Other apps may close, and answers may be slow.</string>
+    <string name="llm_tight_dialog_confirm">Download anyway</string>
     <string name="settings_last_download_failed">Last download failed: %1$s</string>
 
     <!-- Listening modes -->
@@ -767,11 +775,11 @@
     <string name="model_stt_parakeet_ultra_name">European speech model</string>
     <string name="model_stt_parakeet_ultra_desc">Parakeet Ultra, 671 MB. Works offline, 25 European languages. Your words appear once you finish speaking.</string>
     <string name="model_llm_small_name">Small (Gemma 3 1B)</string>
-    <string name="model_llm_small_desc">Fast and efficient (~806 MB download, 4 GB+ RAM). Used exclusively for skill routing.</string>
+    <string name="model_llm_small_desc">Fast and efficient (~806 MB download). Used exclusively for skill routing.</string>
     <string name="model_llm_medium_name">Medium (Gemma 4 E2B)</string>
-    <string name="model_llm_medium_desc">A good balance of performance and capability (~3.1 GB download, 6 GB+ RAM). Suitable for a wide range of tasks.</string>
+    <string name="model_llm_medium_desc">A good balance of performance and capability (~3.1 GB download). Suitable for a wide range of tasks.</string>
     <string name="model_llm_large_name">Large (Gemma 4 E4B)</string>
-    <string name="model_llm_large_desc">Most capable (~5 GB download, 8 GB+ RAM). Best for complex tasks and understanding nuanced language, but may be slower and require more resources.</string>
+    <string name="model_llm_large_desc">Most capable (~5 GB download). Best for complex tasks and understanding nuanced language, but may be slower and require more resources.</string>
     <!-- Shown on a model row once its files are on disk. -->
     <string name="model_status_downloaded">Downloaded</string>
     <string name="message_menu_copy">Copy</string>

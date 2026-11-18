@@ -494,6 +494,14 @@
     <string name="settings_llm_cloud_nudge_body">Installa una skill di assistente cloud (ChatGPT, Claude, Gemini, ecc.) dal catalogo delle skill per aggiungerla come opzione qui.</string>
     <string name="settings_llm_cloud_privacy">Le tue domande verranno inviate a un server di terze parti.</string>
     <string name="settings_llm_model_picker_blurb">Scegli un modello da scaricare. I modelli più piccoli sono più veloci ma meno capaci.</string>
+    <string name="llm_phone_memory">Questo telefono ha %1$d GB di memoria.</string>
+    <string name="llm_model_recommended">%1$s (consigliato)</string>
+    <string name="llm_memory_fits">Usa circa %1$s di memoria mentre risponde.</string>
+    <string name="llm_memory_tight">Usa circa %1$s dei %2$d GB di questo telefono mentre risponde, quindi altre app potrebbero chiudersi.</string>
+    <string name="llm_memory_too_big">Richiede un telefono con almeno %1$d GB di memoria.</string>
+    <string name="llm_tight_dialog_title">Scaricare %1$s?</string>
+    <string name="llm_tight_dialog_body">%1$s usa circa %2$s dei %3$d GB di memoria di questo telefono mentre risponde. Altre app potrebbero chiudersi e le risposte potrebbero essere lente.</string>
+    <string name="llm_tight_dialog_confirm">Scarica comunque</string>
     <string name="settings_last_download_failed">Ultimo download fallito: %1$s</string>
 
     <!-- Listening modes -->
@@ -759,11 +767,11 @@
     <string name="model_stt_parakeet_ultra_name">Modello vocale europeo</string>
     <string name="model_stt_parakeet_ultra_desc">Parakeet Ultra, 671 MB. Funziona offline, 25 lingue europee. Le tue parole compaiono quando hai finito di parlare.</string>
     <string name="model_llm_small_name">Piccolo (Gemma 3 1B)</string>
-    <string name="model_llm_small_desc">Veloce ed efficiente (~806 MB di download, 4 GB+ di RAM). Usato esclusivamente per il routing delle skill.</string>
+    <string name="model_llm_small_desc">Veloce ed efficiente (~806 MB di download). Usato esclusivamente per il routing delle skill.</string>
     <string name="model_llm_medium_name">Medio (Gemma 4 E2B)</string>
-    <string name="model_llm_medium_desc">Un buon equilibrio tra prestazioni e capacità (~3,1 GB di download, 6 GB+ di RAM). Adatto a un\'ampia gamma di attività.</string>
+    <string name="model_llm_medium_desc">Un buon equilibrio tra prestazioni e capacità (~3,1 GB di download). Adatto a un\'ampia gamma di attività.</string>
     <string name="model_llm_large_name">Grande (Gemma 4 E4B)</string>
-    <string name="model_llm_large_desc">Il più capace (~5 GB di download, 8 GB+ di RAM). Ideale per attività complesse e per capire un linguaggio sfumato, ma può essere più lento e richiedere più risorse.</string>
+    <string name="model_llm_large_desc">Il più capace (~5 GB di download). Ideale per attività complesse e per capire un linguaggio sfumato, ma può essere più lento e richiedere più risorse.</string>
     <string name="model_status_downloaded">Scaricato</string>
     <string name="message_menu_copy">Copia</string>
     <string name="message_menu_report">Segnala</string>

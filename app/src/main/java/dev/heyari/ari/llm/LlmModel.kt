@@ -22,6 +22,12 @@ data class LlmModel(
     @param:StringRes val displayNameRes: Int,
     @param:StringRes val descriptionRes: Int,
     val totalBytes: Long,
+    /**
+     * Peak memory while answering, as measured: the weights, which it reads
+     * in full for every word, plus its working memory. [PhoneMemory] grades
+     * the model against the phone with this.
+     */
+    val runtimeBytes: Long,
     val fileName: String,
     val downloadUrl: String,
     val size: LlmSize,
@@ -34,6 +40,13 @@ data class LlmModel(
     val manifestUrl: String = "",
 )
 
+/**
+ * [LlmModel.runtimeBytes] figures come from ari-android#42 (2026-11-18): each
+ * model loaded by ari-llm's production path (llama.cpp 0.1.161, ARMv8.6 build,
+ * 2,048-token context) on a Pixel 10 Pro Fold, answering three questions, with
+ * the process's peak resident memory read from /proc. Measure again when the
+ * model, its quantisation or the context size changes.
+ */
 object LlmModelRegistry {
     val NONE_ID = "none"
 
@@ -42,6 +55,7 @@ object LlmModelRegistry {
         displayNameRes = R.string.model_llm_small_name,
         descriptionRes = R.string.model_llm_small_desc,
         totalBytes = 806_058_272L,
+        runtimeBytes = 1_425_000_000L,
         fileName = "gemma-3-1b-it-Q4_K_M.gguf",
         downloadUrl = "https://huggingface.co/unsloth/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q4_K_M.gguf",
         size = LlmSize.Small,
@@ -53,6 +67,7 @@ object LlmModelRegistry {
         displayNameRes = R.string.model_llm_medium_name,
         descriptionRes = R.string.model_llm_medium_desc,
         totalBytes = 3_110_000_000L,
+        runtimeBytes = 4_570_000_000L,
         fileName = "gemma-4-E2B-it-Q4_K_M.gguf",
         downloadUrl = "https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_K_M.gguf",
         size = LlmSize.Medium,
@@ -64,6 +79,7 @@ object LlmModelRegistry {
         displayNameRes = R.string.model_llm_large_name,
         descriptionRes = R.string.model_llm_large_desc,
         totalBytes = 4_980_000_000L,
+        runtimeBytes = 6_100_000_000L,
         fileName = "gemma-4-E4B-it-Q4_K_M.gguf",
         downloadUrl = "https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf",
         size = LlmSize.Large,

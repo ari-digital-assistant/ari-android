@@ -27,6 +27,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontStyle
@@ -37,6 +38,8 @@ import dev.heyari.ari.R
 import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.llm.LlmModel
 import dev.heyari.ari.llm.LlmModelRegistry
+import dev.heyari.ari.llm.MemoryFit
+import dev.heyari.ari.ui.components.LlmMemoryLine
 import dev.heyari.ari.ui.formatBytes
 import dev.heyari.ari.ui.settings.SettingsViewModel
 import dev.heyari.ari.ui.theme.LocalAriSemanticColors
@@ -52,9 +55,11 @@ fun AssistantScreen(
     val state by settingsViewModel.state.collectAsStateWithLifecycle()
     val wizardState by onboardingViewModel.state.collectAsStateWithLifecycle()
 
-    // Auto-select Small when the user first picks On-device.
+    // Auto-select Small when the user first picks On-device, unless even
+    // Small is too big for this phone's memory.
     LaunchedEffect(wizardState.assistantChoice) {
-        if (wizardState.assistantChoice == AssistantChoice.ON_DEVICE && wizardState.selectedLlmModelId == null) {
+        val smallTooBig = state.llmModels.firstOrNull { it.model == LlmModelRegistry.SMALL }?.fit == MemoryFit.TooBig
+        if (wizardState.assistantChoice == AssistantChoice.ON_DEVICE && wizardState.selectedLlmModelId == null && !smallTooBig) {
             onboardingViewModel.setSelectedLlmModelId(LlmModelRegistry.SMALL.id)
         }
     }
@@ -139,12 +144,16 @@ fun AssistantScreen(
                     val selected = wizardState.selectedLlmModelId == model.id
                     val isDownloading = state.llmDownload is LlmDownloadState.Downloading &&
                         (state.llmDownload as LlmDownloadState.Downloading).modelId == model.id
-                    val downloaded = state.llmModels.firstOrNull { it.model.id == model.id }?.downloaded == true
+                    val status = state.llmModels.firstOrNull { it.model.id == model.id }
+                    val downloaded = status?.downloaded == true
 
                     LlmTierRow(
                         model = model,
                         selected = selected,
                         downloaded = downloaded,
+                        fit = status?.fit,
+                        recommended = status?.recommended == true,
+                        phoneGb = state.phoneMemoryGb,
                         isDownloading = isDownloading,
                         downloadState = if (isDownloading) state.llmDownload as LlmDownloadState.Downloading else null,
                         onSelect = { onboardingViewModel.setSelectedLlmModelId(model.id) },
@@ -281,14 +290,21 @@ private fun LlmTierRow(
     model: LlmModel,
     selected: Boolean,
     downloaded: Boolean,
+    fit: MemoryFit?,
+    recommended: Boolean,
+    phoneGb: Int?,
     isDownloading: Boolean,
     downloadState: LlmDownloadState.Downloading?,
     onSelect: () -> Unit,
 ) {
+    // Too big for this phone: can't be picked here, unless it's already on
+    // the phone from before.
+    val enabled = fit != MemoryFit.TooBig || downloaded
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .selectable(selected = selected, onClick = onSelect, role = Role.RadioButton),
+            .alpha(if (enabled) 1f else 0.6f)
+            .selectable(selected = selected, enabled = enabled, onClick = onSelect, role = Role.RadioButton),
         colors = CardDefaults.cardColors(
             containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
         ),
@@ -298,11 +314,13 @@ private fun LlmTierRow(
                 RadioButton(
                     selected = selected,
                     onClick = null,
+                    enabled = enabled,
                     modifier = Modifier.minimumInteractiveComponentSize(),
                 )
                 Column(modifier = Modifier.weight(1f)) {
+                    val name = stringResource(model.displayNameRes)
                     Text(
-                        text = stringResource(model.displayNameRes),
+                        text = if (recommended) stringResource(R.string.llm_model_recommended, name) else name,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
@@ -311,6 +329,7 @@ private fun LlmTierRow(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    LlmMemoryLine(model = model, fit = fit, phoneGb = phoneGb)
                 }
             }
             if (downloaded) {

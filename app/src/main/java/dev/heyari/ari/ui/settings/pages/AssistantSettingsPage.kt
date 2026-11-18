@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -35,7 +36,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.heyari.ari.R
 import dev.heyari.ari.di.EngineModule
 import dev.heyari.ari.llm.LlmDownloadState
+import dev.heyari.ari.llm.LlmModel
 import dev.heyari.ari.llm.LlmModelRegistry
+import dev.heyari.ari.llm.MemoryFit
+import dev.heyari.ari.ui.components.LlmMemoryLine
 import dev.heyari.ari.ui.components.SkillSettingsPanel
 import dev.heyari.ari.ui.formatBytes
 import dev.heyari.ari.ui.settings.AssistantUiEntry
@@ -147,6 +151,7 @@ fun AssistantSettingsPage(
                     },
                     isBuiltin = isBuiltin,
                     llmModels = if (isBuiltin) state.llmModels else emptyList(),
+                    phoneMemoryGb = state.phoneMemoryGb,
                     llmDownloadState = if (isBuiltin) state.llmDownload else LlmDownloadState.Idle,
                     onDownloadModel = { model -> viewModel.downloadLlmModel(model) },
                     onCancelDownload = { viewModel.cancelLlmDownload() },
@@ -202,6 +207,7 @@ private fun AssistantCard(
     settingsAction: suspend (action: String, values: Map<String, String>) -> FfiSettingsQueryResult,
     isBuiltin: Boolean,
     llmModels: List<dev.heyari.ari.ui.settings.LlmModelStatus>,
+    phoneMemoryGb: Int? = null,
     llmDownloadState: LlmDownloadState,
     onDownloadModel: (dev.heyari.ari.llm.LlmModel) -> Unit,
     onCancelDownload: () -> Unit,
@@ -256,6 +262,7 @@ private fun AssistantCard(
                 Spacer(modifier = Modifier.height(8.dp))
                 BuiltinModelSection(
                     models = llmModels,
+                    phoneMemoryGb = phoneMemoryGb,
                     downloadState = llmDownloadState,
                     onDownload = onDownloadModel,
                     onCancel = onCancelDownload,
@@ -290,6 +297,7 @@ private fun AssistantCard(
 @Composable
 private fun BuiltinModelSection(
     models: List<dev.heyari.ari.ui.settings.LlmModelStatus>,
+    phoneMemoryGb: Int?,
     downloadState: LlmDownloadState,
     onDownload: (dev.heyari.ari.llm.LlmModel) -> Unit,
     onCancel: () -> Unit,
@@ -302,7 +310,46 @@ private fun BuiltinModelSection(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(start = 40.dp),
     )
+    if (phoneMemoryGb != null) {
+        Text(
+            text = stringResource(R.string.llm_phone_memory, phoneMemoryGb),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 40.dp, top = 4.dp),
+        )
+    }
     Spacer(modifier = Modifier.height(4.dp))
+
+    // A tight model asks before downloading; a too-big one can't start.
+    var confirmTight by remember { mutableStateOf<LlmModel?>(null) }
+    confirmTight?.let { model ->
+        val name = stringResource(model.displayNameRes)
+        AlertDialog(
+            onDismissRequest = { confirmTight = null },
+            title = { Text(stringResource(R.string.llm_tight_dialog_title, name)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.llm_tight_dialog_body,
+                        name,
+                        formatBytes(model.runtimeBytes),
+                        phoneMemoryGb ?: 0,
+                    ),
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmTight = null
+                    onDownload(model)
+                }) { Text(stringResource(R.string.llm_tight_dialog_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmTight = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
 
     for (status in models) {
         val model = status.model
@@ -329,8 +376,11 @@ private fun BuiltinModelSection(
                         Spacer(modifier = Modifier.width(48.dp))
                     }
                     Column(modifier = Modifier.weight(1f)) {
+                        val name = stringResource(model.displayNameRes)
                         Text(
-                            text = stringResource(model.displayNameRes),
+                            text = if (status.recommended) {
+                                stringResource(R.string.llm_model_recommended, name)
+                            } else name,
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         Text(
@@ -338,6 +388,7 @@ private fun BuiltinModelSection(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        LlmMemoryLine(model = model, fit = status.fit, phoneGb = phoneMemoryGb)
                     }
                 }
 
@@ -400,7 +451,12 @@ private fun BuiltinModelSection(
                                     .padding(end = 8.dp),
                             )
                         }
-                        Button(onClick = { onDownload(model) }) {
+                        Button(
+                            onClick = {
+                                if (status.fit == MemoryFit.Tight) confirmTight = model else onDownload(model)
+                            },
+                            enabled = status.fit != MemoryFit.TooBig,
+                        ) {
                             Text(stringResource(R.string.download_button_with_size, formatBytes(model.totalBytes)))
                         }
                     }
