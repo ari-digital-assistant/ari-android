@@ -25,6 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A question with "find" or "search" in it, such as "where do you find them in Europe?",
+  goes to the assistant, which knows what "them" means from the conversation. It used
+  to open a web search with half the words missing. Searches you ask for ("search for
+  X", "look up X") keep every word of what you're searching for
+  ([#43](https://github.com/ari-digital-assistant/ari-android/issues/43)).
 - Leaving Ari's screen switched the on-device assistant off until Ari restarted, and
   questions asked afterwards weren't answered. Ari meant to free the model's memory when
   the phone runs low, but the check also caught the screen closing, and it removed the
