@@ -23,6 +23,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -52,6 +53,7 @@ import dev.heyari.ari.R
 import dev.heyari.ari.ui.components.AriTopBar
 import java.time.Duration
 import java.time.Instant
+import uniffi.ari_ffi.FfiBrowseEntry
 
 /**
  * SavedStateHandle key the [SkillDetailScreen] sets when an install
@@ -447,22 +449,19 @@ private fun BrowseTab(
             singleLine = true,
         )
 
+        FilterChip(
+            selected = state.hideInstalledInBrowse,
+            onClick = { viewModel.setHideInstalledInBrowse(!state.hideInstalledInBrowse) },
+            label = { Text(stringResource(R.string.skills_browse_hide_installed)) },
+        )
+
         state.errorMessage?.let { ErrorCard(it) }
 
-        val filtered = remember(state.browse, state.browseQuery, typeFilter) {
-            var result = state.browse
-            if (typeFilter != null) {
-                result = result.filter { entry ->
-                    entry.skillType.equals(typeFilter, ignoreCase = true)
-                }
-            }
-            if (state.browseQuery.isNotBlank()) {
-                result = result.filter {
-                    it.name.contains(state.browseQuery, ignoreCase = true) ||
-                        it.id.contains(state.browseQuery, ignoreCase = true)
-                }
-            }
-            result
+        val matches = remember(state.browse, state.browseQuery, typeFilter) {
+            browseMatches(state.browse, typeFilter, state.browseQuery)
+        }
+        val filtered = remember(matches, state.hideInstalledInBrowse) {
+            if (state.hideInstalledInBrowse) matches.filterNot { it.installed } else matches
         }
 
         Column(
@@ -481,8 +480,14 @@ private fun BrowseTab(
                     }
                 }
                 filtered.isEmpty() -> {
+                    // Everything that matched is hidden: "no skills match" would
+                    // send the user hunting for a typo that isn't there.
+                    val allInstalled = matches.isNotEmpty()
                     Text(
-                        text = stringResource(R.string.skills_empty_browse),
+                        text = stringResource(
+                            if (allInstalled) R.string.skills_empty_browse_all_installed
+                            else R.string.skills_empty_browse,
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -499,6 +504,22 @@ private fun BrowseTab(
             }
         }
     }
+}
+
+/**
+ * The registry entries that pass the type chip and the search box, which
+ * matches a skill's name or id. "Hide installed" applies on top, separately,
+ * so the empty state can tell "nothing matches" from "it's all installed".
+ */
+internal fun browseMatches(
+    entries: List<FfiBrowseEntry>,
+    typeFilter: String?,
+    query: String,
+): List<FfiBrowseEntry> = entries.filter { entry ->
+    (typeFilter == null || entry.skillType.equals(typeFilter, ignoreCase = true)) &&
+        (query.isBlank() ||
+            entry.name.contains(query, ignoreCase = true) ||
+            entry.id.contains(query, ignoreCase = true))
 }
 
 @Composable

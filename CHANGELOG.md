@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([#40](https://github.com/ari-digital-assistant/ari-android/issues/40)).
 - Testing builds check twice a day for replies to the bug reports sent from the phone,
   and show a notification that opens the issue when someone has replied.
+- Skills > Browse has a "Hide installed" filter, which stays on until you turn it off
+  ([#41](https://github.com/ari-digital-assistant/ari-android/issues/41)).
 
 ### Fixed
 

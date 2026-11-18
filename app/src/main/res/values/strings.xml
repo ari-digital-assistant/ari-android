@@ -92,6 +92,8 @@
     <string name="skills_last_checked_days">Checked %1$d d ago</string>
     <string name="skills_empty_installed">No community skills installed yet.</string>
     <string name="skills_empty_browse">No skills match your search.</string>
+    <string name="skills_empty_browse_all_installed">Every skill that matches is already installed.</string>
+    <string name="skills_browse_hide_installed">Hide installed</string>
     <string name="skills_detail_version">Version %1$s</string>
     <string name="skills_detail_installed_badge">Installed</string>
     <string name="skills_detail_author">Author</string>

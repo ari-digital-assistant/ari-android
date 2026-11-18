@@ -138,10 +138,12 @@ class SkillsViewModel @Inject constructor(
         viewModelScope.launch {
             val installedAt = prefs.lastCheckedInstalled.first()
             val browseAt = prefs.lastCheckedBrowse.first()
+            val hideInstalled = prefs.hideInstalledInBrowse.first()
             _state.update {
                 it.copy(
                     lastCheckedInstalled = installedAt,
                     lastCheckedBrowse = browseAt,
+                    hideInstalledInBrowse = hideInstalled,
                 )
             }
         }
@@ -402,6 +404,12 @@ class SkillsViewModel @Inject constructor(
 
     fun setBrowseQuery(query: String) {
         _state.update { it.copy(browseQuery = query) }
+    }
+
+    /** Remembered, so Browse opens the way the user last left it. */
+    fun setHideInstalledInBrowse(hide: Boolean) {
+        _state.update { it.copy(hideInstalledInBrowse = hide) }
+        viewModelScope.launch { prefs.setHideInstalledInBrowse(hide) }
     }
 
     /**
@@ -713,6 +721,7 @@ data class SkillsScreenState(
     val lastBrowseOk: Boolean? = null,
     val errorMessage: SkillErrorMessage? = null,
     val browseQuery: String = "",
+    val hideInstalledInBrowse: Boolean = false,
     val lastCheckedInstalled: Instant? = null,
     val lastCheckedBrowse: Instant? = null,
     val detailManifest: FfiSkillManifest? = null,
