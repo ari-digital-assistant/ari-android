@@ -941,10 +941,14 @@
     <string name="whats_new_title">Novità di Ari %1$s</string>
     <string name="whats_new_dismiss">Ho capito</string>
     <string name="whats_new_skill_updates">Alcune novità arrivano come aggiornamenti delle skill. Installali dal banner nella schermata principale quando compare.</string>
-    <string name="whats_new_0_1_3_streaming_title">Risposte mentre vengono scritte</string>
-    <string name="whats_new_0_1_3_streaming_body">Le parole di una risposta sul dispositivo compaiono man mano che il modello le scrive, e Ari inizia a parlare dopo la prima frase invece di aspettare tutta la risposta.</string>
-    <string name="whats_new_0_1_3_answers_title">Risposte migliori</string>
-    <string name="whats_new_0_1_3_answers_body">I modelli medio e grande rispondono a domande come «i 5 animali più veloci» invece di dire che non possono, e rispondono a ogni parte di una domanda su più cose.</string>
-    <string name="whats_new_0_1_3_downloads_title">Download che riprendono</string>
-    <string name="whats_new_0_1_3_downloads_body">Se il download del modello medio o grande si interrompe, riprende da dove si era fermato, con l\'avanzamento in una notifica.</string>
+    <string name="whats_new_0_1_4_suggest_title">Skill consigliati</string>
+    <string name="whats_new_0_1_4_suggest_body">Chiedi qualcosa che uno skill che non hai saprebbe fare, come “ricordami di chiamare la mamma”, e Ari ti dice quale skill può farlo e ti dà un pulsante per scaricarlo.</string>
+    <string name="whats_new_0_1_4_clear_title">Si ricomincia da capo</string>
+    <string name="whats_new_0_1_4_clear_body">Di\' o scrivi “cancella la cronologia” o “ricominciamo da capo” per svuotare la chat e far dimenticare tutto ad Ari, così le domande successive ripartono da zero.</string>
+    <string name="whats_new_0_1_4_replies_title">Risposte alle tue segnalazioni</string>
+    <string name="whats_new_0_1_4_replies_body">Quando qualcuno risponde a una segnalazione che hai inviato da Ari, ricevi una notifica che apre la conversazione.</string>
+    <string name="whats_new_0_1_4_memory_title">Modelli adatti al tuo telefono</string>
+    <string name="whats_new_0_1_4_memory_body">L\'assistente sul dispositivo mostra quanta memoria usa ogni modello, consiglia quello adatto al tuo telefono e ti avvisa prima di un download che lo appesantirebbe.</string>
+    <string name="whats_new_0_1_4_fixes_title">Correzioni</string>
+    <string name="whats_new_0_1_4_fixes_body">I tocchi rapidi non bloccano più uno schermo a metà, l\'assistente continua a funzionare dopo che esci da Ari, le domande con “trova” ricevono una risposta invece di una ricerca, e Sfoglia può nascondere gli skill che hai già.</string>
 </resources>

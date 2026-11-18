@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-11-18
+
+Changes since 0.1.3, uploaded to Google Play internal testing as versionCode 6.
+
 ### Added
 
 - Saying or typing "clear history", "start over" or "new conversation" clears the chat

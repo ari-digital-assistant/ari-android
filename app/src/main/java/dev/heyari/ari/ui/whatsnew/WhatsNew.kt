@@ -2,9 +2,11 @@ package dev.heyari.ari.ui.whatsnew
 
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.ui.graphics.vector.ImageVector
 import dev.heyari.ari.R
 
@@ -16,12 +18,14 @@ import dev.heyari.ari.R
  * them shows nothing rather than the previous release's news.
  */
 internal object WhatsNew {
-    const val VERSION = "0.1.3"
+    const val VERSION = "0.1.4"
 
     val items = listOf(
-        WhatsNewItem(Icons.Default.RecordVoiceOver, R.string.whats_new_0_1_3_streaming_title, R.string.whats_new_0_1_3_streaming_body),
-        WhatsNewItem(Icons.Default.Lightbulb, R.string.whats_new_0_1_3_answers_title, R.string.whats_new_0_1_3_answers_body),
-        WhatsNewItem(Icons.Default.Download, R.string.whats_new_0_1_3_downloads_title, R.string.whats_new_0_1_3_downloads_body),
+        WhatsNewItem(Icons.Default.Extension, R.string.whats_new_0_1_4_suggest_title, R.string.whats_new_0_1_4_suggest_body),
+        WhatsNewItem(Icons.Default.RestartAlt, R.string.whats_new_0_1_4_clear_title, R.string.whats_new_0_1_4_clear_body),
+        WhatsNewItem(Icons.Default.Notifications, R.string.whats_new_0_1_4_replies_title, R.string.whats_new_0_1_4_replies_body),
+        WhatsNewItem(Icons.Default.Memory, R.string.whats_new_0_1_4_memory_title, R.string.whats_new_0_1_4_memory_body),
+        WhatsNewItem(Icons.Default.Build, R.string.whats_new_0_1_4_fixes_title, R.string.whats_new_0_1_4_fixes_body),
     )
 
     /**

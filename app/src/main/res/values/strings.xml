@@ -957,10 +957,14 @@
     <string name="whats_new_title">What\'s new in Ari %1$s</string>
     <string name="whats_new_dismiss">Got it</string>
     <string name="whats_new_skill_updates">Some of this comes as skill updates. Install them from the banner on the home screen when it appears.</string>
-    <string name="whats_new_0_1_3_streaming_title">Answers as they\'re written</string>
-    <string name="whats_new_0_1_3_streaming_body">The words of an on-device answer appear as the model writes them, and Ari starts speaking after the first sentence instead of waiting for the whole answer.</string>
-    <string name="whats_new_0_1_3_answers_title">Better answers</string>
-    <string name="whats_new_0_1_3_answers_body">The medium and large models answer questions like “top 5 fastest animals” instead of saying they can\'t, and answer every part of a question about several things.</string>
-    <string name="whats_new_0_1_3_downloads_title">Downloads that resume</string>
-    <string name="whats_new_0_1_3_downloads_body">If a download of the medium or large model is interrupted, it picks up where it stopped, with its progress in a notification.</string>
+    <string name="whats_new_0_1_4_suggest_title">Skill suggestions</string>
+    <string name="whats_new_0_1_4_suggest_body">Ask for something a skill could do that you don\'t have, like “remind me to call Mum”, and Ari tells you which skill can and gives you a button to get it.</string>
+    <string name="whats_new_0_1_4_clear_title">A fresh start</string>
+    <string name="whats_new_0_1_4_clear_body">Say or type “clear history” or “start over” to clear the chat and make Ari forget it, so follow-ups start from nothing.</string>
+    <string name="whats_new_0_1_4_replies_title">Replies to your bug reports</string>
+    <string name="whats_new_0_1_4_replies_body">When someone replies to a bug report you sent from Ari, you get a notification that opens the conversation.</string>
+    <string name="whats_new_0_1_4_memory_title">Models that suit your phone</string>
+    <string name="whats_new_0_1_4_memory_body">The on-device assistant shows how much memory each model uses, recommends the one that suits your phone, and warns before a download that would crowd it.</string>
+    <string name="whats_new_0_1_4_fixes_title">Fixes</string>
+    <string name="whats_new_0_1_4_fixes_body">Quick taps no longer freeze a screen halfway, the assistant keeps working after you leave Ari, questions with “find” in them get answered instead of searched, and Browse can hide the skills you already have.</string>
 </resources>
