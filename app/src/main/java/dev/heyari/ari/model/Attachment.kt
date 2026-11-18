@@ -20,4 +20,10 @@ sealed class Attachment {
      * chip so the bubble doesn't lose context.
      */
     data class Card(val cardId: String) : Attachment()
+
+    /**
+     * A button under Ari's reply that opens a store skill's page in Skills,
+     * for a request only an uninstalled skill could handle (ari-android#44).
+     */
+    data class SkillSuggestion(val skillId: String, val name: String) : Attachment()
 }

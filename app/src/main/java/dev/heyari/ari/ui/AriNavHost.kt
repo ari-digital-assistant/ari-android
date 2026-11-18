@@ -270,6 +270,13 @@ fun AriNavHost(
                         }
                     }
                 },
+                onOpenStoreSkill = { id ->
+                    if (entry.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                        navController.navigate(Routes.skillDetail(id, "browse")) {
+                            launchSingleTop = true
+                        }
+                    }
+                },
                 onOpenSpeechSettings = dropUnlessResumed {
                     navController.navigate(Routes.SETTINGS_STT) { launchSingleTop = true }
                 },

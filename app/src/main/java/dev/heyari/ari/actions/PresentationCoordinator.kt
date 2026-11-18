@@ -92,9 +92,11 @@ class PresentationCoordinator @Inject constructor(
         for (alert in envelope.alerts) {
             ContextCompat.startForegroundService(context, AlertService.startIntent(context, alert))
         }
-        // 5. Surface the first new card as an attachment on the bubble.
-        return envelope.cards.firstOrNull()
-            ?.let { listOf(Attachment.Card(it.id)) }
-            ?: emptyList()
+        // 5. Surface the first new card as an attachment on the bubble, and
+        //    a suggested store skill as a button under it.
+        return listOfNotNull(
+            envelope.cards.firstOrNull()?.let { Attachment.Card(it.id) },
+            envelope.suggestSkill?.let { Attachment.SkillSuggestion(it.id, it.name) },
+        )
     }
 }

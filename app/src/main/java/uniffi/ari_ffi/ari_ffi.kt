@@ -1032,6 +1032,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_set_remembered_facts(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_set_skill_suggestions_path(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_set_vocabulary(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_settings_action(
@@ -1144,6 +1146,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_skillregistry_get_skill_settings(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_skillregistry_index_cache_path(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_skillregistry_install_skill_by_id(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_skillregistry_install_skill_update(
@@ -1242,6 +1246,8 @@ external fun uniffi_ari_ffi_fn_method_ariengine_set_installed_apps(`ptr`: Long,`
 external fun uniffi_ari_ffi_fn_method_ariengine_set_personality(`ptr`: Long,`personality`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_set_remembered_facts(`ptr`: Long,`facts`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ariengine_set_skill_suggestions_path(`ptr`: Long,`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_set_vocabulary(`ptr`: Long,`name`: RustBuffer.ByValue,`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
@@ -1457,6 +1463,8 @@ external fun uniffi_ari_ffi_fn_method_skillregistry_fetch_screenshot_urls(`ptr`:
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_skillregistry_get_skill_settings(`ptr`: Long,`id`: RustBuffer.ByValue,`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_skillregistry_index_cache_path(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_skillregistry_install_skill_by_id(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_skillregistry_install_skill_update(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1651,6 +1659,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_remembered_facts() != 53816.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_skill_suggestions_path() != 23428.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_vocabulary() != 22102.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1817,6 +1828,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_skillregistry_get_skill_settings() != 58446.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_skillregistry_index_cache_path() != 16037.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_skillregistry_install_skill_by_id() != 24025.toShort()) {
@@ -2540,6 +2554,16 @@ public interface AriEngineInterface {
     fun `setRememberedFacts`(`facts`: List<kotlin.String>)
     
     /**
+     * Where the store caches the registry index
+     * ([`crate::skill_registry::SkillRegistry::index_cache_path`]). Ari then
+     * offers a store skill that isn't installed, ahead of the assistant,
+     * when what the user says matches one of its strong trigger patterns
+     * (ari-android#44). The file is read again whenever it changes; until
+     * it exists, nothing is suggested.
+     */
+    fun `setSkillSuggestionsPath`(`path`: kotlin.String)
+    
+    /**
      * Replace one runtime vocabulary a skill's `{slot:name}` phrases can bind
      * against — the user's task lists, rooms, contacts. The frontend re-pushes
      * whenever the underlying set changes. Push an empty `values` when the
@@ -3003,6 +3027,26 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     UniffiLib.uniffi_ari_ffi_fn_method_ariengine_set_remembered_facts(
         it,
         FfiConverterSequenceString.lower(`facts`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Where the store caches the registry index
+     * ([`crate::skill_registry::SkillRegistry::index_cache_path`]). Ari then
+     * offers a store skill that isn't installed, ahead of the assistant,
+     * when what the user says matches one of its strong trigger patterns
+     * (ari-android#44). The file is read again whenever it changes; until
+     * it exists, nothing is suggested.
+     */override fun `setSkillSuggestionsPath`(`path`: kotlin.String)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_set_skill_suggestions_path(
+        it,
+        FfiConverterString.lower(`path`),_status)
 }
     }
     
@@ -8752,6 +8796,13 @@ public interface SkillRegistryInterface {
     fun `getSkillSettings`(`id`: kotlin.String, `locale`: kotlin.String): List<FfiConfigField>
     
     /**
+     * Where the registry index is cached each time it's fetched. Hand it
+     * to [`crate::AriEngine::set_skill_suggestions_path`] at startup, so
+     * Ari can suggest store skills that aren't installed (ari-android#44).
+     */
+    fun `indexCachePath`(): kotlin.String
+    
+    /**
      * Download and install the registry's current version of `id`, even
      * if the skill isn't already installed locally. This is the "Browse →
      * tap install" path, complementing [`install_skill_update`] which is
@@ -9102,6 +9153,24 @@ open class SkillRegistry: Disposable, AutoCloseable, SkillRegistryInterface
     UniffiLib.uniffi_ari_ffi_fn_method_skillregistry_get_skill_settings(
         it,
         FfiConverterString.lower(`id`),FfiConverterString.lower(`locale`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Where the registry index is cached each time it's fetched. Hand it
+     * to [`crate::AriEngine::set_skill_suggestions_path`] at startup, so
+     * Ari can suggest store skills that aren't installed (ari-android#44).
+     */override fun `indexCachePath`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_skillregistry_index_cache_path(
+        it,
+        _status)
 }
     }
     )

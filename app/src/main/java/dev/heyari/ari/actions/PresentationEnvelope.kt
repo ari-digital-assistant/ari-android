@@ -67,6 +67,16 @@ data class ReplyAction(
     val recipientLabel: String?,
 )
 
+/**
+ * A store skill the engine offers because it would handle what the user
+ * asked and isn't installed (ari-android#44). The chat shows a button that
+ * opens its page in Skills.
+ */
+data class SkillSuggestion(
+    val id: String,
+    val name: String,
+)
+
 /** An alarm action from the engine. `op` is "set" or "show". */
 data class AlarmAction(
     val op: String,
@@ -131,13 +141,15 @@ data class PresentationEnvelope(
     val confidence: ParseConfidence,
     /** The residue phrase the skill noticed but couldn't consume. Null when [confidence] is HIGH. */
     val unparsed: String?,
+    /** A store skill to offer, from the engine's `suggest_skill`. */
+    val suggestSkill: SkillSuggestion? = null,
 ) {
     enum class ParseConfidence { HIGH, PARTIAL, LOW }
 
     fun hasPresentationPrimitives(): Boolean =
         cards.isNotEmpty() || alerts.isNotEmpty() || notifications.isNotEmpty() ||
             dismissCardIds.isNotEmpty() || dismissNotificationIds.isNotEmpty() ||
-            dismissAlertIds.isNotEmpty()
+            dismissAlertIds.isNotEmpty() || suggestSkill != null
 
     companion object {
         const val SUPPORTED_VERSION: Int = 1
@@ -221,6 +233,11 @@ data class PresentationEnvelope(
                     confidence = parseConfidence(json.optStringOrNull("confidence")),
                     unparsed = json.optStringOrNull("unparsed"),
                     runUtterance = json.optStringOrNull("run_utterance"),
+                    suggestSkill = json.optJSONObject("suggest_skill")?.let { o ->
+                        o.optStringOrNull("id")?.let { id ->
+                            SkillSuggestion(id = id, name = o.optStringOrNull("name") ?: id)
+                        }
+                    },
                 )
             }.onFailure {
                 Log.w(TAG, "envelope parse failed", it)

@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and show a notification that opens the issue when someone has replied.
 - Skills > Browse has a "Hide installed" filter, which stays on until you turn it off
   ([#41](https://github.com/ari-digital-assistant/ari-android/issues/41)).
+- When you ask for something a store skill could do but you don't have it, such as
+  "remind me to call Mum" without the Reminder skill, Ari says which skill can and
+  shows a button that opens it in Skills to install. It used to hand the request to
+  the assistant, which could only say it can't
+  ([#44](https://github.com/ari-digital-assistant/ari-android/issues/44)).
 - The on-device assistant's models say how much memory each uses while answering,
   measured on a phone, and how that suits this phone: the page says how much memory the
   phone has and marks the biggest model that fits comfortably as recommended. A model

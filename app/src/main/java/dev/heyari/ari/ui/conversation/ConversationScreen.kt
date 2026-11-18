@@ -86,6 +86,8 @@ fun ConversationScreen(
     onOpenListeningPlaces: () -> Unit = {},
     /** Opens an installed skill's page, where its settings and keys live. */
     onOpenSkillSettings: (skillId: String) -> Unit = {},
+    /** A store skill Ari suggested, opened on its Browse page to install (ari-android#44). */
+    onOpenStoreSkill: (skillId: String) -> Unit = {},
     onOpenSpeechSettings: () -> Unit = {},
     viewModel: ConversationViewModel = hiltViewModel(),
     updateBannerViewModel: UpdateBannerViewModel = hiltViewModel(),
@@ -395,6 +397,7 @@ fun ConversationScreen(
                                     assetResolver = viewModel.assetResolver,
                                     onCardAction = viewModel::onCardAction,
                                     onReport = { reportTarget = it },
+                                    onOpenSkill = onOpenStoreSkill,
                                 )
                             }
                         } else {
@@ -405,6 +408,7 @@ fun ConversationScreen(
                                 assetResolver = viewModel.assetResolver,
                                 onCardAction = viewModel::onCardAction,
                                 onReport = { reportTarget = it },
+                                onOpenSkill = onOpenStoreSkill,
                             )
                         }
                     }

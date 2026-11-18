@@ -83,6 +83,7 @@ class EngineHolder @Inject constructor(
         dev.heyari.ari.messaging.AriFfiLiveConversationsProvider,
     private val appLauncher: dev.heyari.ari.actions.AppLauncher,
     private val tasksProvider: dev.heyari.ari.tasks.TasksProvider,
+    private val skillRegistry: uniffi.ari_ffi.SkillRegistry,
 ) {
     // SupervisorJob isolates siblings but does not swallow: an exception from
     // anything launched here otherwise reaches the default uncaught handler
@@ -222,6 +223,11 @@ class EngineHolder @Inject constructor(
         val personality = settingsRepository.personality.first()
         engine.setPersonality(personality)
         Log.i(TAG, "conversation length=$conversationLength, personality ${personality.length} chars")
+
+        // Store skills to offer when nothing installed handles a request
+        // (ari-android#44), from the index the store keeps a copy of each
+        // time Browse or the update check fetches it.
+        engine.setSkillSuggestionsPath(skillRegistry.indexCachePath())
 
         // Which llama.cpp CPU build the on-device assistant runs on, picked
         // for this phone's processor (ari-android#32). Asking loads it now,

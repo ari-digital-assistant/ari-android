@@ -30,6 +30,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -64,6 +65,7 @@ fun MessageBubble(
     assetResolver: AssetResolver? = null,
     onCardAction: (cardId: String, action: CardAction) -> Unit = { _, _ -> },
     onReport: (Message) -> Unit = {},
+    onOpenSkill: (skillId: String) -> Unit = {},
 ) {
     val message = row.message
     val isUser = message.isFromUser
@@ -198,6 +200,11 @@ fun MessageBubble(
                                 onAction = { action -> onCardAction(attachment.cardId, action) },
                                 assetResolver = assetResolver,
                             )
+                        }
+                    }
+                    is Attachment.SkillSuggestion -> {
+                        OutlinedButton(onClick = { onOpenSkill(attachment.skillId) }) {
+                            Text(stringResource(R.string.skill_suggestion_open, attachment.name))
                         }
                     }
                 }

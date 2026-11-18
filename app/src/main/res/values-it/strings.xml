@@ -100,6 +100,7 @@
     <string name="skills_empty_browse">Nessuno skill corrisponde alla tua ricerca.</string>
     <string name="skills_empty_browse_all_installed">Tutti gli skill corrispondenti sono già installati.</string>
     <string name="skills_browse_hide_installed">Nascondi installati</string>
+    <string name="skill_suggestion_open">Scarica %1$s</string>
     <string name="skills_detail_version">Versione %1$s</string>
     <string name="skills_detail_installed_badge">Installato</string>
     <string name="skills_detail_author">Autore</string>
