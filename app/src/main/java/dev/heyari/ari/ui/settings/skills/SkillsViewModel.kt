@@ -168,6 +168,7 @@ class SkillsViewModel @Inject constructor(
             val result = runCatching {
                 withContext(Dispatchers.IO) { skillRegistry.checkForUpdates() }
             }
+            result.exceptionOrNull()?.let { if (it is CancellationException) throw it }
             val now = Instant.now()
             result.fold(
                 onSuccess = { updates ->
@@ -203,6 +204,7 @@ class SkillsViewModel @Inject constructor(
             val result = runCatching {
                 withContext(Dispatchers.IO) { skillRegistry.installSkillUpdate(id) }
             }
+            result.exceptionOrNull()?.let { if (it is CancellationException) throw it }
             _state.update { prev ->
                 val newInstalling = prev.installingIds - id
                 result.fold(
@@ -234,6 +236,7 @@ class SkillsViewModel @Inject constructor(
             val result = runCatching {
                 withContext(Dispatchers.IO) { skillRegistry.browseRegistry() }
             }
+            result.exceptionOrNull()?.let { if (it is CancellationException) throw it }
             val now = Instant.now()
             result.fold(
                 onSuccess = { entries ->
@@ -266,6 +269,7 @@ class SkillsViewModel @Inject constructor(
             val result = runCatching {
                 withContext(Dispatchers.IO) { skillRegistry.installSkillById(id) }
             }
+            result.exceptionOrNull()?.let { if (it is CancellationException) throw it }
             // Run the post-install assistant detection BEFORE the state
             // update so the prompt fields land in the same atomic
             // transition as the install completion. The registry
@@ -368,6 +372,7 @@ class SkillsViewModel @Inject constructor(
             val result = runCatching {
                 withContext(Dispatchers.IO) { skillRegistry.uninstallSkillById(id) }
             }
+            result.exceptionOrNull()?.let { if (it is CancellationException) throw it }
             _state.update { prev ->
                 val newInstalling = prev.installingIds - id
                 result.fold(
@@ -560,6 +565,7 @@ class SkillsViewModel @Inject constructor(
                     skillRegistry.getSkillSettings(skillId, locale)
                 }
             }
+            result.exceptionOrNull()?.let { if (it is CancellationException) throw it }
             _state.update { prev ->
                 result.fold(
                     onSuccess = { fields ->
