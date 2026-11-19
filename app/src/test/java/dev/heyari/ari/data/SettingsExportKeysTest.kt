@@ -26,6 +26,8 @@ class SettingsExportKeysTest {
         "place_fence_source",
         // Which release notes this install has already shown.
         "whats_new_seen_version",
+        // Use, not a choice: the cloud assistant that answered last.
+        "last_cloud_assistant",
     )
 
     private val declaredKeys: List<String> =

@@ -776,6 +776,9 @@
     <string name="model_llm_large_desc">Il più capace (~3,7 GB di download). Ideale per attività complesse e per capire un linguaggio sfumato, ma può essere più lento e richiedere più risorse.</string>
     <string name="settings_llm_gpu_title">Usa la GPU</string>
     <string name="settings_llm_gpu_summary">Sperimentale. Esegue l\'assistente sul dispositivo sul chip grafico del telefono. Su alcuni telefoni può rispondere prima, ma si carica più lentamente e, se non ci riesce, torna al processore.</string>
+    <string name="settings_handoff_title">Chiedi a un assistente cloud</string>
+    <string name="settings_handoff_summary">Quando l\'assistente sul dispositivo non conosce la risposta, o una domanda richiede informazioni in tempo reale, Ari si offre di chiederlo a %1$s.</string>
+    <string name="settings_handoff_no_key">Per usarlo, aggiungi una chiave API a un assistente cloud, come ChatGPT, Claude o Gemini.</string>
     <string name="model_status_downloaded">Scaricato</string>
     <string name="message_menu_copy">Copia</string>
     <string name="message_menu_report">Segnala</string>

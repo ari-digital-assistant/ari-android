@@ -131,7 +131,10 @@ class EngineHolder @Inject constructor(
     suspend fun processInput(input: String): FfiResponse =
         withContext(Dispatchers.Default) {
             val engine = engine()
-            engine.processInput(input).also { lapseWatcher.turnFinished(engine::conversationMemory) }
+            engine.processInput(input).also {
+                lapseWatcher.turnFinished(engine::conversationMemory)
+                rememberCloudAssistant(engine)
+            }
         }
 
     /**
@@ -155,8 +158,27 @@ class EngineHolder @Inject constructor(
                     override fun text(soFar: String) = onText(soFar)
                     override fun sentence(text: String) = onSentence(text)
                 },
-            ).also { lapseWatcher.turnFinished(engine::conversationMemory) }
+            ).also {
+                lapseWatcher.turnFinished(engine::conversationMemory)
+                rememberCloudAssistant(engine)
+            }
         }
+
+    /** The cloud assistant [rememberCloudAssistant] last persisted. */
+    @Volatile
+    private var lastCloudAssistant: String? = null
+
+    /**
+     * Persist the cloud assistant that answered last, so a handoff still
+     * offers it first after a restart. Read after every turn, since any
+     * cloud answer can change it.
+     */
+    private fun rememberCloudAssistant(engine: AriEngine) {
+        val id = engine.lastCloudAssistant() ?: return
+        if (id == lastCloudAssistant) return
+        lastCloudAssistant = id
+        scope.launch { settingsRepository.setLastCloudAssistant(id) }
+    }
 
     /** Start the background build without waiting. Call once at app start. */
     fun warmUp() {
@@ -229,6 +251,12 @@ class EngineHolder @Inject constructor(
         val personality = settingsRepository.personality.first()
         engine.setPersonality(personality)
         Log.i(TAG, "conversation length=$conversationLength, personality ${personality.length} chars")
+
+        val handoffEnabled = settingsRepository.handoffEnabled.first()
+        engine.setHandoffEnabled(handoffEnabled)
+        lastCloudAssistant = settingsRepository.lastCloudAssistant.first()
+        engine.setLastCloudAssistant(lastCloudAssistant)
+        Log.i(TAG, "handoff enabled=$handoffEnabled, last cloud assistant=$lastCloudAssistant")
 
         // Store skills to offer when nothing installed handles a request
         // (ari-android#44), from the index the store keeps a copy of each

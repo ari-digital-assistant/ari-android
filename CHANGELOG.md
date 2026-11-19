@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Ask a cloud assistant: a switch under the on-device assistant in Settings, off by
+  default. When the on-device assistant doesn't know, or a question needs live
+  information, Ari offers to ask the cloud assistant you used last (or another one with
+  an API key) and asks it if you say yes. The switch stays off until a cloud assistant
+  has a key.
 - Typing `/` in the chat box lists Ari's built-in commands (clear the conversation,
   remember or forget something, forget everything, what Ari remembers about you),
   narrowing as you type. Picking one runs it, or fills it in when it needs more words,

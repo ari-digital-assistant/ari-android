@@ -314,6 +314,31 @@ class SettingsRepository @Inject constructor(
     }
 
     /**
+     * Whether the on-device assistant offers to ask a cloud assistant when
+     * it doesn't know. Off by default.
+     */
+    val handoffEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_HANDOFF_ENABLED] ?: false
+    }.distinctUntilChanged()
+
+    suspend fun setHandoffEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_HANDOFF_ENABLED] = enabled
+        }
+    }
+
+    /** Skill id of the cloud assistant that answered last, which a handoff offers first. */
+    val lastCloudAssistant: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[KEY_LAST_CLOUD_ASSISTANT]
+    }.distinctUntilChanged()
+
+    suspend fun setLastCloudAssistant(skillId: String) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_LAST_CLOUD_ASSISTANT] = skillId
+        }
+    }
+
+    /**
      * Whether to start the wake word service on device boot. Default off —
      * auto-starting a microphone FGS is a privacy-visible behaviour we only
      * want happening when the user has explicitly said yes.
@@ -963,6 +988,8 @@ class SettingsRepository @Inject constructor(
         private val KEY_ACTIVE_LOCALE = stringPreferencesKey("active_locale")
         private val KEY_START_ON_BOOT = booleanPreferencesKey("start_on_boot")
         private val KEY_LLM_USE_GPU = booleanPreferencesKey("llm_use_gpu")
+        private val KEY_HANDOFF_ENABLED = booleanPreferencesKey("handoff_enabled")
+        private val KEY_LAST_CLOUD_ASSISTANT = stringPreferencesKey("last_cloud_assistant")
         private val KEY_KEEP_WAKE_AUDIO =
             booleanPreferencesKey("keep_wake_audio")
         private val KEY_KEEP_FALSE_TRIGGER_AUDIO =
@@ -1016,7 +1043,7 @@ class SettingsRepository @Inject constructor(
             KEY_TUNE_DURING_NORMAL_USE, KEY_WAKE_SPEECH_CHECK, KEY_QUIET_WAKE, KEY_START_ON_BOOT,
             KEY_KEEP_WAKE_AUDIO, KEY_KEEP_FALSE_TRIGGER_AUDIO, KEY_KEEP_UTTERANCE_AUDIO, KEY_KEEP_EVERYTHING_AUDIO,
             KEY_SHARE_WAKE_AUDIO, KEY_SHARE_FALSE_TRIGGER_AUDIO, KEY_SHARE_UTTERANCE_AUDIO, KEY_SHARE_EVERYTHING_AUDIO,
-            KEY_BARGE_IN_ENABLED, KEY_CONVERSATION_MEMORY_ENABLED, KEY_LLM_USE_GPU,
+            KEY_BARGE_IN_ENABLED, KEY_CONVERSATION_MEMORY_ENABLED, KEY_LLM_USE_GPU, KEY_HANDOFF_ENABLED,
         ).mapTo(HashSet()) { it.name }
         /** Skill settings, and each wake model's sensitivity (but not its ladder). */
         private val EXPORTED_STRING_PREFIXES = listOf(ASSISTANT_CONFIG_PREFIX, "${KEY_WAKE_WORD_SENSITIVITY.name}_")

@@ -131,6 +131,9 @@ fun AssistantSettingsPage(
                 onSelectModel = {},
                 useGpu = false,
                 onUseGpuChange = {},
+                handoffEnabled = false,
+                handoffAssistant = null,
+                onHandoffChange = {},
             )
 
             // Assistant entries from registry
@@ -162,6 +165,9 @@ fun AssistantSettingsPage(
                     onSelectModel = { model -> viewModel.selectLlmModel(model) },
                     useGpu = state.llmUseGpu,
                     onUseGpuChange = viewModel::setLlmUseGpu,
+                    handoffEnabled = state.handoffEnabled,
+                    handoffAssistant = state.handoffAssistants.firstOrNull(),
+                    onHandoffChange = viewModel::setHandoffEnabled,
                 )
             }
 
@@ -220,6 +226,10 @@ private fun AssistantCard(
     onSelectModel: (dev.heyari.ari.llm.LlmModel) -> Unit,
     useGpu: Boolean,
     onUseGpuChange: (Boolean) -> Unit,
+    handoffEnabled: Boolean,
+    /** The cloud assistant a handoff would offer; null when none has a key. */
+    handoffAssistant: String?,
+    onHandoffChange: (Boolean) -> Unit,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -294,6 +304,33 @@ private fun AssistantCard(
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Switch(checked = useGpu, onCheckedChange = onUseGpuChange)
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(start = 40.dp),
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_handoff_title),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Text(
+                            text = if (handoffAssistant != null) {
+                                stringResource(R.string.settings_handoff_summary, handoffAssistant)
+                            } else {
+                                stringResource(R.string.settings_handoff_no_key)
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Switch(
+                        checked = handoffEnabled && handoffAssistant != null,
+                        onCheckedChange = onHandoffChange,
+                        enabled = handoffAssistant != null,
+                    )
                 }
             } else if (selected && configFields.isNotEmpty()) {
                 // Cloud/other assistants: render the schema-driven fields

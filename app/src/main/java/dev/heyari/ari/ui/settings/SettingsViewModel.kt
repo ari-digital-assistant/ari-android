@@ -140,6 +140,9 @@ data class SettingsState(
     val phoneMemoryGb: Int? = null,
     val llmDownload: LlmDownloadState = LlmDownloadState.Idle,
     val llmUseGpu: Boolean = false,
+    val handoffEnabled: Boolean = false,
+    /** Names of the cloud assistants with a key, the one a handoff offers first leading. */
+    val handoffAssistants: List<String> = emptyList(),
     val llmNoneActive: Boolean = true,
     val activeAssistantId: String? = null,
     val assistantEntries: List<AssistantUiEntry> = emptyList(),
@@ -419,6 +422,12 @@ class SettingsViewModel @Inject constructor(
             }
         }
 
+        viewModelScope.launch {
+            settingsRepository.handoffEnabled.collect { enabled ->
+                _state.update { it.copy(handoffEnabled = enabled) }
+            }
+        }
+
         // Read once, not collected: the field is the source of truth while
         // the user types, and a saved value arriving back mid-typing would
         // overwrite what they typed since.
@@ -535,6 +544,13 @@ class SettingsViewModel @Inject constructor(
     fun setLlmUseGpu(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setLlmUseGpu(enabled)
+        }
+    }
+
+    fun setHandoffEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setHandoffEnabled(enabled)
+            engineHolder.engine().setHandoffEnabled(enabled)
         }
     }
 
@@ -1160,6 +1176,14 @@ class SettingsViewModel @Inject constructor(
                 activeAssistantId = activeId,
                 assistantEntries = entries,
             )
+        }
+        // Which of them a handoff can offer turns on their keys, which the
+        // engine reads from the same store.
+        viewModelScope.launch(Dispatchers.IO) {
+            val names = engineHolder.engine().handoffAssistants().mapNotNull { id ->
+                entries.firstOrNull { it.id == id }?.name
+            }
+            _state.update { it.copy(handoffAssistants = names) }
         }
     }
 

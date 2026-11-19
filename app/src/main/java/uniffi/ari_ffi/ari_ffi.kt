@@ -1008,6 +1008,10 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_current_locale(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_handoff_assistants(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_last_cloud_assistant(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_load_llm_model(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_load_model_catalog(
@@ -1030,7 +1034,11 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_set_conversation_memory_enabled(
     ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_set_handoff_enabled(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_set_installed_apps(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_method_ariengine_set_last_cloud_assistant(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_set_personality(
     ): Short
@@ -1225,6 +1233,10 @@ external fun uniffi_ari_ffi_fn_method_ariengine_conversation_memory(`ptr`: Long,
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ariengine_current_locale(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_ariengine_handoff_assistants(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_ariengine_last_cloud_assistant(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ariengine_load_llm_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,`useGpu`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
 external fun uniffi_ari_ffi_fn_method_ariengine_load_model_catalog(`ptr`: Long,`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1247,7 +1259,11 @@ external fun uniffi_ari_ffi_fn_method_ariengine_set_conversation_length(`ptr`: L
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_set_conversation_memory_enabled(`ptr`: Long,`enabled`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+external fun uniffi_ari_ffi_fn_method_ariengine_set_handoff_enabled(`ptr`: Long,`enabled`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_set_installed_apps(`ptr`: Long,`apps`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ariengine_set_last_cloud_assistant(`ptr`: Long,`skillId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ariengine_set_personality(`ptr`: Long,`personality`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
@@ -1631,6 +1647,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_current_locale() != 7320.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_handoff_assistants() != 45305.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_last_cloud_assistant() != 49840.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_llm_model() != 35040.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1664,7 +1686,13 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_conversation_memory_enabled() != 38505.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_handoff_enabled() != 46602.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_installed_apps() != 58081.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_last_cloud_assistant() != 51651.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_set_personality() != 62102.toShort()) {
@@ -2448,6 +2476,19 @@ public interface AriEngineInterface {
     fun `currentLocale`(): kotlin.String
     
     /**
+     * Skill ids of the installed cloud assistants a handoff could offer,
+     * those with an API key, the one it would offer first leading. Empty
+     * means the handoff setting can't do anything yet.
+     */
+    fun `handoffAssistants`(): List<kotlin.String>
+    
+    /**
+     * The cloud assistant that answered last, for the frontend to persist
+     * after a turn: a handoff offers it first.
+     */
+    fun `lastCloudAssistant`(): kotlin.String?
+    
+    /**
      * Set the model file for the LLM fallback: a .litertlm or .task file,
      * which LiteRT-LM runs on the GPU when `use_gpu` is set and the GPU
      * loads it, else on the CPU. The model is NOT
@@ -2557,10 +2598,22 @@ public interface AriEngineInterface {
     fun `setConversationMemoryEnabled`(`enabled`: kotlin.Boolean)
     
     /**
+     * Whether the on-device assistant may offer to ask a cloud assistant
+     * when it doesn't know. Mirrors the Android `handoffEnabled` setting;
+     * hydrated at engine build and written through when the user toggles it.
+     */
+    fun `setHandoffEnabled`(`enabled`: kotlin.Boolean)
+    
+    /**
      * Replace the engine's snapshot of installed launchable apps. The frontend
      * pushes this at build time and refreshes it on app install/uninstall.
      */
     fun `setInstalledApps`(`apps`: List<FfiAppEntry>)
+    
+    /**
+     * Hydrate [`Self::last_cloud_assistant`] at engine build.
+     */
+    fun `setLastCloudAssistant`(`skillId`: kotlin.String?)
     
     /**
      * How assistant answers should sound, in the user's words; blank for
@@ -2801,6 +2854,41 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
 
     
     /**
+     * Skill ids of the installed cloud assistants a handoff could offer,
+     * those with an API key, the one it would offer first leading. Empty
+     * means the handoff setting can't do anything yet.
+     */override fun `handoffAssistants`(): List<kotlin.String> {
+            return FfiConverterSequenceString.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_handoff_assistants(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * The cloud assistant that answered last, for the frontend to persist
+     * after a turn: a handoff offers it first.
+     */override fun `lastCloudAssistant`(): kotlin.String? {
+            return FfiConverterOptionalString.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_last_cloud_assistant(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
      * Set the model file for the LLM fallback: a .litertlm or .task file,
      * which LiteRT-LM runs on the GPU when `use_gpu` is set and the GPU
      * loads it, else on the CPU. The model is NOT
@@ -3027,6 +3115,23 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
 
     
     /**
+     * Whether the on-device assistant may offer to ask a cloud assistant
+     * when it doesn't know. Mirrors the Android `handoffEnabled` setting;
+     * hydrated at engine build and written through when the user toggles it.
+     */override fun `setHandoffEnabled`(`enabled`: kotlin.Boolean)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_set_handoff_enabled(
+        it,
+        FfiConverterBoolean.lower(`enabled`),_status)
+}
+    }
+    
+    
+
+    
+    /**
      * Replace the engine's snapshot of installed launchable apps. The frontend
      * pushes this at build time and refreshes it on app install/uninstall.
      */override fun `setInstalledApps`(`apps`: List<FfiAppEntry>)
@@ -3036,6 +3141,21 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     UniffiLib.uniffi_ari_ffi_fn_method_ariengine_set_installed_apps(
         it,
         FfiConverterSequenceTypeFfiAppEntry.lower(`apps`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Hydrate [`Self::last_cloud_assistant`] at engine build.
+     */override fun `setLastCloudAssistant`(`skillId`: kotlin.String?)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_set_last_cloud_assistant(
+        it,
+        FfiConverterOptionalString.lower(`skillId`),_status)
 }
     }
     
