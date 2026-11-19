@@ -34,6 +34,9 @@ internal object WhatsNew {
      * says where to get them.
      */
     const val NEEDS_SKILL_UPDATES = true
+
+    /** Every change in every release, for whoever wants more than these few lines. */
+    const val CHANGELOG_URL = "https://github.com/ari-digital-assistant/ari-android/blob/main/CHANGELOG.md"
 }
 
 internal data class WhatsNewItem(

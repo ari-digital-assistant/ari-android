@@ -948,6 +948,7 @@
          The per-release lines are rewritten each release; see WhatsNew.kt. -->
     <string name="whats_new_title">Novità di Ari %1$s</string>
     <string name="whats_new_dismiss">Ho capito</string>
+    <string name="whats_new_changelog">Tutte le modifiche</string>
     <string name="whats_new_skill_updates">Alcune novità arrivano come aggiornamenti delle skill. Installali dal banner nella schermata principale quando compare.</string>
     <string name="whats_new_0_2_0_faster_title">Un assistente sul dispositivo più veloce</string>
     <string name="whats_new_0_2_0_faster_body">L\'assistente sul dispositivo risponde fino a tre volte più in fretta e usa molta meno memoria, così il modello Medio ora va bene sui telefoni da 6 GB. Accetta l\'aggiornamento del modello quando Ari te lo propone. Finché non lo fai, l\'assistente non può rispondere sul dispositivo.</string>

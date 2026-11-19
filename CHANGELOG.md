@@ -13,6 +13,8 @@ Changes since 0.1.4, uploaded to Google Play internal testing as versionCode 7.
 
 ### Added
 
+- The What's new popup ends with a "Full changelog" button that opens this file on
+  GitHub.
 - Ask a cloud assistant: a switch under the on-device assistant in Settings, off by
   default. When the on-device assistant doesn't know, or a question needs live
   information, Ari offers to ask the cloud assistant you used last (or another one with

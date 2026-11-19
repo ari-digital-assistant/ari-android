@@ -964,6 +964,7 @@
          The per-release lines are rewritten each release; see WhatsNew.kt. -->
     <string name="whats_new_title">What\'s new in Ari %1$s</string>
     <string name="whats_new_dismiss">Got it</string>
+    <string name="whats_new_changelog">Full changelog</string>
     <string name="whats_new_skill_updates">Some of this comes as skill updates. Install them from the banner on the home screen when it appears.</string>
     <string name="whats_new_0_2_0_faster_title">A faster on-device assistant</string>
     <string name="whats_new_0_2_0_faster_body">The on-device assistant answers up to three times sooner and needs far less memory, so Medium now suits 6 GB phones. Take the model update when Ari offers it. Until you do, the assistant can\'t answer on the device.</string>
