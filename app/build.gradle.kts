@@ -35,8 +35,8 @@ android {
         // moved. Unrelated to versionName, which is the string users see —
         // five test uploads in a week is 1..5 against a versionName that
         // never budges.
-        versionCode = 6
-        versionName = "0.1.4"
+        versionCode = 7
+        versionName = "0.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

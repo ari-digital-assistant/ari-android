@@ -3,10 +3,10 @@ package dev.heyari.ari.ui.whatsnew
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.filled.Memory
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.TravelExplore
 import androidx.compose.ui.graphics.vector.ImageVector
 import dev.heyari.ari.R
 
@@ -18,14 +18,14 @@ import dev.heyari.ari.R
  * them shows nothing rather than the previous release's news.
  */
 internal object WhatsNew {
-    const val VERSION = "0.1.4"
+    const val VERSION = "0.2.0"
 
     val items = listOf(
-        WhatsNewItem(Icons.Default.Extension, R.string.whats_new_0_1_4_suggest_title, R.string.whats_new_0_1_4_suggest_body),
-        WhatsNewItem(Icons.Default.RestartAlt, R.string.whats_new_0_1_4_clear_title, R.string.whats_new_0_1_4_clear_body),
-        WhatsNewItem(Icons.Default.Notifications, R.string.whats_new_0_1_4_replies_title, R.string.whats_new_0_1_4_replies_body),
-        WhatsNewItem(Icons.Default.Memory, R.string.whats_new_0_1_4_memory_title, R.string.whats_new_0_1_4_memory_body),
-        WhatsNewItem(Icons.Default.Build, R.string.whats_new_0_1_4_fixes_title, R.string.whats_new_0_1_4_fixes_body),
+        WhatsNewItem(Icons.Default.Speed, R.string.whats_new_0_2_0_faster_title, R.string.whats_new_0_2_0_faster_body),
+        WhatsNewItem(Icons.Default.Cloud, R.string.whats_new_0_2_0_handoff_title, R.string.whats_new_0_2_0_handoff_body),
+        WhatsNewItem(Icons.Default.TravelExplore, R.string.whats_new_0_2_0_search_title, R.string.whats_new_0_2_0_search_body),
+        WhatsNewItem(Icons.Default.Keyboard, R.string.whats_new_0_2_0_typing_title, R.string.whats_new_0_2_0_typing_body),
+        WhatsNewItem(Icons.Default.Build, R.string.whats_new_0_2_0_fixes_title, R.string.whats_new_0_2_0_fixes_body),
     )
 
     /**
@@ -33,7 +33,7 @@ internal object WhatsNew {
      * with the app. True when some of [items] arrive that way, so the dialog
      * says where to get them.
      */
-    const val NEEDS_SKILL_UPDATES = false
+    const val NEEDS_SKILL_UPDATES = true
 }
 
 internal data class WhatsNewItem(

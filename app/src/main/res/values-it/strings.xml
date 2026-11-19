@@ -949,14 +949,14 @@
     <string name="whats_new_title">Novità di Ari %1$s</string>
     <string name="whats_new_dismiss">Ho capito</string>
     <string name="whats_new_skill_updates">Alcune novità arrivano come aggiornamenti delle skill. Installali dal banner nella schermata principale quando compare.</string>
-    <string name="whats_new_0_1_4_suggest_title">Skill consigliati</string>
-    <string name="whats_new_0_1_4_suggest_body">Chiedi qualcosa che uno skill che non hai saprebbe fare, come “ricordami di chiamare la mamma”, e Ari ti dice quale skill può farlo e ti dà un pulsante per scaricarlo.</string>
-    <string name="whats_new_0_1_4_clear_title">Si ricomincia da capo</string>
-    <string name="whats_new_0_1_4_clear_body">Di\' o scrivi “cancella la cronologia” o “ricominciamo da capo” per svuotare la chat e far dimenticare tutto ad Ari, così le domande successive ripartono da zero.</string>
-    <string name="whats_new_0_1_4_replies_title">Risposte alle tue segnalazioni</string>
-    <string name="whats_new_0_1_4_replies_body">Quando qualcuno risponde a una segnalazione che hai inviato da Ari, ricevi una notifica che apre la conversazione.</string>
-    <string name="whats_new_0_1_4_memory_title">Modelli adatti al tuo telefono</string>
-    <string name="whats_new_0_1_4_memory_body">L\'assistente sul dispositivo mostra quanta memoria usa ogni modello, consiglia quello adatto al tuo telefono e ti avvisa prima di un download che lo appesantirebbe.</string>
-    <string name="whats_new_0_1_4_fixes_title">Correzioni</string>
-    <string name="whats_new_0_1_4_fixes_body">I tocchi rapidi non bloccano più uno schermo a metà, l\'assistente continua a funzionare dopo che esci da Ari, le domande con “trova” ricevono una risposta invece di una ricerca, e Sfoglia può nascondere gli skill che hai già.</string>
+    <string name="whats_new_0_2_0_faster_title">Un assistente sul dispositivo più veloce</string>
+    <string name="whats_new_0_2_0_faster_body">L\'assistente sul dispositivo risponde fino a tre volte più in fretta e usa molta meno memoria, così il modello Medio ora va bene sui telefoni da 6 GB. Accetta l\'aggiornamento del modello quando Ari te lo propone. Finché non lo fai, l\'assistente non può rispondere sul dispositivo.</string>
+    <string name="whats_new_0_2_0_handoff_title">Chiedi a un assistente cloud</string>
+    <string name="whats_new_0_2_0_handoff_body">Quando l\'assistente sul dispositivo non sa qualcosa, o una domanda richiede informazioni aggiornate, Ari può proporti di chiederlo a ChatGPT, Claude o Gemini. Attiva “Chiedi a un assistente cloud” nelle Impostazioni. Serve uno di questi configurato con una chiave API.</string>
+    <string name="whats_new_0_2_0_search_title">Gli assistenti cloud cercano sul web</string>
+    <string name="whats_new_0_2_0_search_body">ChatGPT, Claude e Gemini cercano le informazioni sul web, così possono rispondere su notizie, risultati, prezzi e meteo di oggi.</string>
+    <string name="whats_new_0_2_0_typing_title">Scrivere ad Ari</string>
+    <string name="whats_new_0_2_0_typing_body">Ari non legge più ad alta voce le risposte quando scrivi invece di parlare. Scrivi / nella chat per vedere i comandi di Ari, come /clear e /remember.</string>
+    <string name="whats_new_0_2_0_fixes_title">Correzioni</string>
+    <string name="whats_new_0_2_0_fixes_body">Le risposte lunghe restano visibili mentre vengono scritte, e le domande successive come “chi è arrivato secondo?” vengono capite. L\'assistente sul dispositivo non dimentica più la conversazione quando contesti una risposta, e “cerca questo” cerca la domanda che hai appena fatto.</string>
 </resources>

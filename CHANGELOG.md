@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-19
+
+Changes since 0.1.4, uploaded to Google Play internal testing as versionCode 7.
+
 ### Added
 
 - Ask a cloud assistant: a switch under the on-device assistant in Settings, off by
