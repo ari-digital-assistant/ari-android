@@ -12,8 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ask a cloud assistant: a switch under the on-device assistant in Settings, off by
   default. When the on-device assistant doesn't know, or a question needs live
   information, Ari offers to ask the cloud assistant you used last (or another one with
-  an API key) and asks it if you say yes. The switch stays off until a cloud assistant
-  has a key.
+  an API key) and, if you say yes, asks it to search the web for the answer. The switch
+  stays off until a cloud assistant has a key.
 - Typing `/` in the chat box lists Ari's built-in commands (clear the conversation,
   remember or forget something, forget everything, what Ari remembers about you),
   narrowing as you type. Picking one runs it, or fills it in when it needs more words,
@@ -46,6 +46,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- An answer from the on-device assistant ran on below the screen while it was being
+  written, so the newest words had to be scrolled to by hand. The chat now follows it,
+  unless you have scrolled up to read.
+- The assistants got your words as Ari cleans them up for its skills, with number words
+  turned into digits: "who came second?" reached them as "who came 2", and the
+  on-device assistant asked what you meant. They now get what you said.
 - The on-device assistant forgot its own answers when you pushed back on one, such as
   "I think you are wrong". Ari asked it to mark each reply as starting a new topic or
   not, and a new topic wiped the conversation. Ari no longer asks, so a conversation

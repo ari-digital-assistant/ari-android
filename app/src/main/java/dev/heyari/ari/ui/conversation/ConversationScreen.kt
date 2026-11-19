@@ -11,6 +11,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,6 +55,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -197,6 +199,27 @@ fun ConversationScreen(
             withFrameNanos { }
             listState.animateScrollToItem(messages.size - 1)
         }
+    }
+
+    // A streamed answer grows in place, the same message with more text each
+    // time, so the effect above fires once, for its first words, and the rest
+    // ran on below the fold. Keep the newest words in view while the user is
+    // at the bottom. Whether they are is settled when a scroll ends, so one
+    // who scrolled up to read is left where they are.
+    var followNewest by remember { mutableStateOf(true) }
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.isScrollInProgress }
+            .collect { scrolling -> if (!scrolling) followNewest = !listState.canScrollForward }
+    }
+    val newestText = messages.lastOrNull()?.text
+    LaunchedEffect(newestText) {
+        if (!followNewest) return@LaunchedEffect
+        withFrameNanos { }
+        val layout = listState.layoutInfo
+        val last = layout.visibleItemsInfo.lastOrNull() ?: return@LaunchedEffect
+        if (last.index != layout.totalItemsCount - 1) return@LaunchedEffect
+        val hidden = last.offset + last.size - layout.viewportEndOffset
+        if (hidden > 0) listState.scrollBy(hidden.toFloat())
     }
 
     // Chat-app behaviour: when the IME opens (user tapped the text field),
