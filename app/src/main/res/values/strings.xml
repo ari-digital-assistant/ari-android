@@ -881,8 +881,6 @@
     <string name="settings_device_info_memory">Memory</string>
     <string name="settings_device_info_cpu">Processor</string>
     <string name="settings_device_info_cpu_value">%1$d cores, %2$s</string>
-    <string name="settings_device_info_cpu_build">Assistant CPU build</string>
-    <string name="settings_device_info_cpu_build_none">None loaded</string>
     <string name="settings_device_info_cpu_features">CPU features</string>
     <string name="settings_device_info_none">None</string>
     <string name="settings_device_info_ari">Ari</string>

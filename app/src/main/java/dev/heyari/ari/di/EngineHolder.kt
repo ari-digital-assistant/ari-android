@@ -235,20 +235,13 @@ class EngineHolder @Inject constructor(
         // time Browse or the update check fetches it.
         engine.setSkillSuggestionsPath(skillRegistry.indexCachePath())
 
-        // Which llama.cpp CPU build the on-device assistant runs on, picked
-        // for this phone's processor (ari-android#32). Asking loads it now,
-        // a few MB, so a phone where none will load says so in the log
-        // before anyone asks the assistant anything.
+        // The CPU features the on-device assistant's kernels can use, at the
+        // top of the log for bug reports (ari-android#32).
         runCatching { onDeviceCpuInfo() }
             .onSuccess { cpu ->
-                Log.i(
-                    TAG,
-                    "assistant CPU build: ${cpu.build ?: "none loaded"}" +
-                        (cpu.buildDescription?.let { " ($it)" } ?: "") +
-                        "; CPU features: ${cpu.features.joinToString().ifEmpty { "none reported" }}",
-                )
+                Log.i(TAG, "CPU features: ${cpu.features.joinToString().ifEmpty { "none reported" }}")
             }
-            .onFailure { Log.w(TAG, "could not read the assistant CPU build", it) }
+            .onFailure { Log.w(TAG, "could not read the CPU features", it) }
 
         // Remembered facts persist across restarts (the engine's fact list is
         // in-memory). Load the durable copy from DataStore before any input is

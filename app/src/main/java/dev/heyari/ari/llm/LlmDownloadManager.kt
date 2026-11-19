@@ -49,14 +49,15 @@ class LlmDownloadManager @Inject constructor(
 
     /**
      * The file to load for [model]: its own, or else the GGUF an earlier
-     * version of Ari downloaded for the tier, which answers until an update
-     * replaces it (ari-android#52). The tier's own file when there is neither.
+     * version of Ari downloaded for the tier. Ari can't run that, but it
+     * keeps the tier counted as installed, so the update check offers its
+     * replacement (ari-android#52). The tier's own file when there is neither.
      */
     fun modelFile(model: LlmModel): File = modelFileIn(modelDir(model), model)
 
     fun isDownloaded(model: LlmModel): Boolean = modelFile(model).isFile
 
-    /** Whether [model] is answering from the GGUF its tier used to have. */
+    /** Whether [model] still has only the GGUF its tier used to have. */
     fun isLegacy(model: LlmModel): Boolean = modelFile(model).name == model.legacyFileName
 
     fun delete(model: LlmModel): Boolean = modelDir(model).deleteRecursively()

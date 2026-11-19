@@ -189,10 +189,6 @@ private fun DeviceInfoSection(facts: DeviceDiagnostics?) {
                 R.string.settings_device_info_cpu,
                 stringResource(R.string.settings_device_info_cpu_value, facts.cpuCores, facts.abi),
             )
-            InfoRow(
-                R.string.settings_device_info_cpu_build,
-                facts.cpuBuildSummary ?: stringResource(R.string.settings_device_info_cpu_build_none),
-            )
             InfoRow(R.string.settings_device_info_cpu_features, facts.cpuFeatures.joinToString().ifEmpty { none })
             InfoRow(R.string.settings_device_info_ari, facts.appVersion)
             InfoRow(R.string.settings_device_info_engine, facts.engineVersion ?: none)

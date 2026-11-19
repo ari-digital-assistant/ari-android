@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import uniffi.ari_ffi.engineVersion
 import uniffi.ari_ffi.onDeviceCpuInfo
-import uniffi.ari_ffi.onDeviceRuntime
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -30,24 +29,17 @@ data class DeviceDiagnostics(
     val memoryTotalMb: Long?,
     val cpuCores: Int,
     val abi: String,
-    /**
-     * Which build of llama.cpp's CPU code the on-device assistant runs:
-     * "ARMv8.6", "ARMv8.2" or "ARMv8.0" (ari-android#32). Null when none
-     * would load.
-     */
-    val cpuBuild: String?,
-    val cpuBuildDescription: String?,
-    /** The CPU features this device reports that llama.cpp can use. */
+    /** The CPU features this device reports that LiteRT-LM's CPU kernels can use. */
     val cpuFeatures: List<String>,
     val appVersion: String,
     val engineVersion: String?,
     val assistant: String?,
     val llmModel: String?,
     /**
-     * What runs [llmModel]'s file: "LiteRT-LM CPU" or "LiteRT-LM GPU", as
-     * set (the engine's answer log says when the GPU fell back to the CPU),
-     * or "llama.cpp" for a tier still on the GGUF it had before
-     * ari-android#52. Null with no model downloaded.
+     * What runs [llmModel]: "LiteRT-LM CPU" or "LiteRT-LM GPU", as set (the
+     * engine's answer log says when the GPU fell back to the CPU), or that
+     * it's still the GGUF an earlier version downloaded, which Ari can't run
+     * until it updates (ari-android#52). Null with no model downloaded.
      */
     val llmRuntime: String?,
     val speech: String,
@@ -56,10 +48,6 @@ data class DeviceDiagnostics(
     val llmSummary: String?
         get() = llmModel?.let { model -> llmRuntime?.let { "$model ($it)" } ?: model }
 
-    /** "ARMv8.6 (dot product, …)", or null when no CPU build loaded. */
-    val cpuBuildSummary: String?
-        get() = cpuBuild?.let { build -> cpuBuildDescription?.let { "$build ($it)" } ?: build }
-
     /**
      * The same facts as plain text: for the top of a bug report's log, and
      * for the debug screen's copy button.
@@ -67,7 +55,6 @@ data class DeviceDiagnostics(
     fun toText(): String = buildString {
         appendLine("Device: $device" + (chip?.let { " · $it" } ?: ""))
         appendLine("Android $android · ${memoryTotalMb?.let { "$it MB RAM" } ?: "RAM unknown"} · $cpuCores cores · $abi")
-        appendLine("Assistant CPU build: ${cpuBuildSummary ?: "none loaded"}")
         appendLine("CPU features: ${cpuFeatures.joinToString().ifEmpty { "none reported" }}")
         appendLine("Ari $appVersion · engine ${engineVersion ?: "unknown"}")
         appendLine("Assistant: ${assistant ?: "none"} · model: ${llmSummary ?: "none"} · speech: $speech")
@@ -80,10 +67,7 @@ class DiagnosticsCollector @Inject constructor(
     private val settings: SettingsRepository,
     private val llmDownloads: LlmDownloadManager,
 ) {
-    /**
-     * Off the main thread: asking which CPU build the assistant runs loads
-     * it if no model has yet, a few MB read once per process.
-     */
+    /** Off the main thread: it reads /proc and the model directory. */
     suspend fun collect(): DeviceDiagnostics = withContext(Dispatchers.IO) {
         val memory = ActivityManager.MemoryInfo().also {
             context.getSystemService(ActivityManager::class.java)?.getMemoryInfo(it)
@@ -91,7 +75,7 @@ class DiagnosticsCollector @Inject constructor(
         val cpu = runCatching { onDeviceCpuInfo() }.getOrNull()
         val sttMode = settings.sttMode.first()
         val llmModel = settings.activeLlmModelId.first()
-        val llmFile = LlmModelRegistry.byId(llmModel)?.let { llmDownloads.modelFile(it) }?.takeIf { it.isFile }
+        val llm = LlmModelRegistry.byId(llmModel)?.takeIf { llmDownloads.isDownloaded(it) }
         DeviceDiagnostics(
             device = "${Build.MANUFACTURER} ${Build.MODEL}",
             chip = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -103,18 +87,18 @@ class DiagnosticsCollector @Inject constructor(
             memoryTotalMb = (memory.totalMem / 1_000_000).takeIf { memory.totalMem > 0 },
             cpuCores = Runtime.getRuntime().availableProcessors(),
             abi = Build.SUPPORTED_ABIS.firstOrNull() ?: "unknown",
-            cpuBuild = cpu?.build,
-            cpuBuildDescription = cpu?.buildDescription,
             cpuFeatures = cpu?.features.orEmpty(),
             appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.BUILD_TYPE})",
             engineVersion = runCatching { engineVersion() }.getOrNull(),
             assistant = settings.activeAssistantId.first(),
             llmModel = llmModel,
-            llmRuntime = llmFile?.let { runCatching { onDeviceRuntime(it.absolutePath) }.getOrNull() }
-                ?.let { runtime ->
-                    if (runtime != "LiteRT-LM") runtime
-                    else if (settings.llmUseGpu.first()) "$runtime GPU" else "$runtime CPU"
-                },
+            llmRuntime = llm?.let {
+                when {
+                    llmDownloads.isLegacy(it) -> "old GGUF, needs updating"
+                    settings.llmUseGpu.first() -> "LiteRT-LM GPU"
+                    else -> "LiteRT-LM CPU"
+                }
+            },
             speech = settings.activeSttModelId.first()?.let { "${sttMode.slug}, $it" } ?: sttMode.slug,
         )
     }

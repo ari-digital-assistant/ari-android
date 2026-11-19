@@ -111,7 +111,6 @@ class BugReportCollector @Inject constructor(
     suspend fun setupInfo(): SetupInfo = SetupInfo(
         assistant = settings.activeAssistantId.first(),
         model = settings.activeLlmModelId.first(),
-        modelCpu = diagnostics.collect().cpuBuildSummary,
         stt = settings.activeSttModelId.first() ?: settings.cloudSttModel.first().ifBlank { null },
         tts = settings.activeTtsVoice.first(),
         wake = settings.activeWakeWordId.first(),

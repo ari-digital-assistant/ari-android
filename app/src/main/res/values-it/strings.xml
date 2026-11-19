@@ -872,8 +872,6 @@
     <string name="settings_device_info_memory">Memoria</string>
     <string name="settings_device_info_cpu">Processore</string>
     <string name="settings_device_info_cpu_value">%1$d core, %2$s</string>
-    <string name="settings_device_info_cpu_build">Build CPU dell\'assistente</string>
-    <string name="settings_device_info_cpu_build_none">Nessuna caricata</string>
     <string name="settings_device_info_cpu_features">Funzioni della CPU</string>
     <string name="settings_device_info_none">Nessuno</string>
     <string name="settings_device_info_ari">Ari</string>

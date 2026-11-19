@@ -15,9 +15,8 @@ enum class LlmSize { Small, Medium, Large }
  * Metadata for a downloadable on-device LLM model.
  *
  * Models are downloaded into [filesDir]/models/llm/<id>/ on demand. Each
- * tier is a single file, which the engine runs on LiteRT-LM (`.litertlm`,
- * `.task`) or llama.cpp (GGUF) by its extension (ari-android#52). LiteRT-LM
- * keeps a repacked copy of the weights beside it, about as big again, which
+ * tier is a single `.litertlm` or `.task` file, which the engine runs on
+ * LiteRT-LM (ari-android#52). LiteRT-LM keeps a repacked copy of the weights beside it, about as big again, which
  * goes when the tier's directory is deleted.
  */
 data class LlmModel(
@@ -42,9 +41,11 @@ data class LlmModel(
      */
     val manifestUrl: String = "",
     /**
-     * The GGUF an earlier version of Ari downloaded for this tier. It keeps
-     * answering, on llama.cpp, until the tier's own file is downloaded and
-     * replaces it (ari-android#52). Null for a tier that never had one.
+     * The GGUF an earlier version of Ari downloaded for this tier. Ari can't
+     * run it since llama.cpp went, but it keeps the tier counted as
+     * installed, so the update check offers the tier's own file, and it goes
+     * when that file arrives (ari-android#52). Null for a tier that never
+     * had one.
      */
     val legacyFileName: String? = null,
 )

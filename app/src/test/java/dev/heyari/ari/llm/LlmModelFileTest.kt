@@ -7,8 +7,8 @@ import org.junit.rules.TemporaryFolder
 import java.io.File
 
 /**
- * [LlmDownloadManager.modelFileIn]: a tier answers from its own file, or
- * from the GGUF it had before ari-android#52 until that file arrives.
+ * [LlmDownloadManager.modelFileIn]: a tier's own file, or the GGUF it had
+ * before ari-android#52, which stands in until that file arrives.
  */
 class LlmModelFileTest {
 
@@ -27,7 +27,7 @@ class LlmModelFileTest {
     }
 
     @Test
-    fun theLegacyGgufAnswersUntilItsReplacementArrives() {
+    fun theLegacyGgufStandsInUntilItsReplacementArrives() {
         val dir = dir(model.legacyFileName!!)
         assertEquals(File(dir, "gemma-4-E2B-it-Q4_K_M.gguf"), LlmDownloadManager.modelFileIn(dir, model))
     }

@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sooner and took longer to load, but other phones' graphics chips may do better. If the
   model won't load there, Ari uses the processor
   ([#52](https://github.com/ari-digital-assistant/ari-android/issues/52)).
+- Ari no longer runs the old on-device models (GGUF files, run by llama.cpp). If your
+  tier still has its old file, Ari offers the update and can't answer on the device
+  until you take it. The debug screen no longer shows a CPU build
+  ([#52](https://github.com/ari-digital-assistant/ari-android/issues/52)).
 
 ### Fixed
 

@@ -998,8 +998,6 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_func_on_device_cpu_info(
     ): Short
-    external fun uniffi_ari_ffi_checksum_func_on_device_runtime(
-    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_cancel_pending_reply(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_clear_conversation(
@@ -1489,8 +1487,6 @@ external fun uniffi_ari_ffi_fn_func_engine_version(uniffi_out_err: UniffiRustCal
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_func_on_device_cpu_info(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
-external fun uniffi_ari_ffi_fn_func_on_device_runtime(`modelPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-): RustBuffer.ByValue
 external fun ffi_ari_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun ffi_ari_ffi_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1613,10 +1609,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_func_engine_version() != 10576.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_func_on_device_cpu_info() != 26519.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_ari_ffi_checksum_func_on_device_runtime() != 53028.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_func_on_device_cpu_info() != 51175.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_cancel_pending_reply() != 705.toShort()) {
@@ -1631,7 +1624,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_current_locale() != 7320.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_llm_model() != 24378.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_llm_model() != 35040.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_model_catalog() != 21577.toShort()) {
@@ -2448,9 +2441,9 @@ public interface AriEngineInterface {
     fun `currentLocale`(): kotlin.String
     
     /**
-     * Set the model file for the LLM fallback: a GGUF, which llama.cpp
-     * runs, or a .litertlm or .task file, which LiteRT-LM runs, on the GPU
-     * when `use_gpu` is set and the GPU loads it, else on the CPU. The model is NOT
+     * Set the model file for the LLM fallback: a .litertlm or .task file,
+     * which LiteRT-LM runs on the GPU when `use_gpu` is set and the GPU
+     * loads it, else on the CPU. The model is NOT
      * loaded immediately — it loads on demand when the first unmatched
      * query arrives, and unloads after 60 seconds of idle to free RAM.
      *
@@ -2801,9 +2794,9 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
 
     
     /**
-     * Set the model file for the LLM fallback: a GGUF, which llama.cpp
-     * runs, or a .litertlm or .task file, which LiteRT-LM runs, on the GPU
-     * when `use_gpu` is set and the GPU loads it, else on the CPU. The model is NOT
+     * Set the model file for the LLM fallback: a .litertlm or .task file,
+     * which LiteRT-LM runs on the GPU when `use_gpu` is set and the GPU
+     * loads it, else on the CPU. The model is NOT
      * loaded immediately — it loads on demand when the first unmatched
      * query arrives, and unloads after 60 seconds of idle to free RAM.
      *
@@ -10355,24 +10348,13 @@ public object FfiConverterTypeFfiContactChannel: FfiConverterRustBuffer<FfiConta
 
 
 /**
- * The on-device assistant's CPU code and the CPU it runs on, for bug
- * reports and the debug screen.
+ * The CPU the on-device assistant runs on, for bug reports and the debug
+ * screen.
  */
 data class FfiCpuInfo (
     /**
-     * Which build of llama.cpp's CPU code is loaded: "ARMv8.6", "ARMv8.2",
-     * "ARMv8.0", or "built in" off Android arm64. Null when none would load,
-     * or in a build without the on-device assistant.
-     */
-    var `build`: kotlin.String?
-    , 
-    /**
-     * What that build uses, in words.
-     */
-    var `buildDescription`: kotlin.String?
-    , 
-    /**
-     * The CPU features this device reports that llama.cpp can use.
+     * The CPU features this device reports that LiteRT-LM's CPU kernels
+     * can use.
      */
     var `features`: List<kotlin.String>
     
@@ -10391,21 +10373,15 @@ data class FfiCpuInfo (
 public object FfiConverterTypeFfiCpuInfo: FfiConverterRustBuffer<FfiCpuInfo> {
     override fun read(buf: ByteBuffer): FfiCpuInfo {
         return FfiCpuInfo(
-            FfiConverterOptionalString.read(buf),
-            FfiConverterOptionalString.read(buf),
             FfiConverterSequenceString.read(buf),
         )
     }
 
     override fun allocationSize(value: FfiCpuInfo) = (
-            FfiConverterOptionalString.allocationSize(value.`build`) +
-            FfiConverterOptionalString.allocationSize(value.`buildDescription`) +
             FfiConverterSequenceString.allocationSize(value.`features`)
     )
 
     override fun write(value: FfiCpuInfo, buf: ByteBuffer) {
-            FfiConverterOptionalString.write(value.`build`, buf)
-            FfiConverterOptionalString.write(value.`buildDescription`, buf)
             FfiConverterSequenceString.write(value.`features`, buf)
     }
 }
@@ -12321,30 +12297,13 @@ public object FfiConverterMapStringTypeFfiLocalizedDisplay: FfiConverterRustBuff
     
 
         /**
-         * Which llama.cpp CPU build the on-device assistant runs on, loading it if
-         * no model has yet (a few MB, once per process), and this CPU's features
-         * (ari-android#32).
+         * This CPU's features (ari-android#32).
          */ fun `onDeviceCpuInfo`(): FfiCpuInfo {
             return FfiConverterTypeFfiCpuInfo.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_ari_ffi_fn_func_on_device_cpu_info(
     
         _status)
-}
-    )
-    }
-    
-
-        /**
-         * Which runtime the on-device assistant uses for the model file at
-         * `model_path`: "LiteRT-LM" for a .litertlm or .task file, "llama.cpp" for a
-         * GGUF (ari-android#52). Null in a build without the on-device assistant.
-         */ fun `onDeviceRuntime`(`modelPath`: kotlin.String): kotlin.String? {
-            return FfiConverterOptionalString.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_ari_ffi_fn_func_on_device_runtime(
-    
-        FfiConverterString.lower(`modelPath`),_status)
 }
     )
     }

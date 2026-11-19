@@ -158,14 +158,6 @@ android {
         buildConfig = true
     }
 
-    packaging {
-        jniLibs {
-            // llama.cpp's "common" helpers come out as a 4 MB library that
-            // nothing in Ari links against (ari-android#32).
-            excludes += "**/libllama-common.so"
-        }
-    }
-
     testOptions {
         unitTests.isReturnDefaultValues = true
     }
@@ -190,49 +182,6 @@ androidRust {
             targets = listOf("arm64", "x86_64")
         }
     }
-}
-
-// On arm64, llama.cpp builds as shared libraries: libllama, libggml and
-// libggml-base, which androidRust packages along with libari_ffi.so, and one
-// libggml-cpu per ARM generation, of which the engine loads the best the
-// phone supports (ari-engine/crates/ari-llm/src/cpu_build.rs, ari-android#32).
-// Those stay in llama-cpp-sys-2's build output, so this copies them into a
-// jniLibs folder of their own. The other CPU builds llama.cpp makes (ARMv8.2
-// without half precision, ARMv9) stay out until a phone shows they beat these.
-val llamaCpuBuilds = listOf("android_armv8.0_1", "android_armv8.2_2", "android_armv8.6_1")
-mapOf("debug" to "debug", "release" to "release", "beta" to "release").forEach { (buildType, profileDir) ->
-    val cap = buildType.replaceFirstChar { it.uppercase() }
-    val llamaLibs = layout.buildDirectory.dir("generated/llamaLibs/$buildType")
-    val cargoBuild = layout.buildDirectory.dir(
-        "intermediates/rust/$buildType/lib_ari-ffi/aarch64-linux-android/$profileDir/build",
-    )
-    val copyLlamaLibs = tasks.register("copy${cap}LlamaLibs") {
-        dependsOn("build${cap}Ari-ffiRust[arm64-v8a]")
-        val dest = llamaLibs.map { it.dir("arm64-v8a") }
-        outputs.dir(dest)
-        // A few MB of copying, and Cargo decides what changed, not Gradle.
-        outputs.upToDateWhen { false }
-        doLast {
-            val build = cargoBuild.get().asFile
-            // The newest llama-cpp-sys-2 output: a changed feature or env
-            // leaves the old one behind under another hash. Looked up here,
-            // at run time, because the Rust build above is what creates it.
-            val out = build
-                .listFiles { dir -> dir.name.startsWith("llama-cpp-sys-2-") }
-                ?.map { File(it, "out") }
-                ?.filter { File(it, "lib/libllama.so").exists() }
-                ?.maxByOrNull { File(it, "lib/libllama.so").lastModified() }
-                ?: throw GradleException("no llama-cpp-sys-2 build output under $build")
-            val libs = llamaCpuBuilds.map { File(out, "backends/libggml-cpu-$it.so") }
-            val target = dest.get().asFile
-            target.deleteRecursively()
-            target.mkdirs()
-            libs.forEach { it.copyTo(File(target, it.name)) }
-        }
-    }
-    // A File, not the provider: AGP's source sets refuse providers.
-    android.sourceSets.getByName(buildType).jniLibs.srcDir(llamaLibs.get().asFile)
-    tasks.matching { it.name == "merge${cap}JniLibFolders" }.configureEach { dependsOn(copyLlamaLibs) }
 }
 
 // LiteRT-LM's C API library, which the engine opens at run time to run
