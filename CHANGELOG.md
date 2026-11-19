@@ -13,6 +13,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   setting), a faded note in the chat says so. The messages themselves stay until you
   clear them ([#51](https://github.com/ari-digital-assistant/ari-android/issues/51)).
 
+### Fixed
+
+- The on-device assistant forgot its own answers when you pushed back on one, such as
+  "I think you are wrong". Ari asked it to mark each reply as starting a new topic or
+  not, and a new topic wiped the conversation. Ari no longer asks, so a conversation
+  ends only after the quiet spell or when you clear it
+  ([#48](https://github.com/ari-digital-assistant/ari-android/issues/48)).
+- Ari's replies could show that marker as "[new]", sometimes where your name would go
+  ([#46](https://github.com/ari-digital-assistant/ari-android/issues/46)).
+- The Medium and Large on-device assistants claimed you had asked things you never did,
+  such as what colour the sky is, and stuck to it. They took the example questions in
+  their own instructions for yours; those are now marked as examples. Small still can
+  do this: marking them made its answers worse
+  ([#49](https://github.com/ari-digital-assistant/ari-android/issues/49),
+  [#50](https://github.com/ari-digital-assistant/ari-android/issues/50)).
+- A sentence with a number and "times" in it, such as "you repeated cheetah 3 times",
+  went to the calculator, which said it couldn't work it out. The calculator now only
+  answers a sum it can do or one you asked for
+  ([#47](https://github.com/ari-digital-assistant/ari-android/issues/47)).
+- "Search for it" searched the web for the word "it". It now searches for the question
+  you just asked, and with nothing to go on, Ari asks what to search for
+  ([#51](https://github.com/ari-digital-assistant/ari-android/issues/51)).
+
 ## [0.1.4] - 2026-11-18
 
 Changes since 0.1.3, uploaded to Google Play internal testing as versionCode 6.
