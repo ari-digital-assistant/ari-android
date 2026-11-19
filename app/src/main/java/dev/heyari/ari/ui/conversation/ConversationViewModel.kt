@@ -133,6 +133,11 @@ class ConversationViewModel @Inject constructor(
      *  in progress, not just wiping the log. */
     private var activeTurn: Job? = null
 
+    /** Whether Ari reads its replies out: not to a typed turn, whose answer
+     *  the user is already looking at, but to anything spoken. Kept past the
+     *  turn for a reply the engine pushes later ([handlePushedEnvelope]). */
+    private var speakReplies = true
+
     init {
         // Load active model + mark setup checked once. ensureLoaded() resolves
         // the active model and warms it (idempotent — rides the same lock as
@@ -184,6 +189,11 @@ class ConversationViewModel @Inject constructor(
                     else -> { /* Preparing/Thinking/Responding: leave the field */ }
                 }
             }
+        }
+        // A wake-word or tap-to-talk turn runs in VoiceSession, not through
+        // onTextSubmitted, but a reply the engine pushes after it lands here.
+        viewModelScope.launch {
+            voiceSession.state.collect { if (it is VoiceState.Thinking) speakReplies = true }
         }
         // Dictation final transcript → submit as a Voice-sourced turn. The user
         // spoke it, so it carries the mic glyph even though it flows through the
@@ -324,6 +334,8 @@ class ConversationViewModel @Inject constructor(
         val userMessage = Message(text = text, isFromUser = true, source = source)
         logRepository.append(userMessage)
         _state.update { it.copy(inputText = "", wakeWordDetected = false) }
+        val speak = source == InputSource.Voice
+        speakReplies = speak
 
         alertVoiceIntercept.resolve(text)?.let { alertId ->
             application.startService(AlertService.stopIntent(application, alertId))
@@ -337,7 +349,7 @@ class ConversationViewModel @Inject constructor(
         // without the assistant ever seeing the word. Skill-agnostic:
         // any card with actions inherits this UX for free.
         cardActionVoiceIntercept.resolve(text)?.let { match ->
-            onCardAction(match.cardId, match.action)
+            onCardAction(match.cardId, match.action, speak)
             return
         }
 
@@ -358,7 +370,7 @@ class ConversationViewModel @Inject constructor(
             //
             // Both are torn down in the finally.
             _state.update { it.copy(isThinking = true) }
-            val fillerJob = launch {
+            val fillerJob = if (!speak) null else launch {
                 delay(STILL_WORKING_DELAY_MS)
                 // Same shared "please wait" vocabulary the STT warm-up uses, so
                 // the two slow paths feel like one feature.
@@ -385,15 +397,15 @@ class ConversationViewModel @Inject constructor(
                         }
                     },
                     onSentence = { sentence ->
-                        if (isActive) {
-                            fillerJob.cancel()
+                        if (isActive && speak) {
+                            fillerJob?.cancel()
                             spoken = true
                             speechOutput.speak(sentence)
                         }
                     },
                 )
             } finally {
-                fillerJob.cancel()
+                fillerJob?.cancel()
                 _state.update { it.copy(isThinking = false) }
             }
 
@@ -445,7 +457,7 @@ class ConversationViewModel @Inject constructor(
                 logRepository.replace(
                     it.copy(text = bubbleText ?: responseText, attachments = attachments, skillId = skillId)
                 )
-                if (!spoken && responseText.isNotBlank()) speechOutput.speak(responseText)
+                if (speak && !spoken && responseText.isNotBlank()) speechOutput.speak(responseText)
                 return@launch
             }
 
@@ -465,7 +477,7 @@ class ConversationViewModel @Inject constructor(
             logRepository.append(ariMessage)
 
             // Speak text and action confirmations alike — both are just user-facing strings now
-            if (response is FfiResponse.Text || response is FfiResponse.Action || response is FfiResponse.NotUnderstood) {
+            if (speak && (response is FfiResponse.Text || response is FfiResponse.Action || response is FfiResponse.NotUnderstood)) {
                 if (responseText.isNotBlank()) speechOutput.speak(responseText)
             }
         }
@@ -497,7 +509,7 @@ class ConversationViewModel @Inject constructor(
             skillId = skillId?.takeIf { it.isNotBlank() },
         )
         logRepository.append(message)
-        if (result.text.isNotBlank()) speechOutput.speak(result.text)
+        if (speakReplies && result.text.isNotBlank()) speechOutput.speak(result.text)
     }
 
     /**
@@ -722,9 +734,10 @@ class ConversationViewModel @Inject constructor(
      * locally; everything else routes through the engine via the action's
      * `utterance`, which the skill handles like any other input. The
      * resulting envelope flows back through the same processInput path
-     * and reconciles state.
+     * and reconciles state. [speak] is false when the action answers a typed
+     * word rather than a tap.
      */
-    fun onCardAction(cardId: String, action: CardAction) {
+    fun onCardAction(cardId: String, action: CardAction, speak: Boolean = true) {
         viewModelScope.launch(Dispatchers.Default) {
             when (val outcome = cardActionDispatcher.dispatch(cardId, action)) {
                 is CardActionDispatcher.Outcome.Silent -> Unit
@@ -736,7 +749,7 @@ class ConversationViewModel @Inject constructor(
                         attachments = outcome.attachments,
                     )
                     logRepository.append(ariMessage)
-                    if (outcome.text.isNotBlank()) speechOutput.speak(outcome.text)
+                    if (speak && outcome.text.isNotBlank()) speechOutput.speak(outcome.text)
                 }
             }
         }

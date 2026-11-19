@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Ari no longer reads its replies out when you type to it, since you're already looking
+  at the screen. Anything you say, including dictation into the chat box, is still
+  answered aloud.
 - The on-device assistant now runs on Google's LiteRT-LM and answers sooner: on a Pixel
   10 Pro Fold, Small in 1.3 seconds instead of 2.3, Medium in 1.5 instead of 4.3 and
   Large in 4.3 instead of 9, with answers as good. Each tier downloads a new model file,
