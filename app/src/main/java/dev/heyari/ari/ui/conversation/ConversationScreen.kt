@@ -96,6 +96,7 @@ fun ConversationScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val messages by viewModel.messages.collectAsStateWithLifecycle()
     val voicePhase by viewModel.voicePhase.collectAsStateWithLifecycle()
+    val slashCommands by viewModel.slashCommands.collectAsStateWithLifecycle()
     val bannerState by updateBannerViewModel.state.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val context = LocalContext.current
@@ -447,6 +448,7 @@ fun ConversationScreen(
                     value = state.inputText,
                     onValueChange = viewModel::onInputChanged,
                     onSend = { viewModel.onTextSubmitted(state.inputText) },
+                    onSendCommand = { viewModel.onTextSubmitted(it) },
                     onMicTap = { withVoicePermissions { viewModel.startDictation() } },
                     onStop = { viewModel.stopDictation() },
                     isDictating = state.isDictating,
@@ -454,6 +456,7 @@ fun ConversationScreen(
                     wakeArmed = state.isListening,
                     wakePhrase = state.wakePhrase,
                     ambientState = ambient,
+                    slashCommands = slashCommands,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .navigationBarsPadding(),

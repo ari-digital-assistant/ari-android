@@ -50,6 +50,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -64,6 +65,7 @@ import dev.heyari.ari.voice.shouldPersistFacts
 import uniffi.ari_ffi.AssistantRegistry
 import uniffi.ari_ffi.FfiLocationStatus
 import uniffi.ari_ffi.FfiResponse
+import uniffi.ari_ffi.FfiSlashCommand
 import uniffi.ari_ffi.SkillRegistry
 import java.util.Locale
 import javax.inject.Inject
@@ -120,6 +122,14 @@ class ConversationViewModel @Inject constructor(
     val voicePhase: StateFlow<VoicePhase> = voiceSession.state
         .map { it.toVoicePhase() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), VoicePhase.Idle)
+
+    /** Ari's built-in commands, described in the user's language, which the
+     *  composer offers after a `/`. Off Main: the first call loads the engine
+     *  library. */
+    val slashCommands: StateFlow<List<FfiSlashCommand>> = settingsRepository.activeLocale
+        .map { uniffi.ari_ffi.slashCommands(it) }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** The conversation log, sourced from the app-scoped repo. The screen
      *  observes this for the message list; the rest of the screen's state

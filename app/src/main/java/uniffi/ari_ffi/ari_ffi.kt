@@ -998,6 +998,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_func_on_device_cpu_info(
     ): Short
+    external fun uniffi_ari_ffi_checksum_func_slash_commands(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_cancel_pending_reply(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_clear_conversation(
@@ -1487,6 +1489,8 @@ external fun uniffi_ari_ffi_fn_func_engine_version(uniffi_out_err: UniffiRustCal
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_func_on_device_cpu_info(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_slash_commands(`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 external fun ffi_ari_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun ffi_ari_ffi_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1610,6 +1614,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_func_on_device_cpu_info() != 51175.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_slash_commands() != 47627.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_cancel_pending_reply() != 705.toShort()) {
@@ -11000,6 +11007,58 @@ public object FfiConverterTypeFfiSkillUpdate: FfiConverterRustBuffer<FfiSkillUpd
 
 
 
+/**
+ * One of Ari's built-in commands, which typed input runs as `/name`.
+ */
+data class FfiSlashCommand (
+    /**
+     * What follows the `/`, the same in every language.
+     */
+    var `name`: kotlin.String
+    , 
+    var `description`: kotlin.String
+    , 
+    /**
+     * Whether the command needs words after it ("/remember I like tea").
+     */
+    var `takesArgument`: kotlin.Boolean
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiSlashCommand: FfiConverterRustBuffer<FfiSlashCommand> {
+    override fun read(buf: ByteBuffer): FfiSlashCommand {
+        return FfiSlashCommand(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiSlashCommand) = (
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterString.allocationSize(value.`description`) +
+            FfiConverterBoolean.allocationSize(value.`takesArgument`)
+    )
+
+    override fun write(value: FfiSlashCommand, buf: ByteBuffer) {
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterString.write(value.`description`, buf)
+            FfiConverterBoolean.write(value.`takesArgument`, buf)
+    }
+}
+
+
+
 data class FfiTaskList (
     var `id`: kotlin.ULong
     , 
@@ -12150,6 +12209,34 @@ public object FfiConverterSequenceTypeFfiSkillUpdate: FfiConverterRustBuffer<Lis
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiSlashCommand: FfiConverterRustBuffer<List<FfiSlashCommand>> {
+    override fun read(buf: ByteBuffer): List<FfiSlashCommand> {
+        val len = buf.getInt()
+        return List<FfiSlashCommand>(len) {
+            FfiConverterTypeFfiSlashCommand.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiSlashCommand>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiSlashCommand.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiSlashCommand>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiSlashCommand.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiTaskList: FfiConverterRustBuffer<List<FfiTaskList>> {
     override fun read(buf: ByteBuffer): List<FfiTaskList> {
         val len = buf.getInt()
@@ -12304,6 +12391,20 @@ public object FfiConverterMapStringTypeFfiLocalizedDisplay: FfiConverterRustBuff
     UniffiLib.uniffi_ari_ffi_fn_func_on_device_cpu_info(
     
         _status)
+}
+    )
+    }
+    
+
+        /**
+         * The built-in `/` commands, described in `locale`, for a frontend to offer
+         * as the user types.
+         */ fun `slashCommands`(`locale`: kotlin.String): List<FfiSlashCommand> {
+            return FfiConverterSequenceTypeFfiSlashCommand.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_slash_commands(
+    
+        FfiConverterString.lower(`locale`),_status)
 }
     )
     }

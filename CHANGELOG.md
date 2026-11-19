@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Typing `/` in the chat box lists Ari's built-in commands (clear the conversation,
+  remember or forget something, forget everything, what Ari remembers about you),
+  narrowing as you type. Picking one runs it, or fills it in when it needs more words,
+  as `/remember` does.
 - When Ari forgets the conversation after a quiet spell (90 seconds on the Short
   setting), a faded note in the chat says so. The messages themselves stay until you
   clear them ([#51](https://github.com/ari-digital-assistant/ari-android/issues/51)).
