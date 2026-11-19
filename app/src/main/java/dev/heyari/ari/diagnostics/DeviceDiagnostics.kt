@@ -6,11 +6,14 @@ import android.os.Build
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.BuildConfig
 import dev.heyari.ari.data.SettingsRepository
+import dev.heyari.ari.llm.LlmDownloadManager
+import dev.heyari.ari.llm.LlmModelRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import uniffi.ari_ffi.engineVersion
 import uniffi.ari_ffi.onDeviceCpuInfo
+import uniffi.ari_ffi.onDeviceRuntime
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -40,8 +43,18 @@ data class DeviceDiagnostics(
     val engineVersion: String?,
     val assistant: String?,
     val llmModel: String?,
+    /**
+     * What runs [llmModel]'s file: "LiteRT-LM" or "llama.cpp", which a tier
+     * still on the GGUF it had before ari-android#52 uses. Null with no
+     * model downloaded.
+     */
+    val llmRuntime: String?,
     val speech: String,
 ) {
+    /** "gemma4-e2b-q4 (LiteRT-LM)", or the id alone with no runtime. */
+    val llmSummary: String?
+        get() = llmModel?.let { model -> llmRuntime?.let { "$model ($it)" } ?: model }
+
     /** "ARMv8.6 (dot product, …)", or null when no CPU build loaded. */
     val cpuBuildSummary: String?
         get() = cpuBuild?.let { build -> cpuBuildDescription?.let { "$build ($it)" } ?: build }
@@ -56,7 +69,7 @@ data class DeviceDiagnostics(
         appendLine("Assistant CPU build: ${cpuBuildSummary ?: "none loaded"}")
         appendLine("CPU features: ${cpuFeatures.joinToString().ifEmpty { "none reported" }}")
         appendLine("Ari $appVersion · engine ${engineVersion ?: "unknown"}")
-        appendLine("Assistant: ${assistant ?: "none"} · model: ${llmModel ?: "none"} · speech: $speech")
+        appendLine("Assistant: ${assistant ?: "none"} · model: ${llmSummary ?: "none"} · speech: $speech")
     }
 }
 
@@ -64,6 +77,7 @@ data class DeviceDiagnostics(
 class DiagnosticsCollector @Inject constructor(
     @ApplicationContext private val context: Context,
     private val settings: SettingsRepository,
+    private val llmDownloads: LlmDownloadManager,
 ) {
     /**
      * Off the main thread: asking which CPU build the assistant runs loads
@@ -75,6 +89,8 @@ class DiagnosticsCollector @Inject constructor(
         }
         val cpu = runCatching { onDeviceCpuInfo() }.getOrNull()
         val sttMode = settings.sttMode.first()
+        val llmModel = settings.activeLlmModelId.first()
+        val llmFile = LlmModelRegistry.byId(llmModel)?.let { llmDownloads.modelFile(it) }?.takeIf { it.isFile }
         DeviceDiagnostics(
             device = "${Build.MANUFACTURER} ${Build.MODEL}",
             chip = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -92,7 +108,8 @@ class DiagnosticsCollector @Inject constructor(
             appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.BUILD_TYPE})",
             engineVersion = runCatching { engineVersion() }.getOrNull(),
             assistant = settings.activeAssistantId.first(),
-            llmModel = settings.activeLlmModelId.first(),
+            llmModel = llmModel,
+            llmRuntime = llmFile?.let { runCatching { onDeviceRuntime(it.absolutePath) }.getOrNull() },
             speech = settings.activeSttModelId.first()?.let { "${sttMode.slug}, $it" } ?: sttMode.slug,
         )
     }

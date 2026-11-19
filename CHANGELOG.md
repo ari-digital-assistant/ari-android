@@ -13,6 +13,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   setting), a faded note in the chat says so. The messages themselves stay until you
   clear them ([#51](https://github.com/ari-digital-assistant/ari-android/issues/51)).
 
+### Changed
+
+- The on-device assistant now runs on Google's LiteRT-LM and answers sooner: on a Pixel
+  10 Pro Fold, Small in 1.3 seconds instead of 2.3, Medium in 1.5 instead of 4.3 and
+  Large in 4.3 instead of 9, with answers as good. Each tier downloads a new model file,
+  offered as an update; until it arrives, Ari keeps answering with the one you have.
+  Medium and Large need far less memory, so Medium now suits 6 GB phones and Large 8 GB.
+  The new files take more room on the phone once set up: Small 2.1 GB, Medium 3.4 GB,
+  Large 5.9 GB ([#52](https://github.com/ari-digital-assistant/ari-android/issues/52)).
+
 ### Fixed
 
 - The on-device assistant forgot its own answers when you pushed back on one, such as

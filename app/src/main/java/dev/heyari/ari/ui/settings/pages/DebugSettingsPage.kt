@@ -197,7 +197,7 @@ private fun DeviceInfoSection(facts: DeviceDiagnostics?) {
             InfoRow(R.string.settings_device_info_ari, facts.appVersion)
             InfoRow(R.string.settings_device_info_engine, facts.engineVersion ?: none)
             InfoRow(R.string.settings_device_info_assistant, facts.assistant ?: none)
-            InfoRow(R.string.settings_device_info_llm, facts.llmModel ?: none)
+            InfoRow(R.string.settings_device_info_llm, facts.llmSummary ?: none)
             InfoRow(R.string.settings_device_info_speech, facts.speech)
         }
     }

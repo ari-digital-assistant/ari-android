@@ -1,4 +1,7 @@
+import java.net.URI
+import java.security.MessageDigest
 import java.util.Properties
+import java.util.zip.ZipFile
 
 // Upload-key credentials, kept out of the repo. Absent on a machine that has
 // never needed to sign a release — `assembleRelease` there produces an
@@ -230,6 +233,63 @@ mapOf("debug" to "debug", "release" to "release", "beta" to "release").forEach {
     // A File, not the provider: AGP's source sets refuse providers.
     android.sourceSets.getByName(buildType).jniLibs.srcDir(llamaLibs.get().asFile)
     tasks.matching { it.name == "merge${cap}JniLibFolders" }.configureEach { dependsOn(copyLlamaLibs) }
+}
+
+// LiteRT-LM's C API library, which the engine opens at run time to run
+// .litertlm and .task models (ari-engine/crates/ari-llm/src/litert.rs,
+// ari-android#52). Google publishes it only inside this 123 MB release zip,
+// so the zip is fetched once into Gradle's cache, checked against the SHA-256
+// GitHub lists for the asset, and its two Android builds copied into a
+// jniLibs folder of their own. Both are 16 KB page aligned.
+val liteRtLmZipUrl = "https://github.com/google-ai-edge/LiteRT-LM/releases/download/v0.19.1/litert_lm_c_api-1.0.0.zip"
+val liteRtLmZipSha256 = "1d430d80eaf536f696a4922270ba55eb3d112189ac198c3066d487a45e3b4d4c"
+val liteRtLmLibs = layout.buildDirectory.dir("generated/liteRtLmLibs")
+val fetchLiteRtLm = tasks.register("fetchLiteRtLm") {
+    val zip = gradle.gradleUserHomeDir.resolve("caches/ari/${liteRtLmZipUrl.substringAfterLast('/')}")
+    val abis = mapOf("android_arm64" to "arm64-v8a", "android_x86_64" to "x86_64")
+    inputs.property("sha256", liteRtLmZipSha256)
+    outputs.dir(liteRtLmLibs)
+    doLast {
+        fun sha256(file: File): String {
+            val digest = MessageDigest.getInstance("SHA-256")
+            file.inputStream().use { input ->
+                val buffer = ByteArray(1 shl 16)
+                while (true) {
+                    val n = input.read(buffer)
+                    if (n < 0) break
+                    digest.update(buffer, 0, n)
+                }
+            }
+            return digest.digest().joinToString("") { "%02x".format(it) }
+        }
+        if (!zip.isFile || sha256(zip) != liteRtLmZipSha256) {
+            zip.parentFile.mkdirs()
+            val part = File(zip.path + ".part")
+            URI(liteRtLmZipUrl).toURL().openStream().use { input ->
+                part.outputStream().use { input.copyTo(it) }
+            }
+            val actual = sha256(part)
+            if (actual != liteRtLmZipSha256) {
+                part.delete()
+                throw GradleException("$liteRtLmZipUrl has SHA-256 $actual, expected $liteRtLmZipSha256")
+            }
+            if (!part.renameTo(zip)) throw GradleException("couldn't move ${part.name} to $zip")
+        }
+        val out = liteRtLmLibs.get().asFile
+        out.deleteRecursively()
+        ZipFile(zip).use { archive ->
+            abis.forEach { (dir, abi) ->
+                val entry = archive.getEntry("lib/$dir/liblitert-lm.so")
+                    ?: throw GradleException("no lib/$dir/liblitert-lm.so in ${zip.name}")
+                val target = File(out, "$abi/liblitert-lm.so").apply { parentFile.mkdirs() }
+                archive.getInputStream(entry).use { input -> target.outputStream().use { input.copyTo(it) } }
+            }
+        }
+    }
+}
+android.sourceSets.getByName("main").jniLibs.srcDir(liteRtLmLibs.get().asFile)
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("JniLibFolders") }.configureEach {
+    dependsOn(fetchLiteRtLm)
 }
 
 dependencies {

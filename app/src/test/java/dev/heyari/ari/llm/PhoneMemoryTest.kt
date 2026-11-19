@@ -22,20 +22,33 @@ class PhoneMemoryTest {
         assertNull(PhoneMemory.soldGb(0))
     }
 
+    // The figures below changed with LiteRT-LM (ari-android#52): it needs
+    // 3.1 GB for Large where llama.cpp needed 6.1, so Large now fits the 8 GB
+    // Galaxy S22 that ari-android#42 found it crowding, and Medium fits 6 GB.
+
     @Test
     fun eightGbPhoneLikeTheTestersS22() {
-        // ari-android#42: Large took most of an 8 GB Galaxy S22.
         assertEquals(MemoryFit.Fits, PhoneMemory.fit(SMALL, 8))
         assertEquals(MemoryFit.Fits, PhoneMemory.fit(MEDIUM, 8))
-        assertEquals(MemoryFit.Tight, PhoneMemory.fit(LARGE, 8))
-        assertEquals(MEDIUM, PhoneMemory.recommended(LlmModelRegistry.all, 8))
+        assertEquals(MemoryFit.Fits, PhoneMemory.fit(LARGE, 8))
+        assertEquals(LARGE, PhoneMemory.recommended(LlmModelRegistry.all, 8))
+    }
+
+    @Test
+    fun sixGbPhoneGetsMediumNotTheHungrierSmall() {
+        // Small needs more memory than Medium on LiteRT-LM; the
+        // recommendation goes by tier.
+        assertEquals(MemoryFit.Fits, PhoneMemory.fit(SMALL, 6))
+        assertEquals(MemoryFit.Fits, PhoneMemory.fit(MEDIUM, 6))
+        assertEquals(MemoryFit.Tight, PhoneMemory.fit(LARGE, 6))
+        assertEquals(MEDIUM, PhoneMemory.recommended(LlmModelRegistry.all, 6))
     }
 
     @Test
     fun smallerPhones() {
-        assertEquals(MemoryFit.Fits, PhoneMemory.fit(SMALL, 6))
-        assertEquals(MemoryFit.TooBig, PhoneMemory.fit(MEDIUM, 6))
         assertEquals(MemoryFit.Tight, PhoneMemory.fit(SMALL, 4))
+        assertEquals(MemoryFit.Tight, PhoneMemory.fit(MEDIUM, 4))
+        assertEquals(MemoryFit.TooBig, PhoneMemory.fit(LARGE, 4))
         assertEquals(MemoryFit.TooBig, PhoneMemory.fit(SMALL, 3))
         assertNull(PhoneMemory.recommended(LlmModelRegistry.all, 4))
     }
@@ -49,7 +62,7 @@ class PhoneMemoryTest {
     @Test
     fun minimumIsTheSmallestPhoneItIsNotTooBigFor() {
         assertEquals(4, PhoneMemory.minimumGb(SMALL))
-        assertEquals(8, PhoneMemory.minimumGb(MEDIUM))
-        assertEquals(8, PhoneMemory.minimumGb(LARGE))
+        assertEquals(4, PhoneMemory.minimumGb(MEDIUM))
+        assertEquals(6, PhoneMemory.minimumGb(LARGE))
     }
 }

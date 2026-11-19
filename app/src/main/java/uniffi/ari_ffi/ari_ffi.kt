@@ -998,6 +998,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_func_on_device_cpu_info(
     ): Short
+    external fun uniffi_ari_ffi_checksum_func_on_device_runtime(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_cancel_pending_reply(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_clear_conversation(
@@ -1487,6 +1489,8 @@ external fun uniffi_ari_ffi_fn_func_engine_version(uniffi_out_err: UniffiRustCal
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_func_on_device_cpu_info(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_on_device_runtime(`modelPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 external fun ffi_ari_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun ffi_ari_ffi_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1612,6 +1616,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_func_on_device_cpu_info() != 26519.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ari_ffi_checksum_func_on_device_runtime() != 53028.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_cancel_pending_reply() != 705.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1624,7 +1631,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_current_locale() != 7320.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_llm_model() != 22848.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_llm_model() != 21324.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_model_catalog() != 21577.toShort()) {
@@ -2441,7 +2448,8 @@ public interface AriEngineInterface {
     fun `currentLocale`(): kotlin.String
     
     /**
-     * Set the GGUF model path for the LLM fallback. The model is NOT
+     * Set the model file for the LLM fallback: a GGUF, which llama.cpp
+     * runs, or a .litertlm or .task file, which LiteRT-LM runs. The model is NOT
      * loaded immediately — it loads on demand when the first unmatched
      * query arrives, and unloads after 60 seconds of idle to free RAM.
      *
@@ -2792,7 +2800,8 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
 
     
     /**
-     * Set the GGUF model path for the LLM fallback. The model is NOT
+     * Set the model file for the LLM fallback: a GGUF, which llama.cpp
+     * runs, or a .litertlm or .task file, which LiteRT-LM runs. The model is NOT
      * loaded immediately — it loads on demand when the first unmatched
      * query arrives, and unloads after 60 seconds of idle to free RAM.
      *
@@ -12319,6 +12328,21 @@ public object FfiConverterMapStringTypeFfiLocalizedDisplay: FfiConverterRustBuff
     UniffiLib.uniffi_ari_ffi_fn_func_on_device_cpu_info(
     
         _status)
+}
+    )
+    }
+    
+
+        /**
+         * Which runtime the on-device assistant uses for the model file at
+         * `model_path`: "LiteRT-LM" for a .litertlm or .task file, "llama.cpp" for a
+         * GGUF (ari-android#52). Null in a build without the on-device assistant.
+         */ fun `onDeviceRuntime`(`modelPath`: kotlin.String): kotlin.String? {
+            return FfiConverterOptionalString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_on_device_runtime(
+    
+        FfiConverterString.lower(`modelPath`),_status)
 }
     )
     }

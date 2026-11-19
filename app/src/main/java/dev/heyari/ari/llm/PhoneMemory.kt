@@ -47,7 +47,10 @@ object PhoneMemory {
     fun minimumGb(model: LlmModel): Int =
         SOLD_SIZES_GB.firstOrNull { fit(model, it) != MemoryFit.TooBig } ?: SOLD_SIZES_GB.last()
 
-    /** The biggest of [models] that fits comfortably, or null when none does. */
+    /**
+     * The most capable of [models] that fits comfortably, or null when none
+     * does. By tier, not memory: on LiteRT-LM, Small needs more than Medium.
+     */
     fun recommended(models: List<LlmModel>, phoneGb: Int): LlmModel? =
-        models.filter { fit(it, phoneGb) == MemoryFit.Fits }.maxByOrNull { it.runtimeBytes }
+        models.filter { fit(it, phoneGb) == MemoryFit.Fits }.maxByOrNull { it.size }
 }

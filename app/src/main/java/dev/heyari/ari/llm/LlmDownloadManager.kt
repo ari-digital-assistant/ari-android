@@ -47,15 +47,28 @@ class LlmDownloadManager @Inject constructor(
 
     fun modelDir(model: LlmModel): File = File(llmRoot, model.id)
 
-    fun modelFile(model: LlmModel): File = File(modelDir(model), model.fileName)
+    /**
+     * The file to load for [model]: its own, or else the GGUF an earlier
+     * version of Ari downloaded for the tier, which answers until an update
+     * replaces it (ari-android#52). The tier's own file when there is neither.
+     */
+    fun modelFile(model: LlmModel): File = modelFileIn(modelDir(model), model)
 
     fun isDownloaded(model: LlmModel): Boolean = modelFile(model).isFile
 
+    /** Whether [model] is answering from the GGUF its tier used to have. */
+    fun isLegacy(model: LlmModel): Boolean = modelFile(model).name == model.legacyFileName
+
     fun delete(model: LlmModel): Boolean = modelDir(model).deleteRecursively()
 
-    /** Read the installed sidecar version. Missing/corrupt → `unknown`. */
+    /**
+     * Read the installed sidecar version. Missing/corrupt → `unknown`. A
+     * legacy GGUF's sidecar describes the GGUF, so it reads `unknown` too,
+     * which the update check takes as out of date.
+     */
     fun installedVersion(model: LlmModel): String =
-        InstalledModelMetadata.readVersion(modelDir(model))
+        if (isLegacy(model)) InstalledModelMetadata.UNKNOWN_VERSION
+        else InstalledModelMetadata.readVersion(modelDir(model))
 
     /**
      * Auto-update entry point. Triggers the worker, then suspends until
@@ -144,6 +157,13 @@ class LlmDownloadManager @Inject constructor(
 
     companion object {
         private const val TAG = "LlmDownloadManager"
+
+        /** [modelFile] for a tier whose directory is [dir]. See `LlmModelFileTest`. */
+        internal fun modelFileIn(dir: File, model: LlmModel): File {
+            val own = File(dir, model.fileName)
+            val legacy = model.legacyFileName?.let { File(dir, it) }
+            return if (!own.isFile && legacy?.isFile == true) legacy else own
+        }
         private const val UNIQUE_WORK_NAME = "llm-model-download"
         private const val MODEL_TAG_PREFIX = "llm-model:"
 

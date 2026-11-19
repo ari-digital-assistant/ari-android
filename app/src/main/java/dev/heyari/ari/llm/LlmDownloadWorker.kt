@@ -34,9 +34,10 @@ import java.net.URL
  * Two paths:
  *
  * - **Manifest-driven** (auto-update + new installs): the worker fetches
- *   the manifest URL specified on the [LlmModel], pulls down the GGUF
- *   from `manifest.url`, verifies SHA-256 against `manifest.sha256`,
- *   then writes a `version.json` sidecar.
+ *   the manifest URL specified on the [LlmModel], pulls down the model
+ *   file from `manifest.url`, verifies SHA-256 against `manifest.sha256`,
+ *   then writes a `version.json` sidecar. The tier's legacy GGUF, if
+ *   any, goes once the new file is in place.
  *
  * - **Legacy direct** (existing installs predating manifests, or when
  *   the manifest endpoint is unreachable): falls back to
@@ -188,6 +189,7 @@ class LlmDownloadWorker @AssistedInject constructor(
                 fileName = model.fileName,
                 sha256 = actualSha,
             )
+            model.legacyFileName?.let { File(dir, it).delete() }
 
             Log.i(TAG, "LLM download completed for $modelId v$version (${target.length()} bytes)")
             Result.success(workDataOf(KEY_MODEL_ID to modelId))

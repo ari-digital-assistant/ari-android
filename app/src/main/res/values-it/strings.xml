@@ -769,11 +769,11 @@
     <string name="model_stt_parakeet_ultra_name">Modello vocale europeo</string>
     <string name="model_stt_parakeet_ultra_desc">Parakeet Ultra, 671 MB. Funziona offline, 25 lingue europee. Le tue parole compaiono quando hai finito di parlare.</string>
     <string name="model_llm_small_name">Piccolo (Gemma 3 1B)</string>
-    <string name="model_llm_small_desc">Veloce ed efficiente (~806 MB di download). Usato esclusivamente per il routing delle skill.</string>
+    <string name="model_llm_small_desc">Veloce ed efficiente (~1,1 GB di download). Usato esclusivamente per il routing delle skill.</string>
     <string name="model_llm_medium_name">Medio (Gemma 4 E2B)</string>
-    <string name="model_llm_medium_desc">Un buon equilibrio tra prestazioni e capacità (~3,1 GB di download). Adatto a un\'ampia gamma di attività.</string>
+    <string name="model_llm_medium_desc">Un buon equilibrio tra prestazioni e capacità (~2,6 GB di download). Adatto a un\'ampia gamma di attività.</string>
     <string name="model_llm_large_name">Grande (Gemma 4 E4B)</string>
-    <string name="model_llm_large_desc">Il più capace (~5 GB di download). Ideale per attività complesse e per capire un linguaggio sfumato, ma può essere più lento e richiedere più risorse.</string>
+    <string name="model_llm_large_desc">Il più capace (~3,7 GB di download). Ideale per attività complesse e per capire un linguaggio sfumato, ma può essere più lento e richiedere più risorse.</string>
     <string name="model_status_downloaded">Scaricato</string>
     <string name="message_menu_copy">Copia</string>
     <string name="message_menu_report">Segnala</string>

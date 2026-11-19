@@ -12,10 +12,13 @@ import dev.heyari.ari.R
 enum class LlmSize { Small, Medium, Large }
 
 /**
- * Metadata for a downloadable on-device LLM model (GGUF format).
+ * Metadata for a downloadable on-device LLM model.
  *
- * Models are downloaded into [filesDir]/models/llm/<id>/ on demand.
- * Each tier is a single GGUF file — no multi-file layout like STT.
+ * Models are downloaded into [filesDir]/models/llm/<id>/ on demand. Each
+ * tier is a single file, which the engine runs on LiteRT-LM (`.litertlm`,
+ * `.task`) or llama.cpp (GGUF) by its extension (ari-android#52). LiteRT-LM
+ * keeps a repacked copy of the weights beside it, about as big again, which
+ * goes when the tier's directory is deleted.
  */
 data class LlmModel(
     val id: String,
@@ -38,14 +41,26 @@ data class LlmModel(
      * cadence.
      */
     val manifestUrl: String = "",
+    /**
+     * The GGUF an earlier version of Ari downloaded for this tier. It keeps
+     * answering, on llama.cpp, until the tier's own file is downloaded and
+     * replaces it (ari-android#52). Null for a tier that never had one.
+     */
+    val legacyFileName: String? = null,
 )
 
 /**
- * [LlmModel.runtimeBytes] figures come from ari-android#42 (2026-11-18): each
- * model loaded by ari-llm's production path (llama.cpp 0.1.161, ARMv8.6 build,
- * 2,048-token context) on a Pixel 10 Pro Fold, answering three questions, with
- * the process's peak resident memory read from /proc. Measure again when the
- * model, its quantisation or the context size changes.
+ * [LlmModel.runtimeBytes] figures come from ari-android#52 (2026-11-19): each
+ * model loaded by LiteRT-LM 0.19.1 on the CPU (2,048-token context) on a Pixel
+ * 10 Pro Fold, answering three questions, with the process's peak resident
+ * memory read from /proc, the larger of a first load (which writes the weight
+ * cache) and a second. Measure again when the model, its quantisation, the
+ * runtime or the context size changes.
+ *
+ * The ids are stored in settings, so they keep the names they had when every
+ * tier was a Q4 GGUF. The manifests are separate from the GGUF ones
+ * (`llm-<tier>-latest`), which older versions of Ari still read and would
+ * save under the GGUF's name.
  */
 object LlmModelRegistry {
     val NONE_ID = "none"
@@ -54,36 +69,43 @@ object LlmModelRegistry {
         id = "gemma3-1b-q4",
         displayNameRes = R.string.model_llm_small_name,
         descriptionRes = R.string.model_llm_small_desc,
-        totalBytes = 806_058_272L,
-        runtimeBytes = 1_425_000_000L,
-        fileName = "gemma-3-1b-it-Q4_K_M.gguf",
-        downloadUrl = "https://huggingface.co/unsloth/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q4_K_M.gguf",
+        totalBytes = 1_073_765_694L,
+        runtimeBytes = 1_745_000_000L,
+        // The 8-bit build: Google's 4-bit .litertlm of the same model got 20
+        // of 38 answers right against this one's 31 (ari-android#52).
+        fileName = "Gemma3-1B-IT_multi-prefill-seq_q8_ekv2048.task",
+        // Hugging Face holds it behind Gemma's licence prompt, so the
+        // fallback is Ari's mirror of the same bytes.
+        downloadUrl = "https://heyari.dev/models/llm/e79a6c3fc0fd109f3b2697e7ae0905fcfded68640656d0433ca6276dc8d1b734/Gemma3-1B-IT_multi-prefill-seq_q8_ekv2048.task",
         size = LlmSize.Small,
-        manifestUrl = "https://github.com/ari-digital-assistant/ari-tools/releases/download/llm-small-latest/manifest.json",
+        manifestUrl = "https://github.com/ari-digital-assistant/ari-tools/releases/download/llm-small-litert-latest/manifest.json",
+        legacyFileName = "gemma-3-1b-it-Q4_K_M.gguf",
     )
 
     val MEDIUM = LlmModel(
         id = "gemma4-e2b-q4",
         displayNameRes = R.string.model_llm_medium_name,
         descriptionRes = R.string.model_llm_medium_desc,
-        totalBytes = 3_110_000_000L,
-        runtimeBytes = 4_570_000_000L,
-        fileName = "gemma-4-E2B-it-Q4_K_M.gguf",
-        downloadUrl = "https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_K_M.gguf",
+        totalBytes = 2_588_147_712L,
+        runtimeBytes = 1_531_000_000L,
+        fileName = "gemma-4-E2B-it.litertlm",
+        downloadUrl = "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm",
         size = LlmSize.Medium,
-        manifestUrl = "https://github.com/ari-digital-assistant/ari-tools/releases/download/llm-medium-latest/manifest.json",
+        manifestUrl = "https://github.com/ari-digital-assistant/ari-tools/releases/download/llm-medium-litert-latest/manifest.json",
+        legacyFileName = "gemma-4-E2B-it-Q4_K_M.gguf",
     )
 
     val LARGE = LlmModel(
         id = "gemma4-e4b-q4",
         displayNameRes = R.string.model_llm_large_name,
         descriptionRes = R.string.model_llm_large_desc,
-        totalBytes = 4_980_000_000L,
-        runtimeBytes = 6_100_000_000L,
-        fileName = "gemma-4-E4B-it-Q4_K_M.gguf",
-        downloadUrl = "https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf",
+        totalBytes = 3_659_530_240L,
+        runtimeBytes = 3_145_000_000L,
+        fileName = "gemma-4-E4B-it.litertlm",
+        downloadUrl = "https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/main/gemma-4-E4B-it.litertlm",
         size = LlmSize.Large,
-        manifestUrl = "https://github.com/ari-digital-assistant/ari-tools/releases/download/llm-large-latest/manifest.json",
+        manifestUrl = "https://github.com/ari-digital-assistant/ari-tools/releases/download/llm-large-litert-latest/manifest.json",
+        legacyFileName = "gemma-4-E4B-it-Q4_K_M.gguf",
     )
 
     val all = listOf(SMALL, MEDIUM, LARGE)

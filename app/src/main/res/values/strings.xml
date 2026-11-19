@@ -777,11 +777,11 @@
     <string name="model_stt_parakeet_ultra_name">European speech model</string>
     <string name="model_stt_parakeet_ultra_desc">Parakeet Ultra, 671 MB. Works offline, 25 European languages. Your words appear once you finish speaking.</string>
     <string name="model_llm_small_name">Small (Gemma 3 1B)</string>
-    <string name="model_llm_small_desc">Fast and efficient (~806 MB download). Used exclusively for skill routing.</string>
+    <string name="model_llm_small_desc">Fast and efficient (~1.1 GB download). Used exclusively for skill routing.</string>
     <string name="model_llm_medium_name">Medium (Gemma 4 E2B)</string>
-    <string name="model_llm_medium_desc">A good balance of performance and capability (~3.1 GB download). Suitable for a wide range of tasks.</string>
+    <string name="model_llm_medium_desc">A good balance of performance and capability (~2.6 GB download). Suitable for a wide range of tasks.</string>
     <string name="model_llm_large_name">Large (Gemma 4 E4B)</string>
-    <string name="model_llm_large_desc">Most capable (~5 GB download). Best for complex tasks and understanding nuanced language, but may be slower and require more resources.</string>
+    <string name="model_llm_large_desc">Most capable (~3.7 GB download). Best for complex tasks and understanding nuanced language, but may be slower and require more resources.</string>
     <!-- Shown on a model row once its files are on disk. -->
     <string name="model_status_downloaded">Downloaded</string>
     <string name="message_menu_copy">Copy</string>
