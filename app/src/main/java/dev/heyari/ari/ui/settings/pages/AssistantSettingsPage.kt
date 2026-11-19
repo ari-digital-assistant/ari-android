@@ -40,7 +40,8 @@ import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.llm.LlmModel
 import dev.heyari.ari.llm.LlmModelRegistry
 import dev.heyari.ari.llm.MemoryFit
-import dev.heyari.ari.ui.components.LlmMemoryLine
+import dev.heyari.ari.ui.components.LlmModelFacts
+import dev.heyari.ari.ui.components.LlmModelFactsLegend
 import dev.heyari.ari.ui.components.SkillSettingsPanel
 import dev.heyari.ari.ui.formatBytes
 import dev.heyari.ari.ui.settings.AssistantUiEntry
@@ -114,7 +115,7 @@ fun AssistantSettingsPage(
             // "None" option
             AssistantCard(
                 name = "None",
-                description = "No AI assistant. Ari will only respond to direct commands and won't attempt to understand natural language.",
+                description = stringResource(R.string.settings_llm_none_blurb),
                 privacy = null,
                 selected = state.activeAssistantId == null,
                 onSelect = { viewModel.selectAssistant(null) },
@@ -141,7 +142,7 @@ fun AssistantSettingsPage(
                 val isBuiltin = entry.id == EngineModule.BUILTIN_ASSISTANT_ID
                 AssistantCard(
                     name = if (isBuiltin) "On-Device Intelligence" else entry.name,
-                    description = entry.description,
+                    description = if (isBuiltin) stringResource(R.string.settings_llm_builtin_blurb) else entry.description,
                     privacy = entry.privacy,
                     selected = state.activeAssistantId == entry.id,
                     onSelect = { viewModel.selectAssistant(entry.id) },
@@ -367,20 +368,20 @@ private fun BuiltinModelSection(
     onDelete: (dev.heyari.ari.llm.LlmModel) -> Unit,
     onSelect: (dev.heyari.ari.llm.LlmModel) -> Unit,
 ) {
+    // Lines up with the model cards' radio circles: the cards' 40 dp inset,
+    // their 12 dp padding, then 14 dp inside the radio's touch target.
+    val radioInset = 66.dp
     Text(
-        text = stringResource(R.string.settings_llm_model_picker_blurb),
+        text = if (phoneMemoryGb != null) {
+            stringResource(R.string.settings_llm_model_picker_memory, phoneMemoryGb)
+        } else {
+            stringResource(R.string.settings_llm_model_picker_blurb)
+        },
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 40.dp),
+        modifier = Modifier.padding(start = radioInset),
     )
-    if (phoneMemoryGb != null) {
-        Text(
-            text = stringResource(R.string.llm_phone_memory, phoneMemoryGb),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 40.dp, top = 4.dp),
-        )
-    }
+    LlmModelFactsLegend(modifier = Modifier.padding(start = radioInset, top = 4.dp))
     Spacer(modifier = Modifier.height(4.dp))
 
     // A tight model asks before downloading; a too-big one can't start.
@@ -446,12 +447,7 @@ private fun BuiltinModelSection(
                             } else name,
                             style = MaterialTheme.typography.bodyMedium,
                         )
-                        Text(
-                            text = stringResource(model.descriptionRes),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        LlmMemoryLine(model = model, fit = status.fit, phoneGb = phoneMemoryGb)
+                        LlmModelFacts(model = model, fit = status.fit)
                     }
                 }
 

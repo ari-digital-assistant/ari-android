@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The on-device assistant now runs on Google's LiteRT-LM and answers sooner: on a Pixel
   10 Pro Fold, Small in 1.3 seconds instead of 2.3, Medium in 1.5 instead of 4.3 and
   Large in 4.3 instead of 9, with answers as good. Each tier downloads a new model file,
-  offered as an update; until it arrives, Ari keeps answering with the one you have.
+  offered as an update.
   Medium and Large need far less memory, so Medium now suits 6 GB phones and Large 8 GB.
   The new files take more room on the phone once set up: Small 2.1 GB, Medium 3.4 GB,
   Large 5.9 GB ([#52](https://github.com/ari-digital-assistant/ari-android/issues/52)).
@@ -43,6 +43,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tier still has its old file, Ari offers the update and can't answer on the device
   until you take it. The debug screen no longer shows a CPU build
   ([#52](https://github.com/ari-digital-assistant/ari-android/issues/52)).
+- The on-device models in Settings and onboarding are easier to compare: each shows
+  its download size, the memory it uses while answering, and its speed and accuracy
+  as five-step bars, in place of a paragraph of text.
 
 ### Fixed
 

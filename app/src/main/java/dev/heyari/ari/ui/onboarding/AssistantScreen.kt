@@ -39,7 +39,8 @@ import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.llm.LlmModel
 import dev.heyari.ari.llm.LlmModelRegistry
 import dev.heyari.ari.llm.MemoryFit
-import dev.heyari.ari.ui.components.LlmMemoryLine
+import dev.heyari.ari.ui.components.LlmModelFacts
+import dev.heyari.ari.ui.components.LlmModelFactsLegend
 import dev.heyari.ari.ui.formatBytes
 import dev.heyari.ari.ui.settings.SettingsViewModel
 import dev.heyari.ari.ui.theme.LocalAriSemanticColors
@@ -138,6 +139,7 @@ fun AssistantScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                LlmModelFactsLegend(modifier = Modifier.padding(top = 4.dp))
                 Spacer(Modifier.height(8.dp))
 
                 LlmModelRegistry.all.forEach { model ->
@@ -153,7 +155,6 @@ fun AssistantScreen(
                         downloaded = downloaded,
                         fit = status?.fit,
                         recommended = status?.recommended == true,
-                        phoneGb = state.phoneMemoryGb,
                         isDownloading = isDownloading,
                         downloadState = if (isDownloading) state.llmDownload as LlmDownloadState.Downloading else null,
                         onSelect = { onboardingViewModel.setSelectedLlmModelId(model.id) },
@@ -292,7 +293,6 @@ private fun LlmTierRow(
     downloaded: Boolean,
     fit: MemoryFit?,
     recommended: Boolean,
-    phoneGb: Int?,
     isDownloading: Boolean,
     downloadState: LlmDownloadState.Downloading?,
     onSelect: () -> Unit,
@@ -324,12 +324,7 @@ private fun LlmTierRow(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
-                    Text(
-                        text = stringResource(model.descriptionRes),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    LlmMemoryLine(model = model, fit = fit, phoneGb = phoneGb)
+                    LlmModelFacts(model = model, fit = fit)
                 }
             }
             if (downloaded) {
