@@ -243,6 +243,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Ari">
 
+        <!-- The on-device assistant's GPU option: LiteRT-LM opens the vendor
+             OpenCL driver, which apps must declare (ari-android#52). -->
+        <uses-native-library android:name="libOpenCL.so" android:required="false" />
+        <uses-native-library android:name="libvndksupport.so" android:required="false" />
+
         <!--
           Lets simpleperf attach to release builds, so the always-on listening
           cost can be profiled on the build people actually run. Profiling a

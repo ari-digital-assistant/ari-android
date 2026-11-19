@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Medium and Large need far less memory, so Medium now suits 6 GB phones and Large 8 GB.
   The new files take more room on the phone once set up: Small 2.1 GB, Medium 3.4 GB,
   Large 5.9 GB ([#52](https://github.com/ari-digital-assistant/ari-android/issues/52)).
+- An experimental "Use the GPU" switch under the on-device models runs the assistant on
+  the phone's graphics chip. It's off by default: on a Pixel 10 Pro Fold it answered no
+  sooner and took longer to load, but other phones' graphics chips may do better. If the
+  model won't load there, Ari uses the processor
+  ([#52](https://github.com/ari-digital-assistant/ari-android/issues/52)).
 
 ### Fixed
 

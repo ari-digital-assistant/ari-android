@@ -774,6 +774,8 @@
     <string name="model_llm_medium_desc">Un buon equilibrio tra prestazioni e capacità (~2,6 GB di download). Adatto a un\'ampia gamma di attività.</string>
     <string name="model_llm_large_name">Grande (Gemma 4 E4B)</string>
     <string name="model_llm_large_desc">Il più capace (~3,7 GB di download). Ideale per attività complesse e per capire un linguaggio sfumato, ma può essere più lento e richiedere più risorse.</string>
+    <string name="settings_llm_gpu_title">Usa la GPU</string>
+    <string name="settings_llm_gpu_summary">Sperimentale. Esegue l\'assistente sul dispositivo sul chip grafico del telefono. Su alcuni telefoni può rispondere prima, ma si carica più lentamente e, se non ci riesce, torna al processore.</string>
     <string name="model_status_downloaded">Scaricato</string>
     <string name="message_menu_copy">Copia</string>
     <string name="message_menu_report">Segnala</string>

@@ -20,6 +20,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -128,6 +129,8 @@ fun AssistantSettingsPage(
                 onCancelDownload = {},
                 onDeleteModel = {},
                 onSelectModel = {},
+                useGpu = false,
+                onUseGpuChange = {},
             )
 
             // Assistant entries from registry
@@ -157,6 +160,8 @@ fun AssistantSettingsPage(
                     onCancelDownload = { viewModel.cancelLlmDownload() },
                     onDeleteModel = { model -> viewModel.deleteLlmModel(model) },
                     onSelectModel = { model -> viewModel.selectLlmModel(model) },
+                    useGpu = state.llmUseGpu,
+                    onUseGpuChange = viewModel::setLlmUseGpu,
                 )
             }
 
@@ -213,6 +218,8 @@ private fun AssistantCard(
     onCancelDownload: () -> Unit,
     onDeleteModel: (dev.heyari.ari.llm.LlmModel) -> Unit,
     onSelectModel: (dev.heyari.ari.llm.LlmModel) -> Unit,
+    useGpu: Boolean,
+    onUseGpuChange: (Boolean) -> Unit,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -269,6 +276,25 @@ private fun AssistantCard(
                     onDelete = onDeleteModel,
                     onSelect = onSelectModel,
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(start = 40.dp),
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_llm_gpu_title),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_llm_gpu_summary),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Switch(checked = useGpu, onCheckedChange = onUseGpuChange)
+                }
             } else if (selected && configFields.isNotEmpty()) {
                 // Cloud/other assistants: render the schema-driven fields
                 // through the shared SkillSettingsPanel — same widgets,

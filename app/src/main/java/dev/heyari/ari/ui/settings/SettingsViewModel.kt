@@ -139,6 +139,7 @@ data class SettingsState(
     /** The memory this phone was sold with, in GB; null when Android won't say. */
     val phoneMemoryGb: Int? = null,
     val llmDownload: LlmDownloadState = LlmDownloadState.Idle,
+    val llmUseGpu: Boolean = false,
     val llmNoneActive: Boolean = true,
     val activeAssistantId: String? = null,
     val assistantEntries: List<AssistantUiEntry> = emptyList(),
@@ -214,6 +215,10 @@ class SettingsViewModel @Inject constructor(
     /** Tracks which LLM model id is currently loaded in the engine, to avoid redundant loads. */
     @Volatile
     private var loadedLlmId: String? = null
+
+    /** Whether [loadedLlmId] was loaded for the GPU. */
+    @Volatile
+    private var loadedLlmGpu: Boolean = false
 
     init {
         refreshPermissions()
@@ -322,14 +327,16 @@ class SettingsViewModel @Inject constructor(
             }
         }
 
-        // Load/unload the LLM into the engine when the active model changes
-        // and the built-in assistant is active.
+        // Load/unload the LLM into the engine when the active model or its
+        // GPU setting changes and the built-in assistant is active.
         viewModelScope.launch(Dispatchers.IO) {
             combine(
                 settingsRepository.activeLlmModelId,
                 settingsRepository.activeAssistantId,
-            ) { llmId, assistantId -> Pair(llmId, assistantId) }
-            .collect { (llmId, assistantId) ->
+                settingsRepository.llmUseGpu,
+            ) { llmId, assistantId, useGpu -> Triple(llmId, assistantId, useGpu) }
+            .collect { (llmId, assistantId, useGpu) ->
+                _state.update { it.copy(llmUseGpu = useGpu) }
                 if (assistantId != EngineModule.BUILTIN_ASSISTANT_ID) {
                     if (loadedLlmId != null) {
                         engineHolder.engine().unloadLlmModel()
@@ -345,8 +352,8 @@ class SettingsViewModel @Inject constructor(
                     }
                     return@collect
                 }
-                if (model.id != loadedLlmId && llmDownloadManager.isDownloaded(model)) {
-                    loadLlmIntoEngine(model)
+                if ((model.id != loadedLlmId || useGpu != loadedLlmGpu) && llmDownloadManager.isDownloaded(model)) {
+                    loadLlmIntoEngine(model, useGpu)
                 }
             }
         }
@@ -523,6 +530,12 @@ class SettingsViewModel @Inject constructor(
             _state.update { it.copy(cloudSttApiKey = stored) }
         }
 
+    }
+
+    fun setLlmUseGpu(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setLlmUseGpu(enabled)
+        }
     }
 
     fun setStartOnBoot(enabled: Boolean) {
@@ -1115,12 +1128,13 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    private suspend fun loadLlmIntoEngine(model: LlmModel) {
+    private suspend fun loadLlmIntoEngine(model: LlmModel, useGpu: Boolean) {
         val modelFile = llmDownloadManager.modelFile(model)
         if (modelFile.isFile) {
-            val ok = engineHolder.engine().loadLlmModel(modelFile.absolutePath)
+            val ok = engineHolder.engine().loadLlmModel(modelFile.absolutePath, useGpu)
             if (ok) {
                 loadedLlmId = model.id
+                loadedLlmGpu = useGpu
                 Log.i(TAG, "LLM loaded: ${model.id}")
             } else {
                 Log.e(TAG, "LLM load failed: ${model.id}")

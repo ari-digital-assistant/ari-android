@@ -1225,7 +1225,7 @@ external fun uniffi_ari_ffi_fn_method_ariengine_conversation_memory(`ptr`: Long,
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ariengine_current_locale(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
-external fun uniffi_ari_ffi_fn_method_ariengine_load_llm_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+external fun uniffi_ari_ffi_fn_method_ariengine_load_llm_model(`ptr`: Long,`modelPath`: RustBuffer.ByValue,`useGpu`: Byte,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
 external fun uniffi_ari_ffi_fn_method_ariengine_load_model_catalog(`ptr`: Long,`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
@@ -1631,7 +1631,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_current_locale() != 7320.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_llm_model() != 21324.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_llm_model() != 24378.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_load_model_catalog() != 21577.toShort()) {
@@ -2449,14 +2449,15 @@ public interface AriEngineInterface {
     
     /**
      * Set the model file for the LLM fallback: a GGUF, which llama.cpp
-     * runs, or a .litertlm or .task file, which LiteRT-LM runs. The model is NOT
+     * runs, or a .litertlm or .task file, which LiteRT-LM runs, on the GPU
+     * when `use_gpu` is set and the GPU loads it, else on the CPU. The model is NOT
      * loaded immediately — it loads on demand when the first unmatched
      * query arrives, and unloads after 60 seconds of idle to free RAM.
      *
      * Returns `true` if the path exists, `false` otherwise.
      * Call at app startup if a model file is available on disk.
      */
-    fun `loadLlmModel`(`modelPath`: kotlin.String): kotlin.Boolean
+    fun `loadLlmModel`(`modelPath`: kotlin.String, `useGpu`: kotlin.Boolean): kotlin.Boolean
     
     /**
      * Load the cached tier→model catalog written by
@@ -2801,19 +2802,20 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     
     /**
      * Set the model file for the LLM fallback: a GGUF, which llama.cpp
-     * runs, or a .litertlm or .task file, which LiteRT-LM runs. The model is NOT
+     * runs, or a .litertlm or .task file, which LiteRT-LM runs, on the GPU
+     * when `use_gpu` is set and the GPU loads it, else on the CPU. The model is NOT
      * loaded immediately — it loads on demand when the first unmatched
      * query arrives, and unloads after 60 seconds of idle to free RAM.
      *
      * Returns `true` if the path exists, `false` otherwise.
      * Call at app startup if a model file is available on disk.
-     */override fun `loadLlmModel`(`modelPath`: kotlin.String): kotlin.Boolean {
+     */override fun `loadLlmModel`(`modelPath`: kotlin.String, `useGpu`: kotlin.Boolean): kotlin.Boolean {
             return FfiConverterBoolean.lift(
     callWithHandle {
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_ari_ffi_fn_method_ariengine_load_llm_model(
         it,
-        FfiConverterString.lower(`modelPath`),_status)
+        FfiConverterString.lower(`modelPath`),FfiConverterBoolean.lower(`useGpu`),_status)
 }
     }
     )

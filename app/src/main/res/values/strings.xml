@@ -782,6 +782,8 @@
     <string name="model_llm_medium_desc">A good balance of performance and capability (~2.6 GB download). Suitable for a wide range of tasks.</string>
     <string name="model_llm_large_name">Large (Gemma 4 E4B)</string>
     <string name="model_llm_large_desc">Most capable (~3.7 GB download). Best for complex tasks and understanding nuanced language, but may be slower and require more resources.</string>
+    <string name="settings_llm_gpu_title">Use the GPU</string>
+    <string name="settings_llm_gpu_summary">Experimental. Runs the on-device assistant on the phone\'s graphics chip. It may answer sooner on some phones but takes longer to load, and falls back to the processor if it can\'t.</string>
     <!-- Shown on a model row once its files are on disk. -->
     <string name="model_status_downloaded">Downloaded</string>
     <string name="message_menu_copy">Copy</string>

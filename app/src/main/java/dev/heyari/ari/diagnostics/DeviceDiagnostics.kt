@@ -44,9 +44,10 @@ data class DeviceDiagnostics(
     val assistant: String?,
     val llmModel: String?,
     /**
-     * What runs [llmModel]'s file: "LiteRT-LM" or "llama.cpp", which a tier
-     * still on the GGUF it had before ari-android#52 uses. Null with no
-     * model downloaded.
+     * What runs [llmModel]'s file: "LiteRT-LM CPU" or "LiteRT-LM GPU", as
+     * set (the engine's answer log says when the GPU fell back to the CPU),
+     * or "llama.cpp" for a tier still on the GGUF it had before
+     * ari-android#52. Null with no model downloaded.
      */
     val llmRuntime: String?,
     val speech: String,
@@ -109,7 +110,11 @@ class DiagnosticsCollector @Inject constructor(
             engineVersion = runCatching { engineVersion() }.getOrNull(),
             assistant = settings.activeAssistantId.first(),
             llmModel = llmModel,
-            llmRuntime = llmFile?.let { runCatching { onDeviceRuntime(it.absolutePath) }.getOrNull() },
+            llmRuntime = llmFile?.let { runCatching { onDeviceRuntime(it.absolutePath) }.getOrNull() }
+                ?.let { runtime ->
+                    if (runtime != "LiteRT-LM") runtime
+                    else if (settings.llmUseGpu.first()) "$runtime GPU" else "$runtime CPU"
+                },
             speech = settings.activeSttModelId.first()?.let { "${sttMode.slug}, $it" } ?: sttMode.slug,
         )
     }

@@ -82,7 +82,7 @@ class ModelUpdateApplier @Inject constructor(
         when (finalState) {
             is LlmDownloadState.Completed -> {
                 val ok = withContext(Dispatchers.IO) {
-                    engine.loadLlmModel(llmDownloadManager.modelFile(model).absolutePath)
+                    engine.loadLlmModel(llmDownloadManager.modelFile(model).absolutePath, settingsRepository.llmUseGpu.first())
                 }
                 if (!ok) {
                     send(ApplyEvent.Failed(target.displayNameRes, "engine refused new model"))
@@ -94,7 +94,7 @@ class ModelUpdateApplier @Inject constructor(
             is LlmDownloadState.Failed -> {
                 if (llmDownloadManager.isDownloaded(model)) {
                     withContext(Dispatchers.IO) {
-                        engine.loadLlmModel(llmDownloadManager.modelFile(model).absolutePath)
+                        engine.loadLlmModel(llmDownloadManager.modelFile(model).absolutePath, settingsRepository.llmUseGpu.first())
                     }
                 }
                 send(ApplyEvent.Failed(target.displayNameRes, finalState.error))

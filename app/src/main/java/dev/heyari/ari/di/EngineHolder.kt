@@ -314,7 +314,7 @@ class EngineHolder @Inject constructor(
                 }
                 val model = LlmModelRegistry.byId(modelId)
                 if (model != null && llmDownloadManager.isDownloaded(model)) {
-                    val ok = engine.loadLlmModel(llmDownloadManager.modelFile(model).absolutePath)
+                    val ok = engine.loadLlmModel(llmDownloadManager.modelFile(model).absolutePath, settingsRepository.llmUseGpu.first())
                     Log.i(TAG, if (ok) "LLM path set: ${model.id} (lazy)" else "LLM path invalid: ${model.id}")
                     // Derive model_tier from the LlmModel.size and ensure it's
                     // written to both the FFI store and DataStore. Existing
@@ -378,7 +378,7 @@ class EngineHolder @Inject constructor(
                 if (settingsRepository.activeLlmModelId.first() != state.modelId) return@collect
                 val model = LlmModelRegistry.byId(state.modelId) ?: return@collect
                 if (!llmDownloadManager.isDownloaded(model)) return@collect
-                val ok = engine.loadLlmModel(llmDownloadManager.modelFile(model).absolutePath)
+                val ok = engine.loadLlmModel(llmDownloadManager.modelFile(model).absolutePath, settingsRepository.llmUseGpu.first())
                 Log.i(TAG, if (ok) "LLM path set after download: ${model.id}" else "LLM path invalid: ${model.id}")
             }
         }

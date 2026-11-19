@@ -298,6 +298,22 @@ class SettingsRepository @Inject constructor(
     }
 
     /**
+     * Whether the on-device assistant runs on the GPU (ari-android#52). Off
+     * by default: on a Pixel 10 Pro Fold the GPU answered no sooner than the
+     * CPU and took 3.5 s to load against 0.6 s. A GPU that won't load the
+     * model falls back to the CPU.
+     */
+    val llmUseGpu: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_LLM_USE_GPU] ?: false
+    }.distinctUntilChanged()
+
+    suspend fun setLlmUseGpu(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_LLM_USE_GPU] = enabled
+        }
+    }
+
+    /**
      * Whether to start the wake word service on device boot. Default off —
      * auto-starting a microphone FGS is a privacy-visible behaviour we only
      * want happening when the user has explicitly said yes.
@@ -946,6 +962,7 @@ class SettingsRepository @Inject constructor(
         private val KEY_ACTIVE_TTS_VOICE = stringPreferencesKey("active_tts_voice")
         private val KEY_ACTIVE_LOCALE = stringPreferencesKey("active_locale")
         private val KEY_START_ON_BOOT = booleanPreferencesKey("start_on_boot")
+        private val KEY_LLM_USE_GPU = booleanPreferencesKey("llm_use_gpu")
         private val KEY_KEEP_WAKE_AUDIO =
             booleanPreferencesKey("keep_wake_audio")
         private val KEY_KEEP_FALSE_TRIGGER_AUDIO =
@@ -999,7 +1016,7 @@ class SettingsRepository @Inject constructor(
             KEY_TUNE_DURING_NORMAL_USE, KEY_WAKE_SPEECH_CHECK, KEY_QUIET_WAKE, KEY_START_ON_BOOT,
             KEY_KEEP_WAKE_AUDIO, KEY_KEEP_FALSE_TRIGGER_AUDIO, KEY_KEEP_UTTERANCE_AUDIO, KEY_KEEP_EVERYTHING_AUDIO,
             KEY_SHARE_WAKE_AUDIO, KEY_SHARE_FALSE_TRIGGER_AUDIO, KEY_SHARE_UTTERANCE_AUDIO, KEY_SHARE_EVERYTHING_AUDIO,
-            KEY_BARGE_IN_ENABLED, KEY_CONVERSATION_MEMORY_ENABLED,
+            KEY_BARGE_IN_ENABLED, KEY_CONVERSATION_MEMORY_ENABLED, KEY_LLM_USE_GPU,
         ).mapTo(HashSet()) { it.name }
         /** Skill settings, and each wake model's sensitivity (but not its ladder). */
         private val EXPORTED_STRING_PREFIXES = listOf(ASSISTANT_CONFIG_PREFIX, "${KEY_WAKE_WORD_SENSITIVITY.name}_")
