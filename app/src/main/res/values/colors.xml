@@ -11,5 +11,5 @@
     <!-- The frame the window paints before Compose draws, and behind it
          thereafter. Kept close to the Material surface tones so the
          handover is invisible; values-night carries the dark twin. -->
-    <color name="window_background">#FFFEF7FF</color>
+    <color name="window_background">#FFFFF8F5</color>
 </resources>

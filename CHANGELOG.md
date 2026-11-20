@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- On Android 10 and 11, which have no wallpaper colours, Ari showed a leftover purple
+  theme. It now uses an orange theme taken from its logo.
+
 ## [0.2.1] - 2026-11-20
 
 Changes since 0.2.0, uploaded to Google Play internal testing as versionCode 8.
