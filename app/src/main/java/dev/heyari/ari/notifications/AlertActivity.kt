@@ -96,7 +96,7 @@ import javax.inject.Inject
  *
  * Auto-finish: observes [AlertRegistry] and finishes the moment its
  * alert leaves the active set (Stop tap, auto-stop cap, external
- * dismissal).
+ * dismissal), or moves on to another full-takeover alert still ringing.
  */
 @AndroidEntryPoint
 class AlertActivity : ComponentActivity() {
@@ -123,8 +123,19 @@ class AlertActivity : ComponentActivity() {
         lifecycleScope.launch {
             AlertRegistry.active.collect { active ->
                 if (spec.id !in active) {
-                    Log.i(TAG, "Alert ${spec.id} no longer active — finishing")
-                    finishAndRemoveTask()
+                    // Two timers finishing together: show the one still
+                    // ringing rather than leave it ringing behind a closed
+                    // screen.
+                    val next = AlertRegistry.sounding().firstOrNull {
+                        it.fullTakeover && it.urgency == AlertSpec.Urgency.CRITICAL
+                    }
+                    if (next != null) {
+                        Log.i(TAG, "Alert ${spec.id} stopped, showing ${next.id}")
+                        startActivity(intent(this@AlertActivity, next))
+                    } else {
+                        Log.i(TAG, "Alert ${spec.id} no longer active — finishing")
+                        finishAndRemoveTask()
+                    }
                 }
             }
         }

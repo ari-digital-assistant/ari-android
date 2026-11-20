@@ -1,5 +1,6 @@
 package dev.heyari.ari.notifications
 
+import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
@@ -36,10 +37,15 @@ import javax.inject.Inject
 import kotlin.coroutines.resume
 
 /**
- * Plays a skill-declared alert: SOUND → speech → SOUND → speech → … on
+ * Plays skill-declared alerts: SOUND → speech → SOUND → speech → … on
  * loop until the user dismisses or the cap fires. Generic — knows nothing
  * about timers; the [AlertSpec] in the start intent declares everything
  * (sound source, speech text, urgency, cycle/duration caps, actions).
+ *
+ * Several can ring at once, as two timers finishing together do. They share
+ * one loop, the way a clock app rings: the newest alert's sound, then each
+ * one's speech in turn. Each keeps its own notification, Stop and caps, and
+ * stopping one leaves the others ringing.
  *
  * Foreground service (`mediaPlayback`) so audio survives screen-off and
  * backgrounding. Owns its own [MediaPlayer] and a dedicated [TextToSpeech]
@@ -56,76 +62,175 @@ class AlertService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var loopJob: Job? = null
     private var player: MediaPlayer? = null
+    /** The skill and sound token [player] was built for. */
+    private var playerSound: Pair<String, String>? = null
     private var tts: TextToSpeech? = null
-    private var currentSpec: AlertSpec? = null
+
+    /** Ringing alerts by id, oldest first. */
+    private val ringing = LinkedHashMap<String, Ringing>()
+
+    /**
+     * The alert whose notification the foreground service runs under. Android
+     * takes exactly one; the other alerts' notifications are posted beside it.
+     */
+    private var foregroundId: String? = null
+
+    private class Ringing(val spec: AlertSpec, val startedAt: Long) {
+        var cycles = 0
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
-                stopLoopAndSelf(dismissNotification = true)
-                return START_NOT_STICKY
+                val id = intent.getStringExtra(EXTRA_ALERT_ID)
+                if (id != null) stopAlert(id) else ringing.keys.toList().forEach(::stopAlert)
+                // A stop for an alert that had already ended starts the
+                // service with nothing to ring.
+                if (ringing.isEmpty()) stopSelf()
             }
             ACTION_START, null -> {
                 val specJson = intent?.getStringExtra(EXTRA_ALERT_SPEC_JSON)
-                val spec = specJson?.let { AlertSpecCodec.decode(it) } ?: run {
-                    Log.w(TAG, "ACTION_START with no/malformed AlertSpec — stopping")
-                    stopSelf()
-                    return START_NOT_STICKY
+                val spec = specJson?.let { AlertSpecCodec.decode(it) }
+                if (spec == null) {
+                    Log.w(TAG, "ACTION_START with no/malformed AlertSpec, ignoring")
+                    if (ringing.isEmpty()) stopSelf()
+                } else {
+                    startAlert(spec)
                 }
-                currentSpec = spec
-                startForegroundWithAlert(spec, alerting = true)
-                startLoop(spec)
             }
         }
         return START_NOT_STICKY
     }
 
-    private fun startForegroundWithAlert(spec: AlertSpec, alerting: Boolean) {
+    private fun startAlert(spec: AlertSpec) {
         // Register before posting the notification so the FSN-launched
         // AlertActivity sees the id present when it starts collecting.
-        if (alerting) AlertRegistry.start(spec)
-        val notification = buildAlertNotification(this, spec, alerting)
+        AlertRegistry.start(spec)
+        ringing.remove(spec.id)
+        ringing[spec.id] = Ringing(spec, System.currentTimeMillis())
+        val notification = buildAlertNotification(this, spec, alerting = true)
+        if (foregroundId == null || foregroundId == spec.id) {
+            postForeground(spec.id, notification)
+        } else {
+            // Beside the foreground one, not in its place: moving the service
+            // to a new id makes Android cancel the old notification, and the
+            // first timer lost its Stop when the second went off.
+            getSystemService<NotificationManager>()?.notify(notificationId(spec.id), notification)
+            // Every startForegroundService call is owed a startForeground.
+            // Re-posting the current one unchanged pays it without a new alert.
+            ringing[foregroundId]?.let {
+                postForeground(it.spec.id, buildAlertNotification(this, it.spec, alerting = true))
+            }
+        }
+        if (loopJob?.isActive != true) startLoop()
+    }
+
+    private fun postForeground(alertId: String, notification: Notification) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
-                notificationId(spec.id),
+                notificationId(alertId),
                 notification,
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
             )
         } else {
-            startForeground(notificationId(spec.id), notification)
+            startForeground(notificationId(alertId), notification)
         }
+        foregroundId = alertId
     }
 
-    private fun startLoop(spec: AlertSpec) {
-        loopJob?.cancel()
+    /**
+     * One loop for every ringing alert: the newest one's sound, then each
+     * one's speech in turn. Alerts that start meanwhile join at the next
+     * round. Ends once the last alert has reached its cap.
+     */
+    private fun startLoop() {
         loopJob = scope.launch {
-            val started = System.currentTimeMillis()
-            var cycles = 0
-            initMediaPlayer(spec)
-            if (spec.speechLoop != null) initTts()
+            while (true) {
+                endExpired()
+                val round = ringing.values.toList()
+                val newest = round.lastOrNull() ?: break
+                prepareSound(newest.spec)
+                if (tts == null && round.any { it.spec.speechLoop != null }) initTts()
 
-            while (shouldContinueAlerting(
-                    cyclesCompleted = cycles,
-                    elapsedMs = System.currentTimeMillis() - started,
-                    maxCycles = spec.maxCycles,
-                    maxDurationMs = spec.autoStopMs,
-                )
-            ) {
                 playOnce()
                 delay(GAP_BETWEEN_SOUND_AND_SPEECH_MS)
-                spec.speechLoop?.let { speak(it) }
+                for (alert in round) {
+                    // Skip one that was stopped while an earlier one spoke.
+                    if (alert.spec.id in ringing) alert.spec.speechLoop?.let { speak(it) }
+                }
                 delay(GAP_BETWEEN_CYCLES_MS)
-                cycles++
+                round.forEach { it.cycles++ }
             }
-
-            // Cap reached naturally — drop to a quiet "tap to dismiss"
-            // notification and stop. User can still open/dismiss it.
-            startForegroundWithAlert(spec, alerting = false)
             releaseAudio()
             stopSelf()
         }
+    }
+
+    /**
+     * Alerts past their own caps go quiet: they stop ringing and their
+     * notification drops to "Tap to dismiss".
+     */
+    private fun endExpired() {
+        val now = System.currentTimeMillis()
+        for (alert in ringing.values.toList()) {
+            if (shouldContinueAlerting(
+                    cyclesCompleted = alert.cycles,
+                    elapsedMs = now - alert.startedAt,
+                    maxCycles = alert.spec.maxCycles,
+                    maxDurationMs = alert.spec.autoStopMs,
+                )
+            ) {
+                continue
+            }
+            release(alert.spec.id)
+            getSystemService<NotificationManager>()?.notify(
+                notificationId(alert.spec.id),
+                buildAlertNotification(this, alert.spec, alerting = false),
+            )
+        }
+    }
+
+    /** The user stopped [id]. */
+    private fun stopAlert(id: String) {
+        release(id)
+        // Cancelled even if [id] wasn't ringing, so a stop for an alert that
+        // already ended still clears what it left behind.
+        getSystemService<NotificationManager>()?.cancel(notificationId(id))
+        if (ringing.isEmpty()) {
+            loopJob?.cancel()
+            loopJob = null
+            releaseAudio()
+        }
+    }
+
+    /**
+     * Takes [id] out of the ringing set. If the foreground service runs under
+     * its notification, the service moves to another ringing alert's, or
+     * leaves the foreground with the notification still posted, for the
+     * caller to cancel or replace.
+     */
+    private fun release(id: String) {
+        ringing.remove(id)
+        AlertRegistry.stop(id)
+        if (id != foregroundId) return
+        val next = ringing.values.lastOrNull()
+        if (next != null) {
+            postForeground(next.spec.id, buildAlertNotification(this, next.spec, alerting = true))
+        } else {
+            stopForeground(STOP_FOREGROUND_DETACH)
+            foregroundId = null
+        }
+    }
+
+    /** Points [player] at [spec]'s sound, rebuilding it only when the sound changes. */
+    private fun prepareSound(spec: AlertSpec) {
+        val sound = spec.skillId to spec.sound
+        if (sound == playerSound) return
+        releasePlayer()
+        playerSound = sound
+        initMediaPlayer(spec)
     }
 
     private fun initMediaPlayer(spec: AlertSpec) {
@@ -244,32 +349,24 @@ class AlertService : Service() {
         if (rc != TextToSpeech.SUCCESS && cont.isActive) cont.resume(Unit)
     }
 
-    private fun stopLoopAndSelf(dismissNotification: Boolean) {
-        loopJob?.cancel()
-        loopJob = null
-        releaseAudio()
-        val id = currentSpec?.id
-        if (id != null) AlertRegistry.stop(id)
-        if (dismissNotification && id != null) {
-            getSystemService<NotificationManager>()?.cancel(notificationId(id))
-        }
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
-    }
-
     private fun releaseAudio() {
-        runCatching {
-            player?.setOnCompletionListener(null)
-            player?.setOnErrorListener(null)
-            player?.release()
-        }
-        player = null
+        releasePlayer()
         runCatching {
             tts?.setOnUtteranceProgressListener(null)
             tts?.stop()
             tts?.shutdown()
         }
         tts = null
+    }
+
+    private fun releasePlayer() {
+        runCatching {
+            player?.setOnCompletionListener(null)
+            player?.setOnErrorListener(null)
+            player?.release()
+        }
+        player = null
+        playerSound = null
     }
 
     override fun onDestroy() {
