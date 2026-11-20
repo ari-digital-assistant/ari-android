@@ -185,8 +185,10 @@ class AlertService : Service() {
                 continue
             }
             release(alert.spec.id)
-            getSystemService<NotificationManager>()?.notify(
-                notificationId(alert.spec.id),
+            val notifications = getSystemService<NotificationManager>() ?: continue
+            notifications.cancel(notificationId(alert.spec.id))
+            notifications.notify(
+                endedNotificationId(alert.spec.id),
                 buildAlertNotification(this, alert.spec, alerting = false),
             )
         }
@@ -197,7 +199,10 @@ class AlertService : Service() {
         release(id)
         // Cancelled even if [id] wasn't ringing, so a stop for an alert that
         // already ended still clears what it left behind.
-        getSystemService<NotificationManager>()?.cancel(notificationId(id))
+        getSystemService<NotificationManager>()?.run {
+            cancel(notificationId(id))
+            cancel(endedNotificationId(id))
+        }
         if (ringing.isEmpty()) {
             loopJob?.cancel()
             loopJob = null
@@ -207,9 +212,10 @@ class AlertService : Service() {
 
     /**
      * Takes [id] out of the ringing set. If the foreground service runs under
-     * its notification, the service moves to another ringing alert's, or
-     * leaves the foreground with the notification still posted, for the
-     * caller to cancel or replace.
+     * its notification, the service moves to another ringing alert's or
+     * leaves the foreground, and Android takes that notification down either
+     * way. The caller cancels the notification of an alert that wasn't the
+     * foreground one.
      */
     private fun release(id: String) {
         ringing.remove(id)
@@ -219,7 +225,10 @@ class AlertService : Service() {
         if (next != null) {
             postForeground(next.spec.id, buildAlertNotification(this, next.spec, alerting = true))
         } else {
-            stopForeground(STOP_FOREGROUND_DETACH)
+            // REMOVE, not DETACH and cancel: a detached notification keeps the
+            // service's mark for a moment, a cancel sent in that moment is
+            // dropped, and "Alerting…" stayed in the shade after Stop.
+            stopForeground(STOP_FOREGROUND_REMOVE)
             foregroundId = null
         }
     }
@@ -399,6 +408,14 @@ class AlertService : Service() {
 
         fun notificationId(alertId: String): Int =
             (alertId.hashCode() xor 0x71_4d_00_02) and 0x7FFFFFFF
+
+        /**
+         * The quiet "Tap to dismiss" left when an alert reaches its cap. Its
+         * own id, so it is never the service's notification and leaving the
+         * foreground can't take it down or leave the ringing one behind.
+         */
+        fun endedNotificationId(alertId: String): Int =
+            (alertId.hashCode() xor 0x71_4d_00_03) and 0x7FFFFFFF
     }
 }
 
