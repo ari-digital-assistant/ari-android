@@ -3,6 +3,7 @@ package dev.heyari.ari.ui.bugreport
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.navigationBars
@@ -128,60 +129,67 @@ fun BugReportFab(
     val pressed by interactions.collectIsPressedAsState()
     var dragging by remember { mutableStateOf(false) }
 
-    TooltipBox(
-        // Start of the button, which sits on the end edge until first dragged.
-        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Start),
-        tooltip = { PlainTooltip { Text(stringResource(R.string.bug_report_fab_hint)) } },
-        state = hint,
-        modifier = Modifier.offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) },
-        // Not focusable, so the app stays usable while the hint is up; and no
-        // long-press to show it, which would fight the drag.
-        focusable = false,
-        enableUserInput = false,
-    ) {
-        SmallFloatingActionButton(
-            onClick = {
-                hint.dismiss()
-                onClick()
-            },
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            shape = MaterialTheme.shapes.extraLarge,
-            interactionSource = interactions,
-            modifier = Modifier
-                .size(FAB_SIZE)
-                .alpha(if (pressed || dragging || hint.isVisible) 1f else IDLE_ALPHA)
-                .pointerInput(maxX, maxY) {
-                    detectDragGestures(
-                        onDragStart = {
-                            dragging = true
-                            hint.dismiss()
-                        },
-                        onDrag = { change, dragged ->
-                            change.consume()
-                            offsetX = (offsetX + dragged.x).coerceIn(minX, maxX)
-                            offsetY = (offsetY + dragged.y).coerceIn(minY, maxY)
-                        },
-                        onDragEnd = {
-                            dragging = false
-                            // Snap to the nearer side. Floating mid-screen it
-                            // covers content wherever it lands; against an edge it
-                            // covers a margin.
-                            val snapped =
-                                if (offsetX + fabPx / 2 < container.width / 2f) minX else maxX
-                            offsetX = snapped
-                            val xSpan = (maxX - minX).coerceAtLeast(1f)
-                            val ySpan = (maxY - minY).coerceAtLeast(1f)
-                            onMoved((snapped - minX) / xSpan, (offsetY - minY) / ySpan)
-                        },
-                        onDragCancel = { dragging = false },
-                    )
-                },
+    // The offset moves a wrapper rather than going on TooltipBox: TooltipBox
+    // hands its modifier to the button alone, so the hint stayed anchored at
+    // the unmoved top-left corner.
+    Box(Modifier.offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }) {
+        TooltipBox(
+            // Start of the button, which sits on the end edge until first dragged.
+            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Start),
+            tooltip = { PlainTooltip { Text(stringResource(R.string.bug_report_fab_hint)) } },
+            state = hint,
+            // Not focusable, so the app stays usable while the hint is up; and no
+            // long-press to show it, which would fight the drag.
+            focusable = false,
+            enableUserInput = false,
         ) {
-            Icon(
-                imageVector = Icons.Filled.BugReport,
-                contentDescription = stringResource(R.string.bug_report_fab_description),
-            )
+            SmallFloatingActionButton(
+                onClick = {
+                    hint.dismiss()
+                    onClick()
+                },
+                // Primary, not primaryContainer: in a dark theme the container
+                // colour is barely off the background and the button read as a
+                // chip, worse once faded.
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = MaterialTheme.shapes.extraLarge,
+                interactionSource = interactions,
+                modifier = Modifier
+                    .size(FAB_SIZE)
+                    .alpha(if (pressed || dragging || hint.isVisible) 1f else IDLE_ALPHA)
+                    .pointerInput(maxX, maxY) {
+                        detectDragGestures(
+                            onDragStart = {
+                                dragging = true
+                                hint.dismiss()
+                            },
+                            onDrag = { change, dragged ->
+                                change.consume()
+                                offsetX = (offsetX + dragged.x).coerceIn(minX, maxX)
+                                offsetY = (offsetY + dragged.y).coerceIn(minY, maxY)
+                            },
+                            onDragEnd = {
+                                dragging = false
+                                // Snap to the nearer side. Floating mid-screen it
+                                // covers content wherever it lands; against an edge it
+                                // covers a margin.
+                                val snapped =
+                                    if (offsetX + fabPx / 2 < container.width / 2f) minX else maxX
+                                offsetX = snapped
+                                val xSpan = (maxX - minX).coerceAtLeast(1f)
+                                val ySpan = (maxY - minY).coerceAtLeast(1f)
+                                onMoved((snapped - minX) / xSpan, (offsetY - minY) / ySpan)
+                            },
+                            onDragCancel = { dragging = false },
+                        )
+                    },
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.BugReport,
+                    contentDescription = stringResource(R.string.bug_report_fab_description),
+                )
+            }
         }
     }
 }
