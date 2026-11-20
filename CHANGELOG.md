@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Long-pressing one of Ari's replies offers Read aloud, so an answer to something you
+  typed can be heard too ([#54](https://github.com/ari-digital-assistant/ari-android/issues/54)).
+
+### Changed
+
+- Testing builds: the bug-report button is smaller, faded until you touch it, and starts
+  halfway down the right edge instead of over the banners at the top. The first time it
+  appears, a hint says it can be dragged out of the way ([#55](https://github.com/ari-digital-assistant/ari-android/issues/55)).
+
+### Fixed
+
+- Tapping a ringing timer's or alarm's notification opened Ari and left it ringing. The
+  tap now stops it as Ari opens ([#53](https://github.com/ari-digital-assistant/ari-android/issues/53)).
+- Two timers finishing together couldn't both ring: the second silenced the first,
+  whose card then showed it ringing at 0 seconds with a Stop that did nothing. They now
+  ring together, with Ari saying each one's name in turn, and each has its own Stop. On
+  the lock screen, stopping one shows the other.
+- "Set a 10 second timer" asked for a duration, because Ari read "second" as the
+  number 2. A number followed by "second" is now seconds; "the twenty second of May" is
+  still the 22nd.
+
 ## [0.2.0] - 2026-11-19
 
 Changes since 0.1.4, uploaded to Google Play internal testing as versionCode 7.
