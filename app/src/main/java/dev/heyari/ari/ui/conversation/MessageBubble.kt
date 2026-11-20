@@ -70,6 +70,7 @@ fun MessageBubble(
     assetResolver: AssetResolver? = null,
     onCardAction: (cardId: String, action: CardAction) -> Unit = { _, _ -> },
     onReport: (Message) -> Unit = {},
+    onReadAloud: (Message) -> Unit = {},
     onOpenSkill: (skillId: String) -> Unit = {},
 ) {
     val message = row.message
@@ -120,8 +121,8 @@ fun MessageBubble(
             }
 
             // Long-press menu. Copy is on every bubble because people expect it
-            // on a chat message; Report is only on Ari's, because reporting your
-            // own words to the developer is meaningless.
+            // on a chat message; Read aloud and Report are only on Ari's, because
+            // hearing or reporting your own words is meaningless.
             var menuOpen by remember(message.id) { mutableStateOf(false) }
             val context = LocalContext.current
             Box {
@@ -170,6 +171,13 @@ fun MessageBubble(
                     },
                 )
                 if (!isUser) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.message_menu_read_aloud)) },
+                        onClick = {
+                            menuOpen = false
+                            onReadAloud(message)
+                        },
+                    )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.message_menu_report)) },
                         onClick = {

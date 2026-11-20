@@ -103,6 +103,16 @@ class ConversationViewModel @Inject constructor(
      */
     fun sendReport(report: dev.heyari.ari.reporting.ContentReport) = reportSender.send(report)
 
+    /**
+     * Reads one of Ari's replies out on request, for a typed turn that was
+     * answered silently. Cuts off whatever is playing so a second request
+     * doesn't queue behind the first.
+     */
+    fun readAloud(message: Message) {
+        speechOutput.stop()
+        speechOutput.speak(message.text)
+    }
+
 
     private val _state = MutableStateFlow(ConversationState())
     val state: StateFlow<ConversationState> = _state.asStateFlow()

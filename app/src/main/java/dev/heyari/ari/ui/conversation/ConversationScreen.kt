@@ -421,6 +421,7 @@ fun ConversationScreen(
                                     assetResolver = viewModel.assetResolver,
                                     onCardAction = viewModel::onCardAction,
                                     onReport = { reportTarget = it },
+                                    onReadAloud = viewModel::readAloud,
                                     onOpenSkill = onOpenStoreSkill,
                                 )
                             }
@@ -432,6 +433,7 @@ fun ConversationScreen(
                                 assetResolver = viewModel.assetResolver,
                                 onCardAction = viewModel::onCardAction,
                                 onReport = { reportTarget = it },
+                                onReadAloud = viewModel::readAloud,
                                 onOpenSkill = onOpenStoreSkill,
                             )
                         }
