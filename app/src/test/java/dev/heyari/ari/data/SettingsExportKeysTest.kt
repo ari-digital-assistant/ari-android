@@ -20,6 +20,7 @@ class SettingsExportKeysTest {
         "contributor_id", "has_shared_recordings",
         // This install's identity and its bug reports' delete tokens.
         "install_id", "filed_bug_reports", "bug_report_fab_x", "bug_report_fab_y",
+        "bug_report_fab_hint_shown",
         // Wizard progress and the reminders it leaves behind.
         "onboarding_completed", "pending_cloud_assistant_setup", "pending_listening_setup",
         // Depends on how this phone runs Play Services.

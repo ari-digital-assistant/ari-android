@@ -804,6 +804,7 @@
 
     <!-- Segnalazione bug -->
     <string name="bug_report_fab_description">Segnala un problema</string>
+    <string name="bug_report_fab_hint">Trascinami dove non dà fastidio</string>
     <string name="bug_report_title">Segnala un problema</string>
     <string name="bug_report_review_title">Prima di inviare</string>
     <string name="bug_report_sent_title">Segnalazione inviata</string>

@@ -733,7 +733,8 @@ class SettingsRepository @Inject constructor(
      * screen rather than pixels — a rotation or a different display would make
      * absolute coordinates point off-screen.
      *
-     * Null until it is first dragged, which the button reads as "top right".
+     * Null until it is first dragged, which the button reads as "halfway down
+     * the right edge".
      */
     val bugReportFabPosition: Flow<Pair<Float, Float>?> = context.dataStore.data.map { prefs ->
         val x = prefs[KEY_FAB_X]
@@ -745,6 +746,22 @@ class SettingsRepository @Inject constructor(
         context.dataStore.edit { prefs ->
             prefs[KEY_FAB_X] = x
             prefs[KEY_FAB_Y] = y
+        }
+    }
+
+    /**
+     * Whether the bug-report button should show its "drag me" hint: never
+     * shown before, and never dragged, since a tester who has moved it already
+     * knows. One read of the prefs for both, so a moved button can't flash the
+     * hint while the position is still loading.
+     */
+    val bugReportFabHintDue: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_FAB_HINT_SHOWN] != true && prefs[KEY_FAB_X] == null
+    }.distinctUntilChanged()
+
+    suspend fun setBugReportFabHintShown() {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_FAB_HINT_SHOWN] = true
         }
     }
 
@@ -1021,6 +1038,7 @@ class SettingsRepository @Inject constructor(
         private val KEY_FILED_REPORTS = stringPreferencesKey("filed_bug_reports")
         private val KEY_FAB_X = floatPreferencesKey("bug_report_fab_x")
         private val KEY_FAB_Y = floatPreferencesKey("bug_report_fab_y")
+        private val KEY_FAB_HINT_SHOWN = booleanPreferencesKey("bug_report_fab_hint_shown")
         private val KEY_PENDING_CLOUD_ASSISTANT_SETUP = booleanPreferencesKey("pending_cloud_assistant_setup")
         private val KEY_LISTENING_MODE = stringPreferencesKey("listening_mode")
         private val KEY_PLACE_FENCE_SOURCE = stringPreferencesKey("place_fence_source")

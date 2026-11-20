@@ -186,6 +186,8 @@ fun AriNavHost(
     // destination rather than being re-added to each one.
     var container by remember { mutableStateOf(IntSize.Zero) }
     val fabPosition by settingsRepository.bugReportFabPosition.collectAsStateWithLifecycle(null)
+    // False until loaded, so the hint can't flash up for a tester who has seen it.
+    val fabHintDue by settingsRepository.bugReportFabHintDue.collectAsStateWithLifecycle(false)
     val scope = rememberCoroutineScope()
 
     // Offered once, on the first launch after a crash. Reading the record
@@ -793,6 +795,10 @@ fun AriNavHost(
             BugReportFab(
                 container = container,
                 position = fabPosition,
+                showHint = fabHintDue,
+                onHintShown = {
+                    scope.launch { settingsRepository.setBugReportFabHintShown() }
+                },
                 onMoved = { x, y ->
                     scope.launch { settingsRepository.setBugReportFabPosition(x, y) }
                 },

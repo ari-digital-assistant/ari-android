@@ -813,6 +813,7 @@
 
     <!-- Bug reporter -->
     <string name="bug_report_fab_description">Report a bug</string>
+    <string name="bug_report_fab_hint">Drag me out of the way</string>
     <string name="bug_report_title">Report a bug</string>
     <string name="bug_report_review_title">Before you send</string>
     <string name="bug_report_sent_title">Report sent</string>
