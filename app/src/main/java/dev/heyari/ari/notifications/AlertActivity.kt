@@ -1,10 +1,8 @@
 package dev.heyari.ari.notifications
 
-import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
-import android.os.Build
 import android.os.Bundle
 import android.text.format.DateFormat
 import android.util.Log
@@ -89,10 +87,11 @@ import javax.inject.Inject
  * `surface` by ~40% down for critical urgency; plain surface otherwise.
  * Signals urgency without drowning the content.
  *
- * Lock-screen: `setShowWhenLocked + setTurnScreenOn + requestDismissKeyguard`
- * mirror the Google Clock pattern. `stop_alert` fires a service
- * PendingIntent so it works without unlock; custom actions route through
- * NotificationActionReceiver (broadcast, also unlock-free).
+ * Lock-screen: `setShowWhenLocked + setTurnScreenOn` mirror the Google
+ * Clock pattern. `stop_alert` fires a service PendingIntent so it works
+ * without unlock; custom actions route through NotificationActionReceiver
+ * (broadcast, also unlock-free). No `requestDismissKeyguard`: it put the
+ * unlock prompt over the Stop button the moment the alert appeared.
  *
  * Auto-finish: observes [AlertRegistry] and finishes the moment its
  * alert leaves the active set (Stop tap, auto-stop cap, external
@@ -109,9 +108,6 @@ class AlertActivity : ComponentActivity() {
         setShowWhenLocked(true)
         setTurnScreenOn(true)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            getSystemService(KeyguardManager::class.java)?.requestDismissKeyguard(this, null)
-        }
 
         val spec = intent?.getStringExtra(EXTRA_SPEC_JSON)?.let(AlertSpecCodec::decode)
         if (spec == null) {

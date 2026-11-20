@@ -29,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - "Set a 10 second timer" asked for a duration, because Ari read "second" as the
   number 2. A number followed by "second" is now seconds; "the twenty second of May" is
   still the 22nd.
+- On a locked phone, a ringing timer or alarm put the unlock prompt over its Stop
+  button, so you had to unlock before you could stop it. Stop now works straight from
+  the lock screen, and the phone stays locked.
 
 ## [0.2.0] - 2026-11-19
 
