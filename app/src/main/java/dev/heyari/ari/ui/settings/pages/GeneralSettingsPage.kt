@@ -46,6 +46,10 @@ fun GeneralSettingsPage(
                 enabled = state.startOnBoot,
                 onToggle = viewModel::setStartOnBoot,
             )
+            PureBlackSection(
+                enabled = state.pureBlack,
+                onToggle = viewModel::setPureBlack,
+            )
             SettingsBackupSection(viewModel = transferViewModel)
         }
     }

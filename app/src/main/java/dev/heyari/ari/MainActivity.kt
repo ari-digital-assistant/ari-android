@@ -12,6 +12,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
@@ -89,7 +91,8 @@ class MainActivity : ComponentActivity() {
         // activity rather than delivering the intent to the running one.
         handleSensitivityIntent(intent)
         setContent {
-            AriTheme {
+            val pureBlack by settingsRepository.pureBlack.collectAsState(initial = false)
+            AriTheme(pureBlack = pureBlack) {
                 // An opaque backdrop behind the NavHost. Without it the window
                 // background shows through wherever a screen doesn't paint,
                 // and that background is the platform's, not the theme's.

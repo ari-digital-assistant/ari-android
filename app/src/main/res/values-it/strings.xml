@@ -470,6 +470,8 @@
     <string name="settings_stt_cloud_api_key_hint_optional">Facoltativa. La maggior parte dei server self-hosted non la richiede.</string>
     <string name="settings_start_on_boot_title">Avvia Ari all\'accensione</string>
     <string name="settings_start_on_boot_blurb">Quando il dispositivo si avvia, Ari inizierà ad ascoltare la parola di attivazione automaticamente. Consuma un po\' più di batteria poiché il microfono resta sempre attivo — lascia disattivato se preferisci avviare Ari manualmente.</string>
+    <string name="settings_pure_black_title">Nero puro in modalità scura</string>
+    <string name="settings_pure_black_blurb">Quando il telefono è in modalità scura, Ari usa uno sfondo nero. Gli schermi OLED spengono i pixel neri, quindi si risparmia un po\' di batteria.</string>
     <string name="settings_default_assistant_title">Assistente digitale predefinito</string>
     <string name="settings_default_assistant_blurb">Imposta Ari come assistente digitale predefinito per poterlo richiamare con il gesto di assist (pressione lunga su tasto Home o accensione).</string>
     <string name="settings_backup_title">Backup delle impostazioni</string>

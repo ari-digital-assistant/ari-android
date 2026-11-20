@@ -147,6 +147,7 @@ data class SettingsState(
     val activeAssistantId: String? = null,
     val assistantEntries: List<AssistantUiEntry> = emptyList(),
     val startOnBoot: Boolean = false,
+    val pureBlack: Boolean = false,
     val bargeInEnabled: Boolean = true,
     val conversationMemoryEnabled: Boolean = true,
     val conversationLength: ConversationLength = ConversationLength.SHORT,
@@ -375,6 +376,12 @@ class SettingsViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
+            settingsRepository.pureBlack.collect { enabled ->
+                _state.update { it.copy(pureBlack = enabled) }
+            }
+        }
+
+        viewModelScope.launch {
             settingsRepository.listeningMode.collect { mode ->
                 _state.update { it.copy(listeningMode = mode) }
             }
@@ -557,6 +564,12 @@ class SettingsViewModel @Inject constructor(
     fun setStartOnBoot(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setStartOnBoot(enabled)
+        }
+    }
+
+    fun setPureBlack(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setPureBlack(enabled)
         }
     }
 

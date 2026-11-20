@@ -354,6 +354,19 @@ class SettingsRepository @Inject constructor(
     }
 
     /**
+     * Whether dark mode paints the page black instead of the scheme's dark
+     * surface, for OLED screens (ari-android#56). Off by default, and light
+     * mode ignores it.
+     */
+    val pureBlack: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_PURE_BLACK] ?: false
+    }.distinctUntilChanged()
+
+    suspend fun setPureBlack(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[KEY_PURE_BLACK] = enabled }
+    }
+
+    /**
      * Whether to keep the wake moment of an ACCEPTED turn — a confirmed true
      * positive. Default off, like every capture toggle: this writes microphone
      * audio to app-private storage and must never be on unless the user asked
@@ -1004,6 +1017,7 @@ class SettingsRepository @Inject constructor(
         private val KEY_ACTIVE_TTS_VOICE = stringPreferencesKey("active_tts_voice")
         private val KEY_ACTIVE_LOCALE = stringPreferencesKey("active_locale")
         private val KEY_START_ON_BOOT = booleanPreferencesKey("start_on_boot")
+        private val KEY_PURE_BLACK = booleanPreferencesKey("pure_black")
         private val KEY_LLM_USE_GPU = booleanPreferencesKey("llm_use_gpu")
         private val KEY_HANDOFF_ENABLED = booleanPreferencesKey("handoff_enabled")
         private val KEY_LAST_CLOUD_ASSISTANT = stringPreferencesKey("last_cloud_assistant")
@@ -1062,6 +1076,7 @@ class SettingsRepository @Inject constructor(
             KEY_KEEP_WAKE_AUDIO, KEY_KEEP_FALSE_TRIGGER_AUDIO, KEY_KEEP_UTTERANCE_AUDIO, KEY_KEEP_EVERYTHING_AUDIO,
             KEY_SHARE_WAKE_AUDIO, KEY_SHARE_FALSE_TRIGGER_AUDIO, KEY_SHARE_UTTERANCE_AUDIO, KEY_SHARE_EVERYTHING_AUDIO,
             KEY_BARGE_IN_ENABLED, KEY_CONVERSATION_MEMORY_ENABLED, KEY_LLM_USE_GPU, KEY_HANDOFF_ENABLED,
+            KEY_PURE_BLACK,
         ).mapTo(HashSet()) { it.name }
         /** Skill settings, and each wake model's sensitivity (but not its ladder). */
         private val EXPORTED_STRING_PREFIXES = listOf(ASSISTANT_CONFIG_PREFIX, "${KEY_WAKE_WORD_SENSITIVITY.name}_")

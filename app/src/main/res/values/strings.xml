@@ -471,6 +471,8 @@
     <string name="settings_stt_cloud_api_key_hint_optional">Optional. Most self-hosted servers don\'t need one.</string>
     <string name="settings_start_on_boot_title">Start Ari on boot</string>
     <string name="settings_start_on_boot_blurb">When your device boots, Ari will start listening for the wake word automatically. Uses a bit more battery since the microphone is always on — leave it off if you\'d rather start Ari manually.</string>
+    <string name="settings_pure_black_title">Pure black in dark mode</string>
+    <string name="settings_pure_black_blurb">When your phone is in dark mode, Ari uses a black background. OLED screens switch black pixels off, so this saves a little battery.</string>
     <string name="settings_default_assistant_title">Default digital assistant</string>
     <string name="settings_default_assistant_blurb">Set Ari as your default digital assistant so it can be invoked with the assist gesture (long-press home button or power button).</string>
     <string name="settings_backup_title">Back up settings</string>

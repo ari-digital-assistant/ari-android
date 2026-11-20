@@ -60,6 +60,7 @@ import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
 import dev.heyari.ari.R
 import dev.heyari.ari.assets.AssetResolver
+import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.ui.theme.AriTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -101,6 +102,7 @@ import javax.inject.Inject
 class AlertActivity : ComponentActivity() {
 
     @Inject lateinit var assetResolver: AssetResolver
+    @Inject lateinit var settingsRepository: SettingsRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -137,7 +139,8 @@ class AlertActivity : ComponentActivity() {
         }
 
         setContent {
-            AriTheme {
+            val pureBlack by settingsRepository.pureBlack.collectAsState(initial = false)
+            AriTheme(pureBlack = pureBlack) {
                 AlertTakeover(
                     spec = spec,
                     assetResolver = assetResolver,

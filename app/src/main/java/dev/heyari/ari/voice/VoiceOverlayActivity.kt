@@ -9,6 +9,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
+import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.ui.theme.AriTheme
 import dev.heyari.ari.wakeword.WakeWordService
 import kotlinx.coroutines.launch
@@ -29,6 +30,9 @@ class VoiceOverlayActivity : ComponentActivity() {
 
     @Inject
     lateinit var voiceSession: VoiceSession
+
+    @Inject
+    lateinit var settingsRepository: SettingsRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,7 +63,8 @@ class VoiceOverlayActivity : ComponentActivity() {
         }
 
         setContent {
-            AriTheme {
+            val pureBlack by settingsRepository.pureBlack.collectAsState(initial = false)
+            AriTheme(pureBlack = pureBlack) {
                 val state by voiceSession.state.collectAsState()
                 VoiceOverlayContent(
                     state = state,

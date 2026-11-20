@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Settings > General has a "Pure black in dark mode" switch, which makes Ari's background
+  black when your phone is in dark mode, for OLED screens
+  ([#56](https://github.com/ari-digital-assistant/ari-android/issues/56)).
+
 ### Fixed
 
 - On Android 10 and 11, which have no wallpaper colours, Ari showed a leftover purple

@@ -1089,6 +1089,47 @@ internal fun StartOnBootSection(
 }
 
 @Composable
+internal fun PureBlackSection(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(value = enabled, onValueChange = onToggle, role = Role.Switch),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.settings_pure_black_title),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.settings_pure_black_blurb),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = null,
+                    modifier = Modifier.minimumInteractiveComponentSize(),
+                )
+            }
+        }
+    }
+}
+
+@Composable
 internal fun IntegrationSection(onSetAsAssistant: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),

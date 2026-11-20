@@ -3,6 +3,7 @@ package dev.heyari.ari.ui.theme
 import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -120,14 +121,28 @@ private val LightColorScheme = lightColorScheme(
     onTertiaryFixedVariant = Color(0xFF48491F),
 )
 
+/**
+ * This scheme with the page itself black, for OLED screens. The container
+ * roles keep their tones, so cards, sheets and dialogs still stand out from
+ * the page around them.
+ */
+private fun ColorScheme.withBlackPage(): ColorScheme = copy(
+    background = Color.Black,
+    surface = Color.Black,
+    surfaceDim = Color.Black,
+    surfaceContainerLowest = Color.Black,
+)
+
 @Composable
 fun AriTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
+    // Only affects dark mode; see SettingsRepository.pureBlack.
+    pureBlack: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
+    val baseScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
@@ -136,6 +151,7 @@ fun AriTheme(
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
+    val colorScheme = if (darkTheme && pureBlack) baseScheme.withBlackPage() else baseScheme
 
     CompositionLocalProvider(
         LocalAriSemanticColors provides
