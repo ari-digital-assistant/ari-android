@@ -283,6 +283,8 @@ class AlertService : Service() {
         const val ACTION_STOP = "dev.heyari.ari.ALERT_STOP"
         const val EXTRA_ALERT_SPEC_JSON = "alert_spec_json"
         const val EXTRA_ALERT_ID = "alert_id"
+        /** On a [MainActivity] intent: stop this alert as the app opens. */
+        const val EXTRA_STOP_ALERT_ID = "stop_alert_id"
 
         private const val TAG = "AlertService"
         private const val GAP_BETWEEN_SOUND_AND_SPEECH_MS = 150L
@@ -326,16 +328,21 @@ internal fun buildAlertNotification(
     spec: AlertSpec,
     alerting: Boolean,
 ): android.app.Notification {
-    // Tap-the-shade-entry target: opens the main app. Distinct from the
-    // full-screen-intent target below, which goes to the dedicated
-    // AlertActivity so the user lands on a Stop button instead of the
-    // PIN keypad → main UI two-step.
+    // Tap-the-shade-entry target: opens the main app, and while ringing
+    // also silences the alert, because people tap the notification
+    // expecting that. Distinct from the full-screen-intent
+    // target below, which goes to the dedicated AlertActivity so the user
+    // lands on a Stop button instead of the PIN keypad → main UI two-step.
+    val openApp = Intent(context, MainActivity::class.java).addFlags(
+        Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP,
+    )
+    if (alerting) openApp.putExtra(AlertService.EXTRA_STOP_ALERT_ID, spec.id)
     val contentIntent = PendingIntent.getActivity(
         context,
-        0,
-        Intent(context, MainActivity::class.java).addFlags(
-            Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP,
-        ),
+        // Per-alert while ringing so two alerts sounding at once each
+        // carry their own id instead of sharing one PendingIntent's extras.
+        if (alerting) AlertService.notificationId(spec.id) else 0,
+        openApp,
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
     val takeoverIntent = PendingIntent.getActivity(

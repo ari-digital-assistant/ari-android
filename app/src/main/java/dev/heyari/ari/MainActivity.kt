@@ -20,6 +20,7 @@ import dev.heyari.ari.oauth.AuthorizeCoordinator
 import dev.heyari.ari.deeplink.skillDeepLinkRoute
 import dev.heyari.ari.listening.ListeningMode
 import dev.heyari.ari.models.ModelUpdateNotifier
+import dev.heyari.ari.notifications.AlertService
 import dev.heyari.ari.skills.SkillUpdateNotifier
 import dev.heyari.ari.ui.AriNavHost
 import dev.heyari.ari.ui.Routes
@@ -82,6 +83,7 @@ class MainActivity : ComponentActivity() {
         handleSkillUpdatesIntent(intent)
         handleSkillDeepLinkIntent(intent)
         handleModelUpdatesIntent(intent)
+        handleStopAlertIntent(intent)
         // The sensitivity notifications arrive here, not in onNewIntent: they
         // launch with CLEAR_TOP and no SINGLE_TOP, which recreates this
         // activity rather than delivering the intent to the running one.
@@ -114,6 +116,7 @@ class MainActivity : ComponentActivity() {
         handleSkillUpdatesIntent(intent)
         handleSkillDeepLinkIntent(intent)
         handleModelUpdatesIntent(intent)
+        handleStopAlertIntent(intent)
         handleSensitivityIntent(intent)
     }
 
@@ -185,6 +188,14 @@ class MainActivity : ComponentActivity() {
             deepLinkCommands.trySend(Routes.SETTINGS_AUTO_UPDATE)
             intent.removeExtra(ModelUpdateNotifier.EXTRA_OPEN_AUTO_UPDATE)
         }
+    }
+
+    /** A tap on a ringing alert's notification. */
+    private fun handleStopAlertIntent(intent: Intent?) {
+        val alertId = intent?.getStringExtra(AlertService.EXTRA_STOP_ALERT_ID) ?: return
+        startService(AlertService.stopIntent(this, alertId))
+        // Cleared so a rotation does not send the stop again.
+        intent.removeExtra(AlertService.EXTRA_STOP_ALERT_ID)
     }
 
     /** The two sensitivity notifications, which differ only in what they ask. */
