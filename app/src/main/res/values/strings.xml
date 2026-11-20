@@ -968,14 +968,10 @@
     <string name="whats_new_dismiss">Got it</string>
     <string name="whats_new_changelog">Full changelog</string>
     <string name="whats_new_skill_updates">Some of this comes as skill updates. Install them from the banner on the home screen when it appears.</string>
-    <string name="whats_new_0_2_0_faster_title">A faster on-device assistant</string>
-    <string name="whats_new_0_2_0_faster_body">The on-device assistant answers up to three times sooner and needs far less memory, so Medium now suits 6 GB phones. Take the model update when Ari offers it. Until you do, the assistant can\'t answer on the device.</string>
-    <string name="whats_new_0_2_0_handoff_title">Ask a cloud assistant</string>
-    <string name="whats_new_0_2_0_handoff_body">When the on-device assistant doesn\'t know something, or a question needs live information, Ari can offer to ask ChatGPT, Claude or Gemini for you. Turn on “Ask a cloud assistant” in Settings. It needs one of them set up with an API key.</string>
-    <string name="whats_new_0_2_0_search_title">Cloud assistants search the web</string>
-    <string name="whats_new_0_2_0_search_body">ChatGPT, Claude and Gemini look things up on the web, so they can answer about today\'s news, scores, prices and weather.</string>
-    <string name="whats_new_0_2_0_typing_title">Typing to Ari</string>
-    <string name="whats_new_0_2_0_typing_body">Ari no longer reads its replies aloud when you type to it. Type / in the chat box to see Ari\'s commands, such as /clear and /remember.</string>
-    <string name="whats_new_0_2_0_fixes_title">Fixes</string>
-    <string name="whats_new_0_2_0_fixes_body">Long answers stay in view as they\'re written, and follow-ups such as “who came second?” are understood. The on-device assistant no longer forgets the conversation when you push back on an answer, and “search for it” searches for the question you just asked.</string>
+    <string name="whats_new_0_2_1_read_aloud_title">Hear a typed answer</string>
+    <string name="whats_new_0_2_1_read_aloud_body">Long-press one of Ari\'s replies and choose Read aloud to hear it. Handy when you typed your question and Ari answered silently.</string>
+    <string name="whats_new_0_2_1_timers_title">Timers and alarms</string>
+    <string name="whats_new_0_2_1_timers_body">Tap a ringing timer\'s notification to stop it, or press Stop on the lock screen without unlocking. Two timers finishing together now both ring, each with its own Stop, and “set a 10 second timer” works.</string>
+    <string name="whats_new_0_2_1_bug_button_title">A tidier bug button</string>
+    <string name="whats_new_0_2_1_bug_button_body">The bug-report button is smaller and stays faded until you touch it. Drag it anywhere it\'s out of your way.</string>
 </resources>

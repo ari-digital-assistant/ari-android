@@ -2,11 +2,9 @@ package dev.heyari.ari.ui.whatsnew
 
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.Keyboard
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.TravelExplore
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.ui.graphics.vector.ImageVector
 import dev.heyari.ari.R
 
@@ -18,14 +16,12 @@ import dev.heyari.ari.R
  * them shows nothing rather than the previous release's news.
  */
 internal object WhatsNew {
-    const val VERSION = "0.2.0"
+    const val VERSION = "0.2.1"
 
     val items = listOf(
-        WhatsNewItem(Icons.Default.Speed, R.string.whats_new_0_2_0_faster_title, R.string.whats_new_0_2_0_faster_body),
-        WhatsNewItem(Icons.Default.Cloud, R.string.whats_new_0_2_0_handoff_title, R.string.whats_new_0_2_0_handoff_body),
-        WhatsNewItem(Icons.Default.TravelExplore, R.string.whats_new_0_2_0_search_title, R.string.whats_new_0_2_0_search_body),
-        WhatsNewItem(Icons.Default.Keyboard, R.string.whats_new_0_2_0_typing_title, R.string.whats_new_0_2_0_typing_body),
-        WhatsNewItem(Icons.Default.Build, R.string.whats_new_0_2_0_fixes_title, R.string.whats_new_0_2_0_fixes_body),
+        WhatsNewItem(Icons.AutoMirrored.Filled.VolumeUp, R.string.whats_new_0_2_1_read_aloud_title, R.string.whats_new_0_2_1_read_aloud_body),
+        WhatsNewItem(Icons.Default.Alarm, R.string.whats_new_0_2_1_timers_title, R.string.whats_new_0_2_1_timers_body),
+        WhatsNewItem(Icons.Default.BugReport, R.string.whats_new_0_2_1_bug_button_title, R.string.whats_new_0_2_1_bug_button_body),
     )
 
     /**
@@ -33,7 +29,7 @@ internal object WhatsNew {
      * with the app. True when some of [items] arrive that way, so the dialog
      * says where to get them.
      */
-    const val NEEDS_SKILL_UPDATES = true
+    const val NEEDS_SKILL_UPDATES = false
 
     /** Every change in every release, for whoever wants more than these few lines. */
     const val CHANGELOG_URL = "https://github.com/ari-digital-assistant/ari-android/blob/main/CHANGELOG.md"

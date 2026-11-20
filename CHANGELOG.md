@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-20
+
+Changes since 0.2.0, uploaded to Google Play internal testing as versionCode 8.
+
 ### Added
 
 - Long-pressing one of Ari's replies offers Read aloud, so an answer to something you
