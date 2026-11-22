@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   black when your phone is in dark mode, for OLED screens
   ([#56](https://github.com/ari-digital-assistant/ari-android/issues/56)).
 
+### Changed
+
+- The coloured edge on Ari's replies follows the bubble's rounded top corner instead
+  of stopping short of it.
+
 ### Fixed
 
 - Long-pressing a message while the keyboard was open closed the keyboard, so the

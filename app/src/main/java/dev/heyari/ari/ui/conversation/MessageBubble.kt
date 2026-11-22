@@ -41,14 +41,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.PathOperation
+import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
 import com.halilibo.richtext.commonmark.Markdown
@@ -142,13 +147,20 @@ fun MessageBubble(
                         onLongClick = { menuOpen = true },
                     ),
             ) {
-                // Hairline accent edge on Ari turns, drawn behind the text so it
-                // spans its height without asking for an intrinsic one, which a
-                // rendered table can't give. The enclosing Surface clips it to
-                // the bubble's shape, so the bar rounds with the corner.
+                // Hairline accent edge on Ari turns: the bubble's shape less the
+                // same shape moved ACCENT inwards, so it follows the corners
+                // round. Drawn behind the text rather than laid out beside it,
+                // as a bar would need an intrinsic height to match the text's,
+                // which a rendered table can't give.
                 val accent = MaterialTheme.colorScheme.primary
                 val body = if (isUser) Modifier else Modifier
-                    .drawBehind { drawRect(accent, size = Size(ACCENT.toPx(), size.height)) }
+                    .drawWithCache {
+                        val bubble = Path().apply { addOutline(shape.createOutline(size, layoutDirection, this@drawWithCache)) }
+                        val inwards = if (layoutDirection == LayoutDirection.Ltr) ACCENT.toPx() else -ACCENT.toPx()
+                        val inner = Path().apply { addPath(bubble, Offset(inwards, 0f)) }
+                        val edge = Path.combine(PathOperation.Difference, bubble, inner)
+                        onDrawBehind { drawPath(edge, accent) }
+                    }
                     .padding(start = ACCENT)
                 val markdown = message.markdown
                 if (markdown != null) {
