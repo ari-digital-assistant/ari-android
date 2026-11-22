@@ -754,6 +754,9 @@ internal interface UniffiCallbackInterfaceFfiVoiceHostMethod3 : com.sun.jna.Call
 internal interface UniffiCallbackInterfaceFfiVoiceHostMethod4 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
+internal interface UniffiCallbackInterfaceFfiVoiceHostMethod5 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+}
 @Structure.FieldOrder("uniffiFree", "uniffiClone", "text", "sentence")
 internal open class UniffiVTableCallbackInterfaceFfiAnswerSink(
     @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
@@ -1104,7 +1107,7 @@ internal open class UniffiVTableCallbackInterfaceFfiSessionHost(
     }
 
 }
-@Structure.FieldOrder("uniffiFree", "uniffiClone", "loadModel", "wakeDetected", "log", "locale", "cloudStt")
+@Structure.FieldOrder("uniffiFree", "uniffiClone", "loadModel", "wakeDetected", "log", "locale", "cloudStt", "threadStarted")
 internal open class UniffiVTableCallbackInterfaceFfiVoiceHost(
     @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
     @JvmField internal var `uniffiClone`: UniffiCallbackInterfaceClone? = null,
@@ -1113,6 +1116,7 @@ internal open class UniffiVTableCallbackInterfaceFfiVoiceHost(
     @JvmField internal var `log`: UniffiCallbackInterfaceFfiVoiceHostMethod2? = null,
     @JvmField internal var `locale`: UniffiCallbackInterfaceFfiVoiceHostMethod3? = null,
     @JvmField internal var `cloudStt`: UniffiCallbackInterfaceFfiVoiceHostMethod4? = null,
+    @JvmField internal var `threadStarted`: UniffiCallbackInterfaceFfiVoiceHostMethod5? = null,
 ) : Structure() {
     class UniffiByValue(
         `uniffiFree`: UniffiCallbackInterfaceFree? = null,
@@ -1122,7 +1126,8 @@ internal open class UniffiVTableCallbackInterfaceFfiVoiceHost(
         `log`: UniffiCallbackInterfaceFfiVoiceHostMethod2? = null,
         `locale`: UniffiCallbackInterfaceFfiVoiceHostMethod3? = null,
         `cloudStt`: UniffiCallbackInterfaceFfiVoiceHostMethod4? = null,
-    ): UniffiVTableCallbackInterfaceFfiVoiceHost(`uniffiFree`,`uniffiClone`,`loadModel`,`wakeDetected`,`log`,`locale`,`cloudStt`,), Structure.ByValue
+        `threadStarted`: UniffiCallbackInterfaceFfiVoiceHostMethod5? = null,
+    ): UniffiVTableCallbackInterfaceFfiVoiceHost(`uniffiFree`,`uniffiClone`,`loadModel`,`wakeDetected`,`log`,`locale`,`cloudStt`,`threadStarted`,), Structure.ByValue
 
    internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceFfiVoiceHost) {
         `uniffiFree` = other.`uniffiFree`
@@ -1132,6 +1137,7 @@ internal open class UniffiVTableCallbackInterfaceFfiVoiceHost(
         `log` = other.`log`
         `locale` = other.`locale`
         `cloudStt` = other.`cloudStt`
+        `threadStarted` = other.`threadStarted`
     }
 
 }
@@ -1417,6 +1423,8 @@ external fun uniffi_ari_ffi_checksum_method_ffivoicehost_log(
 external fun uniffi_ari_ffi_checksum_method_ffivoicehost_locale(
 ): Short
 external fun uniffi_ari_ffi_checksum_method_ffivoicehost_cloud_stt(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffivoicehost_thread_started(
 ): Short
 external fun uniffi_ari_ffi_checksum_method_ffivoicepipeline_attach_engine(
 ): Short
@@ -1873,6 +1881,8 @@ external fun uniffi_ari_ffi_fn_method_ffivoicehost_locale(`ptr`: Long,uniffi_out
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ffivoicehost_cloud_stt(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_ffivoicehost_thread_started(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 external fun uniffi_ari_ffi_fn_clone_ffivoicepipeline(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
 external fun uniffi_ari_ffi_fn_free_ffivoicepipeline(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -2502,6 +2512,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ffivoicehost_cloud_stt() != 28900.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffivoicehost_thread_started() != 14108.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ffivoicepipeline_attach_engine() != 4953.toShort()) {
@@ -10683,6 +10696,15 @@ public interface FfiVoiceHost {
      */
     fun `cloudStt`(): FfiCloudSttSetup?
     
+    /**
+     * First thing on every thread the pipeline starts that calls back here.
+     * Keep the thread attached to the VM for its life (JNA's
+     * `Native.detach(false)`): detached after each callback, a callback that
+     * calls back into the pipeline loses its thread when the inner one
+     * returns, and ART aborts.
+     */
+    fun `threadStarted`()
+    
     companion object
 }
 
@@ -10863,6 +10885,25 @@ open class FfiVoiceHostImpl: Disposable, AutoCloseable, FfiVoiceHost
     
 
     
+    /**
+     * First thing on every thread the pipeline starts that calls back here.
+     * Keep the thread attached to the VM for its life (JNA's
+     * `Native.detach(false)`): detached after each callback, a callback that
+     * calls back into the pipeline loses its thread when the inner one
+     * returns, and ART aborts.
+     */override fun `threadStarted`()
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffivoicehost_thread_started(
+        it,
+        _status)
+}
+    }
+    
+    
+
+    
 
     
 
@@ -10938,6 +10979,17 @@ internal object uniffiCallbackInterfaceFfiVoiceHost {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
+    internal object `threadStarted`: UniffiCallbackInterfaceFfiVoiceHostMethod5 {
+        override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeFfiVoiceHost.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`threadStarted`(
+                )
+            }
+            val writeReturn = { _: Unit -> Unit }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
 
     internal object uniffiFree: UniffiCallbackInterfaceFree {
         override fun callback(handle: Long) {
@@ -10959,6 +11011,7 @@ internal object uniffiCallbackInterfaceFfiVoiceHost {
         `log`,
         `locale`,
         `cloudStt`,
+        `threadStarted`,
     )
 
     // Registers the foreign callback with the Rust side.
