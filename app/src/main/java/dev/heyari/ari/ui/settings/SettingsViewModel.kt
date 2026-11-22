@@ -137,7 +137,6 @@ data class SettingsState(
     val wakeWords: List<WakeWordOption> = emptyList(),
     val wakeWordSensitivity: FfiWakeSensitivity = wakeSensitivityDefault(),
     val wakeSpeechCheck: Boolean = true,
-    val quietWake: Boolean = true,
     val llmModels: List<LlmModelStatus> = emptyList(),
     /** The memory this phone was sold with, in GB; null when Android won't say. */
     val phoneMemoryGb: Int? = null,
@@ -252,11 +251,6 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.wakeSpeechCheck.collect { on ->
                 _state.update { it.copy(wakeSpeechCheck = on) }
-            }
-        }
-        viewModelScope.launch {
-            settingsRepository.quietWake.collect { on ->
-                _state.update { it.copy(quietWake = on) }
             }
         }
         viewModelScope.launch(Dispatchers.IO) {
@@ -1078,13 +1072,6 @@ class SettingsViewModel @Inject constructor(
     fun setWakeSpeechCheck(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setWakeSpeechCheck(enabled)
-            WakeWordService.restartIfRunning(application)
-        }
-    }
-
-    fun setQuietWake(enabled: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.setQuietWake(enabled)
             WakeWordService.restartIfRunning(application)
         }
     }

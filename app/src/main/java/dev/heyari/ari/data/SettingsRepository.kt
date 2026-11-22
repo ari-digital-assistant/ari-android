@@ -179,20 +179,6 @@ class SettingsRepository @Inject constructor(
     }
 
     /**
-     * Whether a wake stays unseen and silent until its transcript has passed
-     * the name check. On by default: a false wake then shows nothing at all.
-     * The switch is there for comparison, and for anyone who wants the chime
-     * the moment they say the phrase.
-     */
-    val quietWake: Flow<Boolean> = context.dataStore.data.map { prefs ->
-        prefs[KEY_QUIET_WAKE] ?: true
-    }.distinctUntilChanged()
-
-    suspend fun setQuietWake(enabled: Boolean) {
-        context.dataStore.edit { prefs -> prefs[KEY_QUIET_WAKE] = enabled }
-    }
-
-    /**
      * Whether Ari may tighten its own sensitivity when it keeps waking for
      * nothing. Default off: it changes behaviour the user did not ask for on
      * the strength of something they did not report.
@@ -1006,7 +992,6 @@ class SettingsRepository @Inject constructor(
         private val KEY_WAKE_LADDER = stringPreferencesKey("wake_ladder")
         private val KEY_TUNE_DURING_NORMAL_USE = booleanPreferencesKey("tune_during_normal_use")
         private val KEY_WAKE_SPEECH_CHECK = booleanPreferencesKey("wake_speech_check")
-        private val KEY_QUIET_WAKE = booleanPreferencesKey("quiet_wake")
         private val KEY_FALSE_WAKE_LOG = stringPreferencesKey("false_wake_log")
         private val KEY_FALSE_WAKE_NOTIFIED_AT = longPreferencesKey("false_wake_notified_at")
         private val KEY_LADDER_TIGHTENED_AT = longPreferencesKey("ladder_tightened_at")
@@ -1072,7 +1057,7 @@ class SettingsRepository @Inject constructor(
             KEY_LISTENING_MODE, KEY_LISTENING_CONDITIONS, KEY_LISTENING_SCHEDULES, KEY_LISTENING_PLACES,
         ).mapTo(HashSet()) { it.name }
         private val EXPORTED_BOOLEANS = listOf(
-            KEY_TUNE_DURING_NORMAL_USE, KEY_WAKE_SPEECH_CHECK, KEY_QUIET_WAKE, KEY_START_ON_BOOT,
+            KEY_TUNE_DURING_NORMAL_USE, KEY_WAKE_SPEECH_CHECK, KEY_START_ON_BOOT,
             KEY_KEEP_WAKE_AUDIO, KEY_KEEP_FALSE_TRIGGER_AUDIO, KEY_KEEP_UTTERANCE_AUDIO, KEY_KEEP_EVERYTHING_AUDIO,
             KEY_SHARE_WAKE_AUDIO, KEY_SHARE_FALSE_TRIGGER_AUDIO, KEY_SHARE_UTTERANCE_AUDIO, KEY_SHARE_EVERYTHING_AUDIO,
             KEY_BARGE_IN_ENABLED, KEY_CONVERSATION_MEMORY_ENABLED, KEY_LLM_USE_GPU, KEY_HANDOFF_ENABLED,

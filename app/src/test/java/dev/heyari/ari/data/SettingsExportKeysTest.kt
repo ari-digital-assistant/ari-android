@@ -53,8 +53,14 @@ class SettingsExportKeysTest {
 
     @Test
     fun `typed keys export as their own type`() {
-        assertEquals(Boolean::class, SettingsRepository.exportedType("quiet_wake"))
+        assertEquals(Boolean::class, SettingsRepository.exportedType("pure_black"))
         assertEquals(String::class, SettingsRepository.exportedType("listening_places"))
+    }
+
+    @Test
+    fun `a setting that no longer exists is skipped when an older export is imported`() {
+        // The "Wait until Ari hears its name" switch, removed when quiet wakes became the only kind.
+        assertNull(SettingsRepository.exportedType("quiet_wake"))
     }
 
     @Test

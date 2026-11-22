@@ -79,11 +79,6 @@ class WakeWordService : Service() {
     // capture loop pushes. Built in onCreate, once injection has succeeded.
     private lateinit var pipeline: FfiVoicePipeline
 
-    // Whether a wake starts the voice session unseen, read with the rest of the
-    // wake settings when the microphone opens.
-    @Volatile
-    private var quietWake: Boolean = false
-
     /**
      * The policy's latest word on whether the mic should be open. Seeded
      * synchronously in [onStartCommand] from the stored preferences alone —
@@ -450,7 +445,6 @@ class WakeWordService : Service() {
         val sensitivityName = runBlocking { settingsRepository.wakeWordSensitivity(model.id).first() }
         val storedLadder = runBlocking { settingsRepository.wakeLadder(model.id).first() }
         val speechCheck = runBlocking { settingsRepository.wakeSpeechCheck.first() }
-        quietWake = runBlocking { settingsRepository.quietWake.first() }
         // The ladder this phone measured for itself, where there is one. Read
         // here rather than held as a field so a tuning session or a self-
         // tightening takes effect on the next mic cycle without the service
@@ -463,7 +457,8 @@ class WakeWordService : Service() {
                     model = wakeWord,
                     sensitivity = sensitivity,
                     speechCheck = speechCheck,
-                    quietWake = quietWake,
+                    // Always: a wake stays unseen and silent until it has heard its name.
+                    quietWake = true,
                 ),
             )
         } catch (e: FfiVoiceException) {
@@ -633,14 +628,11 @@ class WakeWordService : Service() {
             return
         }
 
-        if (quietWake) {
-            // The session listens unseen and opens the overlay itself once the
-            // transcript has passed the name check. Posted to the main thread,
-            // where the overlay would otherwise have started it.
-            mainHandler.post { voiceSession.start(verifyWake = true, quiet = true) }
-            return
-        }
-        if (!launchVoiceOverlay(verifyWake = true)) wakeLog.outcome(FfiWakeOutcome.NOT_SHOWN)
+        // The session listens unseen and opens the overlay itself once the
+        // transcript has passed the name check, so a false wake shows nothing
+        // and the chime never plays over the words still being spoken. Posted
+        // to the main thread, where the overlay would otherwise have started it.
+        mainHandler.post { voiceSession.start(verifyWake = true, quiet = true) }
     }
 
     /**

@@ -8,7 +8,7 @@ class SettingsExportFormatTest {
     private val export = SettingsExport(
         settings = mapOf(
             "stt_mode" to "openai",
-            "quiet_wake" to false,
+            "pure_black" to false,
             "personality" to "Dry, \"brief\", British.",
             "assistant_config_dev.heyari.weather_units" to "metric",
         ),

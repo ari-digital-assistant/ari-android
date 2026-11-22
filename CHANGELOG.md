@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead of Ari's app info page, three taps further away. It also asks for precise
   location together with approximate, as Android 12 and up expect.
 
+### Removed
+
+- The "Wait until Ari hears its name" switch. Ari now always stays hidden and silent
+  until it has heard its name. With the switch off, the chime played over the end of
+  what you were saying, which could make Ari mishear its own name and ignore you.
+
 ### Fixed
 
 - Cloud speech-to-text works with a self-hosted server at a plain `http://` address,
