@@ -7,6 +7,7 @@ import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.R
 import dev.heyari.ari.actions.ActionHandler
+import dev.heyari.ari.data.card.CardAction
 import dev.heyari.ari.data.conversation.ConversationLogRepository
 import dev.heyari.ari.model.Attachment
 import dev.heyari.ari.model.InputSource
@@ -51,7 +52,8 @@ sealed interface VoiceState {
     data class Preparing(val message: String) : VoiceState
     data class Listening(val partial: String) : VoiceState
     data object Thinking : VoiceState
-    data class Responding(val text: String) : VoiceState
+    /** [cards] are the answer's skill cards, shown under [text]. */
+    data class Responding(val text: String, val cards: List<Attachment.Card> = emptyList()) : VoiceState
     data class Error(val message: String) : VoiceState
 }
 
@@ -252,6 +254,24 @@ class VoiceSession @Inject constructor(
 
     val isActive: Boolean get() = sessionJob?.isActive == true
 
+    /**
+     * Bumped by each [start] that begins a session, so an overlay can tell the
+     * session it showed from a later one.
+     */
+    var sessionId = 0
+        private set
+
+    // An answer's cards, left on the overlay for a while after its session
+    // has ended, so they can be read and their buttons used with the mic back
+    // on wake duty. Cleared when the time runs out, by dismiss(), and by the
+    // next start().
+    private val _lingering = MutableStateFlow<VoiceState.Responding?>(null)
+    val lingering: StateFlow<VoiceState.Responding?> = _lingering.asStateFlow()
+    private var lingerJob: Job? = null
+
+    // Set once the user touches an answer's cards: they then stay until closed.
+    private var held = false
+
     // Last moment we saw user/STT activity. Read by the silence watcher; reset
     // by rearmForReply() so a re-armed reply gets a full fresh listening window.
     // A field (not a local in start()) precisely so re-arm can refresh it.
@@ -360,6 +380,8 @@ class VoiceSession @Inject constructor(
             Log.w(TAG, "VoiceSession.start() called while already active — ignoring")
             return
         }
+        sessionId += 1
+        dropCards()
         verifyWakePending = verifyWake
         wakeOutcomePending = verifyWake
         // Snapshot now rather than at detection time: the overlay launch costs
@@ -829,8 +851,9 @@ class VoiceSession @Inject constructor(
                                 )
                             )
                         }
-                        _state.value = VoiceState.Responding(outcome.text)
-                        speakThenDismiss(outcome.text)
+                        val cards = outcome.attachments.filterIsInstance<Attachment.Card>()
+                        _state.value = VoiceState.Responding(outcome.text, cards)
+                        speakThenDismiss(outcome.text, cards = cards)
                         return
                     }
                 }
@@ -982,7 +1005,8 @@ class VoiceSession @Inject constructor(
             )
         }
 
-        _state.value = VoiceState.Responding(responseText)
+        val cards = attachments.filterIsInstance<Attachment.Card>()
+        _state.value = VoiceState.Responding(responseText, cards)
 
         if (exit) {
             // Speak the ack, then leave the mode and close the session.
@@ -1048,7 +1072,7 @@ class VoiceSession @Inject constructor(
             reply.speakAndAwait(responseText)
             rearmForReply()
         } else {
-            speakThenDismiss(responseText, reply)
+            speakThenDismiss(responseText, reply, cards)
         }
     }
 
@@ -1059,14 +1083,63 @@ class VoiceSession @Inject constructor(
      * character count: [dismiss] stops the TTS engine, so a reply that outran
      * the guess — a full forecast easily does — got its last few words cut off.
      * An answer [reply] already started a sentence at a time is waited out.
+     *
+     * An answer with [cards] leaves them on the overlay after the session ends,
+     * for [CARD_DWELL_MS], or until closed once touched ([holdCards]).
      */
-    private suspend fun speakThenDismiss(text: String, reply: SpeechOutput.Reply = speechOutput.Reply()) {
+    private suspend fun speakThenDismiss(
+        text: String,
+        reply: SpeechOutput.Reply = speechOutput.Reply(),
+        cards: List<Attachment.Card> = emptyList(),
+    ) {
         val spokenFrom = System.currentTimeMillis()
         reply.speakAndAwait(text)
         // A floor, not a ceiling: "Yes" is spoken and done inside a second, and
         // the overlay would blink out before anyone could read it.
         delay(MIN_RESPONSE_DWELL_MS - (System.currentTimeMillis() - spokenFrom))
-        dismiss()
+        if (cards.isEmpty()) {
+            dismiss()
+            return
+        }
+        _lingering.value = VoiceState.Responding(text, cards)
+        if (!held) {
+            lingerJob = scope.launch {
+                delay(CARD_DWELL_MS)
+                dropCards()
+            }
+        }
+        dismiss(keepCards = true)
+    }
+
+    /** The user touched the answer's cards: keep them until closed. */
+    fun holdCards() {
+        held = true
+        lingerJob?.cancel()
+        lingerJob = null
+    }
+
+    /** Take any lingering cards off the overlay, which then closes. */
+    fun dropCards() {
+        lingerJob?.cancel()
+        lingerJob = null
+        held = false
+        _lingering.value = null
+    }
+
+    /**
+     * A button pressed on a card the overlay shows, handled as the chat
+     * handles one: any reply joins the conversation log and is read out.
+     */
+    fun onCardAction(cardId: String, action: CardAction) {
+        scope.launch {
+            val outcome = cardActionDispatcher.dispatch(cardId, action)
+            if (outcome !is dev.heyari.ari.actions.CardActionDispatcher.Outcome.Spoken) return@launch
+            if (outcome.text.isBlank() && outcome.attachments.isEmpty()) return@launch
+            logRepository.append(
+                Message(text = outcome.text, isFromUser = false, attachments = outcome.attachments)
+            )
+            if (outcome.text.isNotBlank()) speechOutput.speak(outcome.text)
+        }
     }
 
     /**
@@ -1145,7 +1218,8 @@ class VoiceSession @Inject constructor(
         0L
     }
 
-    fun dismiss() {
+    /** [keepCards] leaves an answer's cards on the overlay ([lingering]). */
+    fun dismiss(keepCards: Boolean = false) {
         Log.i(TAG, "Dismissing voice session")
         logWakeOutcome(WakeOutcome.DISMISSED)
         hidden = false
@@ -1172,6 +1246,7 @@ class VoiceSession @Inject constructor(
         speechOutput.stop()
         sessionJob?.cancel()
         sessionJob = null
+        if (!keepCards) dropCards()
         _state.value = VoiceState.Idle
     }
 
@@ -1455,6 +1530,8 @@ class VoiceSession @Inject constructor(
         // How long a spoken answer stays on the overlay at minimum, for replies
         // short enough that TTS finishes before the user has read them.
         private const val MIN_RESPONSE_DWELL_MS = 3_000L
+        // How long an answer's cards stay on the overlay after it, untouched.
+        private const val CARD_DWELL_MS = 10_000L
         // 2 s pre-roll snapshot at session start — see the comment at the
         // capture site in start() for why this stays within the wake phrase.
         private const val PREROLL_CAPTURE_SECONDS = 2.0f

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Skill cards, such as the weather and timers, show in the voice overlay as well as in
+  the chat. They stay about 10 seconds after Ari finishes speaking, or until closed once
+  touched, and their buttons work there. "Hey Ari" works while a card is showing.
 - Assistant answers show their formatting: bold, lists, headings, code and tables, as
   the model wrote them. Long-pressing a formatted answer also offers Copy as Markdown;
   Copy still copies plain text

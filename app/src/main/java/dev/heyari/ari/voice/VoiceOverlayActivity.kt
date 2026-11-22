@@ -9,9 +9,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
+import dev.heyari.ari.assets.AssetResolver
 import dev.heyari.ari.data.SettingsRepository
+import dev.heyari.ari.data.card.CardStateRepository
 import dev.heyari.ari.ui.theme.AriTheme
 import dev.heyari.ari.wakeword.WakeWordService
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -23,7 +26,8 @@ import javax.inject.Inject
  *
  * The activity does not own the voice session lifecycle — [VoiceSession] is a
  * Hilt singleton, the activity just observes its state and finishes itself
- * when the state returns to [VoiceState.Idle].
+ * when the state returns to [VoiceState.Idle] with no answer's cards left
+ * on it ([VoiceSession.lingering]).
  */
 @AndroidEntryPoint
 class VoiceOverlayActivity : ComponentActivity() {
@@ -33,6 +37,16 @@ class VoiceOverlayActivity : ComponentActivity() {
 
     @Inject
     lateinit var settingsRepository: SettingsRepository
+
+    @Inject
+    lateinit var cardRepository: CardStateRepository
+
+    @Inject
+    lateinit var assetResolver: AssetResolver
+
+    // The session this overlay showed. A wake while an answer's cards linger
+    // starts the next session, which this overlay must neither show nor end.
+    private var session = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,12 +66,22 @@ class VoiceOverlayActivity : ComponentActivity() {
         voiceSession.start(
             verifyWake = intent.getBooleanExtra(WakeWordService.EXTRA_VERIFY_WAKE, false)
         )
+        session = voiceSession.sessionId
 
         lifecycleScope.launch {
-            voiceSession.state.collect { state ->
-                if (state is VoiceState.Idle) {
-                    Log.i(TAG, "Voice session returned to Idle — finishing activity")
-                    finishAndRemoveTask()
+            combine(voiceSession.state, voiceSession.lingering, ::Pair).collect { (state, lingering) ->
+                when {
+                    // A later session: a quiet wake, unseen until it hears its
+                    // name, or one with an overlay of its own replacing this.
+                    voiceSession.sessionId != session -> if (!isFinishing) finishAndRemoveTask()
+                    state !is VoiceState.Idle -> Unit
+                    lingering == null -> {
+                        Log.i(TAG, "Voice session returned to Idle — finishing activity")
+                        finishAndRemoveTask()
+                    }
+                    // Only the answer's cards are left: the screen may sleep as
+                    // usual, which closes them (onStop).
+                    else -> window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 }
             }
         }
@@ -66,18 +90,33 @@ class VoiceOverlayActivity : ComponentActivity() {
             val pureBlack by settingsRepository.pureBlack.collectAsState(initial = false)
             AriTheme(pureBlack = pureBlack) {
                 val state by voiceSession.state.collectAsState()
+                val lingering by voiceSession.lingering.collectAsState()
                 VoiceOverlayContent(
-                    state = state,
-                    onDismiss = { voiceSession.dismiss() },
+                    state = if (state is VoiceState.Idle) lingering ?: state else state,
+                    onDismiss = {
+                        if (state is VoiceState.Idle) voiceSession.dropCards() else voiceSession.dismiss()
+                    },
+                    cardRepository = cardRepository,
+                    assetResolver = assetResolver,
+                    onCardAction = voiceSession::onCardAction,
+                    onHoldCards = voiceSession::holdCards,
                 )
             }
         }
     }
 
+    override fun onStop() {
+        super.onStop()
+        // An answer's cards go once the overlay is out of sight: the screen
+        // went off, or the user went elsewhere.
+        if (voiceSession.sessionId == session && !voiceSession.isActive) voiceSession.dropCards()
+    }
+
     override fun onDestroy() {
         // Make sure the session ends if the activity is killed by something
-        // outside our control (back press, system kill, etc.).
-        if (voiceSession.isActive) {
+        // outside our control (back press, system kill, etc.). Only this
+        // overlay's own session: a later one may already be running.
+        if (voiceSession.isActive && voiceSession.sessionId == session) {
             voiceSession.dismiss()
         }
         super.onDestroy()

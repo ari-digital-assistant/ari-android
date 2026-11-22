@@ -11,10 +11,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -27,16 +31,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.res.stringResource
 import dev.heyari.ari.R
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.heyari.ari.assets.AssetResolver
+import dev.heyari.ari.data.card.CardAction
+import dev.heyari.ari.data.card.CardStateRepository
+import dev.heyari.ari.ui.conversation.GenericCard
 import dev.heyari.ari.ui.conversation.ambientCardHalo
 import dev.heyari.ari.ui.conversation.ambientComposerBorder
 import dev.heyari.ari.ui.conversation.toOverlayAmbientState
@@ -45,8 +57,13 @@ import dev.heyari.ari.ui.conversation.toOverlayAmbientState
 fun VoiceOverlayContent(
     state: VoiceState,
     onDismiss: () -> Unit,
+    cardRepository: CardStateRepository,
+    assetResolver: AssetResolver,
+    onCardAction: (cardId: String, action: CardAction) -> Unit,
+    onHoldCards: () -> Unit,
 ) {
     val ambient = state.toOverlayAmbientState()
+    val showsCards = state is VoiceState.Responding && state.cards.isNotEmpty()
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -56,7 +73,17 @@ fun VoiceOverlayContent(
             .ambientCardHalo(ambient, cornerRadius = 20.dp, inset = 12.dp)
             .padding(12.dp)
             // Border hugs the card edge (after padding, so its node == the card).
-            .ambientComposerBorder(ambient, cornerRadius = 20.dp),
+            .ambientComposerBorder(ambient, cornerRadius = 20.dp)
+            // Any touch on an answer's cards keeps them up. Watched on the way
+            // down without being consumed, so the cards' own buttons still work.
+            .then(
+                if (!showsCards) Modifier else Modifier.pointerInput(onHoldCards) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        onHoldCards()
+                    }
+                }
+            ),
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.primaryContainer,
         tonalElevation = 8.dp,
@@ -145,6 +172,28 @@ fun VoiceOverlayContent(
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
+                    if (state.cards.isNotEmpty()) {
+                        // As tall as the cards need, up to the room the screen
+                        // has left; only taller than that do they scroll.
+                        Column(
+                            modifier = Modifier
+                                .weight(1f, fill = false)
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            for (attachment in state.cards) {
+                                val cardFlow = remember(attachment.cardId, cardRepository) {
+                                    cardRepository.observe(attachment.cardId)
+                                }
+                                val card = cardFlow.collectAsState(initial = null).value
+                                GenericCard(
+                                    card = card,
+                                    onAction = { action -> onCardAction(attachment.cardId, action) },
+                                    assetResolver = assetResolver,
+                                )
+                            }
+                        }
+                    }
                 }
                 is VoiceState.Error -> {
                     Text(
