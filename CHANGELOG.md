@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Long-pressing a message while the keyboard was open closed the keyboard, so the
+  message and its menu jumped down the screen mid-press. The keyboard now stays open.
 - On Android 10 and 11, which have no wallpaper colours, Ari showed a leftover purple
   theme. It now uses an orange theme taken from its logo.
 

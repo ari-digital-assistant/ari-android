@@ -7,6 +7,7 @@ import android.icu.text.DisplayContext
 import android.icu.text.RelativeDateTimeFormatter
 import android.icu.util.ULocale
 import android.text.format.DateUtils
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,6 +50,7 @@ import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.PopupProperties
 import com.halilibo.richtext.commonmark.Markdown
 import com.halilibo.richtext.ui.material3.RichText
 import dev.heyari.ari.R
@@ -167,7 +169,16 @@ fun MessageBubble(
                 }
             }
 
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+            // The menu doesn't take focus: a focused popup closes the keyboard,
+            // and the chat moving down under it shifted the bubble and the menu
+            // mid-press. Unfocused, it doesn't get the back press either, so
+            // that's handled here.
+            BackHandler(enabled = menuOpen) { menuOpen = false }
+            DropdownMenu(
+                expanded = menuOpen,
+                onDismissRequest = { menuOpen = false },
+                properties = PopupProperties(focusable = false),
+            ) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.message_menu_copy)) },
                     onClick = {
