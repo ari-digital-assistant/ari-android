@@ -22,7 +22,6 @@ import dev.heyari.ari.stt.UtteranceTurn
 import dev.heyari.ari.tts.SpeechOutput
 import dev.heyari.ari.tts.pleaseWaitPhrase
 import dev.heyari.ari.tts.pleaseRepeatPhrase
-import dev.heyari.ari.wakeword.WakeOutcome
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -43,6 +42,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import uniffi.ari_ffi.FfiEarlyNameCheck
 import uniffi.ari_ffi.FfiResponse
+import uniffi.ari_ffi.FfiWakeOutcome
 
 /**
  * Possible states a voice interaction can be in. Drives the overlay UI.
@@ -410,7 +410,7 @@ class VoiceSession @Inject constructor(
         sessionJob = scope.launch {
             try {
                 if (!modelLoaded) {
-                    logWakeOutcome(WakeOutcome.COLD_START)
+                    logWakeOutcome(FfiWakeOutcome.COLD_START)
                     // Cold start: acknowledge, wait for the warm-up, then ask
                     // the user to repeat — their words have already aged out of
                     // the 2 s CaptureBus ring buffer, so there's nothing to
@@ -496,7 +496,7 @@ class VoiceSession @Inject constructor(
                             if (heardSpeech) dev.heyari.ari.wakeword.WakeCaptureHook.REJECTED
                             else dev.heyari.ari.wakeword.WakeCaptureHook.SILENT,
                         )
-                        endWake(if (heardSpeech) WakeOutcome.REJECTED else WakeOutcome.SILENT)
+                        endWake(if (heardSpeech) FfiWakeOutcome.REJECTED else FfiWakeOutcome.SILENT)
                         dismiss()
                     }
                 }
@@ -534,7 +534,7 @@ class VoiceSession @Inject constructor(
                                 // The count is kept even when the audio is not
                                 // — it is the event that prices the wake word,
                                 // and the recording is only for retraining it.
-                                endWake(WakeOutcome.SILENT)
+                                endWake(FfiWakeOutcome.SILENT)
                             }
                             dismiss()
                             return@launch
@@ -660,7 +660,7 @@ class VoiceSession @Inject constructor(
                                         sttState.raw.orEmpty(),
                                         dev.heyari.ari.wakeword.WakeCaptureHook.REJECTED,
                                     )
-                                    endWake(WakeOutcome.REJECTED)
+                                    endWake(FfiWakeOutcome.REJECTED)
                                     dismiss()
                                     return@collect
                                 }
@@ -672,7 +672,7 @@ class VoiceSession @Inject constructor(
                                 // a confirmed true positive — record the wake
                                 // moment (pre-roll) before the slot is cleared.
                                 // The full utterance is captureUtterance's job.
-                                logWakeOutcome(WakeOutcome.ACCEPTED)
+                                logWakeOutcome(FfiWakeOutcome.ACCEPTED)
                                 captureAcceptedWake(wakePreroll, sttState.raw.orEmpty())
                                 verifyWakePending = false
                                 wakePreroll = null
@@ -704,7 +704,7 @@ class VoiceSession @Inject constructor(
                                 // silence would read as Ari ignoring them.
                                 reveal()
                                 logWakeListenEnd()
-                                logWakeOutcome(WakeOutcome.ERROR)
+                                logWakeOutcome(FfiWakeOutcome.ERROR)
                                 _state.value = VoiceState.Error(sttState.message)
                                 silenceWatcher.cancel()
                                 delay(2500)
@@ -722,7 +722,7 @@ class VoiceSession @Inject constructor(
                                     // same audio and Ari is showing: the user
                                     // said "Hey Ari" and waits for the chime.
                                     speechRecognizer.reset()
-                                    logWakeOutcome(WakeOutcome.ACCEPTED)
+                                    logWakeOutcome(FfiWakeOutcome.ACCEPTED)
                                     captureAcceptedWake(wakePreroll, "")
                                     verifyWakePending = false
                                     wakePreroll = null
@@ -754,7 +754,7 @@ class VoiceSession @Inject constructor(
                 if (t is kotlinx.coroutines.CancellationException) throw t
                 Log.e(TAG, "Voice session failed", t)
                 reveal()
-                logWakeOutcome(WakeOutcome.ERROR)
+                logWakeOutcome(FfiWakeOutcome.ERROR)
                 _state.value = VoiceState.Error(t.message ?: "Unknown error")
                 delay(2500)
                 dismiss()
@@ -1221,7 +1221,7 @@ class VoiceSession @Inject constructor(
     /** [keepCards] leaves an answer's cards on the overlay ([lingering]). */
     fun dismiss(keepCards: Boolean = false) {
         Log.i(TAG, "Dismissing voice session")
-        logWakeOutcome(WakeOutcome.DISMISSED)
+        logWakeOutcome(FfiWakeOutcome.DISMISSED)
         hidden = false
         nameHeardEarly = false
         // Drop any reply the engine was still waiting on. No-op on the normal
@@ -1263,7 +1263,7 @@ class VoiceSession @Inject constructor(
      * Write how this wake ended to the wake log, unless something already has.
      * Returns whether this call was the one that ended it.
      */
-    private fun logWakeOutcome(outcome: WakeOutcome): Boolean {
+    private fun logWakeOutcome(outcome: FfiWakeOutcome): Boolean {
         if (!wakeOutcomePending) return false
         wakeOutcomePending = false
         wakeLog.outcome(outcome, hidden)
@@ -1300,15 +1300,15 @@ class VoiceSession @Inject constructor(
      * counted, whichever path noticed it: fed from the silence timeout alone,
      * the warning never fired on cloud transcription, which cannot reach it.
      */
-    private suspend fun endWake(outcome: WakeOutcome) {
+    private suspend fun endWake(outcome: FfiWakeOutcome) {
         val seen = !hidden
-        if (logWakeOutcome(outcome) && outcome.falseWake && seen) falseWakeMonitor.onFalseWake()
+        if (logWakeOutcome(outcome) && outcome.falseWake() && seen) falseWakeMonitor.onFalseWake()
     }
 
     /** A wake with no speech in it: keep the audio if the user asked to, and count it. */
     private suspend fun onNoSpeechWake(pcm: ShortArray?) {
         captureFalseTrigger(pcm, "", dev.heyari.ari.wakeword.WakeCaptureHook.NO_SPEECH)
-        endWake(WakeOutcome.NO_SPEECH)
+        endWake(FfiWakeOutcome.NO_SPEECH)
     }
 
     /**

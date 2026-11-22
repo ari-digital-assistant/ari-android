@@ -65,9 +65,12 @@ android {
 
     ndkVersion = "28.0.13004108"
 
+    // The wake engines and the speech check's VAD live in ari-engine
+    // (native/voice/), beside the Rust that loads them; this only builds them
+    // for the app's ABIs.
     externalNativeBuild {
         cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
+            path = file("../../ari-engine/native/voice/CMakeLists.txt")
         }
     }
 
@@ -237,6 +240,11 @@ val fetchLiteRtLm = tasks.register("fetchLiteRtLm") {
     }
 }
 android.sourceSets.getByName("main").jniLibs.srcDir(liteRtLmLibs.get().asFile)
+
+// The wake models, openWakeWord's feature models and silero_vad.onnx, with
+// their licences, are the engine's (ari-engine/assets/voice/). The app reads
+// them out of its assets and hands the bytes to the engine.
+android.sourceSets.getByName("main").assets.srcDir("../../ari-engine/assets/voice")
 tasks.matching { it.name.startsWith("merge") && it.name.endsWith("JniLibFolders") }.configureEach {
     dependsOn(fetchLiteRtLm)
 }
