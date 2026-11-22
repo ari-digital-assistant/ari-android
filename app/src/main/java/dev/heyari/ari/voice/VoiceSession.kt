@@ -49,12 +49,12 @@ import uniffi.ari_ffi.FfiIntercepted
 import uniffi.ari_ffi.FfiListenParams
 import uniffi.ari_ffi.FfiLoggedTurn
 import uniffi.ari_ffi.FfiPhrase
-import uniffi.ari_ffi.FfiResponse
 import uniffi.ari_ffi.FfiSessionConfig
 import uniffi.ari_ffi.FfiSessionError
 import uniffi.ari_ffi.FfiSessionHost
 import uniffi.ari_ffi.FfiSessionState
 import uniffi.ari_ffi.FfiSttFailure
+import uniffi.ari_ffi.FfiTypedFinish
 
 /**
  * Possible states a voice interaction can be in. Drives the overlay UI.
@@ -75,34 +75,34 @@ sealed interface VoiceState {
 enum class CaptureMode { NORMAL, CONVERSATION }
 
 /**
- * Did this turn mutate the engine's remembered-fact list (a remember/forget
- * command)? Only [FfiResponse.Text] and [FfiResponse.Action] carry the flag;
- * everything else can never change facts. For typed turns; the voice
- * session decides its own.
+ * What a typed turn in the engine tells the chat. [turn] tells concurrent
+ * turns apart.
  */
-internal fun shouldPersistFacts(response: FfiResponse): Boolean = when (response) {
-    is FfiResponse.Text -> response.factsChanged
-    is FfiResponse.Action -> response.factsChanged
-    else -> false
-}
+sealed interface TypedEvent {
+    val turn: ULong
 
-/**
- * Did the user clear the conversation this turn ("clear history")? The engine
- * has already forgotten it; the caller clears the chat log to match.
- */
-internal fun shouldClearConversation(response: FfiResponse): Boolean = when (response) {
-    is FfiResponse.Text -> response.clearConversation
-    is FfiResponse.Action -> response.clearConversation
-    else -> false
+    /** The words have gone to the engine. */
+    data class Thinking(override val turn: ULong) : TypedEvent
+
+    /** An on-device answer while it is written, each replacing the last. */
+    data class AnswerText(override val turn: ULong, val soFar: String, val markdown: String?) : TypedEvent
+
+    /**
+     * The turn is over. [clear]: empty the log, request included, first.
+     * [reply] takes the place of the answer shown while it was written, or
+     * is added when there was none.
+     */
+    data class Finished(override val turn: ULong, val clear: Boolean, val reply: Message?) : TypedEvent
 }
 
 /**
  * The voice session, as the phone sees it. The session itself, what a wake,
  * a tap on the mic or a dictation does from the first word to the last, is
- * the engine's (ari-voice `session`). This is its host: it shows the state
- * the engine hands it on the overlay, plays the cue, speaks, runs actions,
- * stops alerts, answers cards, writes the conversation log, and keeps an
- * answer's cards on screen for a while after it.
+ * the engine's (ari-voice `session`), and so are turns typed into the chat.
+ * This is its host: it shows the state the engine hands it on the overlay,
+ * plays the cue, speaks, runs actions, stops alerts, answers cards, writes
+ * the conversation log, keeps an answer's cards on screen for a while after
+ * it, and passes typed turns' answers to the chat ([typedEvents]).
  *
  * A Hilt singleton, so both [dev.heyari.ari.wakeword.WakeWordService] (which
  * starts quiet wakes) and [VoiceOverlayActivity] (which renders the UI) use
@@ -169,6 +169,10 @@ class VoiceSession @Inject constructor(
     @Volatile
     private var lastResponding: VoiceState.Responding? = null
 
+    // Unlimited, so the engine's thread never waits on the chat.
+    private val _typedEvents = MutableSharedFlow<TypedEvent>(extraBufferCapacity = Int.MAX_VALUE)
+    val typedEvents: SharedFlow<TypedEvent> = _typedEvents.asSharedFlow()
+
     init {
         pipeline.attachSessionHost(this)
         // Settings the session acts on, pushed whenever one changes.
@@ -226,6 +230,19 @@ class VoiceSession @Inject constructor(
     /** Cancel an in-progress dictation. No transcript, so nothing is submitted. */
     fun stopDictation() {
         pipeline.stopDictation()
+    }
+
+    /**
+     * A turn typed into the chat, or dictated into it ([spoken]: Ari says the
+     * answer). The chat shows the words itself; the rest comes on [typedEvents].
+     */
+    fun submitText(text: String, spoken: Boolean) {
+        pipeline.submitText(text, spoken)
+    }
+
+    /** The chat was reset: typed turns in flight say and log nothing more. */
+    fun cancelTyped() {
+        pipeline.cancelTyped()
     }
 
     /** End the session: the overlay was closed. */
@@ -388,27 +405,25 @@ class VoiceSession @Inject constructor(
      * words that match a button on the card on screen (Yes, No, Cancel, or
      * whatever labels the skill chose) press it, as a tap would, unless
      * [cards] is false: the engine waits on a reply to its own question. On the
-     * main thread, where this ran before the session moved.
+     * main thread, where this ran before the session moved. The engine logs
+     * what was said and answered.
      */
     override fun intercept(text: String, cards: Boolean): FfiIntercepted = runBlocking(Dispatchers.Main) {
         alertVoiceIntercept.resolve(text)?.let { alertId ->
-            logRepository.append(Message(text = text, isFromUser = true, source = InputSource.Voice))
             context.startService(AlertService.stopIntent(context, alertId))
             return@runBlocking FfiIntercepted.Alert
         }
         if (!cards) return@runBlocking FfiIntercepted.No
         val match = cardActionVoiceIntercept.resolve(text) ?: return@runBlocking FfiIntercepted.No
-        logRepository.append(Message(text = text, isFromUser = true, source = InputSource.Voice))
         when (val outcome = cardActionDispatcher.dispatch(match.cardId, match.action)) {
             is CardActionDispatcher.Outcome.Silent -> FfiIntercepted.CardSilent
             is CardActionDispatcher.Outcome.Spoken -> {
-                if (outcome.text.isNotBlank() || outcome.attachments.isNotEmpty()) {
-                    logRepository.append(
-                        Message(text = outcome.text, isFromUser = false, attachments = outcome.attachments)
-                    )
-                }
                 turnAttachments = outcome.attachments
-                FfiIntercepted.CardSpoken(outcome.text, outcome.attachments.any { it is Attachment.Card })
+                FfiIntercepted.CardSpoken(
+                    text = outcome.text,
+                    cards = outcome.attachments.any { it is Attachment.Card },
+                    attachments = outcome.attachments.isNotEmpty(),
+                )
             }
         }
     }
@@ -466,6 +481,29 @@ class VoiceSession @Inject constructor(
 
     override fun engineTurnFinished() {
         engineHolder.voiceTurnFinished()
+    }
+
+    override fun typedThinking(turn: ULong) {
+        // A fresh turn: no attachments until its action or card makes some.
+        turnAttachments = emptyList()
+        _typedEvents.tryEmit(TypedEvent.Thinking(turn))
+    }
+
+    override fun answerText(turn: ULong, soFar: String, markdown: String?) {
+        _typedEvents.tryEmit(TypedEvent.AnswerText(turn, soFar, markdown))
+    }
+
+    override fun typedFinished(turn: ULong, finish: FfiTypedFinish) {
+        val reply = finish.reply?.let {
+            Message(
+                text = it.text,
+                markdown = it.markdown,
+                isFromUser = false,
+                attachments = turnAttachments,
+                skillId = it.skillId,
+            )
+        }
+        _typedEvents.tryEmit(TypedEvent.Finished(turn, finish.clear, reply))
     }
 
     /**

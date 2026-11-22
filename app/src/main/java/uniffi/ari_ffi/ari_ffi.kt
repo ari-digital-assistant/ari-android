@@ -739,6 +739,15 @@ internal interface UniffiCallbackInterfaceFfiSessionHostMethod15 : com.sun.jna.C
 internal interface UniffiCallbackInterfaceFfiSessionHostMethod16 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
+internal interface UniffiCallbackInterfaceFfiSessionHostMethod17 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`turn`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+}
+internal interface UniffiCallbackInterfaceFfiSessionHostMethod18 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`turn`: Long,`soFar`: RustBuffer.ByValue,`markdown`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+}
+internal interface UniffiCallbackInterfaceFfiSessionHostMethod19 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`turn`: Long,`finish`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+}
 internal interface UniffiCallbackInterfaceFfiVoiceHostMethod0 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`name`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
@@ -1040,7 +1049,7 @@ internal open class UniffiVTableCallbackInterfaceFfiTasksProvider(
     }
 
 }
-@Structure.FieldOrder("uniffiFree", "uniffiClone", "state", "reveal", "playCue", "speak", "stopSpeaking", "phrase", "captureMode", "loadSpeechModel", "hostListen", "hostStopListen", "intercept", "handleAction", "turnLogged", "factsChanged", "falseWake", "dictated", "engineTurnFinished")
+@Structure.FieldOrder("uniffiFree", "uniffiClone", "state", "reveal", "playCue", "speak", "stopSpeaking", "phrase", "captureMode", "loadSpeechModel", "hostListen", "hostStopListen", "intercept", "handleAction", "turnLogged", "factsChanged", "falseWake", "dictated", "engineTurnFinished", "typedThinking", "answerText", "typedFinished")
 internal open class UniffiVTableCallbackInterfaceFfiSessionHost(
     @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
     @JvmField internal var `uniffiClone`: UniffiCallbackInterfaceClone? = null,
@@ -1061,6 +1070,9 @@ internal open class UniffiVTableCallbackInterfaceFfiSessionHost(
     @JvmField internal var `falseWake`: UniffiCallbackInterfaceFfiSessionHostMethod14? = null,
     @JvmField internal var `dictated`: UniffiCallbackInterfaceFfiSessionHostMethod15? = null,
     @JvmField internal var `engineTurnFinished`: UniffiCallbackInterfaceFfiSessionHostMethod16? = null,
+    @JvmField internal var `typedThinking`: UniffiCallbackInterfaceFfiSessionHostMethod17? = null,
+    @JvmField internal var `answerText`: UniffiCallbackInterfaceFfiSessionHostMethod18? = null,
+    @JvmField internal var `typedFinished`: UniffiCallbackInterfaceFfiSessionHostMethod19? = null,
 ) : Structure() {
     class UniffiByValue(
         `uniffiFree`: UniffiCallbackInterfaceFree? = null,
@@ -1082,7 +1094,10 @@ internal open class UniffiVTableCallbackInterfaceFfiSessionHost(
         `falseWake`: UniffiCallbackInterfaceFfiSessionHostMethod14? = null,
         `dictated`: UniffiCallbackInterfaceFfiSessionHostMethod15? = null,
         `engineTurnFinished`: UniffiCallbackInterfaceFfiSessionHostMethod16? = null,
-    ): UniffiVTableCallbackInterfaceFfiSessionHost(`uniffiFree`,`uniffiClone`,`state`,`reveal`,`playCue`,`speak`,`stopSpeaking`,`phrase`,`captureMode`,`loadSpeechModel`,`hostListen`,`hostStopListen`,`intercept`,`handleAction`,`turnLogged`,`factsChanged`,`falseWake`,`dictated`,`engineTurnFinished`,), Structure.ByValue
+        `typedThinking`: UniffiCallbackInterfaceFfiSessionHostMethod17? = null,
+        `answerText`: UniffiCallbackInterfaceFfiSessionHostMethod18? = null,
+        `typedFinished`: UniffiCallbackInterfaceFfiSessionHostMethod19? = null,
+    ): UniffiVTableCallbackInterfaceFfiSessionHost(`uniffiFree`,`uniffiClone`,`state`,`reveal`,`playCue`,`speak`,`stopSpeaking`,`phrase`,`captureMode`,`loadSpeechModel`,`hostListen`,`hostStopListen`,`intercept`,`handleAction`,`turnLogged`,`factsChanged`,`falseWake`,`dictated`,`engineTurnFinished`,`typedThinking`,`answerText`,`typedFinished`,), Structure.ByValue
 
    internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceFfiSessionHost) {
         `uniffiFree` = other.`uniffiFree`
@@ -1104,6 +1119,9 @@ internal open class UniffiVTableCallbackInterfaceFfiSessionHost(
         `falseWake` = other.`falseWake`
         `dictated` = other.`dictated`
         `engineTurnFinished` = other.`engineTurnFinished`
+        `typedThinking` = other.`typedThinking`
+        `answerText` = other.`answerText`
+        `typedFinished` = other.`typedFinished`
     }
 
 }
@@ -1414,6 +1432,12 @@ external fun uniffi_ari_ffi_checksum_method_ffisessionhost_dictated(
 ): Short
 external fun uniffi_ari_ffi_checksum_method_ffisessionhost_engine_turn_finished(
 ): Short
+external fun uniffi_ari_ffi_checksum_method_ffisessionhost_typed_thinking(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffisessionhost_answer_text(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffisessionhost_typed_finished(
+): Short
 external fun uniffi_ari_ffi_checksum_method_ffivoicehost_load_model(
 ): Short
 external fun uniffi_ari_ffi_checksum_method_ffivoicehost_wake_detected(
@@ -1429,6 +1453,8 @@ external fun uniffi_ari_ffi_checksum_method_ffivoicehost_thread_started(
 external fun uniffi_ari_ffi_checksum_method_ffivoicepipeline_attach_engine(
 ): Short
 external fun uniffi_ari_ffi_checksum_method_ffivoicepipeline_attach_session_host(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffivoicepipeline_cancel_typed(
 ): Short
 external fun uniffi_ari_ffi_checksum_method_ffivoicepipeline_configure_session(
 ): Short
@@ -1465,6 +1491,8 @@ external fun uniffi_ari_ffi_checksum_method_ffivoicepipeline_stop_wake(
 external fun uniffi_ari_ffi_checksum_method_ffivoicepipeline_stt_model_id(
 ): Short
 external fun uniffi_ari_ffi_checksum_method_ffivoicepipeline_stt_model_loaded(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffivoicepipeline_submit_text(
 ): Short
 external fun uniffi_ari_ffi_checksum_method_ffivoicepipeline_unload_stt(
 ): Short
@@ -1865,6 +1893,12 @@ external fun uniffi_ari_ffi_fn_method_ffisessionhost_dictated(`ptr`: Long,`text`
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ffisessionhost_engine_turn_finished(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+external fun uniffi_ari_ffi_fn_method_ffisessionhost_typed_thinking(`ptr`: Long,`turn`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ffisessionhost_answer_text(`ptr`: Long,`turn`: Long,`soFar`: RustBuffer.ByValue,`markdown`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ffisessionhost_typed_finished(`ptr`: Long,`turn`: Long,`finish`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 external fun uniffi_ari_ffi_fn_clone_ffivoicehost(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
 external fun uniffi_ari_ffi_fn_free_ffivoicehost(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -1892,6 +1926,8 @@ external fun uniffi_ari_ffi_fn_constructor_ffivoicepipeline_new(`host`: Long,`wa
 external fun uniffi_ari_ffi_fn_method_ffivoicepipeline_attach_engine(`ptr`: Long,`engine`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ffivoicepipeline_attach_session_host(`ptr`: Long,`host`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ffivoicepipeline_cancel_typed(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ffivoicepipeline_configure_session(`ptr`: Long,`config`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
@@ -1929,6 +1965,8 @@ external fun uniffi_ari_ffi_fn_method_ffivoicepipeline_stt_model_id(`ptr`: Long,
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ffivoicepipeline_stt_model_loaded(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Byte
+external fun uniffi_ari_ffi_fn_method_ffivoicepipeline_submit_text(`ptr`: Long,`text`: RustBuffer.ByValue,`spoken`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 external fun uniffi_ari_ffi_fn_method_ffivoicepipeline_unload_stt(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_clone_ffiwakedetector(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -2499,6 +2537,15 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_engine_turn_finished() != 43048.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_typed_thinking() != 36362.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_answer_text() != 46711.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_typed_finished() != 13993.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ari_ffi_checksum_method_ffivoicehost_load_model() != 4376.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -2521,6 +2568,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ffivoicepipeline_attach_session_host() != 41680.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffivoicepipeline_cancel_typed() != 14676.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ffivoicepipeline_configure_session() != 32410.toShort()) {
@@ -2575,6 +2625,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ffivoicepipeline_stt_model_loaded() != 25175.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffivoicepipeline_submit_text() != 61037.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ffivoicepipeline_unload_stt() != 19184.toShort()) {
@@ -9171,6 +9224,22 @@ public interface FfiSessionHost {
      */
     fun `engineTurnFinished`()
     
+    /**
+     * Typed turn `turn` has gone to the engine.
+     */
+    fun `typedThinking`(`turn`: kotlin.ULong)
+    
+    /**
+     * An on-device answer to typed turn `turn` while it is written, each
+     * call replacing the last.
+     */
+    fun `answerText`(`turn`: kotlin.ULong, `soFar`: kotlin.String, `markdown`: kotlin.String?)
+    
+    /**
+     * Typed turn `turn` is over.
+     */
+    fun `typedFinished`(`turn`: kotlin.ULong, `finish`: FfiTypedFinish)
+    
     companion object
 }
 
@@ -9506,6 +9575,52 @@ open class FfiSessionHostImpl: Disposable, AutoCloseable, FfiSessionHost
     
 
     
+    /**
+     * Typed turn `turn` has gone to the engine.
+     */override fun `typedThinking`(`turn`: kotlin.ULong)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffisessionhost_typed_thinking(
+        it,
+        FfiConverterULong.lower(`turn`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * An on-device answer to typed turn `turn` while it is written, each
+     * call replacing the last.
+     */override fun `answerText`(`turn`: kotlin.ULong, `soFar`: kotlin.String, `markdown`: kotlin.String?)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffisessionhost_answer_text(
+        it,
+        FfiConverterULong.lower(`turn`),FfiConverterString.lower(`soFar`),FfiConverterOptionalString.lower(`markdown`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Typed turn `turn` is over.
+     */override fun `typedFinished`(`turn`: kotlin.ULong, `finish`: FfiTypedFinish)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffisessionhost_typed_finished(
+        it,
+        FfiConverterULong.lower(`turn`),FfiConverterTypeFfiTypedFinish.lower(`finish`),_status)
+}
+    }
+    
+    
+
+    
 
     
 
@@ -9724,6 +9839,45 @@ internal object uniffiCallbackInterfaceFfiSessionHost {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
+    internal object `typedThinking`: UniffiCallbackInterfaceFfiSessionHostMethod17 {
+        override fun callback(`uniffiHandle`: Long,`turn`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeFfiSessionHost.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`typedThinking`(
+                    FfiConverterULong.lift(`turn`),
+                )
+            }
+            val writeReturn = { _: Unit -> Unit }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+    internal object `answerText`: UniffiCallbackInterfaceFfiSessionHostMethod18 {
+        override fun callback(`uniffiHandle`: Long,`turn`: Long,`soFar`: RustBuffer.ByValue,`markdown`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeFfiSessionHost.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`answerText`(
+                    FfiConverterULong.lift(`turn`),
+                    FfiConverterString.lift(`soFar`),
+                    FfiConverterOptionalString.lift(`markdown`),
+                )
+            }
+            val writeReturn = { _: Unit -> Unit }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+    internal object `typedFinished`: UniffiCallbackInterfaceFfiSessionHostMethod19 {
+        override fun callback(`uniffiHandle`: Long,`turn`: Long,`finish`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeFfiSessionHost.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`typedFinished`(
+                    FfiConverterULong.lift(`turn`),
+                    FfiConverterTypeFfiTypedFinish.lift(`finish`),
+                )
+            }
+            val writeReturn = { _: Unit -> Unit }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
 
     internal object uniffiFree: UniffiCallbackInterfaceFree {
         override fun callback(handle: Long) {
@@ -9757,6 +9911,9 @@ internal object uniffiCallbackInterfaceFfiSessionHost {
         `falseWake`,
         `dictated`,
         `engineTurnFinished`,
+        `typedThinking`,
+        `answerText`,
+        `typedFinished`,
     )
 
     // Registers the foreign callback with the Rust side.
@@ -11174,6 +11331,11 @@ public interface FfiVoicePipelineInterface {
     fun `attachSessionHost`(`host`: FfiSessionHost)
     
     /**
+     * The chat was reset: typed turns in flight say and log nothing more.
+     */
+    fun `cancelTyped`()
+    
+    /**
      * The settings the session acts on. Again whenever one changes.
      */
     fun `configureSession`(`config`: FfiSessionConfig)
@@ -11252,6 +11414,13 @@ public interface FfiVoicePipelineInterface {
     fun `sttModelId`(): kotlin.String?
     
     fun `sttModelLoaded`(): kotlin.Boolean
+    
+    /**
+     * A turn typed into the chat, or dictated into it (`spoken`: Ari says
+     * the answer). The chat shows the words itself; the rest comes through
+     * the session host's typed-turn callbacks.
+     */
+    fun `submitText`(`text`: kotlin.String, `spoken`: kotlin.Boolean)
     
     fun `unloadStt`()
     
@@ -11393,6 +11562,21 @@ open class FfiVoicePipeline: Disposable, AutoCloseable, FfiVoicePipelineInterfac
     UniffiLib.uniffi_ari_ffi_fn_method_ffivoicepipeline_attach_session_host(
         it,
         FfiConverterTypeFfiSessionHost.lower(`host`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * The chat was reset: typed turns in flight say and log nothing more.
+     */override fun `cancelTyped`()
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffivoicepipeline_cancel_typed(
+        it,
+        _status)
 }
     }
     
@@ -11665,6 +11849,23 @@ open class FfiVoicePipeline: Disposable, AutoCloseable, FfiVoicePipelineInterfac
     }
     )
     }
+    
+
+    
+    /**
+     * A turn typed into the chat, or dictated into it (`spoken`: Ari says
+     * the answer). The chat shows the words itself; the rest comes through
+     * the session host's typed-turn callbacks.
+     */override fun `submitText`(`text`: kotlin.String, `spoken`: kotlin.Boolean)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffivoicepipeline_submit_text(
+        it,
+        FfiConverterString.lower(`text`),FfiConverterBoolean.lower(`spoken`),_status)
+}
+    }
+    
     
 
     override fun `unloadStt`()
@@ -15738,6 +15939,54 @@ public object FfiConverterTypeFfiTunedSession: FfiConverterRustBuffer<FfiTunedSe
 
 
 /**
+ * How a typed turn ended (`ari_voice::session::TypedFinish`).
+ */
+data class FfiTypedFinish (
+    /**
+     * Empty the log, request included, before the reply.
+     */
+    var `clear`: kotlin.Boolean
+    , 
+    /**
+     * In place of the answer shown while it was written, if there was one,
+     * else added; with the attachments the app holds from this turn.
+     */
+    var `reply`: FfiLoggedReply?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiTypedFinish: FfiConverterRustBuffer<FfiTypedFinish> {
+    override fun read(buf: ByteBuffer): FfiTypedFinish {
+        return FfiTypedFinish(
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalTypeFfiLoggedReply.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiTypedFinish) = (
+            FfiConverterBoolean.allocationSize(value.`clear`) +
+            FfiConverterOptionalTypeFfiLoggedReply.allocationSize(value.`reply`)
+    )
+
+    override fun write(value: FfiTypedFinish, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`clear`, buf)
+            FfiConverterOptionalTypeFfiLoggedReply.write(value.`reply`, buf)
+    }
+}
+
+
+
+/**
  * How to listen for the wake word, from the app's settings.
  */
 data class FfiWakeConfig (
@@ -16473,8 +16722,8 @@ public object FfiConverterTypeFfiHostHeard : FfiConverterRustBuffer<FfiHostHeard
 
 
 /**
- * What the app did with words an alert or a card claimed. It has already
- * acted and written the conversation log.
+ * What the app did with words an alert or a card claimed. It has acted; the
+ * session writes the log.
  */
 sealed class FfiIntercepted {
     
@@ -16487,9 +16736,13 @@ sealed class FfiIntercepted {
     object CardSilent : FfiIntercepted()
     
     
+    /**
+     * `attachments`: the answer has any, which the app holds.
+     */
     data class CardSpoken(
         val `text`: kotlin.String, 
-        val `cards`: kotlin.Boolean) : FfiIntercepted()
+        val `cards`: kotlin.Boolean, 
+        val `attachments`: kotlin.Boolean) : FfiIntercepted()
         
     {
         
@@ -16518,6 +16771,7 @@ public object FfiConverterTypeFfiIntercepted : FfiConverterRustBuffer<FfiInterce
             3 -> FfiIntercepted.CardSilent
             4 -> FfiIntercepted.CardSpoken(
                 FfiConverterString.read(buf),
+                FfiConverterBoolean.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -16549,6 +16803,7 @@ public object FfiConverterTypeFfiIntercepted : FfiConverterRustBuffer<FfiInterce
                 4UL
                 + FfiConverterString.allocationSize(value.`text`)
                 + FfiConverterBoolean.allocationSize(value.`cards`)
+                + FfiConverterBoolean.allocationSize(value.`attachments`)
             )
         }
     }
@@ -16571,6 +16826,7 @@ public object FfiConverterTypeFfiIntercepted : FfiConverterRustBuffer<FfiInterce
                 buf.putInt(4)
                 FfiConverterString.write(value.`text`, buf)
                 FfiConverterBoolean.write(value.`cards`, buf)
+                FfiConverterBoolean.write(value.`attachments`, buf)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }

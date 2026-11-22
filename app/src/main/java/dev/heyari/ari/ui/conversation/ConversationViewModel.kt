@@ -14,8 +14,6 @@ import dev.heyari.ari.R
 import dev.heyari.ari.actions.ActionHandler
 import dev.heyari.ari.actions.AsyncEnvelopeChannel
 import dev.heyari.ari.actions.CardActionDispatcher
-import dev.heyari.ari.actions.AlertVoiceIntercept
-import dev.heyari.ari.actions.CardActionVoiceIntercept
 import dev.heyari.ari.actions.CardAlarmScheduler
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.data.SetupGapFinder
@@ -38,7 +36,6 @@ import dev.heyari.ari.stt.ModelDownloadManager
 import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.stt.SttModelLoader
 import dev.heyari.ari.tts.SpeechOutput
-import dev.heyari.ari.tts.pleaseWaitPhrase
 import dev.heyari.ari.wakeword.WakeWordService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
@@ -54,13 +51,11 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import dev.heyari.ari.di.EngineHolder
+import dev.heyari.ari.voice.TypedEvent
 import dev.heyari.ari.voice.VoiceSession
 import dev.heyari.ari.voice.VoiceState
-import dev.heyari.ari.voice.shouldClearConversation
-import dev.heyari.ari.voice.shouldPersistFacts
 import uniffi.ari_ffi.AssistantRegistry
 import uniffi.ari_ffi.FfiLocationStatus
 import uniffi.ari_ffi.FfiResponse
@@ -85,8 +80,6 @@ class ConversationViewModel @Inject constructor(
     private val logRepository: ConversationLogRepository,
     private val cardAlarmScheduler: CardAlarmScheduler,
     private val asyncEnvelopeChannel: AsyncEnvelopeChannel,
-    private val alertVoiceIntercept: AlertVoiceIntercept,
-    private val cardActionVoiceIntercept: CardActionVoiceIntercept,
     private val cardActionDispatcher: CardActionDispatcher,
     private val locationProvider: LocationProvider,
     private val voiceSession: VoiceSession,
@@ -148,10 +141,9 @@ class ConversationViewModel @Inject constructor(
 
     private var suppressPollUntil = 0L
 
-    /** The in-flight typed-turn coroutine, if any. Tracked so `/reset` can
-     *  cancel it — "terminate the current conversation" means stopping work
-     *  in progress, not just wiping the log. */
-    private var activeTurn: Job? = null
+    /** Answers to typed turns shown while the model writes them, by turn, so
+     *  the finished answer takes their place. Main thread only. */
+    private val answers = mutableMapOf<ULong, Message>()
 
     /** Whether Ari reads its replies out: not to a typed turn, whose answer
      *  the user is already looking at, but to anything spoken. Kept past the
@@ -224,6 +216,51 @@ class ConversationViewModel @Inject constructor(
                 _state.update { it.copy(isDictating = false, inputText = text) }
                 onTextSubmitted(text, InputSource.Voice)
             }
+        }
+        // Typed turns, as the engine runs them. "Thinking" is shown at once,
+        // as the ambient border and the transient dots, and never joins the
+        // log. An on-device answer shows as it is written (ari-android#37).
+        viewModelScope.launch {
+            voiceSession.typedEvents.collect { event ->
+                when (event) {
+                    is TypedEvent.Thinking -> _state.update { it.copy(isThinking = true) }
+                    is TypedEvent.AnswerText -> {
+                        _state.update { it.copy(isThinking = false) }
+                        val previous = answers[event.turn]
+                        val bubble = previous?.copy(text = event.soFar, markdown = event.markdown)
+                            ?: Message(text = event.soFar, markdown = event.markdown, isFromUser = false)
+                        if (previous == null) logRepository.append(bubble) else logRepository.replace(bubble)
+                        answers[event.turn] = bubble
+                    }
+                    is TypedEvent.Finished -> {
+                        _state.update { it.copy(isThinking = false) }
+                        // "Clear history": the engine has already forgotten the
+                        // conversation, so the log goes too, request included,
+                        // leaving just the acknowledgement.
+                        if (event.clear) logRepository.clear()
+                        val shown = answers.remove(event.turn)
+                        event.reply?.let { reply ->
+                            if (shown != null) {
+                                logRepository.replace(
+                                    shown.copy(
+                                        text = reply.text,
+                                        markdown = reply.markdown,
+                                        attachments = reply.attachments,
+                                        skillId = reply.skillId,
+                                    )
+                                )
+                            } else {
+                                logRepository.append(reply)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // A remember or forget command, typed or spoken: the greeting picks
+        // up a captured name the moment the chat is empty again.
+        viewModelScope.launch {
+            settingsRepository.rememberedFacts.drop(1).collect { refreshEmptyState() }
         }
 
         // Mirror the cloud-assistant-needed flag into UI state. The
@@ -318,7 +355,8 @@ class ConversationViewModel @Inject constructor(
      * cancelled turn's model call still holds the engine until it finishes.
      */
     private fun handleReset() {
-        activeTurn?.cancel()
+        voiceSession.cancelTyped()
+        answers.clear()
         viewModelScope.launch(Dispatchers.Default) { engineHolder.peek()?.clearConversation() }
         logRepository.clear()
         _state.update { it.copy(inputText = "", isThinking = false, wakeWordDetected = false) }
@@ -357,162 +395,12 @@ class ConversationViewModel @Inject constructor(
         val speak = source == InputSource.Voice
         speakReplies = speak
 
-        alertVoiceIntercept.resolve(text)?.let { alertId ->
-            application.startService(AlertService.stopIntent(application, alertId))
-            return
-        }
-
-        // If the most recent active card has a button whose id or
-        // label matches the user's word, dispatch that button as if
-        // tapped — short-circuits the engine so "yes" / "no" /
-        // "cancel" / "keep" answer a clarification card naturally
-        // without the assistant ever seeing the word. Skill-agnostic:
-        // any card with actions inherits this UX for free.
-        cardActionVoiceIntercept.resolve(text)?.let { match ->
-            onCardAction(match.cardId, match.action, speak)
-            return
-        }
-
-        activeTurn = viewModelScope.launch(Dispatchers.Default) {
-            // "Thinking" is signalled on two INDEPENDENT channels:
-            //
-            //  - Visual (IMMEDIATE): `isThinking` drives the ambient
-            //    border/aura + the transient ThinkingIndicator dots from the
-            //    moment the turn starts, so every query gets instant feedback —
-            //    not only ones slower than the 4s threshold. UI-only; NEVER
-            //    appended to the conversation log, so it can't survive into
-            //    the record.
-            //  - Spoken (GATED at STILL_WORKING_DELAY_MS): the "please wait"
-            //    phrase is only spoken if processInput blocks past the
-            //    threshold — we mustn't talk over a fast answer, but this is
-            //    the only eyes-free cue in a background/voice-only session, so
-            //    it must survive for slow turns.
-            //
-            // Both are torn down in the finally.
-            _state.update { it.copy(isThinking = true) }
-            val fillerJob = if (!speak) null else launch {
-                delay(STILL_WORKING_DELAY_MS)
-                // Same shared "please wait" vocabulary the STT warm-up uses, so
-                // the two slow paths feel like one feature.
-                speechOutput.speak(pleaseWaitPhrase(application))
-            }
-
-            // An on-device answer can arrive while the model writes it
-            // (ari-android#37): its bubble shows the words as they come, and
-            // each finished sentence is spoken at once. A reset cancels the
-            // turn but the model writes on regardless, hence the isActive checks.
-            var answer: Message? = null
-            var spoken = false
-            val response = try {
-                engineHolder.processInput(
-                    text,
-                    onText = { soFar, markdown ->
-                        if (isActive) {
-                            _state.update { it.copy(isThinking = false) }
-                            val previous = answer
-                            val bubble = previous?.copy(text = soFar, markdown = markdown)
-                                ?: Message(text = soFar, markdown = markdown, isFromUser = false)
-                            if (previous == null) logRepository.append(bubble) else logRepository.replace(bubble)
-                            answer = bubble
-                        }
-                    },
-                    onSentence = { sentence ->
-                        if (isActive && speak) {
-                            fillerJob?.cancel()
-                            spoken = true
-                            speechOutput.speak(sentence)
-                        }
-                    },
-                )
-            } finally {
-                fillerJob?.cancel()
-                _state.update { it.copy(isThinking = false) }
-            }
-
-            // Personal memory: if this turn captured/forgot a fact, mirror the
-            // engine's updated fact list to disk. The text-chat path needs this
-            // just like VoiceSession does — without it, facts typed here live
-            // only in the engine's RAM and never reach the settings screen
-            // (which reads the persisted store). Runs before any early return.
-            if (shouldPersistFacts(response)) {
-                settingsRepository.setRememberedFacts(
-                    engineHolder.peek()?.rememberedFacts() ?: emptyList()
-                )
-                // A captured name (or any new fact) should light up the greeting
-                // the instant the user returns to an empty view, not only on the
-                // next resume.
-                refreshEmptyState()
-            }
-
-            // "Clear history": the engine has already forgotten the
-            // conversation, so the log goes too, request included, leaving
-            // just the ack appended below.
-            if (shouldClearConversation(response)) logRepository.clear()
-
-            var attachments: List<Attachment> = emptyList()
-            // Only action responses carry an id; a plain Text answer is
-            // unattributable, and a report on one says so rather than guessing.
-            var skillId: String? = null
-            // What the bubble shows, when a skill wants it worded differently
-            // from what Ari says out loud. Null everywhere else.
-            var bubbleText: String? = null
-            val responseText = when (response) {
-                is FfiResponse.Text -> response.body
-                is FfiResponse.Action -> {
-                    val result = actionHandler.handle(response.json, response.skillId)
-                    attachments = result.attachments
-                    skillId = response.skillId.takeIf { it.isNotBlank() }
-                    bubbleText = result.displayText
-                    result.text
-                }
-                is FfiResponse.Binary -> "[Binary: ${response.mime}, ${response.data.size} bytes]"
-                // Text-input path: no STT to retry, so NotUnderstood is just
-                // the apology body as-is.
-                is FfiResponse.NotUnderstood -> response.body
-            }
-            val markdown = (response as? FfiResponse.Text)?.markdown
-
-            // Already shown as it was written: the bubble takes the finished
-            // answer, which is read out now unless its sentences already were.
-            answer?.let {
-                logRepository.replace(
-                    it.copy(
-                        text = bubbleText ?: responseText,
-                        markdown = markdown,
-                        attachments = attachments,
-                        skillId = skillId,
-                    )
-                )
-                if (speak && !spoken && responseText.isNotBlank()) speechOutput.speak(responseText)
-                return@launch
-            }
-
-            // Skip rendering an empty bubble. Layer C phase-1 envelopes
-            // are deliberately silent (no speak, no cards) so the
-            // assistant round-trip can run quietly; only the phase-2
-            // result and any delay phrase render as bubbles. Without
-            // this skip we'd flash a ghost bubble per phase-1.
-            if (responseText.isBlank() && attachments.isEmpty()) return@launch
-
-            val ariMessage = Message(
-                text = bubbleText ?: responseText,
-                markdown = markdown,
-                isFromUser = false,
-                attachments = attachments,
-                skillId = skillId,
-            )
-            logRepository.append(ariMessage)
-
-            // Speak text and action confirmations alike — both are just user-facing strings now
-            if (speak && (response is FfiResponse.Text || response is FfiResponse.Action || response is FfiResponse.NotUnderstood)) {
-                if (responseText.isNotBlank()) speechOutput.speak(responseText)
-            }
-        }
-    }
-
-    private companion object {
-        /** How long processInput can block before we surface a "still working" bubble. */
-        const val STILL_WORKING_DELAY_MS: Long = 4000
+        // The rest is the engine's, as a spoken turn's is: a word that stops a
+        // ringing alarm or names a button on the card on screen answers that;
+        // anything else goes to the engine, with any action run, facts kept,
+        // and the answer said when the words were spoken. What comes back
+        // arrives on voiceSession.typedEvents (collected in init).
+        voiceSession.submitText(text, speak)
     }
 
     /**
@@ -761,10 +649,9 @@ class ConversationViewModel @Inject constructor(
      * locally; everything else routes through the engine via the action's
      * `utterance`, which the skill handles like any other input. The
      * resulting envelope flows back through the same processInput path
-     * and reconciles state. [speak] is false when the action answers a typed
-     * word rather than a tap.
+     * and reconciles state.
      */
-    fun onCardAction(cardId: String, action: CardAction, speak: Boolean = true) {
+    fun onCardAction(cardId: String, action: CardAction) {
         viewModelScope.launch(Dispatchers.Default) {
             when (val outcome = cardActionDispatcher.dispatch(cardId, action)) {
                 is CardActionDispatcher.Outcome.Silent -> Unit
@@ -776,7 +663,7 @@ class ConversationViewModel @Inject constructor(
                         attachments = outcome.attachments,
                     )
                     logRepository.append(ariMessage)
-                    if (speak && outcome.text.isNotBlank()) speechOutput.speak(outcome.text)
+                    if (outcome.text.isNotBlank()) speechOutput.speak(outcome.text)
                 }
             }
         }

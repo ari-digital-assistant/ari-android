@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The empty chat's greeting picks up a name you asked Ari to remember out loud straight
+  away, as it already did for a typed one, rather than the next time the app opens.
 - When on-device transcription mishears a request so no skill matches it, Ari now tries
   its second transcript before handing the request to the assistant. "Reminded me to buy
   milk" used to reach the assistant, which can't set reminders; the second transcript,
