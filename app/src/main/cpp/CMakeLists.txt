@@ -58,11 +58,17 @@ FetchContent_Declare(
 # ONNX Runtime's C API headers, for the openWakeWord engine. Headers only: the
 # runtime is the libonnxruntime.so in sherpa-onnx's AAR (app/libs), loaded when
 # the engine starts, so these must be no newer than that one (1.28.2 in
-# sherpa-onnx 2.0.1). The Linux release is simply the smallest that ships them.
+# sherpa-onnx 2.0.1).
+#
+# From Maven Central, which never removes a published artifact: the GitHub
+# release these came from vanished in November 2026 and took every clean build
+# with it. The Android AAR ships the same headers, byte for byte, under
+# headers/. DOWNLOAD_NAME gives it a .zip name so CMake will unpack it.
 FetchContent_Declare(
     onnxruntime
-    URL https://github.com/microsoft/onnxruntime/releases/download/v1.23.2/onnxruntime-linux-x64-1.23.2.tgz
-    URL_HASH SHA256=1fa4dcaef22f6f7d5cd81b28c2800414350c10116f5fdd46a2160082551c5f9b
+    URL https://repo1.maven.org/maven2/com/microsoft/onnxruntime/onnxruntime-android/1.23.2/onnxruntime-android-1.23.2.aar
+    URL_HASH SHA256=82048d1f462218adae4ba76477089ab0ba76093d84f733540066db1a8ba6b827
+    DOWNLOAD_NAME onnxruntime-android-1.23.2.zip
 )
 
 FetchContent_MakeAvailable(kissfft tflite_micro flatbuffers gemmlowp ruy onnxruntime)
@@ -300,7 +306,7 @@ add_library(openwakeword SHARED
 
 target_include_directories(openwakeword PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${onnxruntime_SOURCE_DIR}/include
+    ${onnxruntime_SOURCE_DIR}/headers
 )
 
 target_link_libraries(openwakeword
