@@ -39,7 +39,6 @@ import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.stt.SttModelLoader
 import dev.heyari.ari.tts.SpeechOutput
 import dev.heyari.ari.tts.pleaseWaitPhrase
-import dev.heyari.ari.wakeword.WakeWordRegistry
 import dev.heyari.ari.wakeword.WakeWordService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
@@ -67,6 +66,7 @@ import uniffi.ari_ffi.FfiLocationStatus
 import uniffi.ari_ffi.FfiResponse
 import uniffi.ari_ffi.FfiSlashCommand
 import uniffi.ari_ffi.SkillRegistry
+import uniffi.ari_ffi.wakeWordModelById
 import java.util.Locale
 import javax.inject.Inject
 
@@ -277,7 +277,7 @@ class ConversationViewModel @Inject constructor(
 
         viewModelScope.launch {
             settingsRepository.activeWakeWordId.collect { id ->
-                _state.update { it.copy(wakePhrase = WakeWordRegistry.byId(id).displayName) }
+                _state.update { it.copy(wakePhrase = wakeWordModelById(id).displayName) }
             }
         }
 

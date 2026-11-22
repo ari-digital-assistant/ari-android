@@ -12,7 +12,6 @@ import dev.heyari.ari.data.conversation.ConversationLogRepository
 import dev.heyari.ari.model.Attachment
 import dev.heyari.ari.model.InputSource
 import dev.heyari.ari.model.Message
-import dev.heyari.ari.stt.EarlyNameCheck
 import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.stt.SttModelLoader
 import dev.heyari.ari.stt.SttState
@@ -42,6 +41,7 @@ import kotlin.coroutines.coroutineContext
 import dev.heyari.ari.di.EngineHolder
 import javax.inject.Inject
 import javax.inject.Singleton
+import uniffi.ari_ffi.FfiEarlyNameCheck
 import uniffi.ari_ffi.FfiResponse
 
 /**
@@ -469,8 +469,8 @@ class VoiceSession @Inject constructor(
                     launch {
                         val result = speechRecognizer.checkNameEarly(earlyClip) ?: return@launch
                         val inTime = hidden && wakeOutcomePending && turnGeneration == generation
-                        wakeLog.earlyNameCheck(result.slug, System.currentTimeMillis() - askedAt, inTime)
-                        if (inTime && result == EarlyNameCheck.PASS) {
+                        wakeLog.earlyNameCheck(result.slug(), System.currentTimeMillis() - askedAt, inTime)
+                        if (inTime && result == FfiEarlyNameCheck.PASS) {
                             nameHeardEarly = true
                             reveal()
                         }
@@ -587,8 +587,8 @@ class VoiceSession @Inject constructor(
                                     // is the better judge. A partial can end
                                     // mid-word, "Hey Ari" on the way to "Hey
                                     // Arianna".
-                                    val slug = if (sttState.nameMatched == true) EarlyNameCheck.PASS.slug
-                                    else EarlyNameCheck.NONE.slug
+                                    val slug = if (sttState.nameMatched == true) FfiEarlyNameCheck.PASS.slug()
+                                    else FfiEarlyNameCheck.NONE.slug()
                                     wakeLog.earlyNameCheck(slug, System.currentTimeMillis() - armedAt, inTime = true)
                                     reveal()
                                     startReadyCue()

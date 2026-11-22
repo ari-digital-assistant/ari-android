@@ -21,10 +21,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.R
 import dev.heyari.ari.audio.CaptureBus
 import dev.heyari.ari.locale.AriFfiLocaleProvider
-import dev.heyari.ari.voice.WakeMatch
-import dev.heyari.ari.voice.matchWakePhrase
-import dev.heyari.ari.voice.stripWakePhrase
-import dev.heyari.ari.voice.wakeVerdict
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -45,6 +41,13 @@ import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.sqrt
+import uniffi.ari_ffi.FfiCloudSttException
+import uniffi.ari_ffi.FfiEarlyNameCheck
+import uniffi.ari_ffi.earlyNameCheck
+import uniffi.ari_ffi.matchWakePhrase
+import uniffi.ari_ffi.streamingPartial
+import uniffi.ari_ffi.stripWakePhrase
+import uniffi.ari_ffi.wakeVerdict
 
 // How long the cleaned partial must hold steady before we declare the user
 // is done speaking. 1500 ms is the empirical sweet spot — longer doesn't
@@ -266,26 +269,26 @@ class SpeechRecognizer @Inject constructor(
      * check needs the first two words and they are already in the clip. Null
      * where it cannot run.
      */
-    suspend fun checkNameEarly(pcm: ShortArray): EarlyNameCheck? {
+    suspend fun checkNameEarly(pcm: ShortArray): FfiEarlyNameCheck? {
         val locale = localeProvider.currentLocale()
         val transcript = try {
             cloudTranscriber.transcribeWakeClip(pcm, locale) ?: return null
-        } catch (e: CloudSttException) {
-            Log.i(TAG, "Early name check: no transcript (${e.failure})")
-            return EarlyNameCheck.NONE
+        } catch (e: FfiCloudSttException) {
+            Log.i(TAG, "Early name check: no transcript (${e.javaClass.simpleName})")
+            return FfiEarlyNameCheck.NONE
         }
         val result = earlyNameCheck(transcript, locale)
-        Log.i(TAG, "Early name check: raw='$transcript' -> ${result.slug}")
+        Log.i(TAG, "Early name check: raw='$transcript' -> ${result.slug()}")
         return result
     }
 
     /** Message for a cloud failure, so the user is told which wall they hit. */
-    private fun cloudErrorRes(failure: CloudSttFailure): Int = when (failure) {
-        CloudSttFailure.NOT_CONFIGURED -> R.string.stt_cloud_error_not_configured
-        CloudSttFailure.NETWORK -> R.string.stt_cloud_error_network
-        CloudSttFailure.AUTH -> R.string.stt_cloud_error_auth
-        CloudSttFailure.SERVER -> R.string.stt_cloud_error_server
-        CloudSttFailure.EMPTY -> R.string.stt_cloud_error_empty
+    private fun cloudErrorRes(failure: FfiCloudSttException): Int = when (failure) {
+        is FfiCloudSttException.NotConfigured -> R.string.stt_cloud_error_not_configured
+        is FfiCloudSttException.Network -> R.string.stt_cloud_error_network
+        is FfiCloudSttException.Auth -> R.string.stt_cloud_error_auth
+        is FfiCloudSttException.Server -> R.string.stt_cloud_error_server
+        is FfiCloudSttException.Empty -> R.string.stt_cloud_error_empty
     }
 
     val currentModelId: String?
@@ -543,17 +546,17 @@ class SpeechRecognizer @Inject constructor(
             val locale = localeProvider.currentLocale()
             val transcript = try {
                 cloudTranscriber.transcribe(pcm, locale)
-            } catch (e: CloudSttException) {
+            } catch (e: FfiCloudSttException) {
                 // Say which way it failed. "Couldn't reach the server" and
                 // "your key was rejected" send the user to different places,
                 // and a single generic error taught nobody anything.
-                Log.w(TAG, "Cloud STT failed (${e.failure})", e)
-                val message = context.getString(cloudErrorRes(e.failure))
+                Log.w(TAG, "Cloud STT failed (${e.javaClass.simpleName})", e)
+                val message = context.getString(cloudErrorRes(e))
                 // Hearing nothing is not a failure of the request, and on a wake
                 // turn it is the commonest false wake there is: the host needs
                 // the audio to keep it and the distinction to count it.
                 _state.value =
-                    if (e.failure == CloudSttFailure.EMPTY) SttState.NoSpeech(message, pcm)
+                    if (e is FfiCloudSttException.Empty) SttState.NoSpeech(message, pcm)
                     else SttState.Error(message)
                 return@startBufferedListening
             }
@@ -603,7 +606,9 @@ class SpeechRecognizer @Inject constructor(
                 component = component,
                 language = serviceLanguageTag(locale, Locale.getDefault()),
                 onPartial = { text ->
-                    streamingPartial(matchWakePhrase(text, locale), locale)?.let { _state.value = it }
+                    streamingPartial(matchWakePhrase(text, locale), locale)?.let {
+                        _state.value = SttState.Listening(it.text, it.nameMatched)
+                    }
                 },
                 onFinal = { text ->
                     val match = matchWakePhrase(text, locale)
@@ -807,7 +812,9 @@ class SpeechRecognizer @Inject constructor(
                     val partialMatch = matchWakePhrase(rawPartial, locale)
                     val cleanedPartial = partialMatch.text
                     Log.d(TAG, "decode: fed=${merged.size} raw='$rawPartial' cleaned='$cleanedPartial'")
-                    streamingPartial(partialMatch, locale)?.let { _state.value = it }
+                    streamingPartial(partialMatch, locale)?.let {
+                        _state.value = SttState.Listening(it.text, it.nameMatched)
+                    }
 
                     if (cleanedPartial != lastCleaned) {
                         lastCleaned = cleanedPartial
@@ -1232,34 +1239,6 @@ class SpeechRecognizer @Inject constructor(
             return sqrt(sumSquares / (to - from)).toFloat()
         }
     }
-}
-
-/** What [SpeechRecognizer.checkNameEarly] found. The slug goes in the wake log. */
-enum class EarlyNameCheck(val slug: String) {
-    PASS("pass"),
-    MISS("miss"),
-
-    /** No verdict: the request failed or came back empty, or the locale forms none. */
-    NONE("none"),
-}
-
-/** The name check on an early transcript, as [wakeVerdict] decides it for the whole one. */
-internal fun earlyNameCheck(transcript: String, locale: String): EarlyNameCheck =
-    when (wakeVerdict(matchWakePhrase(transcript, locale), locale)) {
-        true -> EarlyNameCheck.PASS
-        false -> EarlyNameCheck.MISS
-        null -> EarlyNameCheck.NONE
-    }
-
-/**
- * The streaming recogniser's partial for [match], or null when there is nothing
- * to show. A partial that is only the name still shows, empty: a quiet wake
- * reveals itself on the name, and a bare "Hey Ari" has nothing after it.
- */
-internal fun streamingPartial(match: WakeMatch, locale: String): SttState.Listening? {
-    val nameMatched = wakeVerdict(match, locale)
-    if (match.text.isEmpty() && nameMatched == false) return null
-    return SttState.Listening(match.text, nameMatched)
 }
 
 sealed interface SttState {

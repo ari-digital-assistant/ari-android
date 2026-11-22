@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Cloud speech-to-text works with a self-hosted server at a plain `http://` address,
+  including the default one, `http://homeassistant.local:10300/v1`. Android blocked the
+  app's unencrypted connections, so those requests always failed. HTTPS addresses are
+  now checked against the same list of certificate authorities as cloud assistants.
 - Setup downloads the on-device speech model when you continue, as it already did for
   the assistant model. It used to show a Download button, and continuing without
   tapping it left Ari with no speech model.

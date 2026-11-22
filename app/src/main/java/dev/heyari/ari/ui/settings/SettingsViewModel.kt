@@ -46,9 +46,6 @@ import dev.heyari.ari.stt.SttModel
 import dev.heyari.ari.stt.SttModelRegistry
 import dev.heyari.ari.stt.installedRecognitionServices
 import dev.heyari.ari.tts.SpeechOutput
-import dev.heyari.ari.wakeword.WakeWordModel
-import dev.heyari.ari.wakeword.WakeWordRegistry
-import dev.heyari.ari.wakeword.WakeWordSensitivity
 import dev.heyari.ari.wakeword.WakeWordService
 import dev.heyari.ari.di.EngineHolder
 import dev.heyari.ari.di.ApplicationScope
@@ -70,6 +67,12 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import uniffi.ari_ffi.FfiWakeSensitivity
+import uniffi.ari_ffi.FfiWakeWordModel
+import uniffi.ari_ffi.wakeSensitivityDefault
+import uniffi.ari_ffi.wakeSensitivityFromName
+import uniffi.ari_ffi.wakeWordModelById
+import uniffi.ari_ffi.wakeWordModels
 
 data class PermissionStatus(
     val recordAudio: Boolean,
@@ -89,7 +92,7 @@ data class ModelStatus(
 )
 
 data class WakeWordOption(
-    val model: WakeWordModel,
+    val model: FfiWakeWordModel,
     val active: Boolean,
 )
 
@@ -132,7 +135,7 @@ data class SettingsState(
     val models: List<ModelStatus> = emptyList(),
     val download: ModelDownloadState = ModelDownloadState.Idle,
     val wakeWords: List<WakeWordOption> = emptyList(),
-    val wakeWordSensitivity: WakeWordSensitivity = WakeWordSensitivity.DEFAULT,
+    val wakeWordSensitivity: FfiWakeSensitivity = wakeSensitivityDefault(),
     val wakeSpeechCheck: Boolean = true,
     val quietWake: Boolean = true,
     val llmModels: List<LlmModelStatus> = emptyList(),
@@ -228,10 +231,10 @@ class SettingsViewModel @Inject constructor(
         refreshPermissions()
         viewModelScope.launch {
             settingsRepository.activeWakeWordId.collect { activeId ->
-                val resolved = WakeWordRegistry.byId(activeId).id
+                val resolved = wakeWordModelById(activeId).id
                 _state.update { current ->
                     current.copy(
-                        wakeWords = WakeWordRegistry.all.map { WakeWordOption(it, it.id == resolved) }
+                        wakeWords = wakeWordModels().map { WakeWordOption(it, it.id == resolved) }
                     )
                 }
             }
@@ -241,9 +244,9 @@ class SettingsViewModel @Inject constructor(
             // model's setting, not the one just left.
             @OptIn(ExperimentalCoroutinesApi::class)
             settingsRepository.activeWakeWordId
-                .flatMapLatest { id -> settingsRepository.wakeWordSensitivity(WakeWordRegistry.byId(id).id) }
+                .flatMapLatest { id -> settingsRepository.wakeWordSensitivity(wakeWordModelById(id).id) }
                 .collect { name ->
-                    _state.update { it.copy(wakeWordSensitivity = WakeWordSensitivity.fromName(name)) }
+                    _state.update { it.copy(wakeWordSensitivity = wakeSensitivityFromName(name)) }
                 }
         }
         viewModelScope.launch {
@@ -1050,7 +1053,7 @@ class SettingsViewModel @Inject constructor(
      * AudioRecord across its whole lifetime, so a process-internal restart is
      * the simplest way to swap models without inventing a hot-reload path.
      */
-    fun selectWakeWord(model: WakeWordModel) {
+    fun selectWakeWord(model: FfiWakeWordModel) {
         viewModelScope.launch {
             settingsRepository.setActiveWakeWordId(model.id)
             WakeWordService.restartIfRunning(application)
@@ -1063,9 +1066,9 @@ class SettingsViewModel @Inject constructor(
      * swapping the active wake word model — cheaper than inventing a hot-reload
      * path for a setting users will only change occasionally.
      */
-    fun selectWakeWordSensitivity(sensitivity: WakeWordSensitivity) {
+    fun selectWakeWordSensitivity(sensitivity: FfiWakeSensitivity) {
         viewModelScope.launch {
-            val modelId = WakeWordRegistry.byId(settingsRepository.activeWakeWordId.first()).id
+            val modelId = wakeWordModelById(settingsRepository.activeWakeWordId.first()).id
             settingsRepository.setWakeWordSensitivity(modelId, sensitivity.name)
             WakeWordService.restartIfRunning(application)
         }

@@ -26,9 +26,10 @@ import dev.heyari.ari.R
 import dev.heyari.ari.ui.settings.AdviceMode
 import dev.heyari.ari.ui.settings.FalseWakeAdviceViewModel
 import dev.heyari.ari.ui.settings.components.SettingsScaffold
-import dev.heyari.ari.wakeword.FalseWakeRemedy
+import dev.heyari.ari.wakeword.displayNameRes
 import java.text.DateFormat
 import java.util.Date
+import uniffi.ari_ffi.FfiFalseWakeRemedy
 
 /**
  * What Ari says when it has noticed something about its own hearing.
@@ -50,12 +51,12 @@ fun FalseWakeAdvicePage(
     // Resolved during composition, not inside the effect, so a language change
     // cannot leave a stale string behind.
     val appliedMessage = when (val applied = state.applied) {
-        is FalseWakeRemedy.StepDown -> stringResource(
+        is FfiFalseWakeRemedy.StepDown -> stringResource(
             R.string.false_wake_advice_step_done,
             stringResource(applied.to.displayNameRes),
         )
-        is FalseWakeRemedy.Tighten -> stringResource(R.string.false_wake_advice_tighten_done)
-        FalseWakeRemedy.Exhausted, null -> null
+        is FfiFalseWakeRemedy.Tighten -> stringResource(R.string.false_wake_advice_tighten_done)
+        FfiFalseWakeRemedy.Exhausted, null -> null
     }
 
     LaunchedEffect(mode) { viewModel.load(mode) }
@@ -90,7 +91,7 @@ fun FalseWakeAdvicePage(
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     when (val remedy = state.remedy) {
-                        is FalseWakeRemedy.StepDown -> Remedy(
+                        is FfiFalseWakeRemedy.StepDown -> Remedy(
                             explanation = stringResource(
                                 R.string.false_wake_advice_step_body,
                                 stringResource(state.current.displayNameRes),
@@ -103,14 +104,14 @@ fun FalseWakeAdvicePage(
                             onIgnore = viewModel::ignore,
                         )
 
-                        is FalseWakeRemedy.Tighten -> Remedy(
+                        is FfiFalseWakeRemedy.Tighten -> Remedy(
                             explanation = stringResource(R.string.false_wake_advice_tighten_body),
                             actionLabel = stringResource(R.string.false_wake_advice_tighten_action),
                             onAccept = viewModel::accept,
                             onIgnore = viewModel::ignore,
                         )
 
-                        FalseWakeRemedy.Exhausted, null -> {
+                        FfiFalseWakeRemedy.Exhausted, null -> {
                             Text(
                                 text = stringResource(R.string.false_wake_advice_exhausted_body),
                                 style = MaterialTheme.typography.bodyMedium,

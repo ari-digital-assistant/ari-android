@@ -146,7 +146,7 @@ class SettingsRepository @Inject constructor(
     /**
      * The ladder measured on this phone for [modelId], replacing its built-in
      * one. Null until somebody tunes that model. See
-     * [dev.heyari.ari.wakeword.TunedLadder].
+     * [uniffi.ari_ffi.FfiTunedLadder].
      *
      * One slot per model. There used to be one slot for all of them, so tuning
      * one model threw away another's ladder. The old slot is still read for the

@@ -17,6 +17,9 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
+import uniffi.ari_ffi.FfiOperatingPoint
+import uniffi.ari_ffi.FfiWakeSensitivity
+import uniffi.ari_ffi.FfiWakeWordModel
 
 /**
  * How a wake the user could see ended.
@@ -280,9 +283,9 @@ class WakeLog internal constructor(private val file: File) {
      * traced to exactly the file that ran.
      */
     fun listeningStarted(
-        model: WakeWordModel,
-        sensitivity: WakeWordSensitivity,
-        point: OperatingPoint,
+        model: FfiWakeWordModel,
+        sensitivity: FfiWakeSensitivity,
+        point: FfiOperatingPoint,
         speechCheck: Boolean,
         quietWake: Boolean,
         fingerprint: String,

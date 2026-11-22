@@ -1000,6 +1000,40 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_func_slash_commands(
     ): Short
+    external fun uniffi_ari_ffi_checksum_func_cloud_transcribe(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_func_cloud_transcribe_wake_clip(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_func_default_wake_word_model(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_func_early_name_check(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_func_false_wake_remedy(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_func_fit_tuned_ladder(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_func_ladder_review_delay_hours(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_func_match_wake_phrase(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_func_streaming_partial(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_func_strip_wake_phrase(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_func_tuned_ladder_cutoff_range(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_func_tuned_ladder_parse(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_func_wake_sensitivity_default(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_func_wake_sensitivity_from_name(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_func_wake_verdict(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_func_wake_word_model_by_id(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_func_wake_word_models(
+    ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_cancel_pending_reply(
     ): Short
     external fun uniffi_ari_ffi_checksum_method_ariengine_clear_conversation(
@@ -1501,11 +1535,53 @@ external fun uniffi_ari_ffi_fn_method_skillregistry_set_skill_setting(`ptr`: Lon
 ): Unit
 external fun uniffi_ari_ffi_fn_method_skillregistry_uninstall_skill_by_id(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+external fun uniffi_ari_ffi_fn_method_ffiearlynamecheck_slug(`ptr`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_ffitunedladder_format(`ptr`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_ffiwakewordmodel_operating_point(`ptr`: RustBuffer.ByValue,`sensitivity`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_ffiwakewordmodel_with_ladder(`ptr`: RustBuffer.ByValue,`ladder`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_func_engine_version(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_func_on_device_cpu_info(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_func_slash_commands(`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_cloud_transcribe(`service`: RustBuffer.ByValue,`apiKey`: RustBuffer.ByValue,`wav`: RustBuffer.ByValue,`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_cloud_transcribe_wake_clip(`service`: RustBuffer.ByValue,`apiKey`: RustBuffer.ByValue,`wav`: RustBuffer.ByValue,`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_default_wake_word_model(uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_early_name_check(`transcript`: RustBuffer.ByValue,`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_false_wake_remedy(`level`: RustBuffer.ByValue,`model`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_fit_tuned_ladder(`sessions`: RustBuffer.ByValue,`model`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_ladder_review_delay_hours(uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun uniffi_ari_ffi_fn_func_match_wake_phrase(`text`: RustBuffer.ByValue,`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_streaming_partial(`wakeMatch`: RustBuffer.ByValue,`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_strip_wake_phrase(`text`: RustBuffer.ByValue,`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_tuned_ladder_cutoff_range(uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_tuned_ladder_parse(`stored`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_wake_sensitivity_default(uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_wake_sensitivity_from_name(`name`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_wake_verdict(`wakeMatch`: RustBuffer.ByValue,`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_wake_word_model_by_id(`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_wake_word_models(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun ffi_ari_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1633,6 +1709,57 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_func_slash_commands() != 47627.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_cloud_transcribe() != 34492.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_cloud_transcribe_wake_clip() != 28440.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_default_wake_word_model() != 30507.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_early_name_check() != 34274.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_false_wake_remedy() != 24365.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_fit_tuned_ladder() != 65461.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_ladder_review_delay_hours() != 49547.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_match_wake_phrase() != 39052.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_streaming_partial() != 4864.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_strip_wake_phrase() != 17585.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_tuned_ladder_cutoff_range() != 3788.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_tuned_ladder_parse() != 13675.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_wake_sensitivity_default() != 13254.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_wake_sensitivity_from_name() != 37164.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_wake_verdict() != 30734.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_wake_word_model_by_id() != 21583.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_wake_word_models() != 26146.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_cancel_pending_reply() != 705.toShort()) {
@@ -2214,6 +2341,29 @@ public object FfiConverterLong: FfiConverter<Long, Long> {
 
     override fun write(value: Long, buf: ByteBuffer) {
         buf.putLong(value)
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterFloat: FfiConverter<Float, Float> {
+    override fun lift(value: Float): Float {
+        return value
+    }
+
+    override fun read(buf: ByteBuffer): Float {
+        return buf.getFloat()
+    }
+
+    override fun lower(value: Float): Float {
+        return value
+    }
+
+    override fun allocationSize(value: Float) = 4UL
+
+    override fun write(value: Float, buf: ByteBuffer) {
+        buf.putFloat(value)
     }
 }
 
@@ -10518,6 +10668,47 @@ public object FfiConverterTypeFfiCpuInfo: FfiConverterRustBuffer<FfiCpuInfo> {
 
 
 
+/**
+ * The range a tuned cutoff may take.
+ */
+data class FfiCutoffRange (
+    var `min`: kotlin.Float
+    , 
+    var `max`: kotlin.Float
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiCutoffRange: FfiConverterRustBuffer<FfiCutoffRange> {
+    override fun read(buf: ByteBuffer): FfiCutoffRange {
+        return FfiCutoffRange(
+            FfiConverterFloat.read(buf),
+            FfiConverterFloat.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiCutoffRange) = (
+            FfiConverterFloat.allocationSize(value.`min`) +
+            FfiConverterFloat.allocationSize(value.`max`)
+    )
+
+    override fun write(value: FfiCutoffRange, buf: ByteBuffer) {
+            FfiConverterFloat.write(value.`min`, buf)
+            FfiConverterFloat.write(value.`max`, buf)
+    }
+}
+
+
+
 data class FfiInsertCalendarEventParams (
     var `calendarId`: kotlin.ULong
     , 
@@ -10692,6 +10883,59 @@ public object FfiConverterTypeFfiInstalledSkill: FfiConverterRustBuffer<FfiInsta
 
 
 
+data class FfiLadderFit (
+    var `ladder`: FfiTunedLadder
+    , 
+    var `phrasesHeard`: kotlin.Int
+    , 
+    var `phrasesTotal`: kotlin.Int
+    , 
+    var `worstDecoy`: kotlin.Float
+    , 
+    var `overlapping`: kotlin.Boolean
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiLadderFit: FfiConverterRustBuffer<FfiLadderFit> {
+    override fun read(buf: ByteBuffer): FfiLadderFit {
+        return FfiLadderFit(
+            FfiConverterTypeFfiTunedLadder.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiLadderFit) = (
+            FfiConverterTypeFfiTunedLadder.allocationSize(value.`ladder`) +
+            FfiConverterInt.allocationSize(value.`phrasesHeard`) +
+            FfiConverterInt.allocationSize(value.`phrasesTotal`) +
+            FfiConverterFloat.allocationSize(value.`worstDecoy`) +
+            FfiConverterBoolean.allocationSize(value.`overlapping`)
+    )
+
+    override fun write(value: FfiLadderFit, buf: ByteBuffer) {
+            FfiConverterTypeFfiTunedLadder.write(value.`ladder`, buf)
+            FfiConverterInt.write(value.`phrasesHeard`, buf)
+            FfiConverterInt.write(value.`phrasesTotal`, buf)
+            FfiConverterFloat.write(value.`worstDecoy`, buf)
+            FfiConverterBoolean.write(value.`overlapping`, buf)
+    }
+}
+
+
+
 data class FfiLocalTimeComponents (
     var `year`: kotlin.Int
     , 
@@ -10855,6 +11099,44 @@ public object FfiConverterTypeFfiLocationResult: FfiConverterRustBuffer<FfiLocat
             FfiConverterDouble.write(value.`lon`, buf)
             FfiConverterDouble.write(value.`accuracyM`, buf)
             FfiConverterLong.write(value.`timestampMs`, buf)
+    }
+}
+
+
+
+data class FfiOperatingPoint (
+    var `probabilityCutoff`: kotlin.Float
+    , 
+    var `slidingWindowSize`: kotlin.Int
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiOperatingPoint: FfiConverterRustBuffer<FfiOperatingPoint> {
+    override fun read(buf: ByteBuffer): FfiOperatingPoint {
+        return FfiOperatingPoint(
+            FfiConverterFloat.read(buf),
+            FfiConverterInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiOperatingPoint) = (
+            FfiConverterFloat.allocationSize(value.`probabilityCutoff`) +
+            FfiConverterInt.allocationSize(value.`slidingWindowSize`)
+    )
+
+    override fun write(value: FfiOperatingPoint, buf: ByteBuffer) {
+            FfiConverterFloat.write(value.`probabilityCutoff`, buf)
+            FfiConverterInt.write(value.`slidingWindowSize`, buf)
     }
 }
 
@@ -11182,6 +11464,44 @@ public object FfiConverterTypeFfiSlashCommand: FfiConverterRustBuffer<FfiSlashCo
 
 
 
+data class FfiStreamingPartial (
+    var `text`: kotlin.String
+    , 
+    var `nameMatched`: kotlin.Boolean?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiStreamingPartial: FfiConverterRustBuffer<FfiStreamingPartial> {
+    override fun read(buf: ByteBuffer): FfiStreamingPartial {
+        return FfiStreamingPartial(
+            FfiConverterString.read(buf),
+            FfiConverterOptionalBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiStreamingPartial) = (
+            FfiConverterString.allocationSize(value.`text`) +
+            FfiConverterOptionalBoolean.allocationSize(value.`nameMatched`)
+    )
+
+    override fun write(value: FfiStreamingPartial, buf: ByteBuffer) {
+            FfiConverterString.write(value.`text`, buf)
+            FfiConverterOptionalBoolean.write(value.`nameMatched`, buf)
+    }
+}
+
+
+
 data class FfiTaskList (
     var `id`: kotlin.ULong
     , 
@@ -11279,6 +11599,477 @@ public object FfiConverterTypeFfiTaskRow: FfiConverterRustBuffer<FfiTaskRow> {
             FfiConverterULong.write(value.`listId`, buf)
     }
 }
+
+
+
+data class FfiTunedLadder (
+    var `modelId`: kotlin.String
+    , 
+    var `high`: kotlin.Float
+    , 
+    var `medium`: kotlin.Float
+    , 
+    var `low`: kotlin.Float
+    , 
+    var `slidingWindowSize`: kotlin.Int
+    
+){
+    
+    /**
+     * The stored form, read back by [`tuned_ladder_parse`].
+     */ fun `format`(): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffitunedladder_format(FfiConverterTypeFfiTunedLadder.lower(this),
+        _status)
+}
+    )
+    }
+    
+
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiTunedLadder: FfiConverterRustBuffer<FfiTunedLadder> {
+    override fun read(buf: ByteBuffer): FfiTunedLadder {
+        return FfiTunedLadder(
+            FfiConverterString.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterFloat.read(buf),
+            FfiConverterInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiTunedLadder) = (
+            FfiConverterString.allocationSize(value.`modelId`) +
+            FfiConverterFloat.allocationSize(value.`high`) +
+            FfiConverterFloat.allocationSize(value.`medium`) +
+            FfiConverterFloat.allocationSize(value.`low`) +
+            FfiConverterInt.allocationSize(value.`slidingWindowSize`)
+    )
+
+    override fun write(value: FfiTunedLadder, buf: ByteBuffer) {
+            FfiConverterString.write(value.`modelId`, buf)
+            FfiConverterFloat.write(value.`high`, buf)
+            FfiConverterFloat.write(value.`medium`, buf)
+            FfiConverterFloat.write(value.`low`, buf)
+            FfiConverterInt.write(value.`slidingWindowSize`, buf)
+    }
+}
+
+
+
+data class FfiTunedSession (
+    var `id`: kotlin.Int
+    , 
+    var `phraseScores`: List<kotlin.Float>
+    , 
+    var `decoyScores`: List<kotlin.Float>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiTunedSession: FfiConverterRustBuffer<FfiTunedSession> {
+    override fun read(buf: ByteBuffer): FfiTunedSession {
+        return FfiTunedSession(
+            FfiConverterInt.read(buf),
+            FfiConverterSequenceFloat.read(buf),
+            FfiConverterSequenceFloat.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiTunedSession) = (
+            FfiConverterInt.allocationSize(value.`id`) +
+            FfiConverterSequenceFloat.allocationSize(value.`phraseScores`) +
+            FfiConverterSequenceFloat.allocationSize(value.`decoyScores`)
+    )
+
+    override fun write(value: FfiTunedSession, buf: ByteBuffer) {
+            FfiConverterInt.write(value.`id`, buf)
+            FfiConverterSequenceFloat.write(value.`phraseScores`, buf)
+            FfiConverterSequenceFloat.write(value.`decoyScores`, buf)
+    }
+}
+
+
+
+data class FfiWakeMatch (
+    var `text`: kotlin.String
+    , 
+    var `nameMatched`: kotlin.Boolean
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiWakeMatch: FfiConverterRustBuffer<FfiWakeMatch> {
+    override fun read(buf: ByteBuffer): FfiWakeMatch {
+        return FfiWakeMatch(
+            FfiConverterString.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiWakeMatch) = (
+            FfiConverterString.allocationSize(value.`text`) +
+            FfiConverterBoolean.allocationSize(value.`nameMatched`)
+    )
+
+    override fun write(value: FfiWakeMatch, buf: ByteBuffer) {
+            FfiConverterString.write(value.`text`, buf)
+            FfiConverterBoolean.write(value.`nameMatched`, buf)
+    }
+}
+
+
+
+data class FfiWakeWordModel (
+    var `id`: kotlin.String
+    , 
+    var `displayName`: kotlin.String
+    , 
+    var `assetFilename`: kotlin.String
+    , 
+    var `featureStepSizeMs`: kotlin.Int
+    , 
+    var `high`: FfiOperatingPoint
+    , 
+    var `medium`: FfiOperatingPoint
+    , 
+    var `low`: FfiOperatingPoint
+    , 
+    var `engine`: FfiWakeEngine
+    
+){
+    
+    /**
+     * See [`WakeWordModel::operating_point`].
+     */ fun `operatingPoint`(`sensitivity`: FfiWakeSensitivity): FfiOperatingPoint {
+            return FfiConverterTypeFfiOperatingPoint.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffiwakewordmodel_operating_point(FfiConverterTypeFfiWakeWordModel.lower(this),
+        FfiConverterTypeFfiWakeSensitivity.lower(`sensitivity`),_status)
+}
+    )
+    }
+    
+
+    
+    /**
+     * See [`WakeWordModel::with_ladder`].
+     */ fun `withLadder`(`ladder`: FfiTunedLadder?): FfiWakeWordModel {
+            return FfiConverterTypeFfiWakeWordModel.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffiwakewordmodel_with_ladder(FfiConverterTypeFfiWakeWordModel.lower(this),
+        FfiConverterOptionalTypeFfiTunedLadder.lower(`ladder`),_status)
+}
+    )
+    }
+    
+
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiWakeWordModel: FfiConverterRustBuffer<FfiWakeWordModel> {
+    override fun read(buf: ByteBuffer): FfiWakeWordModel {
+        return FfiWakeWordModel(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterTypeFfiOperatingPoint.read(buf),
+            FfiConverterTypeFfiOperatingPoint.read(buf),
+            FfiConverterTypeFfiOperatingPoint.read(buf),
+            FfiConverterTypeFfiWakeEngine.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiWakeWordModel) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`displayName`) +
+            FfiConverterString.allocationSize(value.`assetFilename`) +
+            FfiConverterInt.allocationSize(value.`featureStepSizeMs`) +
+            FfiConverterTypeFfiOperatingPoint.allocationSize(value.`high`) +
+            FfiConverterTypeFfiOperatingPoint.allocationSize(value.`medium`) +
+            FfiConverterTypeFfiOperatingPoint.allocationSize(value.`low`) +
+            FfiConverterTypeFfiWakeEngine.allocationSize(value.`engine`)
+    )
+
+    override fun write(value: FfiWakeWordModel, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`displayName`, buf)
+            FfiConverterString.write(value.`assetFilename`, buf)
+            FfiConverterInt.write(value.`featureStepSizeMs`, buf)
+            FfiConverterTypeFfiOperatingPoint.write(value.`high`, buf)
+            FfiConverterTypeFfiOperatingPoint.write(value.`medium`, buf)
+            FfiConverterTypeFfiOperatingPoint.write(value.`low`, buf)
+            FfiConverterTypeFfiWakeEngine.write(value.`engine`, buf)
+    }
+}
+
+
+
+
+
+/**
+ * A failed cloud transcription, one variant per [`CloudSttFailure`] so the
+ * host can tell the user which wall they hit. `reason` is for the log.
+ */
+sealed class FfiCloudSttException: kotlin.Exception() {
+    
+    class NotConfigured(
+        
+        val `reason`: kotlin.String
+        ) : FfiCloudSttException() {
+        override val message
+            get() = "reason=${ `reason` }"
+    }
+    
+    class Network(
+        
+        val `reason`: kotlin.String
+        ) : FfiCloudSttException() {
+        override val message
+            get() = "reason=${ `reason` }"
+    }
+    
+    class Auth(
+        
+        val `reason`: kotlin.String
+        ) : FfiCloudSttException() {
+        override val message
+            get() = "reason=${ `reason` }"
+    }
+    
+    class Server(
+        
+        val `reason`: kotlin.String
+        ) : FfiCloudSttException() {
+        override val message
+            get() = "reason=${ `reason` }"
+    }
+    
+    class Empty(
+        
+        val `reason`: kotlin.String
+        ) : FfiCloudSttException() {
+        override val message
+            get() = "reason=${ `reason` }"
+    }
+    
+
+    
+
+
+    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<FfiCloudSttException> {
+        override fun lift(error_buf: RustBuffer.ByValue): FfiCloudSttException = FfiConverterTypeFfiCloudSttError.lift(error_buf)
+    }
+
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiCloudSttError : FfiConverterRustBuffer<FfiCloudSttException> {
+    override fun read(buf: ByteBuffer): FfiCloudSttException {
+        
+
+        return when(buf.getInt()) {
+            1 -> FfiCloudSttException.NotConfigured(
+                FfiConverterString.read(buf),
+                )
+            2 -> FfiCloudSttException.Network(
+                FfiConverterString.read(buf),
+                )
+            3 -> FfiCloudSttException.Auth(
+                FfiConverterString.read(buf),
+                )
+            4 -> FfiCloudSttException.Server(
+                FfiConverterString.read(buf),
+                )
+            5 -> FfiCloudSttException.Empty(
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: FfiCloudSttException): ULong {
+        return when(value) {
+            is FfiCloudSttException.NotConfigured -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`reason`)
+            )
+            is FfiCloudSttException.Network -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`reason`)
+            )
+            is FfiCloudSttException.Auth -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`reason`)
+            )
+            is FfiCloudSttException.Server -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`reason`)
+            )
+            is FfiCloudSttException.Empty -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`reason`)
+            )
+        }
+    }
+
+    override fun write(value: FfiCloudSttException, buf: ByteBuffer) {
+        when(value) {
+            is FfiCloudSttException.NotConfigured -> {
+                buf.putInt(1)
+                FfiConverterString.write(value.`reason`, buf)
+                Unit
+            }
+            is FfiCloudSttException.Network -> {
+                buf.putInt(2)
+                FfiConverterString.write(value.`reason`, buf)
+                Unit
+            }
+            is FfiCloudSttException.Auth -> {
+                buf.putInt(3)
+                FfiConverterString.write(value.`reason`, buf)
+                Unit
+            }
+            is FfiCloudSttException.Server -> {
+                buf.putInt(4)
+                FfiConverterString.write(value.`reason`, buf)
+                Unit
+            }
+            is FfiCloudSttException.Empty -> {
+                buf.putInt(5)
+                FfiConverterString.write(value.`reason`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
+
+
+
+/**
+ * Which cloud speech-to-text service to use. See [`CloudSttService`].
+ */
+sealed class FfiCloudSttService {
+    
+    object OpenAi : FfiCloudSttService()
+    
+    
+    data class SelfHosted(
+        val `endpoint`: kotlin.String, 
+        val `model`: kotlin.String) : FfiCloudSttService()
+        
+    {
+        
+
+        companion object
+    }
+    
+
+    
+
+    
+    
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiCloudSttService : FfiConverterRustBuffer<FfiCloudSttService>{
+    override fun read(buf: ByteBuffer): FfiCloudSttService {
+        return when(buf.getInt()) {
+            1 -> FfiCloudSttService.OpenAi
+            2 -> FfiCloudSttService.SelfHosted(
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: FfiCloudSttService) = when(value) {
+        is FfiCloudSttService.OpenAi -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiCloudSttService.SelfHosted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`endpoint`)
+                + FfiConverterString.allocationSize(value.`model`)
+            )
+        }
+    }
+
+    override fun write(value: FfiCloudSttService, buf: ByteBuffer) {
+        when(value) {
+            is FfiCloudSttService.OpenAi -> {
+                buf.putInt(1)
+                Unit
+            }
+            is FfiCloudSttService.SelfHosted -> {
+                buf.putInt(2)
+                FfiConverterString.write(value.`endpoint`, buf)
+                FfiConverterString.write(value.`model`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
 
 
 
@@ -11399,6 +12190,151 @@ public object FfiConverterTypeFfiConversationMemory : FfiConverterRustBuffer<Ffi
                 Unit
             }
             is FfiConversationMemory.Lapsed -> {
+                buf.putInt(3)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+
+enum class FfiEarlyNameCheck {
+    
+    PASS,
+    MISS,
+    NONE;
+
+    
+    /**
+     * The wake log's name for this result.
+     */ fun `slug`(): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffiearlynamecheck_slug(FfiConverterTypeFfiEarlyNameCheck.lower(this),
+        _status)
+}
+    )
+    }
+    
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiEarlyNameCheck: FfiConverterRustBuffer<FfiEarlyNameCheck> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiEarlyNameCheck.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiEarlyNameCheck) = 4UL
+
+    override fun write(value: FfiEarlyNameCheck, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+sealed class FfiFalseWakeRemedy {
+    
+    data class StepDown(
+        val `to`: uniffi.ari_ffi.FfiWakeSensitivity) : FfiFalseWakeRemedy()
+        
+    {
+        
+
+        companion object
+    }
+    
+    data class Tighten(
+        val `ladder`: uniffi.ari_ffi.FfiTunedLadder) : FfiFalseWakeRemedy()
+        
+    {
+        
+
+        companion object
+    }
+    
+    object Exhausted : FfiFalseWakeRemedy()
+    
+    
+
+    
+
+    
+    
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiFalseWakeRemedy : FfiConverterRustBuffer<FfiFalseWakeRemedy>{
+    override fun read(buf: ByteBuffer): FfiFalseWakeRemedy {
+        return when(buf.getInt()) {
+            1 -> FfiFalseWakeRemedy.StepDown(
+                FfiConverterTypeFfiWakeSensitivity.read(buf),
+                )
+            2 -> FfiFalseWakeRemedy.Tighten(
+                FfiConverterTypeFfiTunedLadder.read(buf),
+                )
+            3 -> FfiFalseWakeRemedy.Exhausted
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: FfiFalseWakeRemedy) = when(value) {
+        is FfiFalseWakeRemedy.StepDown -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeFfiWakeSensitivity.allocationSize(value.`to`)
+            )
+        }
+        is FfiFalseWakeRemedy.Tighten -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeFfiTunedLadder.allocationSize(value.`ladder`)
+            )
+        }
+        is FfiFalseWakeRemedy.Exhausted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: FfiFalseWakeRemedy, buf: ByteBuffer) {
+        when(value) {
+            is FfiFalseWakeRemedy.StepDown -> {
+                buf.putInt(1)
+                FfiConverterTypeFfiWakeSensitivity.write(value.`to`, buf)
+                Unit
+            }
+            is FfiFalseWakeRemedy.Tighten -> {
+                buf.putInt(2)
+                FfiConverterTypeFfiTunedLadder.write(value.`ladder`, buf)
+                Unit
+            }
+            is FfiFalseWakeRemedy.Exhausted -> {
                 buf.putInt(3)
                 Unit
             }
@@ -11845,6 +12781,79 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
 
 
 
+enum class FfiWakeEngine {
+    
+    MICRO_WAKE_WORD,
+    OPEN_WAKE_WORD;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiWakeEngine: FfiConverterRustBuffer<FfiWakeEngine> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiWakeEngine.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiWakeEngine) = 4UL
+
+    override fun write(value: FfiWakeEngine, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * Kotlin names these `HIGH`, `MEDIUM` and `LOW`, which are the names
+ * [`wake_sensitivity_from_name`] reads back.
+ */
+
+enum class FfiWakeSensitivity {
+    
+    HIGH,
+    MEDIUM,
+    LOW;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiWakeSensitivity: FfiConverterRustBuffer<FfiWakeSensitivity> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiWakeSensitivity.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiWakeSensitivity) = 4UL
+
+    override fun write(value: FfiWakeSensitivity, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
 /**
  * @suppress
  */
@@ -11944,6 +12953,38 @@ public object FfiConverterOptionalLong: FfiConverterRustBuffer<kotlin.Long?> {
 /**
  * @suppress
  */
+public object FfiConverterOptionalBoolean: FfiConverterRustBuffer<kotlin.Boolean?> {
+    override fun read(buf: ByteBuffer): kotlin.Boolean? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterBoolean.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.Boolean?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterBoolean.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.Boolean?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterBoolean.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?> {
     override fun read(buf: ByteBuffer): kotlin.String? {
         if (buf.get().toInt() == 0) {
@@ -11966,6 +13007,130 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
         } else {
             buf.put(1)
             FfiConverterString.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeFfiLadderFit: FfiConverterRustBuffer<FfiLadderFit?> {
+    override fun read(buf: ByteBuffer): FfiLadderFit? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiLadderFit.read(buf)
+    }
+
+    override fun allocationSize(value: FfiLadderFit?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiLadderFit.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiLadderFit?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiLadderFit.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeFfiStreamingPartial: FfiConverterRustBuffer<FfiStreamingPartial?> {
+    override fun read(buf: ByteBuffer): FfiStreamingPartial? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiStreamingPartial.read(buf)
+    }
+
+    override fun allocationSize(value: FfiStreamingPartial?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiStreamingPartial.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiStreamingPartial?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiStreamingPartial.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeFfiTunedLadder: FfiConverterRustBuffer<FfiTunedLadder?> {
+    override fun read(buf: ByteBuffer): FfiTunedLadder? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiTunedLadder.read(buf)
+    }
+
+    override fun allocationSize(value: FfiTunedLadder?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiTunedLadder.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiTunedLadder?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiTunedLadder.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceFloat: FfiConverterRustBuffer<List<kotlin.Float>> {
+    override fun read(buf: ByteBuffer): List<kotlin.Float> {
+        val len = buf.getInt()
+        return List<kotlin.Float>(len) {
+            FfiConverterFloat.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.Float>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterFloat.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.Float>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterFloat.write(it, buf)
         }
     }
 }
@@ -12424,6 +13589,62 @@ public object FfiConverterSequenceTypeFfiTaskRow: FfiConverterRustBuffer<List<Ff
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiTunedSession: FfiConverterRustBuffer<List<FfiTunedSession>> {
+    override fun read(buf: ByteBuffer): List<FfiTunedSession> {
+        val len = buf.getInt()
+        return List<FfiTunedSession>(len) {
+            FfiConverterTypeFfiTunedSession.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiTunedSession>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiTunedSession.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiTunedSession>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiTunedSession.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiWakeWordModel: FfiConverterRustBuffer<List<FfiWakeWordModel>> {
+    override fun read(buf: ByteBuffer): List<FfiWakeWordModel> {
+        val len = buf.getInt()
+        return List<FfiWakeWordModel>(len) {
+            FfiConverterTypeFfiWakeWordModel.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiWakeWordModel>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiWakeWordModel.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiWakeWordModel>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiWakeWordModel.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.String, kotlin.String>> {
     override fun read(buf: ByteBuffer): Map<kotlin.String, kotlin.String> {
         val len = buf.getInt()
@@ -12536,6 +13757,229 @@ public object FfiConverterMapStringTypeFfiLocalizedDisplay: FfiConverterRustBuff
     UniffiLib.uniffi_ari_ffi_fn_func_slash_commands(
     
         FfiConverterString.lower(`locale`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * See [`cloud_stt::transcribe`]. Blocking: call it off the main thread.
+         */
+    @Throws(FfiCloudSttException::class) fun `cloudTranscribe`(`service`: FfiCloudSttService, `apiKey`: kotlin.String?, `wav`: kotlin.ByteArray, `locale`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(FfiCloudSttException) { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_cloud_transcribe(
+    
+        FfiConverterTypeFfiCloudSttService.lower(`service`),FfiConverterOptionalString.lower(`apiKey`),FfiConverterByteArray.lower(`wav`),FfiConverterString.lower(`locale`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * See [`cloud_stt::transcribe_wake_clip`]. `None` where the early check does
+         * not run. Blocking: call it off the main thread.
+         */
+    @Throws(FfiCloudSttException::class) fun `cloudTranscribeWakeClip`(`service`: FfiCloudSttService, `apiKey`: kotlin.String?, `wav`: kotlin.ByteArray, `locale`: kotlin.String): kotlin.String? {
+            return FfiConverterOptionalString.lift(
+    uniffiRustCallWithError(FfiCloudSttException) { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_cloud_transcribe_wake_clip(
+    
+        FfiConverterTypeFfiCloudSttService.lower(`service`),FfiConverterOptionalString.lower(`apiKey`),FfiConverterByteArray.lower(`wav`),FfiConverterString.lower(`locale`),_status)
+}
+    )
+    }
+    
+ fun `defaultWakeWordModel`(): FfiWakeWordModel {
+            return FfiConverterTypeFfiWakeWordModel.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_default_wake_word_model(
+    
+        _status)
+}
+    )
+    }
+    
+
+        /**
+         * See [`wake_phrase::early_name_check`].
+         */ fun `earlyNameCheck`(`transcript`: kotlin.String, `locale`: kotlin.String): FfiEarlyNameCheck {
+            return FfiConverterTypeFfiEarlyNameCheck.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_early_name_check(
+    
+        FfiConverterString.lower(`transcript`),FfiConverterString.lower(`locale`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * See [`FalseWakeRemedy::for_level`].
+         */ fun `falseWakeRemedy`(`level`: FfiWakeSensitivity, `model`: FfiWakeWordModel): FfiFalseWakeRemedy {
+            return FfiConverterTypeFfiFalseWakeRemedy.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_false_wake_remedy(
+    
+        FfiConverterTypeFfiWakeSensitivity.lower(`level`),FfiConverterTypeFfiWakeWordModel.lower(`model`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * See [`ladder::fit`].
+         */ fun `fitTunedLadder`(`sessions`: List<FfiTunedSession>, `model`: FfiWakeWordModel): FfiLadderFit? {
+            return FfiConverterOptionalTypeFfiLadderFit.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_fit_tuned_ladder(
+    
+        FfiConverterSequenceTypeFfiTunedSession.lower(`sessions`),FfiConverterTypeFfiWakeWordModel.lower(`model`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * See [`ladder::LADDER_REVIEW_DELAY_HOURS`].
+         */ fun `ladderReviewDelayHours`(): kotlin.Long {
+            return FfiConverterLong.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_ladder_review_delay_hours(
+    
+        _status)
+}
+    )
+    }
+    
+
+        /**
+         * See [`wake_phrase::match_wake_phrase`].
+         */ fun `matchWakePhrase`(`text`: kotlin.String, `locale`: kotlin.String): FfiWakeMatch {
+            return FfiConverterTypeFfiWakeMatch.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_match_wake_phrase(
+    
+        FfiConverterString.lower(`text`),FfiConverterString.lower(`locale`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * See [`wake_phrase::streaming_partial`].
+         */ fun `streamingPartial`(`wakeMatch`: FfiWakeMatch, `locale`: kotlin.String): FfiStreamingPartial? {
+            return FfiConverterOptionalTypeFfiStreamingPartial.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_streaming_partial(
+    
+        FfiConverterTypeFfiWakeMatch.lower(`wakeMatch`),FfiConverterString.lower(`locale`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * See [`wake_phrase::strip_wake_phrase`].
+         */ fun `stripWakePhrase`(`text`: kotlin.String, `locale`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_strip_wake_phrase(
+    
+        FfiConverterString.lower(`text`),FfiConverterString.lower(`locale`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * [`TunedLadder::MIN_CUTOFF`] and [`TunedLadder::MAX_CUTOFF`], the bounds of
+         * the tuner's search. Interim: the search moves into the engine in step 3 of
+         * the audio-in plan, and this goes with it.
+         */ fun `tunedLadderCutoffRange`(): FfiCutoffRange {
+            return FfiConverterTypeFfiCutoffRange.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_tuned_ladder_cutoff_range(
+    
+        _status)
+}
+    )
+    }
+    
+
+        /**
+         * See [`TunedLadder::parse`].
+         */ fun `tunedLadderParse`(`stored`: kotlin.String?): FfiTunedLadder? {
+            return FfiConverterOptionalTypeFfiTunedLadder.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_tuned_ladder_parse(
+    
+        FfiConverterOptionalString.lower(`stored`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * See [`WakeSensitivity::DEFAULT`].
+         */ fun `wakeSensitivityDefault`(): FfiWakeSensitivity {
+            return FfiConverterTypeFfiWakeSensitivity.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_wake_sensitivity_default(
+    
+        _status)
+}
+    )
+    }
+    
+
+        /**
+         * See [`WakeSensitivity::from_name`].
+         */ fun `wakeSensitivityFromName`(`name`: kotlin.String?): FfiWakeSensitivity {
+            return FfiConverterTypeFfiWakeSensitivity.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_wake_sensitivity_from_name(
+    
+        FfiConverterOptionalString.lower(`name`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * See [`wake_phrase::wake_verdict`].
+         */ fun `wakeVerdict`(`wakeMatch`: FfiWakeMatch, `locale`: kotlin.String): kotlin.Boolean? {
+            return FfiConverterOptionalBoolean.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_wake_verdict(
+    
+        FfiConverterTypeFfiWakeMatch.lower(`wakeMatch`),FfiConverterString.lower(`locale`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * The model with this id, or the default for an unknown or missing one.
+         */ fun `wakeWordModelById`(`id`: kotlin.String?): FfiWakeWordModel {
+            return FfiConverterTypeFfiWakeWordModel.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_wake_word_model_by_id(
+    
+        FfiConverterOptionalString.lower(`id`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Every bundled wake word model, the default first.
+         */ fun `wakeWordModels`(): List<FfiWakeWordModel> {
+            return FfiConverterSequenceTypeFfiWakeWordModel.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_wake_word_models(
+    
+        _status)
 }
     )
     }
