@@ -22,20 +22,11 @@ import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import uniffi.ari_ffi.ladderReviewDelayHours
 
-/** What the review asks about, and how long it waits before asking. */
+/** What the review asks about. How long it waits is [ladderReviewDelayHours]. */
 internal object LadderReview {
     const val WORK_NAME = "wake-ladder-review"
-
-    /**
-     * How long to live with a tightening before asking about it.
-     *
-     * Long enough for everybody in a household to have tried to use the thing
-     * at least once — a person who only talks to Ari at breakfast needs two
-     * mornings to notice — and short enough that they have not yet given up and
-     * stopped trying, which is the failure this question is racing.
-     */
-    const val DELAY_HOURS = 48L
 
     const val ACTION_REVIEW_TIGHTENING = "dev.heyari.ari.REVIEW_TIGHTENING"
 }
@@ -108,7 +99,7 @@ class LadderReviewScheduler @Inject constructor(
 ) {
     fun schedule() {
         val request = OneTimeWorkRequestBuilder<LadderReviewWorker>()
-            .setInitialDelay(LadderReview.DELAY_HOURS, TimeUnit.HOURS)
+            .setInitialDelay(ladderReviewDelayHours(), TimeUnit.HOURS)
             .build()
         // REPLACE: a second tightening restarts the clock, because the question
         // that matters is about the ladder in force now, not the one before it.

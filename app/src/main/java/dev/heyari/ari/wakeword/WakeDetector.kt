@@ -2,6 +2,9 @@ package dev.heyari.ari.wakeword
 
 import java.io.Closeable
 import java.nio.ByteBuffer
+import uniffi.ari_ffi.FfiOperatingPoint
+import uniffi.ari_ffi.FfiWakeEngine
+import uniffi.ari_ffi.FfiWakeWordModel
 
 /** A wake word engine as the capture loop and the tuner use it. */
 interface WakeDetector : Closeable {
@@ -12,24 +15,24 @@ interface WakeDetector : Closeable {
 }
 
 /**
- * This model's engine at [point]. [modelBuffer] holds [WakeWordModel.assetFilename];
+ * This model's engine at [point]. [modelBuffer] holds [FfiWakeWordModel.assetFilename];
  * an openWakeWord model also needs the feature models all of them share, which
  * [load] reads from the app's assets.
  */
-fun WakeWordModel.detector(
+fun FfiWakeWordModel.detector(
     modelBuffer: ByteBuffer,
-    point: OperatingPoint,
+    point: FfiOperatingPoint,
     resetOnDetection: Boolean,
     load: (String) -> ByteBuffer?,
 ): WakeDetector = when (engine) {
-    WakeEngine.MICRO_WAKE_WORD -> MicroWakeWord(
+    FfiWakeEngine.MICRO_WAKE_WORD -> MicroWakeWord(
         modelBuffer = modelBuffer,
         featureStepSizeMs = featureStepSizeMs,
         probabilityCutoff = point.probabilityCutoff,
         slidingWindowSize = point.slidingWindowSize,
         resetOnDetection = resetOnDetection,
     )
-    WakeEngine.OPEN_WAKE_WORD -> OpenWakeWord(
+    FfiWakeEngine.OPEN_WAKE_WORD -> OpenWakeWord(
         melspectrogram = checkNotNull(load(OWW_MELSPECTROGRAM_ASSET)) { "$OWW_MELSPECTROGRAM_ASSET would not load" },
         embedding = checkNotNull(load(OWW_EMBEDDING_ASSET)) { "$OWW_EMBEDDING_ASSET would not load" },
         classifier = modelBuffer,

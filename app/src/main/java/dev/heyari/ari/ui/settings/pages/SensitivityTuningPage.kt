@@ -35,9 +35,9 @@ import dev.heyari.ari.ui.settings.SensitivityTuningViewModel
 import dev.heyari.ari.ui.settings.SettingsViewModel
 import dev.heyari.ari.ui.settings.components.SettingsScaffold
 import dev.heyari.ari.ui.theme.LocalAriSemanticColors
-import dev.heyari.ari.wakeword.LadderFit
 import dev.heyari.ari.wakeword.SensitivityTuner
 import dev.heyari.ari.wakeword.Take
+import uniffi.ari_ffi.FfiLadderFit
 
 /**
  * Two ways to settle the sensitivity: measure it, or pick it.
@@ -231,7 +231,7 @@ private fun Prompt(headline: String, caption: String, level: Float, prompt: Stri
 }
 
 @Composable
-private fun Result(fit: LadderFit) {
+private fun Result(fit: FfiLadderFit) {
     Card(
         colors = CardDefaults.cardColors(
             containerColor = if (fit.overlapping) {

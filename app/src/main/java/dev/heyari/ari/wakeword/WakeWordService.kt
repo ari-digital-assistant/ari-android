@@ -48,6 +48,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.nio.ByteBuffer
 import javax.inject.Inject
+import uniffi.ari_ffi.defaultWakeWordModel
+import uniffi.ari_ffi.tunedLadderParse
+import uniffi.ari_ffi.wakeSensitivityFromName
+import uniffi.ari_ffi.wakeWordModelById
 
 @AndroidEntryPoint
 class WakeWordService : Service() {
@@ -70,7 +74,7 @@ class WakeWordService : Service() {
     // Which model the detector was built from, for the wake log. Set before the
     // capture thread starts, which is the only thread that reads it after.
     @Volatile
-    private var activeModelId: String = WakeWordRegistry.default.id
+    private var activeModelId: String = defaultWakeWordModel().id
 
     // Whether a wake starts the voice session unseen, read with the rest of the
     // wake settings when the microphone opens.
@@ -439,7 +443,7 @@ class WakeWordService : Service() {
         // fine for service startup. Sync is required because the rest of
         // startListening() is sync and there's no audio loop yet to defer into.
         val activeId = runBlocking { settingsRepository.activeWakeWordId.first() }
-        val model = WakeWordRegistry.byId(activeId)
+        val model = wakeWordModelById(activeId)
         val sensitivityName = runBlocking { settingsRepository.wakeWordSensitivity(model.id).first() }
         val storedLadder = runBlocking { settingsRepository.wakeLadder(model.id).first() }
         val speechCheck = runBlocking { settingsRepository.wakeSpeechCheck.first() }
@@ -448,8 +452,8 @@ class WakeWordService : Service() {
         // here rather than held as a field so a tuning session or a self-
         // tightening takes effect on the next mic cycle without the service
         // needing to know either of them exists.
-        val wakeWord = model.withLadder(TunedLadder.parse(storedLadder))
-        val sensitivity = WakeWordSensitivity.fromName(sensitivityName)
+        val wakeWord = model.withLadder(tunedLadderParse(storedLadder))
+        val sensitivity = wakeSensitivityFromName(sensitivityName)
         val point = wakeWord.operatingPoint(sensitivity)
         Log.i(TAG, "Loading wake word model: ${wakeWord.id} @ sensitivity=${sensitivity.name} (cutoff=${point.probabilityCutoff}, window=${point.slidingWindowSize})")
 

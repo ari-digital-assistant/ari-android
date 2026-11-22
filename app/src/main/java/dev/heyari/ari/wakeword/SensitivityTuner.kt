@@ -21,44 +21,16 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.nio.ByteBuffer
 import javax.inject.Inject
 import javax.inject.Singleton
+import uniffi.ari_ffi.FfiOperatingPoint
+import uniffi.ari_ffi.FfiTunedSession
+import uniffi.ari_ffi.FfiWakeWordModel
+import uniffi.ari_ffi.tunedLadderCutoffRange
 
 /** What a take asked the person to say. */
 enum class TakeKind { PHRASE, DECOY }
 
 /** One prompt in a session: what to say, and whether it should wake Ari. */
 data class Take(val kind: TakeKind, @StringRes val promptRes: Int)
-
-/**
- * One tuning session, scored.
- *
- * Each number is the highest cutoff at which that take still fired — 0 when it
- * never fired at all. Storing the threshold rather than a hit at three preset
- * levels is the whole point: a hit count can only say "this level worked",
- * which is true of a wide range of levels and picks none of them. A threshold
- * says where the take actually sits, so a ladder can be solved for rather than
- * chosen from three guesses.
- */
-data class TunedSession(
-    val id: Int,
-    val phraseScores: List<Float>,
-    val decoyScores: List<Float>,
-)
-
-/**
- * A ladder solved from one or more sessions, and how well it separates.
- *
- * [overlapping] is the answer nobody wants and the one that has to be said out
- * loud. When the things a person says that are NOT the wake phrase score as
- * high as the ones that are, no threshold divides them, and a screen that
- * reports a cheerful number anyway is how a ladder ships that nothing measured.
- */
-data class LadderFit(
-    val ladder: TunedLadder,
-    val phrasesHeard: Int,
-    val phrasesTotal: Int,
-    val worstDecoy: Float,
-    val overlapping: Boolean,
-)
 
 /**
  * Chooses a sensitivity by measuring it, rather than asking the user to guess
@@ -123,7 +95,7 @@ class SensitivityTuner @Inject constructor(
      * holds the bus — both of which the caller has to tell the user about,
      * because neither is fixable from this screen.
      */
-    fun tune(id: Int, takes: List<Take>, model: WakeWordModel, onDone: (TunedSession?) -> Unit) {
+    fun tune(id: Int, takes: List<Take>, model: FfiWakeWordModel, onDone: (FfiTunedSession?) -> Unit) {
         if (job != null) return
         job = scope.launch {
             try {
@@ -157,7 +129,7 @@ class SensitivityTuner @Inject constructor(
         captureBus.disarm()
     }
 
-    private suspend fun run(id: Int, takes: List<Take>, model: WakeWordModel): TunedSession? {
+    private suspend fun run(id: Int, takes: List<Take>, model: FfiWakeWordModel): FfiTunedSession? {
         val channel = claimBus()
         if (channel == null) {
             _state.value = State.Problem(RecorderProblem.BUS_BUSY)
@@ -242,7 +214,7 @@ class SensitivityTuner @Inject constructor(
             val score = threshold(pcm, runIn, window, buffer, model)
             if (takes[index].kind == TakeKind.PHRASE) phrases += score else decoys += score
         }
-        return TunedSession(id = id, phraseScores = phrases, decoyScores = decoys)
+        return FfiTunedSession(id = id, phraseScores = phrases, decoyScores = decoys)
     }
 
     /** Drains [channel] into [into] for [durationMs], reporting progress. */
@@ -301,11 +273,11 @@ class SensitivityTuner @Inject constructor(
         runIn: IntRange,
         window: IntRange,
         modelBuffer: ByteBuffer,
-        model: WakeWordModel,
+        model: FfiWakeWordModel,
         cutoff: Float,
     ): Boolean = model.detector(
         modelBuffer = modelBuffer,
-        point = OperatingPoint(cutoff, model.medium.slidingWindowSize),
+        point = FfiOperatingPoint(cutoff, model.medium.slidingWindowSize),
         resetOnDetection = true,
         load = ::loadModel,
     ).use { engine ->
@@ -324,22 +296,23 @@ class SensitivityTuner @Inject constructor(
      * search silently starts returning nonsense, which is why the port of the
      * rule is tested rather than assumed.
      *
-     * [TunedLadder.MAX_CUTOFF] bounds the top because past it the int8
-     * quantisation makes neighbouring cutoffs identical and the search would be
-     * bisecting noise.
+     * The top of [tunedLadderCutoffRange] bounds the search because past it
+     * the int8 quantisation makes neighbouring cutoffs identical and the
+     * search would be bisecting noise.
      */
     private fun threshold(
         pcm: ShortArray,
         runIn: IntRange,
         window: IntRange,
         modelBuffer: ByteBuffer,
-        model: WakeWordModel,
+        model: FfiWakeWordModel,
     ): Float {
         fun firesAt(cutoff: Float) = fires(pcm, runIn, window, modelBuffer, model, cutoff)
-        if (!firesAt(TunedLadder.MIN_CUTOFF)) return 0f
-        if (firesAt(TunedLadder.MAX_CUTOFF)) return TunedLadder.MAX_CUTOFF
-        var low = TunedLadder.MIN_CUTOFF
-        var high = TunedLadder.MAX_CUTOFF
+        val range = tunedLadderCutoffRange()
+        if (!firesAt(range.min)) return 0f
+        if (firesAt(range.max)) return range.max
+        var low = range.min
+        var high = range.max
         repeat(SEARCH_STEPS) {
             val mid = (low + high) / 2f
             if (firesAt(mid)) low = mid else high = mid
@@ -401,20 +374,6 @@ class SensitivityTuner @Inject constructor(
         /** Bisection steps. Six resolves the cutoff to about 0.01. */
         private const val SEARCH_STEPS = 6
 
-        /**
-         * How far MEDIUM sits above the loudest thing the user said that was
-         * not the wake phrase.
-         *
-         * Small, because a decoy is speech from the same mouth into the same
-         * microphone — it is already the hardest negative this room can offer,
-         * unlike room noise, which is why this margin is a tenth of the one the
-         * built-in ladder quotes against ambient.
-         */
-        private const val DECOY_MARGIN = 0.10f
-
-        /** Below this share of phrases still heard, the sets have not separated. */
-        private const val MIN_PHRASES_KEPT = 0.6f
-
         private const val GET_READY_MS = 700L
 
         /** The "now" beep, plus the speaker's output latency with room to spare. */
@@ -448,38 +407,6 @@ class SensitivityTuner @Inject constructor(
             listOf(
                 Take(TakeKind.PHRASE, R.string.sensitivity_tuning_prompt_phrase),
                 Take(TakeKind.DECOY, decoy),
-            )
-        }
-
-        /**
-         * The ladder these sessions imply, or null before anybody has spoken.
-         *
-         * MEDIUM lands [DECOY_MARGIN] above the loudest decoy anyone produced —
-         * the whole household's worst, not each person's own, because one
-         * setting serves the house and the person whose voice defeats it is the
-         * one who decides where it sits.
-         *
-         * [atLeast] then floors it at the model's built-in ladder, so a session
-         * held in a quiet room can tighten the setting and can never loosen it.
-         * That asymmetry is deliberate and it is the guard rail: the built-in
-         * numbers were measured against twenty minutes of a working kitchen,
-         * and thirty seconds of somebody standing still in a hallway is not
-         * evidence that beats them.
-         */
-        fun fit(sessions: List<TunedSession>, model: WakeWordModel): LadderFit? {
-            val phrases = sessions.flatMap { it.phraseScores }
-            if (phrases.isEmpty()) return null
-            val worstDecoy = sessions.flatMap { it.decoyScores }.maxOrNull() ?: 0f
-            val ladder = TunedLadder
-                .centredOn(model.id, worstDecoy + DECOY_MARGIN, model.medium.slidingWindowSize)
-                .atLeast(model)
-            val heard = phrases.count { it >= ladder.medium }
-            return LadderFit(
-                ladder = ladder,
-                phrasesHeard = heard,
-                phrasesTotal = phrases.size,
-                worstDecoy = worstDecoy,
-                overlapping = heard.toFloat() / phrases.size < MIN_PHRASES_KEPT,
             )
         }
 

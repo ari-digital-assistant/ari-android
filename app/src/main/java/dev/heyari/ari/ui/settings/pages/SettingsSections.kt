@@ -66,10 +66,12 @@ import dev.heyari.ari.ui.formatBytes
 import dev.heyari.ari.ui.settings.ModelStatus
 import dev.heyari.ari.ui.settings.PermissionStatus
 import dev.heyari.ari.ui.settings.WakeWordOption
-import dev.heyari.ari.wakeword.WakeWordModel
-import dev.heyari.ari.wakeword.WakeWordRegistry
-import dev.heyari.ari.wakeword.WakeWordSensitivity
+import dev.heyari.ari.wakeword.descriptionRes
+import dev.heyari.ari.wakeword.displayNameRes
 import java.util.Locale
+import uniffi.ari_ffi.FfiWakeSensitivity
+import uniffi.ari_ffi.FfiWakeWordModel
+import uniffi.ari_ffi.defaultWakeWordModel
 
 @Composable
 internal fun PermissionsSection(
@@ -268,7 +270,7 @@ private fun PermissionRow(
 @Composable
 internal fun WakeWordSection(
     wakeWords: List<WakeWordOption>,
-    onSelect: (WakeWordModel) -> Unit,
+    onSelect: (FfiWakeWordModel) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
@@ -303,7 +305,7 @@ internal fun WakeWordSection(
                         modifier = Modifier.minimumInteractiveComponentSize(),
                     )
                     Text(
-                        text = if (option.model.id == WakeWordRegistry.default.id) {
+                        text = if (option.model.id == defaultWakeWordModel().id) {
                             stringResource(R.string.settings_wakeword_recommended, option.model.displayName)
                         } else {
                             option.model.displayName
@@ -320,8 +322,8 @@ internal fun WakeWordSection(
 
 @Composable
 internal fun WakeWordSensitivitySection(
-    current: WakeWordSensitivity,
-    onSelect: (WakeWordSensitivity) -> Unit,
+    current: FfiWakeSensitivity,
+    onSelect: (FfiWakeSensitivity) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
@@ -331,7 +333,7 @@ internal fun WakeWordSensitivitySection(
         )
         Spacer(Modifier.height(4.dp))
 
-        WakeWordSensitivity.entries.forEach { option ->
+        FfiWakeSensitivity.entries.forEach { option ->
             val active = option == current
             Card(
                 modifier = Modifier

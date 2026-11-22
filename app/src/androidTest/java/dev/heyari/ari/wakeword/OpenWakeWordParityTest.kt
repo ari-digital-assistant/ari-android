@@ -10,6 +10,7 @@ import org.junit.runner.RunWith
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.abs
+import uniffi.ari_ffi.wakeWordModelById
 
 /**
  * The phone's openWakeWord engine against the laptop scorer the exam used
@@ -32,7 +33,7 @@ class OpenWakeWordParityTest {
     private val expected = testAssets.open("oww_parity_scores.txt").bufferedReader()
         .readLines().map { it.toFloat() }
 
-    private val model = WakeWordRegistry.byId("hey_ari_oww")
+    private val model = wakeWordModelById("hey_ari_oww")
 
     private fun engine(cutoff: Float, resetOnDetection: Boolean) = OpenWakeWord(
         melspectrogram = load(OWW_MELSPECTROGRAM_ASSET),

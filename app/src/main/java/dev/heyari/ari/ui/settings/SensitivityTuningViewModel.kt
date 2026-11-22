@@ -6,13 +6,9 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.data.SettingsRepository
-import dev.heyari.ari.wakeword.LadderFit
 import dev.heyari.ari.wakeword.RecorderProblem
 import dev.heyari.ari.wakeword.SensitivityTuner
 import dev.heyari.ari.wakeword.Take
-import dev.heyari.ari.wakeword.TunedSession
-import dev.heyari.ari.wakeword.WakeWordRegistry
-import dev.heyari.ari.wakeword.WakeWordSensitivity
 import dev.heyari.ari.wakeword.WakeWordService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,12 +17,17 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import uniffi.ari_ffi.FfiLadderFit
+import uniffi.ari_ffi.FfiTunedSession
+import uniffi.ari_ffi.FfiWakeSensitivity
+import uniffi.ari_ffi.fitTunedLadder
+import uniffi.ari_ffi.wakeWordModelById
 
 data class SensitivityTuningUiState(
-    val sessions: List<TunedSession> = emptyList(),
+    val sessions: List<FfiTunedSession> = emptyList(),
     val tuner: SensitivityTuner.State = SensitivityTuner.State.Idle,
     /** The ladder the sessions so far imply. Null until one has been recorded. */
-    val fit: LadderFit? = null,
+    val fit: FfiLadderFit? = null,
     val tuneDuringNormalUse: Boolean = false,
     val problem: RecorderProblem? = null,
 ) {
@@ -78,7 +79,7 @@ class SensitivityTuningViewModel @Inject constructor(
         _state.update { it.copy(problem = null) }
         takes = SensitivityTuner.takeList()
         viewModelScope.launch {
-            val model = WakeWordRegistry.byId(settingsRepository.activeWakeWordId.first())
+            val model = wakeWordModelById(settingsRepository.activeWakeWordId.first())
             tuner.tune(current.nextSession, takes, model) { session ->
                 if (session == null) {
                     _state.update {
@@ -87,7 +88,7 @@ class SensitivityTuningViewModel @Inject constructor(
                     return@tune
                 }
                 val sessions = _state.value.sessions + session
-                val fit = SensitivityTuner.fit(sessions, model)
+                val fit = fitTunedLadder(sessions, model)
                 _state.update { it.copy(sessions = sessions, fit = fit) }
                 apply(fit)
             }
@@ -114,11 +115,11 @@ class SensitivityTuningViewModel @Inject constructor(
      * ladder that will reliably hear this person, and the screen says so rather
      * than the code quietly declining to save.
      */
-    private fun apply(fit: LadderFit?) {
+    private fun apply(fit: FfiLadderFit?) {
         val ladder = fit?.ladder ?: return
         viewModelScope.launch {
             settingsRepository.setWakeLadder(ladder.modelId, ladder.format())
-            settingsRepository.setWakeWordSensitivity(ladder.modelId, WakeWordSensitivity.MEDIUM.name)
+            settingsRepository.setWakeWordSensitivity(ladder.modelId, FfiWakeSensitivity.MEDIUM.name)
             // A hand-tuned ladder settles the question the scheduled review
             // exists to ask, so retire it rather than letting it arrive in two
             // days asking about a tightening the user has since overwritten.
