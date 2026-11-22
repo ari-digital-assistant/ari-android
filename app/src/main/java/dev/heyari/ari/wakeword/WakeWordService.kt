@@ -26,7 +26,6 @@ import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
 import dev.heyari.ari.MainActivity
 import dev.heyari.ari.R
-import dev.heyari.ari.audio.CaptureBus
 import dev.heyari.ari.audio.VoiceAudio
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.listening.ConditionSignals
@@ -47,10 +46,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
-import uniffi.ari_ffi.FfiLogLevel
 import uniffi.ari_ffi.FfiVoiceException
-import uniffi.ari_ffi.FfiVoiceHost
-import uniffi.ari_ffi.FfiVoicePipeline
 import uniffi.ari_ffi.FfiWakeConfig
 import uniffi.ari_ffi.FfiWakeOutcome
 import uniffi.ari_ffi.tunedLadderParse
@@ -67,7 +63,7 @@ class WakeWordService : Service() {
     lateinit var settingsRepository: SettingsRepository
 
     @Inject
-    lateinit var captureBus: CaptureBus
+    lateinit var voiceEngine: dev.heyari.ari.voice.VoiceEngine
 
     @Inject
     lateinit var listeningController: ListeningController
@@ -76,8 +72,9 @@ class WakeWordService : Service() {
     lateinit var wakeLog: WakeLog
 
     // The engine's voice pipeline: the wake word runs there, on the audio the
-    // capture loop pushes. Built in onCreate, once injection has succeeded.
-    private lateinit var pipeline: FfiVoicePipeline
+    // capture loop pushes. The app's, not this service's: speech-to-text uses
+    // it too. Read only once injection has succeeded.
+    private val pipeline get() = voiceEngine.pipeline
 
     /**
      * The policy's latest word on whether the mic should be open. Seeded
@@ -110,12 +107,12 @@ class WakeWordService : Service() {
     private var currentSource: Int = audioSourceFor(CaptureMode.NORMAL)
 
     // While true the pipeline skips the wake word (we're mid-conversation), but
-    // audio still flows into the CaptureBus every chunk.
+    // audio still flows into the engine every chunk.
     @Volatile
     private var wakePaused: Boolean = false
         set(value) {
             field = value
-            if (::pipeline.isInitialized) pipeline.setWakePaused(value)
+            if (!injectionFailed) pipeline.setWakePaused(value)
         }
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -150,7 +147,8 @@ class WakeWordService : Service() {
             return
         }
         createNotificationChannels()
-        pipeline = FfiVoicePipeline(PipelineHost(), wakeLog.engineLog)
+        // On the capture thread, as it always was.
+        voiceEngine.onWake = ::onWakeWordDetected
         // Watch the voice session state. When it returns to Idle (i.e. the
         // overlay has dismissed), resume wake word listening.
         scope.launch {
@@ -343,7 +341,7 @@ class WakeWordService : Service() {
 
         if (intent?.action == ACTION_START_VOICE_TURN) {
             // Tap-to-talk: the composer's mic button wants a turn NOW, with no
-            // spoken wake word. The mic + CaptureBus are open (startListening
+            // spoken wake word. The mic and the engine feed are open (startListening
             // above opened them on a cold start, or they were already running),
             // so launch the overlay exactly as a wake detection would. This is a
             // FOREGROUND user tap, so BAL is already granted — no SAW gate here.
@@ -497,10 +495,6 @@ class WakeWordService : Service() {
     private fun captureLoop(record: AudioRecord) {
         Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
         val buffer = ShortArray(CHUNK_SIZE)
-        // What the pipeline last heard about the bus, so it is told on a
-        // change rather than on every chunk.
-        var armed = false
-
         while (isListening) {
             val read = record.read(buffer, 0, buffer.size)
             if (read < 0) {
@@ -512,22 +506,12 @@ class WakeWordService : Service() {
             }
             if (read == 0) continue
 
-            // Feed every chunk into the shared capture bus FIRST.
-            // Producer-side fan-out: ring buffer always; live channel
-            // iff a consumer (sherpa) is currently armed. Cheap and
-            // non-blocking by design — see CaptureBus.write().
-            captureBus.write(buffer, read)
-
-            // Then to the engine, which runs the wake word, its debounce and
-            // its speech check, and calls PipelineHost.wakeDetected on this
-            // thread when Ari should wake. It never wakes while a listen is
-            // armed: the mic is permanently open, so an in-utterance fire is
-            // possible.
-            val nowArmed = captureBus.armed
-            if (nowArmed != armed) {
-                armed = nowArmed
-                pipeline.setListenArmed(armed)
-            }
+            // Everything goes to the engine, which keeps the last 2 s for the
+            // listens, feeds an armed listen without ever blocking this
+            // thread, and runs the wake word, its debounce and its speech
+            // check, calling onWakeWordDetected on this thread when Ari should
+            // wake. Never while a listen is armed: the mic is permanently
+            // open, so an in-utterance fire is possible.
             VoiceAudio.push(buffer, read)
         }
     }
@@ -565,7 +549,7 @@ class WakeWordService : Service() {
         audioRecord?.let { runCatching { it.stop(); it.release() } }
         audioRecord = null
         // After the join: the capture thread is the only other caller.
-        if (::pipeline.isInitialized) pipeline.stopWake()
+        if (!injectionFailed) pipeline.stopWake()
     }
 
     /**
@@ -608,8 +592,8 @@ class WakeWordService : Service() {
 
     private fun onWakeWordDetected() {
         // NOTE: we no longer release the mic here. It stays open and is
-        // shared with sherpa via CaptureBus. VoiceSession.start() will arm the
-        // bus, snapshot the pre-roll, and start consuming live chunks — all
+        // shared with speech-to-text through the engine. VoiceSession.start()
+        // arms a listen, which takes the pre-roll, then live chunks, all
         // without ever closing AudioRecord. This is the whole point of the
         // unified pipeline refactor: zero-gap wake-to-STT.
         //
@@ -686,28 +670,6 @@ class WakeWordService : Service() {
             .setAutoCancel(true)
             .build()
         nm.notify(DETECTION_NOTIFICATION_ID, notification)
-    }
-
-    /** What the engine's pipeline asks of the app: model files, wakes and log lines. */
-    private inner class PipelineHost : FfiVoiceHost {
-        override fun loadModel(name: String): ByteArray? = try {
-            assets.open(name).use { it.readBytes() }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to load model: ${e.message}")
-            null
-        }
-
-        // On the capture thread, as it always was.
-        override fun wakeDetected() = onWakeWordDetected()
-
-        override fun log(level: FfiLogLevel, message: String) {
-            when (level) {
-                FfiLogLevel.TRACE, FfiLogLevel.DEBUG -> Log.d(TAG, message)
-                FfiLogLevel.INFO -> Log.i(TAG, message)
-                FfiLogLevel.WARN -> Log.w(TAG, message)
-                FfiLogLevel.ERROR -> Log.e(TAG, message)
-            }
-        }
     }
 
     private fun createNotificationChannels() {
@@ -831,8 +793,7 @@ class WakeWordService : Service() {
         wakePaused = false
         currentSource = audioSourceFor(CaptureMode.NORMAL)
         oneShotActive = false
-        // Last: the wakePaused reset above still talks to the pipeline.
-        if (::pipeline.isInitialized) pipeline.close()
+        if (!injectionFailed) voiceEngine.onWake = null
         Log.i(TAG, "Wake word listening stopped")
         super.onDestroy()
     }

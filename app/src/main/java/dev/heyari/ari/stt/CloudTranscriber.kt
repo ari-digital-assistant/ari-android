@@ -1,46 +1,28 @@
 package dev.heyari.ari.stt
 
-import dev.heyari.ari.audio.wavBytes
 import dev.heyari.ari.data.SecretStore
 import dev.heyari.ari.data.SettingsRepository
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
 import uniffi.ari_ffi.FfiCloudSttService
-import uniffi.ari_ffi.cloudTranscribe
-import uniffi.ari_ffi.cloudTranscribeWakeClip
+import uniffi.ari_ffi.FfiCloudSttSetup
 
 /**
- * Speech-to-text against any OpenAI-compatible `/audio/transcriptions`
- * endpoint: OpenAI itself, or a self-hosted Whisper server.
- *
- * The request is the engine's (ari-voice `cloud_stt`). This is the app's side
- * of it: which service the user picked, where, and their key.
+ * Which OpenAI-compatible `/audio/transcriptions` endpoint the user picked,
+ * OpenAI itself or a self-hosted Whisper server, and their key. The requests
+ * are the engine's (ari-voice `cloud_stt`); it asks for this at each one, so a
+ * settings change needs nothing pushed.
  */
 @Singleton
 class CloudTranscriber @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val secretStore: SecretStore,
 ) {
-    /**
-     * Transcribe [pcm] (16-bit mono 16 kHz) and return the text.
-     *
-     * @throws uniffi.ari_ffi.FfiCloudSttException naming why it failed, so the
-     *   caller can turn it into a message. Never returns blank: an empty
-     *   transcript is [uniffi.ari_ffi.FfiCloudSttException.Empty].
-     */
-    suspend fun transcribe(pcm: ShortArray, locale: String): String = withContext(Dispatchers.IO) {
-        cloudTranscribe(service(), secretStore.get(SECRET_SCOPE, SECRET_KEY), wavBytes(pcm), locale)
-    }
-
-    /**
-     * [transcribe], for the short clip a quiet wake checks for its name. Null
-     * where the engine does not run the early check (a self-hosted server).
-     */
-    suspend fun transcribeWakeClip(pcm: ShortArray, locale: String): String? = withContext(Dispatchers.IO) {
-        cloudTranscribeWakeClip(service(), secretStore.get(SECRET_SCOPE, SECRET_KEY), wavBytes(pcm), locale)
+    /** The service and key now. Blocking: the engine asks from its own threads. */
+    fun setup(): FfiCloudSttSetup = runBlocking {
+        FfiCloudSttSetup(service = service(), apiKey = secretStore.get(SECRET_SCOPE, SECRET_KEY))
     }
 
     private suspend fun service(): FfiCloudSttService = when (settingsRepository.sttMode.first()) {

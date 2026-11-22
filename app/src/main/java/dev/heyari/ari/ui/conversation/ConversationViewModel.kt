@@ -875,7 +875,7 @@ class ConversationViewModel @Inject constructor(
      * with the wake detection path:
      *
      *  - Always-listening ON ([WakeWordService.isRunning]): the service already
-     *    owns an open mic + CaptureBus, so we just tell it to trigger a turn NOW
+     *    owns an open mic and the engine feed, so we just tell it to trigger a turn NOW
      *    (EXTRA_ONE_SHOT = false). It keeps listening for wake words afterwards.
      *  - Always-listening OFF: start the service as a transient capture host in
      *    one-shot mode (EXTRA_ONE_SHOT = true). It opens the mic, triggers the
@@ -909,7 +909,7 @@ class ConversationViewModel @Inject constructor(
      * Foreground composer dictation. Mirrors [startVoiceTurn]'s hardened guard +
      * one-shot computation, but routes to ACTION_START_DICTATION (STT-only, no
      * overlay). Gated by the caller on sttReady; guarded here against an active
-     * wake turn (the CaptureBus is single-consumer).
+     * wake turn (the listen feed has one reader at a time).
      */
     fun startDictation() {
         if (voiceSession.isActive || WakeWordService.oneShotActive) return
