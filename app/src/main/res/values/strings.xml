@@ -971,10 +971,12 @@
     <string name="whats_new_dismiss">Got it</string>
     <string name="whats_new_changelog">Full changelog</string>
     <string name="whats_new_skill_updates">Some of this comes as skill updates. Install them from the banner on the home screen when it appears.</string>
-    <string name="whats_new_0_2_1_read_aloud_title">Hear a typed answer</string>
-    <string name="whats_new_0_2_1_read_aloud_body">Long-press one of Ari\'s replies and choose Read aloud to hear it. Handy when you typed your question and Ari answered silently.</string>
-    <string name="whats_new_0_2_1_timers_title">Timers and alarms</string>
-    <string name="whats_new_0_2_1_timers_body">Tap a ringing timer\'s notification to stop it, or press Stop on the lock screen without unlocking. Two timers finishing together now both ring, each with its own Stop, and “set a 10 second timer” works.</string>
-    <string name="whats_new_0_2_1_bug_button_title">A tidier bug button</string>
-    <string name="whats_new_0_2_1_bug_button_body">The bug-report button is smaller and stays faded until you touch it. Drag it anywhere it\'s out of your way.</string>
+    <string name="whats_new_0_2_2_formatting_title">Formatted answers</string>
+    <string name="whats_new_0_2_2_formatting_body">Assistant answers show bold text, lists, headings and tables as the assistant wrote them. Long-press one and choose Copy as Markdown to keep the formatting when you paste it.</string>
+    <string name="whats_new_0_2_2_cards_title">Cards when you ask out loud</string>
+    <string name="whats_new_0_2_2_cards_body">Weather, timers and other cards now show when you talk to Ari, not just in the chat. They stay about 10 seconds after Ari finishes speaking. Touch one to keep it until you close it.</string>
+    <string name="whats_new_0_2_2_black_title">Pure black in dark mode</string>
+    <string name="whats_new_0_2_2_black_body">Turn on “Pure black in dark mode” in Settings > General for a black background when your phone is in dark mode. OLED screens switch black pixels off, so it saves a little battery.</string>
+    <string name="whats_new_0_2_2_fixes_title">Fixes</string>
+    <string name="whats_new_0_2_2_fixes_body">Long-pressing a message while you type no longer closes the keyboard and moves the message out from under your finger.</string>
 </resources>

@@ -955,10 +955,12 @@
     <string name="whats_new_dismiss">Ho capito</string>
     <string name="whats_new_changelog">Tutte le modifiche</string>
     <string name="whats_new_skill_updates">Alcune novità arrivano come aggiornamenti delle skill. Installali dal banner nella schermata principale quando compare.</string>
-    <string name="whats_new_0_2_1_read_aloud_title">Ascolta una risposta scritta</string>
-    <string name="whats_new_0_2_1_read_aloud_body">Tieni premuta una risposta di Ari e scegli Leggi ad alta voce per ascoltarla. Utile quando hai scritto la domanda e Ari ha risposto in silenzio.</string>
-    <string name="whats_new_0_2_1_timers_title">Timer e sveglie</string>
-    <string name="whats_new_0_2_1_timers_body">Tocca la notifica di un timer che suona per fermarlo, oppure premi Ferma dalla schermata di blocco senza sbloccare il telefono. Due timer che scadono insieme ora suonano entrambi, ognuno con il suo Ferma.</string>
-    <string name="whats_new_0_2_1_bug_button_title">Un pulsante segnalazioni più discreto</string>
-    <string name="whats_new_0_2_1_bug_button_body">Il pulsante per segnalare un problema è più piccolo e resta sbiadito finché non lo tocchi. Trascinalo dove non dà fastidio.</string>
+    <string name="whats_new_0_2_2_formatting_title">Risposte formattate</string>
+    <string name="whats_new_0_2_2_formatting_body">Le risposte dell\'assistente arrivano formattate come sono state scritte: grassetto, elenchi, titoli e tabelle. Tienine premuta una e scegli Copia come Markdown per mantenere la formattazione quando la incolli.</string>
+    <string name="whats_new_0_2_2_cards_title">Schede anche a voce</string>
+    <string name="whats_new_0_2_2_cards_body">Meteo, timer e altre schede ora compaiono anche quando parli con Ari, non solo nella chat. Restano circa 10 secondi dopo che Ari ha finito di parlare. Toccane una per tenerla finché non la chiudi.</string>
+    <string name="whats_new_0_2_2_black_title">Nero puro in modalità scura</string>
+    <string name="whats_new_0_2_2_black_body">Attiva “Nero puro in modalità scura” in Impostazioni > Generali per uno sfondo nero quando il telefono è in modalità scura. Gli schermi OLED spengono i pixel neri, quindi si risparmia un po\' di batteria.</string>
+    <string name="whats_new_0_2_2_fixes_title">Correzioni</string>
+    <string name="whats_new_0_2_2_fixes_body">Tenere premuto un messaggio mentre scrivi non chiude più la tastiera e non sposta più il messaggio da sotto il dito.</string>
 </resources>

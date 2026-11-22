@@ -2,9 +2,10 @@ package dev.heyari.ari.ui.whatsnew
 
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.Alarm
-import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.FormatBold
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.ui.graphics.vector.ImageVector
 import dev.heyari.ari.R
 
@@ -16,12 +17,13 @@ import dev.heyari.ari.R
  * them shows nothing rather than the previous release's news.
  */
 internal object WhatsNew {
-    const val VERSION = "0.2.1"
+    const val VERSION = "0.2.2"
 
     val items = listOf(
-        WhatsNewItem(Icons.AutoMirrored.Filled.VolumeUp, R.string.whats_new_0_2_1_read_aloud_title, R.string.whats_new_0_2_1_read_aloud_body),
-        WhatsNewItem(Icons.Default.Alarm, R.string.whats_new_0_2_1_timers_title, R.string.whats_new_0_2_1_timers_body),
-        WhatsNewItem(Icons.Default.BugReport, R.string.whats_new_0_2_1_bug_button_title, R.string.whats_new_0_2_1_bug_button_body),
+        WhatsNewItem(Icons.Default.FormatBold, R.string.whats_new_0_2_2_formatting_title, R.string.whats_new_0_2_2_formatting_body),
+        WhatsNewItem(Icons.Default.WbSunny, R.string.whats_new_0_2_2_cards_title, R.string.whats_new_0_2_2_cards_body),
+        WhatsNewItem(Icons.Default.DarkMode, R.string.whats_new_0_2_2_black_title, R.string.whats_new_0_2_2_black_body),
+        WhatsNewItem(Icons.Default.Build, R.string.whats_new_0_2_2_fixes_title, R.string.whats_new_0_2_2_fixes_body),
     )
 
     /**
