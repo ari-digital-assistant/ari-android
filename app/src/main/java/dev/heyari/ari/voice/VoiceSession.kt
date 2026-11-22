@@ -93,7 +93,7 @@ internal fun partialRevealsWake(partial: SttState.Listening): Boolean = partial.
  * Post-hoc wake verification. The 64 KB detector fires on phonetic shape and
  * saturates its confidence even when it's wrong, so the threshold has no
  * headroom left; sherpa — which is already transcribing the same audio via the
- * CaptureBus rewind — is the second opinion. A wake turn whose transcript
+ * listen feed's rewind — is the second opinion. A wake turn whose transcript
  * contains speech but no "ari"-ish name token was not addressed to Ari.
  *
  * Fails open on every ambiguity: a wrongly-rejected genuine command reads as
@@ -237,7 +237,7 @@ class VoiceSession @Inject constructor(
     private val utteranceCaptureStore: UtteranceCaptureStore,
     private val localeProvider: dev.heyari.ari.locale.AriFfiLocaleProvider,
     private val logRepository: ConversationLogRepository,
-    private val captureBus: dev.heyari.ari.audio.CaptureBus,
+    private val listenFeed: dev.heyari.ari.audio.ListenFeed,
 ) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var sessionJob: Job? = null
@@ -387,7 +387,7 @@ class VoiceSession @Inject constructor(
         // Snapshot now rather than at detection time: the overlay launch costs
         // a few hundred ms, but the ring holds 2 s and "Hey Ari" is ~0.7 s, so
         // the phrase is still comfortably inside the window.
-        wakePreroll = if (verifyWake) captureBus.peekRecent(PREROLL_CAPTURE_SECONDS) else null
+        wakePreroll = if (verifyWake) listenFeed.peekRecent(PREROLL_CAPTURE_SECONDS) else null
         // A fresh wake cancels any reply the engine was still waiting on from a
         // previous turn — the user has clearly moved on. No-op when nothing is
         // pending.
@@ -413,7 +413,7 @@ class VoiceSession @Inject constructor(
                     logWakeOutcome(FfiWakeOutcome.COLD_START)
                     // Cold start: acknowledge, wait for the warm-up, then ask
                     // the user to repeat — their words have already aged out of
-                    // the 2 s CaptureBus ring buffer, so there's nothing to
+                    // the engine's 2 s ring, so there's nothing to
                     // transcribe.
                     speechOutput.speak(waitPhrase!!)
                     val model = sttModelLoader.activeDownloadedModel()
@@ -443,7 +443,7 @@ class VoiceSession @Inject constructor(
                     speechRecognizer.startListening(rewindSeconds = 0f)
                 } else {
                     // Unified audio pipeline: the mic is already open and the
-                    // CaptureBus has been buffering the user's first words since
+                    // engine's ring has been buffering the user's first words since
                     // before the wake-word fired. Arming sherpa is instant.
                     speechRecognizer.startListening(
                         giveUpWithoutSpeechMs = if (hidden) QUIET_GIVE_UP_MS else null,
@@ -1256,7 +1256,7 @@ class VoiceSession @Inject constructor(
      */
     private fun logWakeListenEnd() {
         if (!wakeOutcomePending) return
-        speechRecognizer.lastListenEnd?.let { wakeLog.listenEnded(it.end.slug, it.afterMs) }
+        speechRecognizer.lastListenEnd?.let { wakeLog.listenEnded(it.end, it.afterMs) }
     }
 
     /**

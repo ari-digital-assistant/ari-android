@@ -74,6 +74,15 @@ android {
         }
     }
 
+    // sherpa-onnx's AAR brings its Kotlin API's JNI library and its C++ API.
+    // Ari uses neither: the engine calls sherpa through its C API
+    // (libsherpa-onnx-c-api.so), which stays, with sherpa's ONNX Runtime.
+    packaging {
+        jniLibs {
+            excludes += listOf("**/libsherpa-onnx-jni.so", "**/libsherpa-onnx-cxx-api.so")
+        }
+    }
+
     signingConfigs {
         // A debug keystore committed to the repo, so every machine and CI
         // runner signs debug builds with the SAME certificate.

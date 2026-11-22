@@ -6,7 +6,7 @@ import android.util.Log
 import androidx.annotation.StringRes
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.R
-import dev.heyari.ari.audio.CaptureBus
+import dev.heyari.ari.audio.ListenFeed
 import dev.heyari.ari.audio.pcmBytes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -40,7 +40,7 @@ data class Take(val kind: TakeKind, @StringRes val promptRes: Int)
  * Chooses a sensitivity by measuring it, rather than asking the user to guess
  * what "Medium" means for their voice in their kitchen.
  *
- * The audio comes off [CaptureBus] for the same reason [WakeSampleRecorder]
+ * The audio comes off [ListenFeed] for the same reason [WakeSampleRecorder]
  * takes it from there: a setting tuned on a different microphone path is a
  * setting tuned for a phone nobody owns. Arming the bus also suppresses wake
  * detection, so saying the phrase five times does not start five voice turns.
@@ -48,7 +48,7 @@ data class Take(val kind: TakeKind, @StringRes val promptRes: Int)
 @Singleton
 class SensitivityTuner @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val captureBus: CaptureBus,
+    private val listenFeed: ListenFeed,
     private val samples: WakeSampleStore,
 ) {
     sealed interface State {
@@ -121,7 +121,7 @@ class SensitivityTuner @Inject constructor(
     private fun claimBus(): Channel<ShortArray>? {
         // Two seconds of rewind, which is everything the ring buffer holds, so
         // the run-in starts before the user has finished tapping the button.
-        val channel = captureBus.arm(2f) ?: return null
+        val channel = listenFeed.arm(2f) ?: return null
         owningBus = true
         return channel
     }
@@ -130,7 +130,7 @@ class SensitivityTuner @Inject constructor(
     private fun releaseBus() {
         if (!owningBus) return
         owningBus = false
-        captureBus.disarm()
+        listenFeed.disarm()
     }
 
     private suspend fun run(id: Int, takes: List<Take>, model: FfiWakeWordModel): FfiTunedSession? {

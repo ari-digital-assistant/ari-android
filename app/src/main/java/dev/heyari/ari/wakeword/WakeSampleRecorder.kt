@@ -4,7 +4,7 @@ import android.os.SystemClock
 import android.util.Log
 import androidx.annotation.StringRes
 import dev.heyari.ari.R
-import dev.heyari.ari.audio.CaptureBus
+import dev.heyari.ari.audio.ListenFeed
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -34,20 +34,19 @@ enum class RecorderProblem(@StringRes val messageRes: Int) {
  * Records one segment of wake-phrase audio through the wake word service's own
  * microphone.
  *
- * It reads [CaptureBus] rather than opening its own `AudioRecord`, which is the
+ * It reads [ListenFeed] rather than opening its own `AudioRecord`, which is the
  * entire point: the evaluation set has to come down the same path production
  * audio does, and sharing the producer makes that true by construction instead
- * of by keeping two sets of capture flags in step. Arming the bus also
- * suppresses wake detection for free — see the `captureBus.armed` guard in
- * [WakeWordService] — so saying the phrase forty times does not launch forty
- * voice turns.
+ * of by keeping two sets of capture flags in step. Arming the feed also
+ * suppresses wake detection for free (the engine never wakes while a feed is
+ * armed), so saying the phrase forty times does not launch forty voice turns.
  *
  * A singleton so a session survives the settings page going away, and so a
  * second page cannot start a competing one.
  */
 @Singleton
 class WakeSampleRecorder @Inject constructor(
-    private val captureBus: CaptureBus,
+    private val listenFeed: ListenFeed,
     private val store: WakeSampleStore,
 ) {
     sealed interface State {
@@ -139,7 +138,7 @@ class WakeSampleRecorder @Inject constructor(
 
     @Synchronized
     private fun claimBus(): Channel<ShortArray>? {
-        val channel = captureBus.arm(0f) ?: return null
+        val channel = listenFeed.arm(0f) ?: return null
         owningBus = true
         return channel
     }
@@ -148,7 +147,7 @@ class WakeSampleRecorder @Inject constructor(
     private fun releaseBus() {
         if (!owningBus) return
         owningBus = false
-        captureBus.disarm()
+        listenFeed.disarm()
     }
 
     /** Clears a [State.Problem] so the page can offer the start button again. */

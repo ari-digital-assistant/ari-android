@@ -46,7 +46,7 @@ object EngineModule {
     const val BUILTIN_ASSISTANT_ID = "dev.heyari.assistant.local"
 
     // SpeechRecognizer is constructed by Hilt via its own @Inject constructor —
-    // no @Provides needed. It depends on CaptureBus + AriFfiLocaleProvider,
+    // no @Provides needed. It depends on VoiceEngine + AriFfiLocaleProvider,
     // both of which Hilt resolves automatically.
 
     @Provides
