@@ -960,10 +960,11 @@ class SettingsViewModel @Inject constructor(
      * feature. Two extra taps is a cheap price for never having that
      * conversation.
      *
-     * The optimisation list is the screen built for this, so it goes first.
-     * Some ROMs don't ship it, hence the fall back to Ari's own app info page,
-     * which has a battery entry everywhere and at least starts on the right
-     * app.
+     * Ari's own battery page goes first: one tap on background usage, then
+     * Unrestricted. Its action is the one Settings declares for that page,
+     * missing from the SDK's constants but there since Android 12. The
+     * optimisation list comes next, which leaves the user to find Ari in it,
+     * and Ari's app info page last, which has a battery entry everywhere.
      *
      * Each is tried until one starts, rather than asked about first with
      * resolveActivity: on Android 11 and up that answer goes through package
@@ -972,6 +973,9 @@ class SettingsViewModel @Inject constructor(
      */
     fun openBatterySettings() {
         val candidates = listOf(
+            Intent(ACTION_APP_BATTERY_USAGE).apply {
+                data = Uri.parse("package:${application.packageName}")
+            },
             Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
             Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                 data = Uri.parse("package:${application.packageName}")
@@ -1302,5 +1306,8 @@ class SettingsViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "SettingsViewModel"
+
+        /** Settings' per-app battery page; not in the SDK's constants. */
+        private const val ACTION_APP_BATTERY_USAGE = "android.settings.VIEW_ADVANCED_POWER_USAGE_DETAIL"
     }
 }

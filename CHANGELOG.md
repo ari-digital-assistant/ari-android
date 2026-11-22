@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sensitivity tuning keeps the screen on while it runs, and beeps: a low beep as each
   prompt appears, and a higher one when it's time to speak.
 
+### Changed
+
+- The background battery link in Settings opens Ari's own battery page, so setting it to
+  Unrestricted is two taps instead of hunting for Ari in a list.
+
 ### Fixed
 
 - Setup downloads the on-device speech model when you continue, as it already did for
