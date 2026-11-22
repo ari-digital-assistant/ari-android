@@ -139,15 +139,16 @@ class EngineHolder @Inject constructor(
 
     /**
      * [processInput], handing an on-device answer over while the model is
-     * still writing it (ari-android#37): [onText] gets the words so far, each
-     * call replacing the last, and [onSentence] each finished sentence. If any
+     * still writing it (ari-android#37): [onText] gets the words so far, with
+     * their markdown once they format anything, each call replacing the last,
+     * and [onSentence] each finished sentence. If any
      * sentence arrives the whole answer does, before this returns, so the
      * caller speaks the sentences instead of the response. Both run on the
      * engine's thread with the engine locked: they must not call back in.
      */
     suspend fun processInput(
         input: String,
-        onText: (String) -> Unit,
+        onText: (soFar: String, markdown: String?) -> Unit,
         onSentence: (String) -> Unit,
     ): FfiResponse =
         withContext(Dispatchers.Default) {
@@ -155,7 +156,7 @@ class EngineHolder @Inject constructor(
             engine.processInputStreaming(
                 input,
                 object : FfiAnswerSink {
-                    override fun text(soFar: String) = onText(soFar)
+                    override fun text(soFar: String, markdown: String?) = onText(soFar, markdown)
                     override fun sentence(text: String) = onSentence(text)
                 },
             ).also {

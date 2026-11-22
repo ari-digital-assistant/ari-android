@@ -796,6 +796,7 @@
     <!-- Shown on a model row once its files are on disk. -->
     <string name="model_status_downloaded">Downloaded</string>
     <string name="message_menu_copy">Copy</string>
+    <string name="message_menu_copy_markdown">Copy as Markdown</string>
     <string name="message_menu_read_aloud">Read aloud</string>
     <string name="message_menu_report">Report</string>
     <string name="report_title">Report this response</string>

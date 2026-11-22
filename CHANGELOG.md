@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Assistant answers show their formatting: bold, lists, headings, code and tables, as
+  the model wrote them. Long-pressing a formatted answer also offers Copy as Markdown;
+  Copy still copies plain text
+  ([#57](https://github.com/ari-digital-assistant/ari-android/issues/57)).
 - Settings > General has a "Pure black in dark mode" switch, which makes Ari's background
   black when your phone is in dark mode, for OLED screens
   ([#56](https://github.com/ari-digital-assistant/ari-android/issues/56)).

@@ -7,15 +7,12 @@ import android.icu.text.DisplayContext
 import android.icu.text.RelativeDateTimeFormatter
 import android.icu.util.ULocale
 import android.text.format.DateUtils
-import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -44,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
@@ -51,6 +49,8 @@ import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.halilibo.richtext.commonmark.Markdown
+import com.halilibo.richtext.ui.material3.RichText
 import dev.heyari.ari.R
 import dev.heyari.ari.assets.AssetResolver
 import dev.heyari.ari.data.card.CardAction
@@ -61,6 +61,7 @@ import java.util.Date
 
 private val BIG = 18.dp
 private val TAIL = 4.dp
+private val ACCENT = 3.dp
 
 @Composable
 fun MessageBubble(
@@ -121,7 +122,8 @@ fun MessageBubble(
             }
 
             // Long-press menu. Copy is on every bubble because people expect it
-            // on a chat message; Read aloud and Report are only on Ari's, because
+            // on a chat message, and Copy as Markdown on an answer the model
+            // formatted; Read aloud and Report are only on Ari's, because
             // hearing or reporting your own words is meaningless.
             var menuOpen by remember(message.id) { mutableStateOf(false) }
             val context = LocalContext.current
@@ -138,22 +140,26 @@ fun MessageBubble(
                         onLongClick = { menuOpen = true },
                     ),
             ) {
-                // IntrinsicSize.Min lets the accent bar match the text's height
-                // exactly; the enclosing Surface clips it to the bubble's shape,
-                // so the bar rounds with the corner.
-                Row(modifier = Modifier.height(IntrinsicSize.Min)) {
-                    if (!isUser) {
-                        // Hairline accent edge on Ari turns.
-                        Box(
-                            modifier = Modifier
-                                .width(3.dp)
-                                .fillMaxHeight()
-                                .background(MaterialTheme.colorScheme.primary),
-                        )
+                // Hairline accent edge on Ari turns, drawn behind the text so it
+                // spans its height without asking for an intrinsic one, which a
+                // rendered table can't give. The enclosing Surface clips it to
+                // the bubble's shape, so the bar rounds with the corner.
+                val accent = MaterialTheme.colorScheme.primary
+                val body = if (isUser) Modifier else Modifier
+                    .drawBehind { drawRect(accent, size = Size(ACCENT.toPx(), size.height)) }
+                    .padding(start = ACCENT)
+                val markdown = message.markdown
+                if (markdown != null) {
+                    // An answer the model formatted (ari-android#57). RichText
+                    // takes bodyLarge and the Surface's content colour, as the
+                    // plain Text below does.
+                    RichText(modifier = body.padding(horizontal = 12.dp, vertical = 10.dp)) {
+                        Markdown(content = markdown)
                     }
+                } else {
                     Text(
                         text = message.text,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        modifier = body.padding(horizontal = 12.dp, vertical = 10.dp),
                         style = MaterialTheme.typography.bodyLarge,
                         color = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer
                                 else MaterialTheme.colorScheme.onSecondaryContainer,
@@ -170,6 +176,16 @@ fun MessageBubble(
                             ?.setPrimaryClip(ClipData.newPlainText(null, message.text))
                     },
                 )
+                message.markdown?.let { markdown ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.message_menu_copy_markdown)) },
+                        onClick = {
+                            menuOpen = false
+                            context.getSystemService(ClipboardManager::class.java)
+                                ?.setPrimaryClip(ClipData.newPlainText(null, markdown))
+                        },
+                    )
+                }
                 if (!isUser) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.message_menu_read_aloud)) },

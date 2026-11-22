@@ -614,7 +614,7 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
     fun callback(`callbackData`: Long,`result`: UniffiForeignFutureResultVoid.UniffiByValue,)
 }
 internal interface UniffiCallbackInterfaceFfiAnswerSinkMethod0 : com.sun.jna.Callback {
-    fun callback(`uniffiHandle`: Long,`soFar`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+    fun callback(`uniffiHandle`: Long,`soFar`: RustBuffer.ByValue,`markdown`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceFfiAnswerSinkMethod1 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`text`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
@@ -1317,7 +1317,7 @@ external fun uniffi_ari_ffi_fn_free_ffianswersink(`handle`: Long,uniffi_out_err:
 ): Unit
 external fun uniffi_ari_ffi_fn_init_callback_vtable_ffianswersink(`vtable`: UniffiVTableCallbackInterfaceFfiAnswerSink,
 ): Unit
-external fun uniffi_ari_ffi_fn_method_ffianswersink_text(`ptr`: Long,`soFar`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+external fun uniffi_ari_ffi_fn_method_ffianswersink_text(`ptr`: Long,`soFar`: RustBuffer.ByValue,`markdown`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ffianswersink_sentence(`ptr`: Long,`text`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
@@ -1755,7 +1755,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_arienginebuilder_tasks() != 33770.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_ffianswersink_text() != 62381.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_ffianswersink_text() != 46764.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ffianswersink_sentence() != 55664.toShort()) {
@@ -4336,9 +4336,10 @@ public object FfiConverterTypeAssistantRegistry: FfiConverter<AssistantRegistry,
 public interface FfiAnswerSink {
     
     /**
-     * The answer so far, in whole words. Each call replaces the last.
+     * The answer so far, in whole words, and as markdown once it formats
+     * anything. Each call replaces the last.
      */
-    fun `text`(`soFar`: kotlin.String)
+    fun `text`(`soFar`: kotlin.String, `markdown`: kotlin.String?)
     
     /**
      * The next finished sentence.
@@ -4454,14 +4455,15 @@ open class FfiAnswerSinkImpl: Disposable, AutoCloseable, FfiAnswerSink
 
     
     /**
-     * The answer so far, in whole words. Each call replaces the last.
-     */override fun `text`(`soFar`: kotlin.String)
+     * The answer so far, in whole words, and as markdown once it formats
+     * anything. Each call replaces the last.
+     */override fun `text`(`soFar`: kotlin.String, `markdown`: kotlin.String?)
         = 
     callWithHandle {
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_ari_ffi_fn_method_ffianswersink_text(
         it,
-        FfiConverterString.lower(`soFar`),_status)
+        FfiConverterString.lower(`soFar`),FfiConverterOptionalString.lower(`markdown`),_status)
 }
     }
     
@@ -4501,11 +4503,12 @@ open class FfiAnswerSinkImpl: Disposable, AutoCloseable, FfiAnswerSink
 // Put the implementation in an object so we don't pollute the top-level namespace
 internal object uniffiCallbackInterfaceFfiAnswerSink {
     internal object `text`: UniffiCallbackInterfaceFfiAnswerSinkMethod0 {
-        override fun callback(`uniffiHandle`: Long,`soFar`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+        override fun callback(`uniffiHandle`: Long,`soFar`: RustBuffer.ByValue,`markdown`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeFfiAnswerSink.handleMap.get(uniffiHandle)
             val makeCall = { ->
                 uniffiObj.`text`(
                     FfiConverterString.lift(`soFar`),
+                    FfiConverterOptionalString.lift(`markdown`),
                 )
             }
             val writeReturn = { _: Unit -> Unit }
@@ -11635,9 +11638,14 @@ sealed class FfiResponse {
      * `clear_conversation` true means the user cleared the conversation this
      * turn ("clear history") and the engine has already forgotten it; the
      * host clears its chat log to match.
+     * `markdown` is an assistant answer as written, for a host that renders
+     * markdown to show; `body` is the same answer as plain text, for
+     * speaking. `None` for anything else, and for an answer that formats
+     * nothing.
      */
     data class Text(
         val `body`: kotlin.String, 
+        val `markdown`: kotlin.String?, 
         val `rearm`: kotlin.Boolean, 
         val `enterConversation`: kotlin.Boolean, 
         val `exitConversation`: kotlin.Boolean, 
@@ -11722,6 +11730,7 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
         return when(buf.getInt()) {
             1 -> FfiResponse.Text(
                 FfiConverterString.read(buf),
+                FfiConverterOptionalString.read(buf),
                 FfiConverterBoolean.read(buf),
                 FfiConverterBoolean.read(buf),
                 FfiConverterBoolean.read(buf),
@@ -11754,6 +11763,7 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
             (
                 4UL
                 + FfiConverterString.allocationSize(value.`body`)
+                + FfiConverterOptionalString.allocationSize(value.`markdown`)
                 + FfiConverterBoolean.allocationSize(value.`rearm`)
                 + FfiConverterBoolean.allocationSize(value.`enterConversation`)
                 + FfiConverterBoolean.allocationSize(value.`exitConversation`)
@@ -11796,6 +11806,7 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
             is FfiResponse.Text -> {
                 buf.putInt(1)
                 FfiConverterString.write(value.`body`, buf)
+                FfiConverterOptionalString.write(value.`markdown`, buf)
                 FfiConverterBoolean.write(value.`rearm`, buf)
                 FfiConverterBoolean.write(value.`enterConversation`, buf)
                 FfiConverterBoolean.write(value.`exitConversation`, buf)

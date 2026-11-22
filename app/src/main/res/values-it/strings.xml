@@ -787,6 +787,7 @@
     <string name="settings_handoff_no_key">Per usarlo, aggiungi una chiave API a un assistente cloud, come ChatGPT, Claude o Gemini.</string>
     <string name="model_status_downloaded">Scaricato</string>
     <string name="message_menu_copy">Copia</string>
+    <string name="message_menu_copy_markdown">Copia come Markdown</string>
     <string name="message_menu_read_aloud">Leggi ad alta voce</string>
     <string name="message_menu_report">Segnala</string>
     <string name="report_title">Segnala questa risposta</string>

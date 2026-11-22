@@ -406,12 +406,12 @@ class ConversationViewModel @Inject constructor(
             val response = try {
                 engineHolder.processInput(
                     text,
-                    onText = { soFar ->
+                    onText = { soFar, markdown ->
                         if (isActive) {
                             _state.update { it.copy(isThinking = false) }
                             val previous = answer
-                            val bubble = previous?.copy(text = soFar)
-                                ?: Message(text = soFar, isFromUser = false)
+                            val bubble = previous?.copy(text = soFar, markdown = markdown)
+                                ?: Message(text = soFar, markdown = markdown, isFromUser = false)
                             if (previous == null) logRepository.append(bubble) else logRepository.replace(bubble)
                             answer = bubble
                         }
@@ -470,12 +470,18 @@ class ConversationViewModel @Inject constructor(
                 // the apology body as-is.
                 is FfiResponse.NotUnderstood -> response.body
             }
+            val markdown = (response as? FfiResponse.Text)?.markdown
 
             // Already shown as it was written: the bubble takes the finished
             // answer, which is read out now unless its sentences already were.
             answer?.let {
                 logRepository.replace(
-                    it.copy(text = bubbleText ?: responseText, attachments = attachments, skillId = skillId)
+                    it.copy(
+                        text = bubbleText ?: responseText,
+                        markdown = markdown,
+                        attachments = attachments,
+                        skillId = skillId,
+                    )
                 )
                 if (speak && !spoken && responseText.isNotBlank()) speechOutput.speak(responseText)
                 return@launch
@@ -490,6 +496,7 @@ class ConversationViewModel @Inject constructor(
 
             val ariMessage = Message(
                 text = bubbleText ?: responseText,
+                markdown = markdown,
                 isFromUser = false,
                 attachments = attachments,
                 skillId = skillId,

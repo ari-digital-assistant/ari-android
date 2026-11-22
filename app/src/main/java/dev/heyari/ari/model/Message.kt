@@ -8,6 +8,13 @@ enum class InputSource { Text, Voice }
 data class Message(
     val id: String = UUID.randomUUID().toString(),
     val text: String,
+    /**
+     * An assistant answer as the model wrote it, for the bubble to render
+     * (ari-android#57); [text] is the same answer as plain text, for speaking
+     * and plain copying. Null for everything else, and for an answer that
+     * formats nothing.
+     */
+    val markdown: String? = null,
     val isFromUser: Boolean,
     val timestamp: Long = System.currentTimeMillis(),
     val attachments: List<Attachment> = emptyList(),

@@ -848,7 +848,7 @@ class VoiceSession @Inject constructor(
         val turnJob = currentCoroutineContext()[Job]
         var response = engineHolder.processInput(
             text,
-            onText = { soFar -> if (turnJob?.isActive != false) _state.value = VoiceState.Responding(soFar) },
+            onText = { soFar, _ -> if (turnJob?.isActive != false) _state.value = VoiceState.Responding(soFar) },
             onSentence = { sentence -> if (turnJob?.isActive != false) reply.sentence(sentence) },
         )
         var usedText = text
@@ -974,6 +974,7 @@ class VoiceSession @Inject constructor(
             logRepository.append(
                 Message(
                     text = bubbleText ?: responseText,
+                    markdown = (response as? FfiResponse.Text)?.markdown,
                     isFromUser = false,
                     attachments = attachments,
                     skillId = skillId,
