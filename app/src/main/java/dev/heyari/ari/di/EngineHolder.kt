@@ -35,7 +35,6 @@ import uniffi.ari_ffi.onDeviceCpuInfo
 import uniffi.ari_ffi.AriEngineBuilder
 import uniffi.ari_ffi.AssistantRegistry
 import uniffi.ari_ffi.FfiResponse
-import uniffi.ari_ffi.FfiSpokenResponse
 import uniffi.ari_ffi.FfiAnswerSink
 import uniffi.ari_ffi.SkillSettingsStore
 import java.io.File
@@ -86,6 +85,7 @@ class EngineHolder @Inject constructor(
     private val tasksProvider: dev.heyari.ari.tasks.TasksProvider,
     private val skillRegistry: uniffi.ari_ffi.SkillRegistry,
     private val lapseWatcher: dev.heyari.ari.data.conversation.ConversationLapseWatcher,
+    private val voiceEngine: dev.heyari.ari.voice.VoiceEngine,
 ) {
     // SupervisorJob isolates siblings but does not swallow: an exception from
     // anything launched here otherwise reaches the default uncaught handler
@@ -167,31 +167,16 @@ class EngineHolder @Inject constructor(
         }
 
     /**
-     * [processInput] for a spoken turn the recogniser also heard a second way
-     * ([alternative], the streaming path's parallel stream). The engine acts on
-     * [alternative] instead when [input] finds no skill and it does, at the point
-     * it would otherwise hand [input] to the assistant. The result says which.
+     * What follows every turn, for one the voice session ran in the engine
+     * itself rather than through [processInput]: the watch for the
+     * conversation being forgotten restarts, and the cloud assistant that
+     * answered is remembered.
      */
-    suspend fun processSpokenInput(
-        input: String,
-        alternative: String?,
-        onText: (soFar: String, markdown: String?) -> Unit,
-        onSentence: (String) -> Unit,
-    ): FfiSpokenResponse =
-        withContext(Dispatchers.Default) {
-            val engine = engine()
-            engine.processSpokenInput(
-                input,
-                alternative,
-                object : FfiAnswerSink {
-                    override fun text(soFar: String, markdown: String?) = onText(soFar, markdown)
-                    override fun sentence(text: String) = onSentence(text)
-                },
-            ).also {
-                lapseWatcher.turnFinished(engine::conversationMemory)
-                rememberCloudAssistant(engine)
-            }
-        }
+    fun voiceTurnFinished() {
+        val engine = built ?: return
+        lapseWatcher.turnFinished(engine::conversationMemory)
+        rememberCloudAssistant(engine)
+    }
 
     /** The cloud assistant [rememberCloudAssistant] last persisted. */
     @Volatile
@@ -405,6 +390,9 @@ class EngineHolder @Inject constructor(
         assistantRegistry.applyToEngine(engine)
 
         loadLlmWhenItArrives(engine)
+
+        // Voice turns run in the engine's own session, which waits for this.
+        voiceEngine.pipeline.attachEngine(engine)
 
         return engine
     }

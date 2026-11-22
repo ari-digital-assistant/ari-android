@@ -178,7 +178,7 @@ internal fun parseWakeSampleSidecar(stem: String, text: String, fallbackMs: Long
 class WakeSampleStore @Inject constructor(
     @ApplicationContext context: Context,
 ) {
-    private val clips = AudioClipStore(context, DIR_NAME, MAX_FILES, MAX_BYTES)
+    private val clips = AudioClipStore(context, DIR_NAME)
 
     fun save(
         pcm: ShortArray,
@@ -191,6 +191,8 @@ class WakeSampleStore @Inject constructor(
             clipStem("sample", timestampMs, "${sampleSlug(segment.setName)}-${sampleSlug(segment.room)}"),
             pcm,
             wakeSampleSidecar(segment, timestampMs, durationMs, marks, ZoneId.systemDefault()),
+            MAX_FILES,
+            MAX_BYTES,
         )
     }
 

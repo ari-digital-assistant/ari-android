@@ -3,46 +3,58 @@ package dev.heyari.ari.voice
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
+import android.os.Build
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.R
 import dev.heyari.ari.actions.ActionHandler
+import dev.heyari.ari.actions.AlertVoiceIntercept
+import dev.heyari.ari.actions.CardActionDispatcher
+import dev.heyari.ari.actions.CardActionVoiceIntercept
+import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.data.card.CardAction
 import dev.heyari.ari.data.conversation.ConversationLogRepository
+import dev.heyari.ari.di.EngineHolder
 import dev.heyari.ari.model.Attachment
 import dev.heyari.ari.model.InputSource
 import dev.heyari.ari.model.Message
+import dev.heyari.ari.notifications.AlertService
 import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.stt.SttModelLoader
-import dev.heyari.ari.stt.SttState
-import dev.heyari.ari.stt.UtteranceCapture
-import dev.heyari.ari.stt.UtteranceCaptureStore
-import dev.heyari.ari.stt.UtteranceOutcome
-import dev.heyari.ari.stt.UtteranceTurn
 import dev.heyari.ari.tts.SpeechOutput
-import dev.heyari.ari.tts.pleaseWaitPhrase
 import dev.heyari.ari.tts.pleaseRepeatPhrase
+import dev.heyari.ari.tts.pleaseWaitPhrase
+import dev.heyari.ari.wakeword.FalseWakeMonitor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlin.coroutines.coroutineContext
-import dev.heyari.ari.di.EngineHolder
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
-import uniffi.ari_ffi.FfiEarlyNameCheck
+import uniffi.ari_ffi.FfiActionOutcome
+import uniffi.ari_ffi.FfiCaptureMode
+import uniffi.ari_ffi.FfiIntercepted
+import uniffi.ari_ffi.FfiListenParams
+import uniffi.ari_ffi.FfiLoggedTurn
+import uniffi.ari_ffi.FfiPhrase
 import uniffi.ari_ffi.FfiResponse
-import uniffi.ari_ffi.FfiWakeOutcome
+import uniffi.ari_ffi.FfiSessionConfig
+import uniffi.ari_ffi.FfiSessionError
+import uniffi.ari_ffi.FfiSessionHost
+import uniffi.ari_ffi.FfiSessionState
+import uniffi.ari_ffi.FfiSttFailure
 
 /**
  * Possible states a voice interaction can be in. Drives the overlay UI.
@@ -57,89 +69,16 @@ sealed interface VoiceState {
     data class Error(val message: String) : VoiceState
 }
 
-/**
- * Pure decision: does this engine response ask for a spoken reply (and thus
- * warrant re-arming the mic without a second wake word)?
- *
- * Only [FfiResponse.Text] and [FfiResponse.Action] carry a `rearm` flag;
- * everything else (NotUnderstood, Binary) can never re-arm. Kept top-level and
- * free of Android types so it can be unit-tested without Robolectric.
- */
-internal fun shouldRearm(response: FfiResponse): Boolean = when (response) {
-    is FfiResponse.Text -> response.rearm
-    is FfiResponse.Action -> response.rearm
-    else -> false
-}
-
-/**
- * The name verdict a wake turn is judged on. A name the early check heard
- * stands: the user has already seen Ari answer to it, and a full transcript can
- * miss a name the short clip caught ("Hayori navigate to McDonald's", 2026-09-10),
- * so the full one never turns the wake away after that.
- */
-internal fun wakeNameVerdict(nameHeardEarly: Boolean, nameMatched: Boolean?): Boolean? =
-    if (nameHeardEarly) true else nameMatched
-
-/**
- * Whether a partial shows a quiet wake: it holds the name, or the locale forms
- * no verdict, where nothing will ever say no and hiding would only lose a real
- * call. Showing is all it decides; the whole transcript is still judged. The
- * buffered paths' empty partial never shows one, which keeps their quiet wakes
- * hidden until the transcript is in.
- */
-internal fun partialRevealsWake(partial: SttState.Listening): Boolean = partial.nameMatched != false
-
-/**
- * Post-hoc wake verification. The 64 KB detector fires on phonetic shape and
- * saturates its confidence even when it's wrong, so the threshold has no
- * headroom left; sherpa — which is already transcribing the same audio via the
- * listen feed's rewind — is the second opinion. A wake turn whose transcript
- * contains speech but no "ari"-ish name token was not addressed to Ari.
- *
- * Fails open on every ambiguity: a wrongly-rejected genuine command reads as
- * "Ari ignored me", which is a worse experience than a spurious chime.
- */
-internal fun shouldAcceptWake(
-    verifyWake: Boolean,
-    raw: String?,
-    nameMatched: Boolean?,
-): Boolean = when {
-    !verifyWake -> true
-    nameMatched == null -> true
-    raw.isNullOrBlank() -> true
-    else -> nameMatched
-}
-
-/**
- * A wake turn whose transcript came back blank: no speech in the wake phrase's
- * own pre-roll or after it, so nobody said "Hey Ari". [shouldAcceptWake] fails
- * open on a blank transcript, which is right for the question it answers, but
- * the accept path would then file this wake's pre-roll as a confirmed true
- * positive, so this is asked first.
- *
- * A null [raw] is unknown rather than blank: only the manual stop path leaves
- * it null, and that path only fires on a partial that was not empty.
- */
-internal fun isNoSpeechWake(verifyWake: Boolean, raw: String?): Boolean =
-    verifyWake && raw != null && raw.isBlank()
-
-internal fun shouldEnterConversation(response: FfiResponse): Boolean = when (response) {
-    is FfiResponse.Text -> response.enterConversation
-    is FfiResponse.Action -> response.enterConversation
-    else -> false
-}
-
-internal fun shouldExitConversation(response: FfiResponse): Boolean = when (response) {
-    is FfiResponse.Text -> response.exitConversation
-    is FfiResponse.Action -> response.exitConversation
-    else -> false
-}
+/** How the shared mic is being captured. NORMAL = wake-word listening
+ *  (AudioSource.VOICE_RECOGNITION); CONVERSATION = comms-mode AEC capture
+ *  during a talk session (AudioSource.VOICE_COMMUNICATION). */
+enum class CaptureMode { NORMAL, CONVERSATION }
 
 /**
  * Did this turn mutate the engine's remembered-fact list (a remember/forget
  * command)? Only [FfiResponse.Text] and [FfiResponse.Action] carry the flag;
- * everything else can never change facts. Top-level and Android-free so it can
- * be unit-tested without Robolectric, matching [shouldEnterConversation].
+ * everything else can never change facts. For typed turns; the voice
+ * session decides its own.
  */
 internal fun shouldPersistFacts(response: FfiResponse): Boolean = when (response) {
     is FfiResponse.Text -> response.factsChanged
@@ -158,101 +97,46 @@ internal fun shouldClearConversation(response: FfiResponse): Boolean = when (res
 }
 
 /**
- * Which kind of turn produced this utterance, for the debug capture sidecar.
- * Sampled at the top of a turn: [awaitingReply] is consumed part-way through
- * dispatch, and [talkMode] is set by the response that *enters* continuous
- * mode — so the turn that opens a "let's talk" session is still an opening one.
- */
-internal fun utteranceTurn(talkMode: Boolean, awaitingReply: Boolean): UtteranceTurn = when {
-    talkMode -> UtteranceTurn.TALK
-    awaitingReply -> UtteranceTurn.REPLY
-    else -> UtteranceTurn.OPENING
-}
-
-/**
- * What became of the transcript. [corrected] is true when a retry layer supplied
- * the text the engine finally acted on — the signal that Ari needed more than
- * one go at hearing this, which is exactly what the capture exists to surface.
- */
-internal fun utteranceOutcome(response: FfiResponse, corrected: Boolean): UtteranceOutcome = when {
-    response is FfiResponse.NotUnderstood -> UtteranceOutcome.NOT_UNDERSTOOD
-    corrected -> UtteranceOutcome.RESCUED
-    else -> UtteranceOutcome.ANSWERED
-}
-
-/** How the engine replied, for the debug capture sidecar. */
-internal fun responseLabel(response: FfiResponse): String = when (response) {
-    is FfiResponse.Text -> "text"
-    is FfiResponse.Action -> "action(${response.skillId})"
-    is FfiResponse.Binary -> "binary(${response.mime})"
-    is FfiResponse.NotUnderstood -> "not-understood"
-}
-
-/**
- * Mutable scratch for one turn's debug capture. [VoiceSession.dispatchFinalText]
- * fills in what it learns as the turn plays out; the wrapper renders it once the
- * turn is over, including when the turn ends early or is cancelled mid-flight.
- */
-private class TurnRecord(val transcript: String) {
-    var outcome: UtteranceOutcome = UtteranceOutcome.BLANK
-    var response: String? = null
-    var offline: String? = null
-    var used: String = transcript
-}
-
-/**
- * Singleton state machine + pipeline for one voice interaction. Owned by Hilt
- * at the singleton scope so it can be injected by both [WakeWordService] (which
- * triggers the session) and [VoiceOverlayActivity] (which renders the UI).
+ * The voice session, as the phone sees it. The session itself, what a wake,
+ * a tap on the mic or a dictation does from the first word to the last, is
+ * the engine's (ari-voice `session`). This is its host: it shows the state
+ * the engine hands it on the overlay, plays the cue, speaks, runs actions,
+ * stops alerts, answers cards, writes the conversation log, and keeps an
+ * answer's cards on screen for a while after it.
  *
- * The session does NOT own any UI. The activity observes [state] and finishes
- * itself when the state returns to [VoiceState.Idle].
- *
- * Flow:
- *  1. start() — set state to Listening, drain wake-word audio, open STT.
- *     If the STT model is still warming up (cold start), first show/speak a
- *     "one moment" phrase (Preparing), await the load, then speak a "say that
- *     again" phrase and open STT — the original utterance has aged out of the
- *     capture buffer by then.
- *  2. STT emits partial — update state
- *  3. STT detects endpoint — feed final text to engine, transition through
- *     Thinking → Responding, speak via TTS, then dismiss
- *  4. dismiss() — reset state to Idle (which causes the activity to finish)
+ * A Hilt singleton, so both [dev.heyari.ari.wakeword.WakeWordService] (which
+ * starts quiet wakes) and [VoiceOverlayActivity] (which renders the UI) use
+ * the one session. It owns no UI: the activity observes [state] and finishes
+ * itself when it returns to [VoiceState.Idle].
  */
 @Singleton
 class VoiceSession @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
+    private val voiceEngine: VoiceEngine,
     private val engineHolder: EngineHolder,
     private val speechRecognizer: SpeechRecognizer,
     private val sttModelLoader: SttModelLoader,
     private val speechOutput: SpeechOutput,
     private val actionHandler: ActionHandler,
-    private val alertVoiceIntercept: dev.heyari.ari.actions.AlertVoiceIntercept,
-    private val cardActionVoiceIntercept: dev.heyari.ari.actions.CardActionVoiceIntercept,
-    private val cardActionDispatcher: dev.heyari.ari.actions.CardActionDispatcher,
-    private val settingsRepository: dev.heyari.ari.data.SettingsRepository,
-    private val wakeCaptureStore: dev.heyari.ari.wakeword.WakeCaptureStore,
-    private val falseWakeMonitor: dev.heyari.ari.wakeword.FalseWakeMonitor,
-    private val wakeLog: dev.heyari.ari.wakeword.WakeLog,
-    private val utteranceCaptureStore: UtteranceCaptureStore,
-    private val localeProvider: dev.heyari.ari.locale.AriFfiLocaleProvider,
+    private val alertVoiceIntercept: AlertVoiceIntercept,
+    private val cardActionVoiceIntercept: CardActionVoiceIntercept,
+    private val cardActionDispatcher: CardActionDispatcher,
+    private val settingsRepository: SettingsRepository,
+    private val falseWakeMonitor: FalseWakeMonitor,
     private val logRepository: ConversationLogRepository,
-    private val listenFeed: dev.heyari.ari.audio.ListenFeed,
-) {
+) : FfiSessionHost {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-    private var sessionJob: Job? = null
+    private val pipeline get() = voiceEngine.pipeline
 
     private val _state = MutableStateFlow<VoiceState>(VoiceState.Idle)
     val state: StateFlow<VoiceState> = _state.asStateFlow()
 
-    // Final transcript from an in-place dictation session (STT-only, no engine).
-    // extraBufferCapacity=1 so the emit never suspends/drops even if the
-    // collector is momentarily busy.
-    private val _dictatedText = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
-    val dictatedText: kotlinx.coroutines.flow.SharedFlow<String> =
-        _dictatedText.asSharedFlow()
+    // A dictation's transcript. extraBufferCapacity=1 so the emit never
+    // suspends or drops even if the collector is momentarily busy.
+    private val _dictatedText = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val dictatedText: SharedFlow<String> = _dictatedText.asSharedFlow()
 
-    val isActive: Boolean get() = sessionJob?.isActive == true
+    val isActive: Boolean get() = pipeline.isSessionActive()
 
     /**
      * Bumped by each [start] that begins a session, so an overlay can tell the
@@ -263,876 +147,109 @@ class VoiceSession @Inject constructor(
 
     // An answer's cards, left on the overlay for a while after its session
     // has ended, so they can be read and their buttons used with the mic back
-    // on wake duty. Cleared when the time runs out, by dismiss(), and by the
-    // next start().
+    // on wake duty. Cleared when the time runs out, by dismiss, and by the
+    // next start.
     private val _lingering = MutableStateFlow<VoiceState.Responding?>(null)
     val lingering: StateFlow<VoiceState.Responding?> = _lingering.asStateFlow()
     private var lingerJob: Job? = null
+    private val cardsLock = Any()
 
     // Set once the user touches an answer's cards: they then stay until closed.
     private var held = false
 
-    // Last moment we saw user/STT activity. Read by the silence watcher; reset
-    // by rearmForReply() so a re-armed reply gets a full fresh listening window.
-    // A field (not a local in start()) precisely so re-arm can refresh it.
-    @Volatile
-    private var lastActivityAt: Long = 0L
-
-    // True between a skill asking a question (rearm) and the next final
-    // transcript. While true, the legacy CardActionVoiceIntercept shortcut is
-    // skipped so the engine's pending-reply path stays authoritative.
-    @Volatile
-    private var awaitingReply: Boolean = false
-
-    // True from a wake-initiated start() until that session's first final
-    // transcript is accepted. Only the opening turn of a wake session carries
-    // the wake phrase in its pre-roll; re-armed reply turns arm with
-    // rewindSeconds = 0f and have nothing to verify against.
-    //
-    // Cleared in exactly three places, all load-bearing: the cold-start branch
-    // in start(), the gate's accept path, and dismiss(). rearmForReply() does
-    // NOT clear it — it doesn't need to, because the accept path always runs
-    // first, but that also means deleting any one of the three re-verifies a
-    // turn that has no wake phrase to find.
-    //
-    // Named apart from start()'s `verifyWake` parameter on purpose: the two
-    // diverge (the cold-start branch clears the field while the parameter is
-    // still true), and a shadowed read is silently wrong rather than a
-    // compile error.
-    @Volatile
-    private var verifyWakePending: Boolean = false
-
-    // Pre-detection audio held for the duration of an unverified wake turn.
-    // Dropped the moment the turn is accepted; persisted if it dies silently.
-    @Volatile
-    private var wakePreroll: ShortArray? = null
-
-    // True from a wake-initiated start() until that wake's ending is in the wake
-    // log. Every wake gets exactly one ending: the first path to reach one
-    // writes it, and dismiss() supplies DISMISSED for any wake nothing else
-    // ended. Apart from verifyWakePending because the cold-start branch ends
-    // the wake (COLD_START) while the parameter that started it is still true.
-    @Volatile
-    private var wakeOutcomePending: Boolean = false
-
-    // True while a quiet wake runs unseen: no overlay, no chime, and nothing
-    // counted towards the false-wake warning, since nobody saw it. Cleared by
-    // reveal() the moment a name check passes, early, on a streaming partial or
-    // on the whole transcript, or by dismiss().
-    @Volatile
-    private var hidden: Boolean = false
-
-    // True once a quiet wake's early name check heard the name and showed Ari,
-    // before the whole transcript was in. See wakeNameVerdict.
-    @Volatile
-    private var nameHeardEarly: Boolean = false
-
-    // "Let's talk" continuous mode: while true, every turn re-arms the mic
-    // (no wake word) until an exit phrase, 30s silence, or an error.
-    @Volatile
-    private var talkMode: Boolean = false
-
     private val _captureMode = MutableStateFlow(CaptureMode.NORMAL)
     val captureMode: StateFlow<CaptureMode> = _captureMode.asStateFlow()
 
-    // Whether barge-in is active for the CURRENT talk session: toggle ON and a
-    // hardware echo canceller present. Computed once on entering talk mode.
+    // The attachments of the turn being answered, from the action or card
+    // that made them: the engine says when to show cards and log a reply,
+    // and these are what it means.
     @Volatile
-    private var bargeInActive: Boolean = false
+    private var turnAttachments: List<Attachment> = emptyList()
 
-    // True while Ari's TTS is actively playing in a barge-in turn — the mic is
-    // armed concurrently, so a recognised final while this is set is a barge.
-    @Volatile private var speaking: Boolean = false
+    @Volatile
+    private var lastResponding: VoiceState.Responding? = null
 
-    // The concurrent TTS job for a barge-in turn. Held so the STT collector can
-    // cancel it the instant a barge final lands: tts.stop() does NOT fire the
-    // utterance onDone callback, so speakAndAwait() would otherwise block on its
-    // 4-15s safety timeout. Cancelling the job unblocks the speaking turn at once.
-    @Volatile private var ttsJob: Job? = null
-
-    // Bumped whenever a turn is superseded (fresh arm or dismiss); snapshotted
-    // at arm time into armedGeneration. A Done whose armedGeneration no longer
-    // matches turnGeneration is a straggler from a turn the session left behind.
-    // A barge does NOT bump the generation, so the barge final is never dropped.
-    @Volatile private var turnGeneration: Long = 0L
-    @Volatile private var armedGeneration: Long = 0L
+    init {
+        pipeline.attachSessionHost(this)
+        // Settings the session acts on, pushed whenever one changes.
+        val echoCanceller = android.media.audiofx.AcousticEchoCanceler.isAvailable()
+        scope.launch {
+            combine(
+                listOf(
+                    settingsRepository.bargeInEnabled,
+                    settingsRepository.keepFalseTriggerAudio,
+                    settingsRepository.keepWakeAudio,
+                    settingsRepository.keepUtteranceAudio,
+                    settingsRepository.keepEverythingAudio,
+                    speechRecognizer.systemService.map {
+                        it != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                    },
+                ),
+            ) { v ->
+                FfiSessionConfig(
+                    bargeInEnabled = v[0],
+                    echoCanceller = echoCanceller,
+                    keepFalseTriggerAudio = v[1],
+                    keepWakeAudio = v[2],
+                    keepUtteranceAudio = v[3],
+                    keepEverythingAudio = v[4],
+                    capturesDir = context.filesDir.path,
+                    hostTranscribes = v[5],
+                )
+            }.distinctUntilChanged().collect { pipeline.configureSession(it) }
+        }
+    }
 
     /**
-     * Begin a voice session. If one is already in progress, do nothing —
-     * we don't want re-entrant sessions stomping on each other.
+     * Begin a voice session, unless one is already in progress.
      *
-     * [verifyWake] must be true ONLY for a wake-word detection: it subjects the
-     * first final transcript to [shouldAcceptWake], which relies on the wake
-     * phrase being present in the pre-roll.
-     *
-     * [quiet] asks for a quiet wake, started by the wake service rather than by
-     * the overlay: no overlay and no chime until a name check has passed, so a
-     * false wake shows nothing at all. On OpenAI transcription the 2 s ending at
-     * the wake are checked at once, on their own, so a real call shows while it
-     * is still being spoken; otherwise the whole transcript is checked. The
-     * streaming recogniser shows the overlay, with the chime, on the first
-     * partial that holds the name, and turns the wake away unseen if none has
-     * by [QUIET_NAME_WAIT_MS]. A cold start opens the overlay at once, as an
-     * ordinary wake.
+     * [verifyWake] is true ONLY for a wake-word detection, whose first
+     * transcript must name Ari. [quiet] asks for a quiet wake, started by the
+     * wake service: nothing shows until a name check has passed, so a false
+     * wake shows nothing at all.
      */
     fun start(verifyWake: Boolean, quiet: Boolean = false) {
-        if (sessionJob?.isActive == true) {
-            Log.w(TAG, "VoiceSession.start() called while already active — ignoring")
-            return
-        }
+        if (!pipeline.startTurn(verifyWake, quiet)) return
         sessionId += 1
         dropCards()
-        verifyWakePending = verifyWake
-        wakeOutcomePending = verifyWake
-        // Snapshot now rather than at detection time: the overlay launch costs
-        // a few hundred ms, but the ring holds 2 s and "Hey Ari" is ~0.7 s, so
-        // the phrase is still comfortably inside the window.
-        wakePreroll = if (verifyWake) listenFeed.peekRecent(PREROLL_CAPTURE_SECONDS) else null
-        // A fresh wake cancels any reply the engine was still waiting on from a
-        // previous turn — the user has clearly moved on. No-op when nothing is
-        // pending.
-        engineHolder.peek()?.cancelPendingReply()
-        awaitingReply = false
-        talkMode = false
-        // Decide readiness synchronously (isModelLoaded is a cheap flag) and
-        // set a non-Idle state BEFORE launching the coroutine, so the overlay's
-        // collector doesn't see Idle and finish itself (the lock-screen race
-        // the wake path must avoid): Listening when warm, Preparing when cold.
-        val modelLoaded = speechRecognizer.isModelLoaded
-        hidden = quiet && verifyWake && modelLoaded
-        nameHeardEarly = false
-        if (quiet && !hidden) VoiceOverlayLauncher.launch(context, verifyWake = true)
-        val waitPhrase = if (modelLoaded) null else pleaseWaitPhrase(context)
-        _state.value =
-            if (modelLoaded) VoiceState.Listening("")
-            else VoiceState.Preparing(waitPhrase!!)
-
-        sessionJob = scope.launch {
-            try {
-                if (!modelLoaded) {
-                    logWakeOutcome(FfiWakeOutcome.COLD_START)
-                    // Cold start: acknowledge, wait for the warm-up, then ask
-                    // the user to repeat — their words have already aged out of
-                    // the engine's 2 s ring, so there's nothing to
-                    // transcribe.
-                    speechOutput.speak(waitPhrase!!)
-                    val model = sttModelLoader.activeDownloadedModel()
-                    if (model == null || !sttModelLoader.load(model)) {
-                        _state.value =
-                            VoiceState.Error(context.getString(R.string.voice_no_speech_model))
-                        delay(2500)
-                        dismiss()
-                        return@launch
-                    }
-                    speechOutput.speakAndAwait(pleaseRepeatPhrase(context))
-                    _state.value = VoiceState.Listening("")
-                    // Nothing left to verify against: the wake phrase aged out
-                    // of the ring buffer with the rest of the original
-                    // utterance, and the user is repeating a bare command. Same
-                    // reasoning as rearmForReply — verify only what actually
-                    // carries a wake phrase in its pre-roll.
-                    //
-                    // Drop the snapshot with it. It holds the user's genuine
-                    // "Hey Ari", and if this turn is then abandoned the silence
-                    // watcher would file that as a hard negative — training the
-                    // next model not to fire on its own wake word.
-                    verifyWakePending = false
-                    wakePreroll = null
-                    // Zero rewind: the repeat prompt + ready cue must not be
-                    // ingested as the user's answer (same guard as rearmForReply).
-                    speechRecognizer.startListening(rewindSeconds = 0f)
-                } else {
-                    // Unified audio pipeline: the mic is already open and the
-                    // engine's ring has been buffering the user's first words since
-                    // before the wake-word fired. Arming sherpa is instant.
-                    speechRecognizer.startListening(
-                        giveUpWithoutSpeechMs = if (hidden) QUIET_GIVE_UP_MS else null,
-                        limitMs = if (hidden) QUIET_LISTEN_LIMIT_MS else null,
-                    )
-                }
-                if (!hidden) startReadyCue()
-                // Fresh arm supersedes any prior turn: bump the generation and
-                // snapshot it, so a straggling final from before this listen
-                // (or from a turn we left behind) is detected as stale.
-                turnGeneration += 1
-                armedGeneration = turnGeneration
-
-                // A quiet wake asks about the name at once, on the 2 s that end
-                // at the wake, so a real call shows itself while the user is
-                // still talking rather than after the whole transcript: about
-                // 1 s after the wake instead of 3 on the test phone. A miss
-                // changes nothing; the whole transcript decides as before.
-                val earlyClip = wakePreroll
-                if (hidden && earlyClip != null && speechRecognizer.canCheckNameEarly) {
-                    val generation = armedGeneration
-                    val askedAt = System.currentTimeMillis()
-                    launch {
-                        val result = speechRecognizer.checkNameEarly(earlyClip) ?: return@launch
-                        val inTime = hidden && wakeOutcomePending && turnGeneration == generation
-                        wakeLog.earlyNameCheck(result.slug(), System.currentTimeMillis() - askedAt, inTime)
-                        if (inTime && result == FfiEarlyNameCheck.PASS) {
-                            nameHeardEarly = true
-                            reveal()
-                        }
-                    }
-                }
-
-                // The streaming recogniser asks on every partial instead (see
-                // the Listening branch below), and a wake that has not named
-                // itself in time is turned away unseen. A name heard later could
-                // not pass the check anyway: it only looks at the first words.
-                val armedAt = System.currentTimeMillis()
-                var lastPartial = ""
-                if (hidden && speechRecognizer.isStreaming) {
-                    val generation = armedGeneration
-                    launch {
-                        delay(QUIET_NAME_WAIT_MS)
-                        if (!hidden || !wakeOutcomePending || turnGeneration != generation) return@launch
-                        Log.w(TAG, "Wake rejected: no name within $QUIET_NAME_WAIT_MS ms, partial='$lastPartial'")
-                        val heardSpeech = lastPartial.isNotBlank()
-                        captureFalseTrigger(
-                            wakePreroll,
-                            lastPartial,
-                            if (heardSpeech) dev.heyari.ari.wakeword.WakeCaptureHook.REJECTED
-                            else dev.heyari.ari.wakeword.WakeCaptureHook.SILENT,
-                        )
-                        endWake(if (heardSpeech) FfiWakeOutcome.REJECTED else FfiWakeOutcome.SILENT)
-                        dismiss()
-                    }
-                }
-
-                // Track activity so we can dismiss after a silence timeout if
-                // the user never actually speaks. Uses the class field so a
-                // re-armed reply (rearmForReply) can refresh the window.
-                lastActivityAt = System.currentTimeMillis()
-                // Dismiss after a silence timeout if the user never speaks.
-                // Hoisted into a local fun so it can be relaunched for a
-                // re-armed reply turn (the previous one self-cancels at Done).
-                fun launchSilenceWatcher(timeoutMs: Long): Job = launch {
-                    while (isActive) {
-                        delay(1000)
-                        val idle = System.currentTimeMillis() - lastActivityAt
-                        if (idle > timeoutMs) {
-                            Log.i(TAG, "No speech detected within $timeoutMs ms — dismissing")
-                            // Guard on the pre-roll, not on verifyWakePending:
-                            // the buffer is only ever held for a turn whose
-                            // audio genuinely contains a wake phrase we did not
-                            // act on, so this can never file a real "Hey Ari"
-                            // as a hard negative. The cold-start branch clears
-                            // both for exactly that reason.
-                            if (wakePreroll != null) {
-                                captureFalseTrigger(
-                                    wakePreroll,
-                                    "",
-                                    dev.heyari.ari.wakeword.WakeCaptureHook.SILENT,
-                                )
-                                // Counted on the same guard that decides this
-                                // is a hard negative, and for the same reason:
-                                // a pre-roll is only held for a turn a wake
-                                // phrase opened, so nothing here can count a
-                                // tap-to-talk the user simply walked away from.
-                                // The count is kept even when the audio is not
-                                // — it is the event that prices the wake word,
-                                // and the recording is only for retraining it.
-                                endWake(FfiWakeOutcome.SILENT)
-                            }
-                            dismiss()
-                            return@launch
-                        }
-                    }
-                }
-                // The silence watcher is held in a var so we can relaunch it for
-                // a re-armed reply turn (the previous one self-cancels at Done).
-                // A wake turn gets a much shorter window: you just said the wake
-                // phrase, so silence means it wasn't you — and every second the
-                // mic stays armed after a false accept is a second ambient
-                // speech could be mistaken for a command.
-                //
-                // Streaming path only. The short window measures *silence*, and
-                // only the streaming recogniser gives us silence to measure —
-                // it refreshes lastActivityAt on every non-blank partial. The
-                // buffered path (Whisper, Parakeet) emits no
-                // partials at all between arm and endpoint, so there 8 s would
-                // be a hard cap on the whole utterance and would cut Italian
-                // speakers off mid-sentence. They keep the 30 s window, which
-                // is what BufferedEndpoint.MAX_SAMPLES already assumes.
-                //
-                // Reads the `verifyWake` PARAMETER, not the verifyWakePending
-                // field, and that is deliberate: the timeout asks "did a wake
-                // word open this mic?", which never changes for the turn. The
-                // field asks "is verification still pending?", which the
-                // cold-start branch clears — and cold start is the one path
-                // where shouldAcceptWake never gates the transcript at all, so
-                // reading the field would hand the least-defended path the
-                // longest open mic.
-                var silenceWatcher = launchSilenceWatcher(
-                    if (verifyWake && speechRecognizer.isStreaming) {
-                        WAKE_TURN_SILENCE_TIMEOUT_MS
-                    } else {
-                        SILENCE_TIMEOUT_MS
-                    }
-                )
-
-                try {
-                    speechRecognizer.state.collect { sttState ->
-                        when (sttState) {
-                            is SttState.Listening -> {
-                                if (sttState.partial.isNotBlank()) {
-                                    lastActivityAt = System.currentTimeMillis()
-                                }
-                                lastPartial = sttState.partial
-                                if (hidden && partialRevealsWake(sttState)) {
-                                    // Not nameHeardEarly: the whole transcript
-                                    // is this partial with more on the end, so it
-                                    // is the better judge. A partial can end
-                                    // mid-word, "Hey Ari" on the way to "Hey
-                                    // Arianna".
-                                    val slug = if (sttState.nameMatched == true) FfiEarlyNameCheck.PASS.slug()
-                                    else FfiEarlyNameCheck.NONE.slug()
-                                    wakeLog.earlyNameCheck(slug, System.currentTimeMillis() - armedAt, inTime = true)
-                                    reveal()
-                                    startReadyCue()
-                                }
-                                _state.update { VoiceState.Listening(sttState.partial) }
-                            }
-                            SttState.Transcribing -> {
-                                // Offline whisper just hit endpoint; the decode
-                                // could take seconds. Flip the overlay early so the
-                                // user sees we're working, not still listening.
-                                silenceWatcher.cancel()
-                                _state.update { VoiceState.Thinking }
-                            }
-                            is SttState.Done -> {
-                                // Snapshot the generation this final was armed
-                                // under BEFORE reset() (which doesn't touch it).
-                                val finalGeneration = armedGeneration
-                                speechRecognizer.reset()
-                                silenceWatcher.cancel()
-                                if (shouldCutTts(speaking, bargeInActive)) {
-                                    // User barged in: stop Ari immediately and
-                                    // cancel the concurrent TTS job (tts.stop()
-                                    // alone doesn't unblock speakAndAwait). This
-                                    // utterance becomes the next turn — a barge
-                                    // does NOT bump turnGeneration, so it isn't
-                                    // stale.
-                                    speechOutput.stop()
-                                    speaking = false
-                                    ttsJob?.cancel()
-                                    ttsJob = null
-                                }
-                                if (isStaleTurn(finalGeneration, turnGeneration)) {
-                                    // Straggler from a superseded turn (e.g. a
-                                    // final that landed after dismiss()/re-arm) —
-                                    // ignore it so it can't fire a phantom turn.
-                                    // Keep listening if the session is still
-                                    // armed for a reply; otherwise stop collecting.
-                                    if (awaitingReply && isActive) {
-                                        silenceWatcher = launchSilenceWatcher(SILENCE_TIMEOUT_MS)
-                                    }
-                                    return@collect
-                                }
-                                logWakeListenEnd()
-                                if (!nameHeardEarly && isNoSpeechWake(verifyWakePending, sttState.raw)) {
-                                    // Whisper's way of saying it heard nothing.
-                                    // The overlay closes as quietly as it did
-                                    // when this went down the accept path.
-                                    Log.i(TAG, "Wake heard no speech")
-                                    onNoSpeechWake(sttState.audio ?: wakePreroll)
-                                    dismiss()
-                                    return@collect
-                                }
-                                if (!shouldAcceptWake(
-                                        verifyWakePending,
-                                        sttState.raw,
-                                        wakeNameVerdict(nameHeardEarly, sttState.nameMatched),
-                                    )
-                                ) {
-                                    Log.w(TAG, "Wake rejected: raw='${sttState.raw}'")
-                                    // Fall back to the pre-roll snapshot: the
-                                    // whisper path always reports audio = null
-                                    // (it has no retry layer to feed), and
-                                    // English-on-whisper is a selectable config
-                                    // that forms a verdict — so without this the
-                                    // rejection that most wants capturing
-                                    // captures nothing.
-                                    captureFalseTrigger(
-                                        sttState.audio ?: wakePreroll,
-                                        sttState.raw.orEmpty(),
-                                        dev.heyari.ari.wakeword.WakeCaptureHook.REJECTED,
-                                    )
-                                    endWake(FfiWakeOutcome.REJECTED)
-                                    dismiss()
-                                    return@collect
-                                }
-                                // A quiet wake that heard only "Hey Ari": the
-                                // user paused for the chime they never got.
-                                val bareWake = (hidden || nameHeardEarly) && sttState.text.isBlank()
-                                reveal()
-                                // Keep-everything firehose: an accepted wake is
-                                // a confirmed true positive — record the wake
-                                // moment (pre-roll) before the slot is cleared.
-                                // The full utterance is captureUtterance's job.
-                                logWakeOutcome(FfiWakeOutcome.ACCEPTED)
-                                captureAcceptedWake(wakePreroll, sttState.raw.orEmpty())
-                                verifyWakePending = false
-                                wakePreroll = null
-                                if (bareWake) {
-                                    listenForCommand()
-                                    silenceWatcher = launchSilenceWatcher(SILENCE_TIMEOUT_MS)
-                                    return@collect
-                                }
-                                handleFinalText(
-                                    sttState.text,
-                                    sttState.parallel,
-                                    sttState.audio,
-                                    sttState.raw,
-                                )
-                                // If the skill asked a follow-up question,
-                                // handleFinalText re-armed the mic instead of
-                                // dismissing. Keep collecting and relaunch the
-                                // silence watcher for the reply turn. Otherwise
-                                // the session is done.
-                                if (awaitingReply && isActive) {
-                                    silenceWatcher = launchSilenceWatcher(SILENCE_TIMEOUT_MS)
-                                } else {
-                                    return@collect
-                                }
-                            }
-                            is SttState.Error -> {
-                                // A quiet wake shows itself for an error: the
-                                // failed request may have been a real one, and
-                                // silence would read as Ari ignoring them.
-                                reveal()
-                                logWakeListenEnd()
-                                logWakeOutcome(FfiWakeOutcome.ERROR)
-                                _state.value = VoiceState.Error(sttState.message)
-                                silenceWatcher.cancel()
-                                delay(2500)
-                                dismiss()
-                                return@collect
-                            }
-                            is SttState.NoSpeech -> {
-                                // Shown like any other error, as it always was;
-                                // only now a wake that heard nothing is kept
-                                // and counted instead of vanishing.
-                                silenceWatcher.cancel()
-                                logWakeListenEnd()
-                                if (nameHeardEarly && verifyWakePending) {
-                                    // The early check heard the name in this
-                                    // same audio and Ari is showing: the user
-                                    // said "Hey Ari" and waits for the chime.
-                                    speechRecognizer.reset()
-                                    logWakeOutcome(FfiWakeOutcome.ACCEPTED)
-                                    captureAcceptedWake(wakePreroll, "")
-                                    verifyWakePending = false
-                                    wakePreroll = null
-                                    listenForCommand()
-                                    silenceWatcher = launchSilenceWatcher(SILENCE_TIMEOUT_MS)
-                                    return@collect
-                                }
-                                if (verifyWakePending) onNoSpeechWake(sttState.audio ?: wakePreroll)
-                                if (hidden) {
-                                    // Nothing was ever shown, so there is
-                                    // nothing to explain.
-                                    dismiss()
-                                    return@collect
-                                }
-                                _state.value = VoiceState.Error(sttState.message)
-                                delay(2500)
-                                dismiss()
-                                return@collect
-                            }
-                            SttState.Idle -> {
-                                // ignore
-                            }
-                        }
-                    }
-                } finally {
-                    silenceWatcher.cancel()
-                }
-            } catch (t: Throwable) {
-                if (t is kotlinx.coroutines.CancellationException) throw t
-                Log.e(TAG, "Voice session failed", t)
-                reveal()
-                logWakeOutcome(FfiWakeOutcome.ERROR)
-                _state.value = VoiceState.Error(t.message ?: "Unknown error")
-                delay(2500)
-                dismiss()
-            }
-        }
     }
 
     /**
-     * Dispatch one final transcript, and keep the debug capture honest about
-     * what happened to it. The turn kind is sampled before dispatch (it reads
-     * state the dispatch mutates) and the recording is written in a `finally`
-     * so the early-return paths — blank transcript, card intercept — and a
-     * mid-turn [dismiss] are all captured, not just the happy path.
+     * Foreground in-place dictation: speech-to-text only. Partials come
+     * through [state] as [VoiceState.Listening] and the transcript on
+     * [dictatedText]; the caller routes those into the composer.
      */
-    private suspend fun handleFinalText(
-        text: String,
-        parallel: String?,
-        audio: ShortArray?,
-        raw: String?,
-    ) {
-        val turn = utteranceTurn(talkMode, awaitingReply)
-        val record = TurnRecord(text)
-        try {
-            dispatchFinalText(text, parallel, audio, record)
-        } finally {
-            captureUtterance(
-                audio,
-                UtteranceCapture(
-                    turn = turn,
-                    outcome = record.outcome,
-                    response = record.response,
-                    raw = raw,
-                    transcript = text,
-                    parallel = parallel,
-                    offline = record.offline,
-                    used = record.used,
-                    locale = localeProvider.currentLocale(),
-                    model = speechRecognizer.currentModelId,
-                ),
-            )
-        }
+    fun startDictation() {
+        pipeline.startDictation()
     }
 
-    private suspend fun dispatchFinalText(
-        text: String,
-        parallel: String?,
-        audio: ShortArray?,
-        record: TurnRecord,
-    ) {
-        if (text.isBlank()) {
-            dismiss()
-            return
-        }
-
-        _state.value = VoiceState.Thinking
-
-        // "Stop" over a ringing alarm silences it, ahead of everything else,
-        // a pending reply included: dismiss() drops that.
-        alertVoiceIntercept.resolve(text)?.let { alertId ->
-            record.outcome = UtteranceOutcome.ALERT
-            logRepository.append(Message(text = text, isFromUser = true, source = InputSource.Voice))
-            context.startService(dev.heyari.ari.notifications.AlertService.stopIntent(context, alertId))
-            dismiss()
-            return
-        }
-
-        // If the spoken word matches an active card's button (Yes /
-        // No / Cancel / Keep — or whatever labels the skill chose),
-        // delegate to CardActionDispatcher so the on_cancel envelope,
-        // run_utterance, and other generic primitives all fire the
-        // same way they would on tap. Falls through to normal engine
-        // dispatch when no card is active or no button matches.
-        // While re-armed for a skill's follow-up question, the engine holds a
-        // pending reply and is authoritative — skip the legacy card-intercept
-        // shortcut so the answer flows back through processInput().
-        if (!awaitingReply) {
-            val intercept = cardActionVoiceIntercept.resolve(text)
-            if (intercept != null) {
-                record.outcome = UtteranceOutcome.CARD
-                logRepository.append(Message(text = text, isFromUser = true, source = InputSource.Voice))
-                val outcome = cardActionDispatcher.dispatch(intercept.cardId, intercept.action)
-                when (outcome) {
-                    is dev.heyari.ari.actions.CardActionDispatcher.Outcome.Silent -> {
-                        dismiss()
-                        return
-                    }
-                    is dev.heyari.ari.actions.CardActionDispatcher.Outcome.Spoken -> {
-                        if (outcome.text.isNotBlank() || outcome.attachments.isNotEmpty()) {
-                            logRepository.append(
-                                Message(
-                                    text = outcome.text,
-                                    isFromUser = false,
-                                    attachments = outcome.attachments,
-                                )
-                            )
-                        }
-                        val cards = outcome.attachments.filterIsInstance<Attachment.Card>()
-                        _state.value = VoiceState.Responding(outcome.text, cards)
-                        speakThenDismiss(outcome.text, cards = cards)
-                        return
-                    }
-                }
-            }
-        }
-        // Consume the flag for this turn: from here on this is a normal engine
-        // dispatch. If the engine asks another question, rearm flips it back on.
-        awaitingReply = false
-
-        // An on-device answer can arrive while the model writes it
-        // (ari-android#37): the overlay shows the words as they come, and Ari
-        // speaks each finished sentence straight away. A dismiss cancels the
-        // turn but the model writes on regardless, hence the isActive checks.
-        val reply = speechOutput.Reply()
-        val turnJob = currentCoroutineContext()[Job]
-        // --- Layer 1b: the parallel transcript, before the assistant ---
-        // The engine acts on the parallel stream's transcript instead when this
-        // one finds no skill and that one does: an on-device assistant answers
-        // anything, so the not-understood retries below would never get a
-        // turn. "reminded me to buy milk" found nothing; the parallel stream's
-        // "remind me to buy milk" found the reminders skill.
-        val spoken = engineHolder.processSpokenInput(
-            text,
-            alternative = parallel?.takeIf { it.isNotBlank() && it != text },
-            onText = { soFar, _ -> if (turnJob?.isActive != false) _state.value = VoiceState.Responding(soFar) },
-            onSentence = { sentence -> if (turnJob?.isActive != false) reply.sentence(sentence) },
-        )
-        var response = spoken.response
-        var usedText = if (spoken.usedAlternative) parallel!! else text
-        if (spoken.usedAlternative) Log.i(TAG, "Engine acted on the parallel transcript '$parallel' over '$text'")
-
-        // --- Layer 2 + 3 retries apply to the online streaming path only ---
-        // The buffered path (Whisper, Parakeet) sees the full
-        // utterance before committing any token, so there's nothing for a
-        // parallel decoder or a re-decode to improve. Layer 2 skips itself
-        // (whisper emits parallel = null); Layer 3 is gated on isStreaming,
-        // because whisper DOES hand over its audio — for the debug capture,
-        // not as an invitation to decode it a second time.
-
-        // --- Layer 2: parallel-stream transcript ---
-        if (response is FfiResponse.NotUnderstood && !spoken.usedAlternative &&
-            !parallel.isNullOrBlank() && parallel != text
-        ) {
-            Log.i(TAG, "NotUnderstood for '$text' — retrying with parallel '$parallel'")
-            val retry = engineHolder.processInput(parallel)
-            if (retry !is FfiResponse.NotUnderstood) {
-                Log.i(TAG, "Retry succeeded with parallel transcript")
-                response = retry
-                usedText = parallel
-            }
-        }
-
-        // --- Layer 3: offline full-buffer retry ---
-        if (response is FfiResponse.NotUnderstood && audio != null && speechRecognizer.isStreaming) {
-            Log.i(TAG, "Parallel also failed — running offline retry (${audio.size} samples)")
-            // transcribeOffline blocks while sherpa decodes the full
-            // buffer. We're already on Main here so dispatch to Default
-            // and suspend until it's done.
-            val offlineText = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                speechRecognizer.transcribeOffline(audio)
-            }
-            record.offline = offlineText
-            if (!offlineText.isNullOrBlank() && offlineText != text && offlineText != parallel) {
-                Log.i(TAG, "Offline produced '$offlineText' — retrying engine")
-                val retry = engineHolder.processInput(offlineText)
-                if (retry !is FfiResponse.NotUnderstood) {
-                    Log.i(TAG, "Offline retry succeeded")
-                    response = retry
-                    usedText = offlineText
-                }
-            }
-        }
-
-        record.outcome = utteranceOutcome(response, corrected = usedText != text)
-        record.response = responseLabel(response)
-        record.used = usedText
-
-        // If we used a different transcript (from parallel or offline),
-        // briefly flash the corrected text in the overlay so the user
-        // sees that Ari corrected itself before the response appears.
-        if (usedText != text) {
-            _state.value = VoiceState.Listening(usedText)
-            delay(CORRECTION_FLASH_MS)
-        }
-
-        var attachments: List<Attachment> = emptyList()
-        var skillId: String? = null
-        // Set when a skill wants the conversation log worded differently from
-        // what gets read out; the overlay and TTS always use responseText.
-        var bubbleText: String? = null
-        val responseText = when (response) {
-            is FfiResponse.Text -> response.body
-            // Voice path doesn't render attachments (the overlay is text-only);
-            // coordinator side-effects on the repo still happen so the card
-            // shows up in the conversation screen next time it's opened.
-            //
-            // We're on Dispatchers.Main here. handle() can block — the media
-            // path connects a MediaBrowser and waits on a latch for up to 3s —
-            // and blocking Main would ANR AND deadlock the MediaBrowser
-            // callbacks. handle() touches no UI directly (it dispatches
-            // Intents, writes the clipboard, and drives PresentationCoordinator,
-            // which mutates StateFlow-backed repos — all thread-safe off Main),
-            // so dispatch it to Default exactly like transcribeOffline above.
-            is FfiResponse.Action -> kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                val result = actionHandler.handle(response.json, response.skillId)
-                attachments = result.attachments
-                // Only action responses carry an id; a plain Text answer is
-                // unattributable, so a report on one names no skill.
-                skillId = response.skillId.takeIf { it.isNotBlank() }
-                bubbleText = result.displayText
-                result.text
-            }
-            is FfiResponse.Binary -> "[Binary: ${response.mime}, ${response.data.size} bytes]"
-            is FfiResponse.NotUnderstood -> response.body
-        }
-
-        // Does the engine want a spoken reply to this response? If so we keep
-        // the mic open instead of dismissing. Computed off the final response
-        // (after any parallel/offline retry reassignment).
-        val enter = shouldEnterConversation(response)
-        val exit = shouldExitConversation(response)
-        // Re-arm if the engine wants a reply (behaviour A) OR we're in
-        // continuous mode OR we're entering it.
-        val rearm = shouldRearm(response) || talkMode || enter
-
-        if (shouldPersistFacts(response)) {
-            // A remember/forget command mutated the engine's fact list this
-            // turn — mirror it back to disk. Read the canonical list from the
-            // engine so we persist exactly what it holds. Placed BEFORE the
-            // `exit` branch below (which returns early), so the write-back
-            // still runs on a turn that both changes facts and exits talk mode.
-            settingsRepository.setRememberedFacts(
-                engineHolder.peek()?.rememberedFacts() ?: emptyList()
-            )
-        }
-
-        // Log this spoken turn to the shared conversation log so it shows in
-        // the chat window. Use `usedText` — the corrected transcript Ari
-        // actually acted on (after the parallel/offline retry layers), not the
-        // raw `text`. NotUnderstood replies are logged too, matching the text
-        // path. Silent Layer-C phase-1 envelopes produce a blank responseText
-        // with no attachments and are skipped, same as the text path.
-        // A cleared conversation leaves only Ari's ack, as on the text path.
-        if (shouldClearConversation(response)) {
-            logRepository.clear()
-        } else {
-            logRepository.append(Message(text = usedText, isFromUser = true, source = InputSource.Voice))
-        }
-        if (responseText.isNotBlank() || attachments.isNotEmpty()) {
-            logRepository.append(
-                Message(
-                    text = bubbleText ?: responseText,
-                    markdown = (response as? FfiResponse.Text)?.markdown,
-                    isFromUser = false,
-                    attachments = attachments,
-                    skillId = skillId,
-                )
-            )
-        }
-
-        val cards = attachments.filterIsInstance<Attachment.Card>()
-        _state.value = VoiceState.Responding(responseText, cards)
-
-        if (exit) {
-            // Speak the ack, then leave the mode and close the session.
-            reply.speakAndAwait(responseText)
-            talkMode = false
-            bargeInActive = false
-            _captureMode.value = CaptureMode.NORMAL
-            engineHolder.peek()?.setConversationActive(false)
-            dismiss()
-            return
-        }
-
-        if (enter) {
-            talkMode = true
-            engineHolder.peek()?.setConversationActive(true)
-            bargeInActive = bargeInEffective(
-                toggleEnabled = settingsRepository.bargeInEnabled.first(),
-                aecAvailable = android.media.audiofx.AcousticEchoCanceler.isAvailable(),
-            )
-            if (bargeInActive) _captureMode.value = CaptureMode.CONVERSATION
-        }
-
-        if (rearm && talkMode && bargeInActive) {
-            // Barge-in: arm the mic NOW (the AEC removes Ari's voice from the
-            // capture) and speak CONCURRENTLY. A recognised final while
-            // `speaking` is set cuts Ari off — the STT collector's Done handler
-            // calls speechOutput.stop() and cancels ttsJob. rearmForReply()
-            // opens STT with zero rewind and bumps the turn generation.
-            rearmForReply()
-            speaking = true
-            // Speak on the session scope, NOT inline: the collector must stay
-            // free to receive the barge final. tts.stop() does not fire the
-            // utterance onDone, so the Done handler cancels this job to unblock
-            // the speaking turn immediately rather than waiting on the
-            // speakAndAwait safety timeout.
-            //
-            // processInput is a blocking (non-suspend) FFI call, so on a barge
-            // there's no suspension between the Done handler cutting TTS
-            // (speaking=false) and the next turn's barge branch setting
-            // speaking=true. The cancelled job's `finally` then runs LATER on
-            // Main and would clobber the successor's speaking=true. Guard it:
-            // only the job that is still the current ttsJob may clear the flag —
-            // a superseded/cancelled job must not touch its successor's state.
-            val thisJob = scope.launch {
-                try {
-                    reply.speakAndAwait(responseText)
-                } finally {
-                    if (ownsSpeakingFlag(currentJob = ttsJob, thisJob = coroutineContext[Job])) {
-                        speaking = false
-                    }
-                }
-            }
-            ttsJob = thisJob
-            // No barge during TTS: STT stays armed, the silence watcher covers
-            // the 30s window. The collector keeps going (awaitingReply is set).
-        } else if (rearm) {
-            // Turn-based (behaviour A, or talk-mode without AEC): speak first,
-            // then open the mic — unchanged from today. We wait on the TTS
-            // completion callback (not a guess-timer): the mic's rewind would
-            // otherwise ingest the tail of Ari's own prompt and it would answer
-            // its own question ("…to use, Apple Music"). rearmForReply() then
-            // opens the mic with zero rewind for the same reason.
-            reply.speakAndAwait(responseText)
-            rearmForReply()
-        } else {
-            speakThenDismiss(responseText, reply, cards)
-        }
+    /** Cancel an in-progress dictation. No transcript, so nothing is submitted. */
+    fun stopDictation() {
+        pipeline.stopDictation()
     }
 
-    /**
-     * Read a final answer out, hold the overlay while it plays, then close.
-     *
-     * Waits on the utterance itself rather than guessing its length from the
-     * character count: [dismiss] stops the TTS engine, so a reply that outran
-     * the guess — a full forecast easily does — got its last few words cut off.
-     * An answer [reply] already started a sentence at a time is waited out.
-     *
-     * An answer with [cards] leaves them on the overlay after the session ends,
-     * for [CARD_DWELL_MS], or until closed once touched ([holdCards]).
-     */
-    private suspend fun speakThenDismiss(
-        text: String,
-        reply: SpeechOutput.Reply = speechOutput.Reply(),
-        cards: List<Attachment.Card> = emptyList(),
-    ) {
-        val spokenFrom = System.currentTimeMillis()
-        reply.speakAndAwait(text)
-        // A floor, not a ceiling: "Yes" is spoken and done inside a second, and
-        // the overlay would blink out before anyone could read it.
-        delay(MIN_RESPONSE_DWELL_MS - (System.currentTimeMillis() - spokenFrom))
-        if (cards.isEmpty()) {
-            dismiss()
-            return
-        }
-        _lingering.value = VoiceState.Responding(text, cards)
-        if (!held) {
-            lingerJob = scope.launch {
-                delay(CARD_DWELL_MS)
-                dropCards()
-            }
-        }
-        dismiss(keepCards = true)
+    /** End the session: the overlay was closed. */
+    fun dismiss() {
+        pipeline.dismiss()
     }
 
     /** The user touched the answer's cards: keep them until closed. */
     fun holdCards() {
-        held = true
-        lingerJob?.cancel()
-        lingerJob = null
+        synchronized(cardsLock) {
+            held = true
+            lingerJob?.cancel()
+            lingerJob = null
+        }
     }
 
     /** Take any lingering cards off the overlay, which then closes. */
     fun dropCards() {
-        lingerJob?.cancel()
-        lingerJob = null
-        held = false
-        _lingering.value = null
+        synchronized(cardsLock) {
+            lingerJob?.cancel()
+            lingerJob = null
+            held = false
+            _lingering.value = null
+        }
     }
 
     /**
@@ -1142,7 +259,7 @@ class VoiceSession @Inject constructor(
     fun onCardAction(cardId: String, action: CardAction) {
         scope.launch {
             val outcome = cardActionDispatcher.dispatch(cardId, action)
-            if (outcome !is dev.heyari.ari.actions.CardActionDispatcher.Outcome.Spoken) return@launch
+            if (outcome !is CardActionDispatcher.Outcome.Spoken) return@launch
             if (outcome.text.isBlank() && outcome.attachments.isEmpty()) return@launch
             logRepository.append(
                 Message(text = outcome.text, isFromUser = false, attachments = outcome.attachments)
@@ -1151,406 +268,244 @@ class VoiceSession @Inject constructor(
         }
     }
 
-    /**
-     * Re-arm the mic for a skill's follow-up question without a second wake
-     * word. State is set to Listening SYNCHRONOUSLY (before startListening)
-     * to dodge the lock-screen race the wake path also avoids in [start].
-     */
-    private fun rearmForReply() {
-        // Re-arming supersedes the turn just finished: bump the generation and
-        // snapshot it so any late final from the previous turn reads as stale.
-        turnGeneration += 1
-        armedGeneration = turnGeneration
-        awaitingReply = true
-        // Give the reply a full fresh silence window — the watcher reads this.
-        lastActivityAt = System.currentTimeMillis()
-        _state.value = VoiceState.Listening("")
-        startListeningAgainCue()
-        // Zero rewind: a follow-up answer comes AFTER the prompt, so there's no
-        // pre-roll worth keeping — and a non-zero rewind would replay the tail
-        // of Ari's just-finished question/cue into the recogniser.
-        speechRecognizer.startListening(rewindSeconds = 0f)
-    }
+    // ── What the engine's session asks of the phone ─────────────────────
 
-    /**
-     * Play the "ready" cue at full volume and return its duration in ms so the
-     * caller knows how long to discard mic samples for (0 on failure). See
-     * [playReadyCue] for the audio-attributes and stream rationale.
-     */
-    private fun startReadyCue(): Long = playReadyCue(1.0f)
-
-    /**
-     * "I'm still listening" cue played when the mic re-arms for a follow-up
-     * question or a "let's talk" turn. Played a touch below the fresh cue to
-     * still read as "still here" rather than "fresh start" — but clearly
-     * audible (the previous 0.3 was inaudible on-device). Fire-and-forget.
-     */
-    private fun startListeningAgainCue() {
-        playReadyCue(RE_ARM_CUE_VOLUME)
-    }
-
-    /**
-     * Play [R.raw.ready] at [volume]; returns its duration in ms (0 on
-     * failure). Audio attributes MUST be set BEFORE prepare: `MediaPlayer.create()`
-     * prepares eagerly, so setting attributes afterwards is rejected by the
-     * native layer ("trying to set audio attributes called in state 8") and
-     * silently dropped — which is why the old code accidentally ran on the
-     * default media stream. We now deliberately use USAGE_MEDIA: on-device A/B
-     * testing showed USAGE_ASSISTANT / ASSISTANCE_SONIFICATION route to a much
-     * quieter stream, too soft for a "your turn" prompt. Trade-off: the cue
-     * follows the media volume.
-     */
-    private fun playReadyCue(volume: Float): Long = runCatching {
-        val player = MediaPlayer()
-        player.setAudioAttributes(
-            AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .build()
-        )
-        context.resources.openRawResourceFd(R.raw.ready).use { afd ->
-            player.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+    // Set here rather than posted to the main thread: start() waits for the
+    // first state, so the overlay never reads Idle and finishes itself (the
+    // lock-screen race).
+    override fun state(state: FfiSessionState) {
+        _state.value = when (state) {
+            is FfiSessionState.Idle -> {
+                onIdle(state.keepCards)
+                VoiceState.Idle
+            }
+            is FfiSessionState.Preparing -> VoiceState.Preparing(state.message)
+            is FfiSessionState.Listening -> VoiceState.Listening(state.partial)
+            FfiSessionState.Thinking -> {
+                turnAttachments = emptyList()
+                VoiceState.Thinking
+            }
+            is FfiSessionState.Responding -> {
+                val cards = if (state.cards) turnAttachments.filterIsInstance<Attachment.Card>() else emptyList()
+                VoiceState.Responding(state.text, cards).also { lastResponding = it }
+            }
+            is FfiSessionState.Error -> VoiceState.Error(message(state.error))
         }
-        player.prepare()
-        val durationMs = player.duration.toLong().coerceAtLeast(0L)
-        player.setVolume(volume, volume)
-        player.setOnCompletionListener { runCatching { it.release() } }
-        player.setOnErrorListener { mp, what, extra ->
-            Log.w(TAG, "Ready cue playback error what=$what extra=$extra")
-            runCatching { mp.release() }
-            true
+    }
+
+    /**
+     * The session ended. An answer with cards leaves them on the overlay for
+     * [CARD_DWELL_MS], or until closed once touched ([holdCards]).
+     */
+    private fun onIdle(keepCards: Boolean) {
+        synchronized(cardsLock) {
+            if (!keepCards) {
+                lingerJob?.cancel()
+                lingerJob = null
+                held = false
+                _lingering.value = null
+                return
+            }
+            _lingering.value = lastResponding
+            if (!held) {
+                lingerJob = scope.launch {
+                    delay(CARD_DWELL_MS)
+                    dropCards()
+                }
+            }
         }
-        player.start()
-        durationMs
-    }.getOrElse {
-        Log.w(TAG, "Ready cue playback failed", it)
-        0L
     }
 
-    /** [keepCards] leaves an answer's cards on the overlay ([lingering]). */
-    fun dismiss(keepCards: Boolean = false) {
-        Log.i(TAG, "Dismissing voice session")
-        logWakeOutcome(FfiWakeOutcome.DISMISSED)
-        hidden = false
-        nameHeardEarly = false
-        // Drop any reply the engine was still waiting on. No-op on the normal
-        // happy path (nothing pending); covers tap-dismiss, the silence-timeout
-        // path (which calls dismiss()), and lifecycle stop.
-        // Supersede any in-flight turn so a final that decodes after this
-        // dismiss can't fire a phantom turn (isStaleTurn catches it).
-        turnGeneration += 1
-        speaking = false
-        ttsJob?.cancel()
-        ttsJob = null
-        talkMode = false
-        bargeInActive = false
-        _captureMode.value = CaptureMode.NORMAL
-        engineHolder.peek()?.setConversationActive(false)
-        engineHolder.peek()?.cancelPendingReply()
-        awaitingReply = false
-        verifyWakePending = false
-        wakePreroll = null
-        speechRecognizer.stopListening()
-        speechRecognizer.reset()
-        speechOutput.stop()
-        sessionJob?.cancel()
-        sessionJob = null
-        if (!keepCards) dropCards()
-        _state.value = VoiceState.Idle
+    /** Words for an error, so the user is told which wall they hit. */
+    private fun message(error: FfiSessionError): String = when (error) {
+        FfiSessionError.NoSpeechModel -> context.getString(R.string.voice_no_speech_model)
+        FfiSessionError.NoSpeech -> context.getString(R.string.stt_cloud_error_empty)
+        is FfiSessionError.Failed -> error.message
+        is FfiSessionError.Stt -> when (error.failure) {
+            FfiSttFailure.NO_MODEL -> "No STT model loaded. Configure one in Settings."
+            FfiSttFailure.BUSY -> "Audio bus busy"
+            FfiSttFailure.CLOUD_NOT_CONFIGURED -> context.getString(R.string.stt_cloud_error_not_configured)
+            FfiSttFailure.CLOUD_NETWORK -> context.getString(R.string.stt_cloud_error_network)
+            FfiSttFailure.CLOUD_AUTH -> context.getString(R.string.stt_cloud_error_auth)
+            FfiSttFailure.CLOUD_SERVER -> context.getString(R.string.stt_cloud_error_server)
+            FfiSttFailure.SERVICE_REFUSED -> context.getString(R.string.stt_service_error_refused)
+            FfiSttFailure.SERVICE_FAILED -> context.getString(R.string.stt_service_error_failed)
+        }
     }
 
-    /**
-     * Write how the wake's own listen ended, ahead of its outcome. Buffered
-     * listens only; the streaming recogniser has no [SpeechRecognizer.lastListenEnd].
-     */
-    private fun logWakeListenEnd() {
-        if (!wakeOutcomePending) return
-        speechRecognizer.lastListenEnd?.let { wakeLog.listenEnded(it.end, it.afterMs) }
-    }
-
-    /**
-     * Write how this wake ended to the wake log, unless something already has.
-     * Returns whether this call was the one that ended it.
-     */
-    private fun logWakeOutcome(outcome: FfiWakeOutcome): Boolean {
-        if (!wakeOutcomePending) return false
-        wakeOutcomePending = false
-        wakeLog.outcome(outcome, hidden)
-        return true
-    }
-
-    /**
-     * Show a quiet wake. The overlay's own start() call finds this session
-     * running and leaves it alone, then follows [state] like any other turn.
-     */
-    private fun reveal() {
-        if (!hidden) return
-        hidden = false
+    /** Show a quiet wake that has passed its name check. */
+    override fun reveal() {
         VoiceOverlayLauncher.launch(context, verifyWake = true)
     }
 
-    /**
-     * The chime the user was waiting for, and a fresh listen for the command
-     * itself. Zero rewind, so the "Hey Ari" already heard is not heard again,
-     * and an opening turn rather than a reply, since nothing was asked.
-     */
-    private fun listenForCommand() {
-        turnGeneration += 1
-        armedGeneration = turnGeneration
-        lastActivityAt = System.currentTimeMillis()
-        _state.value = VoiceState.Listening("")
-        startReadyCue()
-        speechRecognizer.startListening(rewindSeconds = 0f)
+    override fun playCue(volume: Float) {
+        playReadyCue(volume)
     }
 
-    /**
-     * End the wake and, if it was a false one, count it towards the warning
-     * that offers to make Ari less sensitive. Every false wake the user saw is
-     * counted, whichever path noticed it: fed from the silence timeout alone,
-     * the warning never fired on cloud transcription, which cannot reach it.
-     */
-    private suspend fun endWake(outcome: FfiWakeOutcome) {
-        val seen = !hidden
-        if (logWakeOutcome(outcome) && outcome.falseWake() && seen) falseWakeMonitor.onFalseWake()
-    }
-
-    /** A wake with no speech in it: keep the audio if the user asked to, and count it. */
-    private suspend fun onNoSpeechWake(pcm: ShortArray?) {
-        captureFalseTrigger(pcm, "", dev.heyari.ari.wakeword.WakeCaptureHook.NO_SPEECH)
-        endWake(FfiWakeOutcome.NO_SPEECH)
-    }
-
-    /**
-     * Persist audio that falsely triggered the wake word, if the user opted
-     * in. Reads the flag at call time rather than caching it — the setting is
-     * rare, this path is rarer, and a stale cached value would silently
-     * capture (or silently not) after a toggle. Runs on its own IO-dispatched
-     * job so a slow settings read or disk write never blocks the STT
-     * collector; failures are contained here (not left to propagate out of
-     * the launch) because both the settings read and the store write can
-     * throw IOException, and this is an opt-in debug feature — it must never
-     * take the app down.
-     */
-    private fun captureFalseTrigger(
-        pcm: ShortArray?,
-        rawTranscript: String,
-        hook: dev.heyari.ari.wakeword.WakeCaptureHook,
-    ) {
-        if (pcm == null || pcm.isEmpty()) return
-        scope.launch(Dispatchers.IO) {
-            try {
-                // The keep-everything firehose implies this capture: either
-                // toggle keeps the containment clips flowing.
-                if (!settingsRepository.keepFalseTriggerAudio.first() &&
-                    !settingsRepository.keepEverythingAudio.first()
-                ) {
-                    return@launch
-                }
-                wakeCaptureStore.save(pcm, rawTranscript, hook, System.currentTimeMillis())
-            } catch (t: Throwable) {
-                if (t is kotlinx.coroutines.CancellationException) throw t
-                Log.e(TAG, "Failed to capture false-trigger audio", t)
-            }
-        }
-    }
-
-    /**
-     * Persist the wake moment of an ACCEPTED turn — a confirmed true positive.
-     * [pcm] is the wake pre-roll snapshot; it is null on tap-to-talk and reply
-     * turns, which have no wake moment, and the guard makes those calls a
-     * no-op. Same failure posture as [captureFalseTrigger]: an opt-in feature
-     * never takes the app down.
-     */
-    private fun captureAcceptedWake(pcm: ShortArray?, rawTranscript: String) {
-        if (pcm == null || pcm.isEmpty()) return
-        scope.launch(Dispatchers.IO) {
-            try {
-                // The firehose implies this capture, exactly as it does the
-                // containment paths.
-                if (!settingsRepository.keepWakeAudio.first() &&
-                    !settingsRepository.keepEverythingAudio.first()
-                ) {
-                    return@launch
-                }
-                wakeCaptureStore.save(
-                    pcm,
-                    rawTranscript,
-                    dev.heyari.ari.wakeword.WakeCaptureHook.ACCEPTED,
-                    System.currentTimeMillis(),
-                )
-            } catch (t: Throwable) {
-                if (t is kotlinx.coroutines.CancellationException) throw t
-                Log.e(TAG, "Failed to capture accepted-wake audio", t)
-            }
-        }
-    }
-
-    /**
-     * Persist what the user said, and every transcript it produced, if the user
-     * opted in. Same shape as [captureFalseTrigger] and for the same reasons:
-     * the flag is read at call time so a toggle takes effect immediately, the
-     * disk write is IO-dispatched so it never blocks the STT collector, and
-     * failures die here — this is an opt-in debug feature and must never take
-     * the app down.
-     */
-    private fun captureUtterance(pcm: ShortArray?, capture: UtteranceCapture) {
-        if (pcm == null || pcm.isEmpty()) return
-        scope.launch(Dispatchers.IO) {
-            try {
-                // Keep-everything implies this capture too.
-                if (!settingsRepository.keepUtteranceAudio.first() &&
-                    !settingsRepository.keepEverythingAudio.first()
-                ) {
-                    return@launch
-                }
-                utteranceCaptureStore.save(pcm, capture, System.currentTimeMillis())
-            } catch (t: Throwable) {
-                if (t is kotlinx.coroutines.CancellationException) throw t
-                Log.e(TAG, "Failed to capture utterance audio", t)
-            }
-        }
-    }
-
-    /**
-     * Foreground in-place dictation — STT only. No engine, no TTS, no re-arm,
-     * no barge-in. Streams partials through [state] as VoiceState.Listening and
-     * emits the final transcript on [dictatedText]; the caller (ConversationViewModel)
-     * routes those into the composer. Reaching Idle (via [dismiss]) drives the
-     * WakeWordService one-shot stand-down, exactly like a voice turn.
-     */
-    fun startDictation() {
-        if (sessionJob?.isActive == true) {
-            Log.w(TAG, "startDictation() called while a session is active — ignoring")
+    override fun speak(id: ULong, text: String, flush: Boolean) {
+        val spoken = speechOutput.queueSpeech(text, flush)
+        if (spoken == null) {
+            pipeline.speechFinished(id)
             return
         }
-        // Non-Idle synchronously so the WakeWordService one-shot collector sees a
-        // begun turn before any Idle (same reason start() does this).
-        _state.value = VoiceState.Listening("")
-        lastActivityAt = System.currentTimeMillis()
-        sessionJob = scope.launch {
-            // Bound the mic: the online/English recogniser emits Done only on a
-            // stable NON-empty partial, so pure silence never endpoints. Without
-            // this watcher a "tapped but never spoke" dictation would keep the
-            // one-shot capture host hot forever. Mirrors start()'s silence guard.
-            val silenceWatcher = launch {
-                while (isActive) {
-                    delay(500)
-                    if (System.currentTimeMillis() - lastActivityAt > SILENCE_TIMEOUT_MS) {
-                        Log.i(TAG, "Dictation: no speech within ${SILENCE_TIMEOUT_MS}ms — dismissing")
-                        dismiss()
-                        return@launch
-                    }
+        scope.launch {
+            speechOutput.awaitSpoken(spoken)
+            pipeline.speechFinished(id)
+        }
+    }
+
+    override fun stopSpeaking() {
+        speechOutput.stop()
+    }
+
+    override fun phrase(phrase: FfiPhrase): String = when (phrase) {
+        FfiPhrase.PLEASE_WAIT -> pleaseWaitPhrase(context)
+        FfiPhrase.PLEASE_REPEAT -> pleaseRepeatPhrase(context)
+    }
+
+    override fun captureMode(mode: FfiCaptureMode) {
+        _captureMode.value = when (mode) {
+            FfiCaptureMode.NORMAL -> CaptureMode.NORMAL
+            FfiCaptureMode.CONVERSATION -> CaptureMode.CONVERSATION
+        }
+    }
+
+    override fun loadSpeechModel(): Boolean = runBlocking {
+        val model = sttModelLoader.activeDownloadedModel()
+        model != null && sttModelLoader.load(model)
+    }
+
+    override fun hostListen(params: FfiListenParams) {
+        speechRecognizer.listenWithService(params.rewindSeconds, params.limitMs)
+    }
+
+    override fun hostStopListen() {
+        speechRecognizer.stopServiceListening()
+    }
+
+    /**
+     * "Stop" over a ringing alarm silences it, ahead of everything else. The
+     * words that match a button on the card on screen (Yes, No, Cancel, or
+     * whatever labels the skill chose) press it, as a tap would, unless
+     * [cards] is false: the engine waits on a reply to its own question. On the
+     * main thread, where this ran before the session moved.
+     */
+    override fun intercept(text: String, cards: Boolean): FfiIntercepted = runBlocking(Dispatchers.Main) {
+        alertVoiceIntercept.resolve(text)?.let { alertId ->
+            logRepository.append(Message(text = text, isFromUser = true, source = InputSource.Voice))
+            context.startService(AlertService.stopIntent(context, alertId))
+            return@runBlocking FfiIntercepted.Alert
+        }
+        if (!cards) return@runBlocking FfiIntercepted.No
+        val match = cardActionVoiceIntercept.resolve(text) ?: return@runBlocking FfiIntercepted.No
+        logRepository.append(Message(text = text, isFromUser = true, source = InputSource.Voice))
+        when (val outcome = cardActionDispatcher.dispatch(match.cardId, match.action)) {
+            is CardActionDispatcher.Outcome.Silent -> FfiIntercepted.CardSilent
+            is CardActionDispatcher.Outcome.Spoken -> {
+                if (outcome.text.isNotBlank() || outcome.attachments.isNotEmpty()) {
+                    logRepository.append(
+                        Message(text = outcome.text, isFromUser = false, attachments = outcome.attachments)
+                    )
                 }
-            }
-            try {
-                speechRecognizer.startListening()
-                speechRecognizer.state.collect { stt ->
-                    when (stt) {
-                        is SttState.Listening -> {
-                            if (stt.partial.isNotBlank()) lastActivityAt = System.currentTimeMillis()
-                            _state.update { VoiceState.Listening(stt.partial) }
-                        }
-                        SttState.Transcribing -> _state.update { VoiceState.Thinking }
-                        is SttState.Done -> {
-                            captureUtterance(
-                                stt.audio,
-                                UtteranceCapture(
-                                    turn = UtteranceTurn.DICTATION,
-                                    outcome = UtteranceOutcome.DICTATED,
-                                    response = null,
-                                    raw = stt.raw,
-                                    transcript = stt.text,
-                                    parallel = stt.parallel,
-                                    offline = null,
-                                    used = stt.text,
-                                    locale = localeProvider.currentLocale(),
-                                    model = speechRecognizer.currentModelId,
-                                ),
-                            )
-                            _dictatedText.emit(stt.text)
-                            dismiss()
-                            return@collect
-                        }
-                        is SttState.Error -> {
-                            Log.w(TAG, "Dictation STT error: ${stt.message}")
-                            dismiss()
-                            return@collect
-                        }
-                        is SttState.NoSpeech -> {
-                            dismiss()
-                            return@collect
-                        }
-                        SttState.Idle -> { /* ignore */ }
-                    }
-                }
-            } catch (t: Throwable) {
-                if (t is kotlinx.coroutines.CancellationException) throw t
-                Log.e(TAG, "Dictation failed", t)
-                dismiss()
-            } finally {
-                silenceWatcher.cancel()
+                turnAttachments = outcome.attachments
+                FfiIntercepted.CardSpoken(outcome.text, outcome.attachments.any { it is Attachment.Card })
             }
         }
     }
 
-    /** Cancel an in-progress dictation (Stop button / lifecycle). Produces no
-     *  final transcript, so nothing is submitted; the caller keeps the last
-     *  partial already streamed into the field. */
-    fun stopDictation() {
-        if (sessionJob?.isActive != true) return
-        dismiss()
+    /**
+     * Run an action envelope. On the session's worker, never the main thread:
+     * the media path connects a MediaBrowser and waits on a latch for up to
+     * 3 s, and blocking Main would ANR and deadlock the MediaBrowser callbacks.
+     */
+    override fun handleAction(json: String, skillId: String): FfiActionOutcome {
+        val result = actionHandler.handle(json, skillId)
+        turnAttachments = result.attachments
+        return FfiActionOutcome(
+            text = result.text,
+            displayText = result.displayText,
+            cards = result.attachments.any { it is Attachment.Card },
+            attachments = result.attachments.isNotEmpty(),
+        )
+    }
+
+    /** The spoken turn joins the conversation log, so it shows in the chat. */
+    override fun turnLogged(turn: FfiLoggedTurn) {
+        if (turn.clear) {
+            logRepository.clear()
+        } else {
+            logRepository.append(Message(text = turn.heard, isFromUser = true, source = InputSource.Voice))
+        }
+        turn.reply?.let {
+            logRepository.append(
+                Message(
+                    text = it.text,
+                    markdown = it.markdown,
+                    isFromUser = false,
+                    attachments = turnAttachments,
+                    skillId = it.skillId,
+                )
+            )
+        }
+    }
+
+    /** A remember or forget command: mirror the engine's facts to disk. */
+    override fun factsChanged() {
+        scope.launch(Dispatchers.IO) {
+            settingsRepository.setRememberedFacts(engineHolder.peek()?.rememberedFacts() ?: emptyList())
+        }
+    }
+
+    override fun falseWake() {
+        scope.launch { falseWakeMonitor.onFalseWake() }
+    }
+
+    override fun dictated(text: String) {
+        _dictatedText.tryEmit(text)
+    }
+
+    override fun engineTurnFinished() {
+        engineHolder.voiceTurnFinished()
+    }
+
+    /**
+     * Play [R.raw.ready] at [volume]. Audio attributes MUST be set BEFORE
+     * prepare: `MediaPlayer.create()` prepares eagerly, so setting attributes
+     * afterwards is rejected by the native layer ("trying to set audio
+     * attributes called in state 8") and silently dropped, which is why the
+     * old code accidentally ran on the default media stream. USAGE_MEDIA on
+     * purpose: on-device A/B testing showed USAGE_ASSISTANT and
+     * ASSISTANCE_SONIFICATION route to a much quieter stream, too soft for a
+     * "your turn" prompt. Trade-off: the cue follows the media volume.
+     */
+    private fun playReadyCue(volume: Float) {
+        runCatching {
+            val player = MediaPlayer()
+            player.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
+            context.resources.openRawResourceFd(R.raw.ready).use { afd ->
+                player.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+            }
+            player.prepare()
+            player.setVolume(volume, volume)
+            player.setOnCompletionListener { runCatching { it.release() } }
+            player.setOnErrorListener { mp, what, extra ->
+                Log.w(TAG, "Ready cue playback error what=$what extra=$extra")
+                runCatching { mp.release() }
+                true
+            }
+            player.start()
+        }.onFailure { Log.w(TAG, "Ready cue playback failed", it) }
     }
 
     companion object {
         private const val TAG = "VoiceSession"
-        // 30 s — accommodates the offline Whisper path which produces
-        // no streaming partials, so `lastActivityAt` can't be refreshed
-        // during the utterance + decode window. Online streaming
-        // refreshes lastActivityAt on every non-blank partial, so the
-        // timeout effectively trips after 30 s of mic-silence; offline
-        // gets ~30 s for capture + endpoint-detection + whisper decode
-        // combined. Tighter than this and slow x86 emulator decodes
-        // (whisper-turbo int8 takes 5-10 s on emulator x86_64) trip
-        // the watcher before Done lands.
-        private const val SILENCE_TIMEOUT_MS = 30_000L
-        // The opening turn of a wake session gets a much tighter window: the
-        // user just said the wake phrase, so 8 s of dead air means it wasn't
-        // addressed to Ari, and every extra second the mic stays armed is a
-        // second in which unrelated ambient speech can be taken as a command.
-        // Re-armed reply turns and dictation keep the full 30 s above — those
-        // are cases where Ari asked a question or the user deliberately opened
-        // the mic, so waiting is legitimate.
-        private const val WAKE_TURN_SILENCE_TIMEOUT_MS = 8_000L
-        // How long a quiet wake waits for anything that counts as speech before
-        // giving up without transcribing. A real wake has the phrase itself in
-        // the pre-roll, so it counts at once; only noise waits this long.
-        private const val QUIET_GIVE_UP_MS = 3_000L
-        // A quiet wake shows nothing while it listens, and the wake word is off
-        // meanwhile, so it stops here and transcribes what it has, even while the
-        // television talks on. The longest real command on the test phone took
-        // 2.9 s after the wake (2026-10-17).
-        private const val QUIET_LISTEN_LIMIT_MS = 6_000L
-        // How long a quiet wake on the streaming recogniser waits for a partial
-        // holding the name. The whole pre-roll, "Hey Ari" in it, is decoded the
-        // moment the listen arms, so a real call names itself in the first
-        // partials; the wake log's early-name lines show how soon. The wait is
-        // also how long the wake word stays off for a false wake nobody sees.
-        private const val QUIET_NAME_WAIT_MS = 3_000L
-        // How long a spoken answer stays on the overlay at minimum, for replies
-        // short enough that TTS finishes before the user has read them.
-        private const val MIN_RESPONSE_DWELL_MS = 3_000L
+
         // How long an answer's cards stay on the overlay after it, untouched.
         private const val CARD_DWELL_MS = 10_000L
-        // 2 s pre-roll snapshot at session start — see the comment at the
-        // capture site in start() for why this stays within the wake phrase.
-        private const val PREROLL_CAPTURE_SECONDS = 2.0f
-        // How long to flash the corrected transcript in the overlay before
-        // transitioning to the response. Long enough for the user to notice
-        // the text changed, short enough not to feel like a stall.
-        private const val CORRECTION_FLASH_MS = 600L
-
-        // Re-arm cue volume: clearly audible after Ari's TTS, a touch below the
-        // fresh cue's full volume. The old 0.3 was inaudible on-device.
-        private const val RE_ARM_CUE_VOLUME = 0.8f
     }
 }

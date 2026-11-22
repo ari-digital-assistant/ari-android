@@ -5,47 +5,21 @@ import android.content.Intent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.audio.AudioClipStore
 import dev.heyari.ari.audio.ClipStats
-import dev.heyari.ari.audio.clipStem
 import dev.heyari.ari.audio.shareIntentFor
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Which path caught the clip. Recorded in the sidecar. */
-enum class WakeCaptureHook(val slug: String) {
-    /** The transcript contained speech but no wake-phrase name token. */
-    REJECTED("rejected"),
-
-    /** The wake fired and nobody said anything before the silence timeout. */
-    SILENT("silent"),
-
-    /**
-     * The wake fired and the transcriber found no speech in what followed. The
-     * same label as [SILENT], reached on the paths that endpoint and transcribe
-     * instead of timing out, which on cloud transcription is all of them.
-     */
-    NO_SPEECH("no-speech"),
-
-    /**
-     * The wake fired and the turn was accepted — a true positive. Captured by
-     * the keep-wake toggle (or the firehose), never by the false-trigger one:
-     * the two are opposite labels and must not share a switch.
-     */
-    ACCEPTED("accepted"),
-}
-
 /**
- * Persists audio that falsely triggered the wake word, for a future retrain of
- * the wake word model with real hard negatives.
+ * The wake audio the voice session keeps, for a future retrain of the wake
+ * word model with real hard negatives. The session (ari-voice `captures`)
+ * writes it, behind debug settings that are off by default; this is the
+ * settings page's and the bug report's view of it.
  *
- * App-private storage only, hard-bounded, and gated behind a debug setting that
- * is off by default — the caller checks the setting, this class does not. See
- * `docs/superpowers/specs/2026-07-27-wake-word-false-accept-design.md` §5.
- *
- * Clips land in one of three directories depending on which hook caught them,
- * and the difference matters more than a filename slug can carry — see
- * [rejectedClips] and [acceptedClips]. Everything the settings page does
- * (stats, clear, share) spans all of them.
+ * Clips land in one of three directories depending on which path caught
+ * them, and the difference matters more than a filename slug can carry: see
+ * [rejectedClips] and [acceptedClips]. Everything here (stats, clear, share)
+ * spans all of them. The names are the engine's; they must not drift.
  *
  * The primary constructor takes the directory the stores sit under so a JVM
  * test can assert the routing against a `TemporaryFolder`; [context] is null on
@@ -61,7 +35,7 @@ class WakeCaptureStore internal constructor(
 
     /** Hard-negative candidates: the wake fired and nobody spoke. Safe retrain feed. */
     private val silentClips =
-        AudioClipStore(context, File(baseDir, DIR_NAME), MAX_FILES, MAX_BYTES)
+        AudioClipStore(context, File(baseDir, DIR_NAME))
 
     /**
      * QUARANTINE: the wake fired but the transcript carried no name token. The
@@ -71,7 +45,7 @@ class WakeCaptureStore internal constructor(
      * enters a retrain set, which is why they never touch [silentClips]' dir.
      */
     private val rejectedClips =
-        AudioClipStore(context, File(baseDir, REJECTED_DIR_NAME), MAX_FILES, MAX_BYTES)
+        AudioClipStore(context, File(baseDir, REJECTED_DIR_NAME))
 
     /**
      * TRUE POSITIVES: accepted wakes. Kept apart from both dirs above —
@@ -79,23 +53,7 @@ class WakeCaptureStore internal constructor(
      * quarantine would poison the labels in the other direction.
      */
     private val acceptedClips =
-        AudioClipStore(context, File(baseDir, ACCEPTED_DIR_NAME), MAX_FILES, MAX_BYTES)
-
-    fun save(
-        pcm: ShortArray,
-        rawTranscript: String,
-        hook: WakeCaptureHook,
-        timestampMs: Long,
-    ) {
-        // Exhaustive on purpose: a new hook must decide its directory here,
-        // not silently inherit the retrain feed.
-        val clips = when (hook) {
-            WakeCaptureHook.REJECTED -> rejectedClips
-            WakeCaptureHook.SILENT, WakeCaptureHook.NO_SPEECH -> silentClips
-            WakeCaptureHook.ACCEPTED -> acceptedClips
-        }
-        clips.save(clipStem("wake", timestampMs, hook.slug), pcm, rawTranscript)
-    }
+        AudioClipStore(context, File(baseDir, ACCEPTED_DIR_NAME))
 
     fun stats(): ClipStats {
         val all = listOf(silentClips.stats(), rejectedClips.stats(), acceptedClips.stats())
@@ -123,7 +81,5 @@ class WakeCaptureStore internal constructor(
         const val DIR_NAME = "wake-captures"
         const val REJECTED_DIR_NAME = "wake-captures-rejected"
         const val ACCEPTED_DIR_NAME = "wake-captures-accepted"
-        const val MAX_FILES = 50
-        const val MAX_BYTES = 20L * 1024 * 1024
     }
 }
