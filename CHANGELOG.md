@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tapping it left Ari with no speech model.
 - A finished sensitivity tuning now takes effect straight away. Before, Ari kept
   listening with the old setting until the microphone next closed.
+- Setting a personality no longer stops the assistant formatting its answers. With one
+  set, the on-device assistant wrote lists as plain "•" lines with no bold
+  ([#58](https://github.com/ari-digital-assistant/ari-android/issues/58)).
 
 ## [0.2.2] - 2026-11-22
 
