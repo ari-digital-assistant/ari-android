@@ -3,6 +3,7 @@ package dev.heyari.ari.ui.settings.pages
 import android.Manifest
 import android.location.Location
 import android.location.LocationManager
+import android.os.SystemClock
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -69,6 +71,9 @@ import kotlin.math.cos
  */
 private const val MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
 
+/** Quicker than anybody answers a permission screen; see ListeningPlacesPage. */
+private const val UNSEEN_REFUSAL_MS = 500L
+
 @Composable
 fun ListeningPlacesPage(
     onBack: () -> Unit,
@@ -86,9 +91,31 @@ fun ListeningPlacesPage(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    // Both requests are the direct route. Precise has to be asked for together
+    // with approximate, or Android 12 and up ignore it. Background location,
+    // asked for once the foreground is granted, opens Ari's own location
+    // permission page, where "all the time" and precise sit together.
+    //
+    // A request Android refuses without showing anything (the user turned it
+    // down too often) comes straight back, faster than anyone can answer a
+    // permission screen. Ari's app info page is then the only way left in.
+    var askedAt by remember { mutableLongStateOf(0L) }
+    fun refusedUnseen() = SystemClock.elapsedRealtime() - askedAt < UNSEEN_REFUSAL_MS
+
     val fineLocationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { granted ->
+        if (granted[Manifest.permission.ACCESS_FINE_LOCATION] != true && refusedUnseen()) {
+            viewModel.openAppSettings()
+        }
+        viewModel.refreshPermissions()
+    }
+    val backgroundLocationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { viewModel.refreshPermissions() }
+    ) { granted ->
+        if (!granted && refusedUnseen()) viewModel.openAppSettings()
+        viewModel.refreshPermissions()
+    }
 
     SettingsScaffold(
         title = stringResource(R.string.settings_listening_places_title),
@@ -114,7 +141,15 @@ fun ListeningPlacesPage(
                 PermissionCard(
                     body = stringResource(R.string.settings_listening_places_need_fine_location),
                     buttonLabel = stringResource(R.string.action_grant),
-                    onClick = { fineLocationLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) },
+                    onClick = {
+                        askedAt = SystemClock.elapsedRealtime()
+                        fineLocationLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION,
+                            ),
+                        )
+                    },
                 )
             } else if (!state.hasBackgroundLocation) {
                 val optionLabel = viewModel.backgroundLocationOptionLabel()
@@ -128,7 +163,10 @@ fun ListeningPlacesPage(
                         )
                     },
                     buttonLabel = stringResource(R.string.action_open_settings),
-                    onClick = { viewModel.openAppSettings() },
+                    onClick = {
+                        askedAt = SystemClock.elapsedRealtime()
+                        backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                    },
                 )
             }
 

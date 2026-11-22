@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The background battery link in Settings opens Ari's own battery page, so setting it to
   Unrestricted is two taps instead of hunting for Ari in a list.
+- Listening places asks for background location on Ari's own location permission page,
+  instead of Ari's app info page, three taps further away. It also asks for precise
+  location together with approximate, as Android 12 and up expect.
 
 ### Fixed
 
