@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Sensitivity tuning keeps the screen on while it runs, and beeps: a low beep as each
+  prompt appears, and a higher one when it's time to speak.
+
 ### Fixed
 
 - A finished sensitivity tuning now takes effect straight away. Before, Ari kept

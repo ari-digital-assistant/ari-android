@@ -185,16 +185,26 @@ class SensitivityTuner @Inject constructor(
         // saying the phrase. This, and not the audio immediately before each
         // attempt, is what every attempt is warmed up on.
         val runIn = 0 until session.sumOf { it.size }
-        takes.forEachIndexed { index, take ->
-            val attempt = index + 1
-            collect(channel, session, GET_READY_MS) { _, _ ->
-                State.GetReady(attempt, takes.size, take)
+        TuningCues().use { cues ->
+            takes.forEachIndexed { index, take ->
+                val attempt = index + 1
+                cues.getReady()
+                collect(channel, session, GET_READY_MS) { _, _ ->
+                    State.GetReady(attempt, takes.size, take)
+                }
+                // The screen says "now" with the beep, but the attempt starts
+                // once the beep is out of the room: the microphone hears the
+                // speaker, and an attempt is meant to hold the person alone.
+                cues.sayIt()
+                collect(channel, session, CUE_CLEAR_MS) { _, level ->
+                    State.Listening(attempt, takes.size, level, take)
+                }
+                val start = session.sumOf { it.size }
+                collect(channel, session, LISTEN_MS) { _, level ->
+                    State.Listening(attempt, takes.size, level, take)
+                }
+                windows += start until session.sumOf { it.size }
             }
-            val start = session.sumOf { it.size }
-            collect(channel, session, LISTEN_MS) { _, level ->
-                State.Listening(attempt, takes.size, level, take)
-            }
-            windows += start until session.sumOf { it.size }
         }
         releaseBus()
 
@@ -406,6 +416,9 @@ class SensitivityTuner @Inject constructor(
         private const val MIN_PHRASES_KEPT = 0.6f
 
         private const val GET_READY_MS = 700L
+
+        /** The "now" beep, plus the speaker's output latency with room to spare. */
+        private const val CUE_CLEAR_MS = TuningCues.BEEP_MS + 150L
 
         /**
          * Run-in fed to the engine before each attempt. Comfortably past

@@ -19,9 +19,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -53,6 +55,14 @@ fun SensitivityTuningPage(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val settings by settingsViewModel.state.collectAsStateWithLifecycle()
+
+    // A session is a minute of speaking at the phone without touching it,
+    // and the screen timing out halfway loses the prompts.
+    val view = LocalView.current
+    DisposableEffect(state.isBusy) {
+        view.keepScreenOn = state.isBusy
+        onDispose { view.keepScreenOn = false }
+    }
 
     SettingsScaffold(
         title = stringResource(R.string.sensitivity_tuning_title),
