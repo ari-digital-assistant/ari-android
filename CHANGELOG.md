@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A finished sensitivity tuning now takes effect straight away. Before, Ari kept
+  listening with the old setting until the microphone next closed.
+
 ## [0.2.2] - 2026-11-22
 
 Changes since 0.2.1, uploaded to Google Play internal testing as versionCode 9.

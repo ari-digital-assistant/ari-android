@@ -2,6 +2,7 @@ package dev.heyari.ari.wakeword
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.ActivityManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -953,14 +954,24 @@ class WakeWordService : Service() {
          * Restart a running service so it picks up a new wake model or a new
          * sensitivity. The detector is built once per mic cycle, and the mic
          * stays open across voice turns, so without this a changed setting
-         * waits for the next time the microphone happens to close. Only safe
-         * from the foreground: a microphone service cannot be started from the
-         * background.
+         * waits for the next time the microphone happens to close.
+         *
+         * Does nothing unless Ari is on screen. A microphone service cannot be
+         * started from the background, so stopping it there would leave no wake
+         * word at all; the setting then waits for the next mic cycle instead.
+         * Most callers are a tap in Settings, but a tuning session can finish
+         * after the user has left the app.
          */
         fun restartIfRunning(context: Context) {
-            if (!isRunning) return
+            if (!isRunning || !onScreen()) return
             context.stopService(Intent(context, WakeWordService::class.java))
             start(context)
+        }
+
+        private fun onScreen(): Boolean {
+            val info = ActivityManager.RunningAppProcessInfo()
+            ActivityManager.getMyMemoryState(info)
+            return info.importance <= ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
         }
 
         private const val NOTIFICATION_ID = 1

@@ -1,8 +1,10 @@
 package dev.heyari.ari.ui.settings
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.wakeword.LadderFit
 import dev.heyari.ari.wakeword.RecorderProblem
@@ -11,6 +13,7 @@ import dev.heyari.ari.wakeword.Take
 import dev.heyari.ari.wakeword.TunedSession
 import dev.heyari.ari.wakeword.WakeWordRegistry
 import dev.heyari.ari.wakeword.WakeWordSensitivity
+import dev.heyari.ari.wakeword.WakeWordService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,6 +49,7 @@ data class SensitivityTuningUiState(
  */
 @HiltViewModel
 class SensitivityTuningViewModel @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     private val tuner: SensitivityTuner,
     private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
@@ -127,6 +131,9 @@ class SensitivityTuningViewModel @Inject constructor(
                 settingsRepository.setLadderBeforeTightening(null)
                 settingsRepository.setLadderTightenedModel(null)
             }
+            // The running detector was built with the old ladder and keeps it
+            // until the mic next closes, which can be hours away.
+            WakeWordService.restartIfRunning(context)
         }
     }
 
