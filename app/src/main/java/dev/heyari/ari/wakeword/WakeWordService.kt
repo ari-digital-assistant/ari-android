@@ -829,7 +829,6 @@ class WakeWordService : Service() {
         micHot = false
         scope.cancel()
         releaseMic()
-        if (::pipeline.isInitialized) pipeline.close()
         // Never leave the always-on path stranded in comms mode: restore normal
         // audio routing + MIC source so the next start listens cleanly.
         runCatching {
@@ -840,6 +839,8 @@ class WakeWordService : Service() {
         wakePaused = false
         currentSource = audioSourceFor(CaptureMode.NORMAL)
         oneShotActive = false
+        // Last: the wakePaused reset above still talks to the pipeline.
+        if (::pipeline.isInitialized) pipeline.close()
         Log.i(TAG, "Wake word listening stopped")
         super.onDestroy()
     }
