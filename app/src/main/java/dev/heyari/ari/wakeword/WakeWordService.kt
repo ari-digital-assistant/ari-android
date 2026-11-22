@@ -847,6 +847,32 @@ class WakeWordService : Service() {
          * Most callers are a tap in Settings, but a tuning session can finish
          * after the user has left the app.
          */
+        /**
+         * Start a voice turn with no wake word, from a foreground action: the
+         * assistant gesture, or a tap. Returns false only when the microphone
+         * permission is missing and nothing was started.
+         *
+         * Repeats are ignored once a turn is running, so a double-tap can't
+         * re-deliver onStartCommand or relaunch the overlay: [sessionActive]
+         * covers the overlay already being up, [oneShotActive] the moment a
+         * one-shot host is up but its overlay hasn't started the session yet.
+         *
+         * With always-listening on, the running service just opens the overlay
+         * as a wake would. With it off, the service starts as a one-shot
+         * capture host and stands itself down after the turn, so the mic
+         * doesn't stay hot. The one-shot flag is sticky: a second request that
+         * lands once the one-shot host is up (isRunning true) must not send
+         * EXTRA_ONE_SHOT=false and strand a hot mic.
+         */
+        fun startVoiceTurn(context: Context, sessionActive: Boolean): Boolean {
+            if (sessionActive || oneShotActive) return true
+            val oneShot = !isRunning || oneShotActive
+            return start(context) {
+                action = ACTION_START_VOICE_TURN
+                putExtra(EXTRA_ONE_SHOT, oneShot)
+            }
+        }
+
         fun restartIfRunning(context: Context) {
             if (!isRunning || !onScreen()) return
             context.stopService(Intent(context, WakeWordService::class.java))

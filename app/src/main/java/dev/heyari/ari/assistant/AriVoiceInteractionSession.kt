@@ -4,26 +4,23 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.service.voice.VoiceInteractionSession
-import dev.heyari.ari.MainActivity
 
 /**
- * Session shown when the user invokes the assist gesture (long-press home,
- * power button on some devices, etc.) while Ari is the selected digital
- * assistant. We just open MainActivity and finish the session — the
- * conversation screen handles everything else.
+ * Session shown when the user invokes the assist gesture (a swipe up from a
+ * bottom corner, or the power button where the phone offers it) while Ari is
+ * the selected digital assistant. It starts a voice turn, so Ari comes up
+ * already listening, as other assistants do, and finishes the session.
  *
- * Future: we could pre-trigger STT here so the user doesn't even need to tap
- * the mic — but for now, simple open-the-app behaviour matches what the user
- * expects from a default assistant.
+ * The turn starts from [AssistTurnActivity] rather than here: a microphone
+ * service may only be started from the foreground, and an activity is.
  */
 class AriVoiceInteractionSession(context: Context) : VoiceInteractionSession(context) {
 
     override fun onShow(args: Bundle?, showFlags: Int) {
         super.onShow(args, showFlags)
 
-        val intent = Intent(context, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            putExtra(EXTRA_FROM_ASSIST, true)
+        val intent = Intent(context, AssistTurnActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         context.startActivity(intent)
         finish()

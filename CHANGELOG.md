@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- With Ari as your default assistant, the assistant gesture (a swipe up from a bottom
+  corner) opens Ari already listening, as other assistants do, instead of opening the
+  app.
 - The background battery link in Settings opens Ari's own battery page, so setting it to
   Unrestricted is two taps instead of hunting for Ari in a list.
 - Listening places asks for background location on Ari's own location permission page,
