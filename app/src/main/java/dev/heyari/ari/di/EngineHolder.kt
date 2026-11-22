@@ -35,6 +35,7 @@ import uniffi.ari_ffi.onDeviceCpuInfo
 import uniffi.ari_ffi.AriEngineBuilder
 import uniffi.ari_ffi.AssistantRegistry
 import uniffi.ari_ffi.FfiResponse
+import uniffi.ari_ffi.FfiSpokenResponse
 import uniffi.ari_ffi.FfiAnswerSink
 import uniffi.ari_ffi.SkillSettingsStore
 import java.io.File
@@ -155,6 +156,33 @@ class EngineHolder @Inject constructor(
             val engine = engine()
             engine.processInputStreaming(
                 input,
+                object : FfiAnswerSink {
+                    override fun text(soFar: String, markdown: String?) = onText(soFar, markdown)
+                    override fun sentence(text: String) = onSentence(text)
+                },
+            ).also {
+                lapseWatcher.turnFinished(engine::conversationMemory)
+                rememberCloudAssistant(engine)
+            }
+        }
+
+    /**
+     * [processInput] for a spoken turn the recogniser also heard a second way
+     * ([alternative], the streaming path's parallel stream). The engine acts on
+     * [alternative] instead when [input] finds no skill and it does, at the point
+     * it would otherwise hand [input] to the assistant. The result says which.
+     */
+    suspend fun processSpokenInput(
+        input: String,
+        alternative: String?,
+        onText: (soFar: String, markdown: String?) -> Unit,
+        onSentence: (String) -> Unit,
+    ): FfiSpokenResponse =
+        withContext(Dispatchers.Default) {
+            val engine = engine()
+            engine.processSpokenInput(
+                input,
+                alternative,
                 object : FfiAnswerSink {
                     override fun text(soFar: String, markdown: String?) = onText(soFar, markdown)
                     override fun sentence(text: String) = onSentence(text)

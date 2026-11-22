@@ -1110,6 +1110,8 @@ external fun uniffi_ari_ffi_checksum_method_ariengine_process_input(
 ): Short
 external fun uniffi_ari_ffi_checksum_method_ariengine_process_input_streaming(
 ): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_process_spoken_input(
+): Short
 external fun uniffi_ari_ffi_checksum_method_ariengine_query_skill_setting(
 ): Short
 external fun uniffi_ari_ffi_checksum_method_ariengine_release_llm_memory(
@@ -1411,6 +1413,8 @@ external fun uniffi_ari_ffi_fn_method_ariengine_load_model_catalog(`ptr`: Long,`
 external fun uniffi_ari_ffi_fn_method_ariengine_process_input(`ptr`: Long,`input`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ariengine_process_input_streaming(`ptr`: Long,`input`: RustBuffer.ByValue,`sink`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_ariengine_process_spoken_input(`ptr`: Long,`input`: RustBuffer.ByValue,`alternative`: RustBuffer.ByValue,`sink`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ariengine_query_skill_setting(`ptr`: Long,`skillId`: RustBuffer.ByValue,`field`: RustBuffer.ByValue,`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -2039,6 +2043,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_process_input_streaming() != 60355.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ariengine_process_spoken_input() != 5133.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_query_skill_setting() != 51025.toShort()) {
@@ -3040,6 +3047,16 @@ public interface AriEngineInterface {
     fun `processInputStreaming`(`input`: kotlin.String, `sink`: FfiAnswerSink): FfiResponse
     
     /**
+     * [`Self::process_input_streaming`] for a spoken turn the recogniser
+     * also heard a second way: the streaming path's parallel stream. When
+     * `input` finds no skill and `alternative` does, the engine acts on
+     * `alternative` at the point it would otherwise hand `input` to the
+     * assistant, which on-device answers anything and so leaves the host's
+     * not-understood retry nothing to do. The result says which it acted on.
+     */
+    fun `processSpokenInput`(`input`: kotlin.String, `alternative`: kotlin.String?, `sink`: FfiAnswerSink): FfiSpokenResponse
+    
+    /**
      * Settings-time skill invocation: run `skill_id`'s `settings_query` for
      * `field`, passing the current `values` (the field's `depends_on`
      * siblings). The host calls this from the settings UI to populate a
@@ -3476,6 +3493,27 @@ open class AriEngine: Disposable, AutoCloseable, AriEngineInterface
     UniffiLib.uniffi_ari_ffi_fn_method_ariengine_process_input_streaming(
         it,
         FfiConverterString.lower(`input`),FfiConverterTypeFfiAnswerSink.lower(`sink`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * [`Self::process_input_streaming`] for a spoken turn the recogniser
+     * also heard a second way: the streaming path's parallel stream. When
+     * `input` finds no skill and `alternative` does, the engine acts on
+     * `alternative` at the point it would otherwise hand `input` to the
+     * assistant, which on-device answers anything and so leaves the host's
+     * not-understood retry nothing to do. The result says which it acted on.
+     */override fun `processSpokenInput`(`input`: kotlin.String, `alternative`: kotlin.String?, `sink`: FfiAnswerSink): FfiSpokenResponse {
+            return FfiConverterTypeFfiSpokenResponse.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ariengine_process_spoken_input(
+        it,
+        FfiConverterString.lower(`input`),FfiConverterOptionalString.lower(`alternative`),FfiConverterTypeFfiAnswerSink.lower(`sink`),_status)
 }
     }
     )
@@ -14182,6 +14220,48 @@ public object FfiConverterTypeFfiSlashCommand: FfiConverterRustBuffer<FfiSlashCo
             FfiConverterString.write(value.`name`, buf)
             FfiConverterString.write(value.`description`, buf)
             FfiConverterBoolean.write(value.`takesArgument`, buf)
+    }
+}
+
+
+
+/**
+ * What a spoken turn produced, and whether the engine acted on the
+ * recogniser's second transcript instead of its first.
+ */
+data class FfiSpokenResponse (
+    var `response`: FfiResponse
+    , 
+    var `usedAlternative`: kotlin.Boolean
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiSpokenResponse: FfiConverterRustBuffer<FfiSpokenResponse> {
+    override fun read(buf: ByteBuffer): FfiSpokenResponse {
+        return FfiSpokenResponse(
+            FfiConverterTypeFfiResponse.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiSpokenResponse) = (
+            FfiConverterTypeFfiResponse.allocationSize(value.`response`) +
+            FfiConverterBoolean.allocationSize(value.`usedAlternative`)
+    )
+
+    override fun write(value: FfiSpokenResponse, buf: ByteBuffer) {
+            FfiConverterTypeFfiResponse.write(value.`response`, buf)
+            FfiConverterBoolean.write(value.`usedAlternative`, buf)
     }
 }
 

@@ -869,12 +869,21 @@ class VoiceSession @Inject constructor(
         // turn but the model writes on regardless, hence the isActive checks.
         val reply = speechOutput.Reply()
         val turnJob = currentCoroutineContext()[Job]
-        var response = engineHolder.processInput(
+        // --- Layer 1b: the parallel transcript, before the assistant ---
+        // The engine acts on the parallel stream's transcript instead when this
+        // one finds no skill and that one does: an on-device assistant answers
+        // anything, so the not-understood retries below would never get a
+        // turn. "reminded me to buy milk" found nothing; the parallel stream's
+        // "remind me to buy milk" found the reminders skill.
+        val spoken = engineHolder.processSpokenInput(
             text,
+            alternative = parallel?.takeIf { it.isNotBlank() && it != text },
             onText = { soFar, _ -> if (turnJob?.isActive != false) _state.value = VoiceState.Responding(soFar) },
             onSentence = { sentence -> if (turnJob?.isActive != false) reply.sentence(sentence) },
         )
-        var usedText = text
+        var response = spoken.response
+        var usedText = if (spoken.usedAlternative) parallel!! else text
+        if (spoken.usedAlternative) Log.i(TAG, "Engine acted on the parallel transcript '$parallel' over '$text'")
 
         // --- Layer 2 + 3 retries apply to the online streaming path only ---
         // The buffered path (Whisper, Parakeet) sees the full
@@ -885,7 +894,7 @@ class VoiceSession @Inject constructor(
         // not as an invitation to decode it a second time.
 
         // --- Layer 2: parallel-stream transcript ---
-        if (response is FfiResponse.NotUnderstood &&
+        if (response is FfiResponse.NotUnderstood && !spoken.usedAlternative &&
             !parallel.isNullOrBlank() && parallel != text
         ) {
             Log.i(TAG, "NotUnderstood for '$text' — retrying with parallel '$parallel'")

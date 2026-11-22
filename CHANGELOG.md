@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- When on-device transcription mishears a request so no skill matches it, Ari now tries
+  its second transcript before handing the request to the assistant. "Reminded me to buy
+  milk" used to reach the assistant, which can't set reminders; the second transcript,
+  "remind me to buy milk", reaches the reminders skill.
 - With Ari as your default assistant, the assistant gesture (a swipe up from a bottom
   corner) opens Ari already listening, as other assistants do, instead of opening the
   app.
