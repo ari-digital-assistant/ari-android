@@ -227,7 +227,9 @@
     <string name="onboarding_stt_blurb_lead">Ari transcribes your voice on your phone by default.</string>
     <string name="onboarding_stt_blurb_emphasis">Audio never leaves your phone, unless you want it to.</string>
     <string name="onboarding_stt_body">Ari transcribes your voice on-device. <b>Audio never leaves your phone.</b></string>
-    <string name="onboarding_stt_continue_hint">You can continue — we\'ll finish downloading in the background.</string>
+    <string name="onboarding_stt_model_on_continue">Downloads when you continue (%1$s).</string>
+    <string name="onboarding_stt_model_downloading">Downloading. You can carry on while it finishes.</string>
+    <string name="onboarding_stt_model_downloaded">Already downloaded.</string>
 
     <string name="onboarding_assistant_title">Assistant</string>
     <string name="onboarding_assistant_body">Ari uses skills to answer most things. For everything else, you can pick an assistant — or not.</string>

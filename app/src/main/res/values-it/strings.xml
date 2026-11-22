@@ -233,7 +233,9 @@
     <string name="onboarding_stt_blurb_lead">Per impostazione predefinita Ari trascrive la tua voce sul telefono.</string>
     <string name="onboarding_stt_blurb_emphasis">L\'audio non lascia mai il telefono, a meno che non lo voglia tu.</string>
     <string name="onboarding_stt_body">Ari trascrive la tua voce sul dispositivo. <b>L\'audio non lascia mai il telefono.</b></string>
-    <string name="onboarding_stt_continue_hint">Puoi continuare — il download finirà in background.</string>
+    <string name="onboarding_stt_model_on_continue">Il download parte quando continui (%1$s).</string>
+    <string name="onboarding_stt_model_downloading">Download in corso. Puoi continuare mentre finisce.</string>
+    <string name="onboarding_stt_model_downloaded">Già scaricato.</string>
 
     <string name="onboarding_assistant_title">Assistente</string>
     <string name="onboarding_assistant_body">Ari usa gli skill per rispondere alla maggior parte delle richieste. Per il resto, puoi scegliere un assistente — oppure no.</string>

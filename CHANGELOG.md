@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Setup downloads the on-device speech model when you continue, as it already did for
+  the assistant model. It used to show a Download button, and continuing without
+  tapping it left Ari with no speech model.
 - A finished sensitivity tuning now takes effect straight away. Before, Ari kept
   listening with the old setting until the microphone next closed.
 

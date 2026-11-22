@@ -1012,7 +1012,12 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             settingsRepository.setActiveSttModelId(model.id)
         }
-        if (!downloadManager.isDownloaded(model)) {
+        // A download already under way is left alone: starting it again
+        // replaces it and throws away what it has fetched.
+        val running = _state.value.download.let {
+            it is ModelDownloadState.Downloading && it.modelId == model.id
+        }
+        if (!downloadManager.isDownloaded(model) && !running) {
             downloadManager.download(model)
         }
     }
