@@ -1000,6 +1000,10 @@ internal object IntegrityCheckingUniffiLib {
     ): Short
     external fun uniffi_ari_ffi_checksum_func_slash_commands(
     ): Short
+    external fun uniffi_ari_ffi_checksum_func_cloud_transcribe(
+    ): Short
+    external fun uniffi_ari_ffi_checksum_func_cloud_transcribe_wake_clip(
+    ): Short
     external fun uniffi_ari_ffi_checksum_func_default_wake_word_model(
     ): Short
     external fun uniffi_ari_ffi_checksum_func_early_name_check(
@@ -1545,6 +1549,10 @@ external fun uniffi_ari_ffi_fn_func_on_device_cpu_info(uniffi_out_err: UniffiRus
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_func_slash_commands(`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_cloud_transcribe(`service`: RustBuffer.ByValue,`apiKey`: RustBuffer.ByValue,`wav`: RustBuffer.ByValue,`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_cloud_transcribe_wake_clip(`service`: RustBuffer.ByValue,`apiKey`: RustBuffer.ByValue,`wav`: RustBuffer.ByValue,`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_func_default_wake_word_model(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_func_early_name_check(`transcript`: RustBuffer.ByValue,`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1701,6 +1709,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_func_slash_commands() != 47627.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_cloud_transcribe() != 34492.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_cloud_transcribe_wake_clip() != 28440.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_func_default_wake_word_model() != 30507.toShort()) {
@@ -11829,6 +11843,236 @@ public object FfiConverterTypeFfiWakeWordModel: FfiConverterRustBuffer<FfiWakeWo
 
 
 
+
+
+/**
+ * A failed cloud transcription, one variant per [`CloudSttFailure`] so the
+ * host can tell the user which wall they hit. `reason` is for the log.
+ */
+sealed class FfiCloudSttException: kotlin.Exception() {
+    
+    class NotConfigured(
+        
+        val `reason`: kotlin.String
+        ) : FfiCloudSttException() {
+        override val message
+            get() = "reason=${ `reason` }"
+    }
+    
+    class Network(
+        
+        val `reason`: kotlin.String
+        ) : FfiCloudSttException() {
+        override val message
+            get() = "reason=${ `reason` }"
+    }
+    
+    class Auth(
+        
+        val `reason`: kotlin.String
+        ) : FfiCloudSttException() {
+        override val message
+            get() = "reason=${ `reason` }"
+    }
+    
+    class Server(
+        
+        val `reason`: kotlin.String
+        ) : FfiCloudSttException() {
+        override val message
+            get() = "reason=${ `reason` }"
+    }
+    
+    class Empty(
+        
+        val `reason`: kotlin.String
+        ) : FfiCloudSttException() {
+        override val message
+            get() = "reason=${ `reason` }"
+    }
+    
+
+    
+
+
+    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<FfiCloudSttException> {
+        override fun lift(error_buf: RustBuffer.ByValue): FfiCloudSttException = FfiConverterTypeFfiCloudSttError.lift(error_buf)
+    }
+
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiCloudSttError : FfiConverterRustBuffer<FfiCloudSttException> {
+    override fun read(buf: ByteBuffer): FfiCloudSttException {
+        
+
+        return when(buf.getInt()) {
+            1 -> FfiCloudSttException.NotConfigured(
+                FfiConverterString.read(buf),
+                )
+            2 -> FfiCloudSttException.Network(
+                FfiConverterString.read(buf),
+                )
+            3 -> FfiCloudSttException.Auth(
+                FfiConverterString.read(buf),
+                )
+            4 -> FfiCloudSttException.Server(
+                FfiConverterString.read(buf),
+                )
+            5 -> FfiCloudSttException.Empty(
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: FfiCloudSttException): ULong {
+        return when(value) {
+            is FfiCloudSttException.NotConfigured -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`reason`)
+            )
+            is FfiCloudSttException.Network -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`reason`)
+            )
+            is FfiCloudSttException.Auth -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`reason`)
+            )
+            is FfiCloudSttException.Server -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`reason`)
+            )
+            is FfiCloudSttException.Empty -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`reason`)
+            )
+        }
+    }
+
+    override fun write(value: FfiCloudSttException, buf: ByteBuffer) {
+        when(value) {
+            is FfiCloudSttException.NotConfigured -> {
+                buf.putInt(1)
+                FfiConverterString.write(value.`reason`, buf)
+                Unit
+            }
+            is FfiCloudSttException.Network -> {
+                buf.putInt(2)
+                FfiConverterString.write(value.`reason`, buf)
+                Unit
+            }
+            is FfiCloudSttException.Auth -> {
+                buf.putInt(3)
+                FfiConverterString.write(value.`reason`, buf)
+                Unit
+            }
+            is FfiCloudSttException.Server -> {
+                buf.putInt(4)
+                FfiConverterString.write(value.`reason`, buf)
+                Unit
+            }
+            is FfiCloudSttException.Empty -> {
+                buf.putInt(5)
+                FfiConverterString.write(value.`reason`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
+
+
+
+/**
+ * Which cloud speech-to-text service to use. See [`CloudSttService`].
+ */
+sealed class FfiCloudSttService {
+    
+    object OpenAi : FfiCloudSttService()
+    
+    
+    data class SelfHosted(
+        val `endpoint`: kotlin.String, 
+        val `model`: kotlin.String) : FfiCloudSttService()
+        
+    {
+        
+
+        companion object
+    }
+    
+
+    
+
+    
+    
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiCloudSttService : FfiConverterRustBuffer<FfiCloudSttService>{
+    override fun read(buf: ByteBuffer): FfiCloudSttService {
+        return when(buf.getInt()) {
+            1 -> FfiCloudSttService.OpenAi
+            2 -> FfiCloudSttService.SelfHosted(
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: FfiCloudSttService) = when(value) {
+        is FfiCloudSttService.OpenAi -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiCloudSttService.SelfHosted -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`endpoint`)
+                + FfiConverterString.allocationSize(value.`model`)
+            )
+        }
+    }
+
+    override fun write(value: FfiCloudSttService, buf: ByteBuffer) {
+        when(value) {
+            is FfiCloudSttService.OpenAi -> {
+                buf.putInt(1)
+                Unit
+            }
+            is FfiCloudSttService.SelfHosted -> {
+                buf.putInt(2)
+                FfiConverterString.write(value.`endpoint`, buf)
+                FfiConverterString.write(value.`model`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 /**
  * The user's conversation-length setting; see [`ConversationLength`].
  */
@@ -13513,6 +13757,35 @@ public object FfiConverterMapStringTypeFfiLocalizedDisplay: FfiConverterRustBuff
     UniffiLib.uniffi_ari_ffi_fn_func_slash_commands(
     
         FfiConverterString.lower(`locale`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * See [`cloud_stt::transcribe`]. Blocking: call it off the main thread.
+         */
+    @Throws(FfiCloudSttException::class) fun `cloudTranscribe`(`service`: FfiCloudSttService, `apiKey`: kotlin.String?, `wav`: kotlin.ByteArray, `locale`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(FfiCloudSttException) { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_cloud_transcribe(
+    
+        FfiConverterTypeFfiCloudSttService.lower(`service`),FfiConverterOptionalString.lower(`apiKey`),FfiConverterByteArray.lower(`wav`),FfiConverterString.lower(`locale`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * See [`cloud_stt::transcribe_wake_clip`]. `None` where the early check does
+         * not run. Blocking: call it off the main thread.
+         */
+    @Throws(FfiCloudSttException::class) fun `cloudTranscribeWakeClip`(`service`: FfiCloudSttService, `apiKey`: kotlin.String?, `wav`: kotlin.ByteArray, `locale`: kotlin.String): kotlin.String? {
+            return FfiConverterOptionalString.lift(
+    uniffiRustCallWithError(FfiCloudSttException) { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_cloud_transcribe_wake_clip(
+    
+        FfiConverterTypeFfiCloudSttService.lower(`service`),FfiConverterOptionalString.lower(`apiKey`),FfiConverterByteArray.lower(`wav`),FfiConverterString.lower(`locale`),_status)
 }
     )
     }

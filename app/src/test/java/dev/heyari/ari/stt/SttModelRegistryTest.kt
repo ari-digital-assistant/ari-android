@@ -88,13 +88,6 @@ class SttModelRegistryTest {
         }
     }
 
-    @Test fun openai_preset_does_not_use_the_legacy_model() {
-        // whisper-1 is legacy per OpenAI's docs and scores worse; shipping it
-        // as the "more accurate than on-device" option would be self-defeating.
-        assertEquals("gpt-transcribe", CloudTranscriber.OPENAI_MODEL)
-        assertEquals("https://api.openai.com/v1", CloudTranscriber.OPENAI_ENDPOINT)
-    }
-
     @Test fun every_locale_resolves_to_a_shipped_model() {
         for (locale in listOf("en", "en-GB", "it", "mt", "fr", "zh-Hans", "")) {
             val model = SttModelRegistry.onDeviceFor(locale)

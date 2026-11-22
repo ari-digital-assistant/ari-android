@@ -41,6 +41,7 @@ import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.sqrt
+import uniffi.ari_ffi.FfiCloudSttException
 import uniffi.ari_ffi.FfiEarlyNameCheck
 import uniffi.ari_ffi.earlyNameCheck
 import uniffi.ari_ffi.matchWakePhrase
@@ -272,8 +273,8 @@ class SpeechRecognizer @Inject constructor(
         val locale = localeProvider.currentLocale()
         val transcript = try {
             cloudTranscriber.transcribeWakeClip(pcm, locale) ?: return null
-        } catch (e: CloudSttException) {
-            Log.i(TAG, "Early name check: no transcript (${e.failure})")
+        } catch (e: FfiCloudSttException) {
+            Log.i(TAG, "Early name check: no transcript (${e.javaClass.simpleName})")
             return FfiEarlyNameCheck.NONE
         }
         val result = earlyNameCheck(transcript, locale)
@@ -282,12 +283,12 @@ class SpeechRecognizer @Inject constructor(
     }
 
     /** Message for a cloud failure, so the user is told which wall they hit. */
-    private fun cloudErrorRes(failure: CloudSttFailure): Int = when (failure) {
-        CloudSttFailure.NOT_CONFIGURED -> R.string.stt_cloud_error_not_configured
-        CloudSttFailure.NETWORK -> R.string.stt_cloud_error_network
-        CloudSttFailure.AUTH -> R.string.stt_cloud_error_auth
-        CloudSttFailure.SERVER -> R.string.stt_cloud_error_server
-        CloudSttFailure.EMPTY -> R.string.stt_cloud_error_empty
+    private fun cloudErrorRes(failure: FfiCloudSttException): Int = when (failure) {
+        is FfiCloudSttException.NotConfigured -> R.string.stt_cloud_error_not_configured
+        is FfiCloudSttException.Network -> R.string.stt_cloud_error_network
+        is FfiCloudSttException.Auth -> R.string.stt_cloud_error_auth
+        is FfiCloudSttException.Server -> R.string.stt_cloud_error_server
+        is FfiCloudSttException.Empty -> R.string.stt_cloud_error_empty
     }
 
     val currentModelId: String?
@@ -545,17 +546,17 @@ class SpeechRecognizer @Inject constructor(
             val locale = localeProvider.currentLocale()
             val transcript = try {
                 cloudTranscriber.transcribe(pcm, locale)
-            } catch (e: CloudSttException) {
+            } catch (e: FfiCloudSttException) {
                 // Say which way it failed. "Couldn't reach the server" and
                 // "your key was rejected" send the user to different places,
                 // and a single generic error taught nobody anything.
-                Log.w(TAG, "Cloud STT failed (${e.failure})", e)
-                val message = context.getString(cloudErrorRes(e.failure))
+                Log.w(TAG, "Cloud STT failed (${e.javaClass.simpleName})", e)
+                val message = context.getString(cloudErrorRes(e))
                 // Hearing nothing is not a failure of the request, and on a wake
                 // turn it is the commonest false wake there is: the host needs
                 // the audio to keep it and the distinction to count it.
                 _state.value =
-                    if (e.failure == CloudSttFailure.EMPTY) SttState.NoSpeech(message, pcm)
+                    if (e is FfiCloudSttException.Empty) SttState.NoSpeech(message, pcm)
                     else SttState.Error(message)
                 return@startBufferedListening
             }
