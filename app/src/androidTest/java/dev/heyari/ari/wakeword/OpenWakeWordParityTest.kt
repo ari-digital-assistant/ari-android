@@ -9,7 +9,12 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import dev.heyari.ari.audio.pcmBytes
 import kotlin.math.abs
+import uniffi.ari_ffi.FfiOperatingPoint
+import uniffi.ari_ffi.FfiWakeDetector
+import uniffi.ari_ffi.FfiWakeModelFiles
+import uniffi.ari_ffi.wakeModelFiles
 import uniffi.ari_ffi.wakeWordModelById
 
 /**
@@ -35,12 +40,14 @@ class OpenWakeWordParityTest {
 
     private val model = wakeWordModelById("hey_ari_oww")
 
-    private fun engine(cutoff: Float, resetOnDetection: Boolean) = OpenWakeWord(
-        melspectrogram = load(OWW_MELSPECTROGRAM_ASSET),
-        embedding = load(OWW_EMBEDDING_ASSET),
-        classifier = load(model.assetFilename),
-        probabilityCutoff = cutoff,
+    private val files = wakeModelFiles(model).map { name -> appAssets.open(name).use { it.readBytes() } }
+        .let { FfiWakeModelFiles(it[0], it[1], it[2]) }
+
+    private fun engine(cutoff: Float, resetOnDetection: Boolean) = FfiWakeDetector(
+        model = model,
+        point = FfiOperatingPoint(cutoff, model.medium.slidingWindowSize),
         resetOnDetection = resetOnDetection,
+        files = files,
     )
 
     @Test
@@ -50,7 +57,7 @@ class OpenWakeWordParityTest {
         assertTrue(expected.any { it in 0.3f..0.7f })
 
         val scores = engine(cutoff = 1f, resetOnDetection = true).use { engine ->
-            reads().flatMap { engine.scores(it).asIterable() }
+            reads().flatMap { engine.scores(pcmBytes(it)) }
         }
 
         assertEquals(audio.size / FRAME, scores.size)
@@ -69,7 +76,7 @@ class OpenWakeWordParityTest {
     fun withoutResetEveryFrameOverTheCutoffIsReported() {
         val cutoff = model.medium.probabilityCutoff
         val detections = engine(cutoff, resetOnDetection = false).use { engine ->
-            reads().count { engine.processAudio(it) }
+            reads().count { engine.processAudio(pcmBytes(it)) }
         }
 
         // Each read is shorter than a frame, so completes at most one.
@@ -82,7 +89,7 @@ class OpenWakeWordParityTest {
         // Whole frames, so the samples a detection discards are none and the
         // scores after each reset line up with the laptop's.
         val detections = engine(cutoff, resetOnDetection = true).use { engine ->
-            audio.asList().chunked(FRAME).count { engine.processAudio(it.toShortArray()) }
+            audio.asList().chunked(FRAME).count { engine.processAudio(pcmBytes(it.toShortArray())) }
         }
 
         var expectedDetections = 0
@@ -101,11 +108,6 @@ class OpenWakeWordParityTest {
 
     /** The fixture in the capture loop's reads (WakeWordService.CHUNK_SIZE). */
     private fun reads(): List<ShortArray> = audio.asList().chunked(480) { it.toShortArray() }
-
-    private fun load(asset: String): ByteBuffer {
-        val bytes = appAssets.open(asset).use { it.readBytes() }
-        return ByteBuffer.allocateDirect(bytes.size).put(bytes).apply { rewind() }
-    }
 
     private companion object {
         const val FRAME = 1280

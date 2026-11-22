@@ -7,6 +7,7 @@ import androidx.annotation.StringRes
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.R
 import dev.heyari.ari.audio.CaptureBus
+import dev.heyari.ari.audio.pcmBytes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -18,13 +19,16 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import java.nio.ByteBuffer
 import javax.inject.Inject
 import javax.inject.Singleton
 import uniffi.ari_ffi.FfiOperatingPoint
 import uniffi.ari_ffi.FfiTunedSession
+import uniffi.ari_ffi.FfiVoiceException
+import uniffi.ari_ffi.FfiWakeDetector
+import uniffi.ari_ffi.FfiWakeModelFiles
 import uniffi.ari_ffi.FfiWakeWordModel
 import uniffi.ari_ffi.tunedLadderCutoffRange
+import uniffi.ari_ffi.wakeModelFiles
 
 /** What a take asked the person to say. */
 enum class TakeKind { PHRASE, DECOY }
@@ -206,12 +210,12 @@ class SensitivityTuner @Inject constructor(
                 .map { it.last * 1000L / SAMPLE_RATE },
         )
 
-        val buffer = loadModel(model.assetFilename) ?: return null
+        val files = modelFiles(model) ?: return null
         val phrases = mutableListOf<Float>()
         val decoys = mutableListOf<Float>()
         windows.forEachIndexed { index, window ->
             _state.value = State.Scoring(index, takes.size)
-            val score = threshold(pcm, runIn, window, buffer, model)
+            val score = threshold(pcm, runIn, window, files, model)
             if (takes[index].kind == TakeKind.PHRASE) phrases += score else decoys += score
         }
         return FfiTunedSession(id = id, phraseScores = phrases, decoyScores = decoys)
@@ -264,7 +268,7 @@ class SensitivityTuner @Inject constructor(
      * like the new model being worse than the one it replaced.
      *
      * A fresh engine per attempt, and that part is not defensive:
-     * [MicroWakeWord.reset] clears the frontend and the detection window but
+     * microWakeWord's reset() clears the frontend and the detection window but
      * leaves the TFLite interpreter's variable tensors alone, so a reused engine
      * scores attempt five with attempt four still inside it.
      */
@@ -272,14 +276,14 @@ class SensitivityTuner @Inject constructor(
         pcm: ShortArray,
         runIn: IntRange,
         window: IntRange,
-        modelBuffer: ByteBuffer,
+        files: FfiWakeModelFiles,
         model: FfiWakeWordModel,
         cutoff: Float,
-    ): Boolean = model.detector(
-        modelBuffer = modelBuffer,
+    ): Boolean = FfiWakeDetector(
+        model = model,
         point = FfiOperatingPoint(cutoff, model.medium.slidingWindowSize),
         resetOnDetection = true,
-        load = ::loadModel,
+        files = files,
     ).use { engine ->
         feed(engine, pcm, runIn)
         feed(engine, pcm, window)
@@ -304,10 +308,10 @@ class SensitivityTuner @Inject constructor(
         pcm: ShortArray,
         runIn: IntRange,
         window: IntRange,
-        modelBuffer: ByteBuffer,
+        files: FfiWakeModelFiles,
         model: FfiWakeWordModel,
     ): Float {
-        fun firesAt(cutoff: Float) = fires(pcm, runIn, window, modelBuffer, model, cutoff)
+        fun firesAt(cutoff: Float) = fires(pcm, runIn, window, files, model, cutoff)
         val range = tunedLadderCutoffRange()
         if (!firesAt(range.min)) return 0f
         if (firesAt(range.max)) return range.max
@@ -320,26 +324,16 @@ class SensitivityTuner @Inject constructor(
         return low
     }
 
-    /** Returns whether the engine fired anywhere in [range]. */
-    private fun feed(engine: WakeDetector, pcm: ShortArray, range: IntRange): Boolean {
-        var detected = false
-        var offset = range.first
-        while (offset <= range.last) {
-            val end = minOf(offset + CHUNK_SIZE, range.last + 1)
-            if (engine.processAudio(pcm.copyOfRange(offset, end))) detected = true
-            offset = end
-        }
-        return detected
-    }
+    /** Returns whether the engine fired anywhere in [range], fed in the capture loop's reads. */
+    private fun feed(engine: FfiWakeDetector, pcm: ShortArray, range: IntRange): Boolean =
+        engine.processReads(pcmBytes(pcm, range.first, range.last + 1), CHUNK_SIZE.toUInt())
 
-    private fun loadModel(filename: String): ByteBuffer? = try {
-        val bytes = context.assets.open(filename).use { it.readBytes() }
-        ByteBuffer.allocateDirect(bytes.size).apply {
-            put(bytes)
-            rewind()
-        }
+    /** The model's files, read once per session and shared by every engine the search builds. */
+    private fun modelFiles(model: FfiWakeWordModel): FfiWakeModelFiles? = try {
+        val bytes = wakeModelFiles(model).map { name -> context.assets.open(name).use { it.readBytes() } }
+        FfiWakeModelFiles(bytes[0], bytes.getOrNull(1), bytes.getOrNull(2))
     } catch (e: Exception) {
-        Log.e(TAG, "Failed to load $filename for tuning", e)
+        Log.e(TAG, "Failed to load ${model.assetFilename} for tuning", e)
         null
     }
 

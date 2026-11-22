@@ -27,6 +27,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import dev.heyari.ari.MainActivity
 import dev.heyari.ari.R
 import dev.heyari.ari.audio.CaptureBus
+import dev.heyari.ari.audio.VoiceAudio
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.listening.ConditionSignals
 import dev.heyari.ari.listening.ListeningController
@@ -34,7 +35,6 @@ import dev.heyari.ari.listening.ListeningDecision
 import dev.heyari.ari.listening.ListeningMode
 import dev.heyari.ari.listening.ListeningReason
 import dev.heyari.ari.listening.decideListening
-import dev.heyari.ari.stt.SpeechGate
 import dev.heyari.ari.voice.CaptureMode
 import dev.heyari.ari.voice.VoiceOverlayLauncher
 import dev.heyari.ari.voice.VoiceSession
@@ -46,9 +46,13 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import java.nio.ByteBuffer
 import javax.inject.Inject
-import uniffi.ari_ffi.defaultWakeWordModel
+import uniffi.ari_ffi.FfiLogLevel
+import uniffi.ari_ffi.FfiVoiceException
+import uniffi.ari_ffi.FfiVoiceHost
+import uniffi.ari_ffi.FfiVoicePipeline
+import uniffi.ari_ffi.FfiWakeConfig
+import uniffi.ari_ffi.FfiWakeOutcome
 import uniffi.ari_ffi.tunedLadderParse
 import uniffi.ari_ffi.wakeSensitivityFromName
 import uniffi.ari_ffi.wakeWordModelById
@@ -71,10 +75,9 @@ class WakeWordService : Service() {
     @Inject
     lateinit var wakeLog: WakeLog
 
-    // Which model the detector was built from, for the wake log. Set before the
-    // capture thread starts, which is the only thread that reads it after.
-    @Volatile
-    private var activeModelId: String = defaultWakeWordModel().id
+    // The engine's voice pipeline: the wake word runs there, on the audio the
+    // capture loop pushes. Built in onCreate, once injection has succeeded.
+    private lateinit var pipeline: FfiVoicePipeline
 
     // Whether a wake starts the voice session unseen, read with the rest of the
     // wake settings when the microphone opens.
@@ -94,7 +97,6 @@ class WakeWordService : Service() {
         ListeningDecision.Listen(listOf(ListeningReason.AlwaysOn))
 
     private var audioRecord: AudioRecord? = null
-    private var detector: WakeDetector? = null
 
     private var captureThread: Thread? = null
 
@@ -112,16 +114,16 @@ class WakeWordService : Service() {
     @Volatile
     private var currentSource: Int = audioSourceFor(CaptureMode.NORMAL)
 
-    // While true the wake detector is skipped (we're mid-conversation), but
+    // While true the pipeline skips the wake word (we're mid-conversation), but
     // audio still flows into the CaptureBus every chunk.
     @Volatile
     private var wakePaused: Boolean = false
+        set(value) {
+            field = value
+            if (::pipeline.isInitialized) pipeline.setWakePaused(value)
+        }
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val mainHandler = Handler(Looper.getMainLooper())
-
-    @Volatile
-    private var lastDetectionAt = 0L
-    private val detectionDebounceMs = 4_000L
 
     // Set true the moment a one-shot tap-to-talk turn leaves Idle, so the state
     // collector can tell "turn actually started" from the initial Idle emission
@@ -153,6 +155,7 @@ class WakeWordService : Service() {
             return
         }
         createNotificationChannels()
+        pipeline = FfiVoicePipeline(PipelineHost(), wakeLog.engineLog)
         // Watch the voice session state. When it returns to Idle (i.e. the
         // overlay has dismissed), resume wake word listening.
         scope.launch {
@@ -454,26 +457,20 @@ class WakeWordService : Service() {
         // needing to know either of them exists.
         val wakeWord = model.withLadder(tunedLadderParse(storedLadder))
         val sensitivity = wakeSensitivityFromName(sensitivityName)
-        val point = wakeWord.operatingPoint(sensitivity)
-        Log.i(TAG, "Loading wake word model: ${wakeWord.id} @ sensitivity=${sensitivity.name} (cutoff=${point.probabilityCutoff}, window=${point.slidingWindowSize})")
-
-        val modelBuffer = loadModelFromAssets(wakeWord.assetFilename)
-        if (modelBuffer == null) {
-            Log.e(TAG, "Failed to load wake word model ${wakeWord.assetFilename}")
+        try {
+            pipeline.configureWake(
+                FfiWakeConfig(
+                    model = wakeWord,
+                    sensitivity = sensitivity,
+                    speechCheck = speechCheck,
+                    quietWake = quietWake,
+                ),
+            )
+        } catch (e: FfiVoiceException) {
+            Log.e(TAG, "Failed to load wake word model ${wakeWord.assetFilename}: ${e.message}")
             stopSelf()
             return
         }
-
-        detector = wakeWord.detector(
-            modelBuffer = modelBuffer,
-            point = point,
-            // The speech check needs to decline a detection without the engine's
-            // cool-off swallowing the phrase that follows it. Every path below
-            // that acts on a detection resets the engine itself. Off, the engine
-            // behaves exactly as it always has.
-            resetOnDetection = !speechCheck,
-            load = ::loadModelFromAssets,
-        )
         val record = openAudioRecord(currentSource)
         // The constructor reports failure through `state`, not by throwing;
         // it is startRecording() that throws, and by then the exception is on
@@ -483,8 +480,7 @@ class WakeWordService : Service() {
         if (record.state != AudioRecord.STATE_INITIALIZED) {
             Log.e(TAG, "AudioRecord would not initialise — standing down")
             record.release()
-            detector?.close()
-            detector = null
+            pipeline.stopWake()
             stopSelf()
             return
         }
@@ -493,75 +489,22 @@ class WakeWordService : Service() {
         record.startRecording()
         isListening = true
         micHot = true
-        activeModelId = wakeWord.id
-        wakeLog.listeningStarted(
-            wakeWord, sensitivity, point, speechCheck, quietWake, modelFingerprint(modelBuffer),
-        )
+        pipeline.startWake()
 
         // Its own thread, not a slot on the shared Default dispatcher: read()
         // blocks for a whole buffer period, so parking it on a pool thread the
         // detector and the rest of the app also use is a stall waiting to happen.
-        captureThread = Thread({ captureLoop(record, speechCheck) }, "AriMicCapture").also { it.start() }
+        captureThread = Thread({ captureLoop(record) }, "AriMicCapture").also { it.start() }
 
         Log.i(TAG, "Wake word listening started")
     }
 
-    private fun captureLoop(record: AudioRecord, speechCheck: Boolean) {
+    private fun captureLoop(record: AudioRecord) {
         Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
         val buffer = ShortArray(CHUNK_SIZE)
-        var aliveLoggedAt = System.currentTimeMillis()
-
-        // Loop-local like the buffer: the speech model is not thread-safe, and a
-        // capture thread that outlives its join must not share one with the next.
-        // Built at the first detection that needs it, since loading it per wake
-        // would cost more than the check.
-        val pacing = SpeechCheckPacing()
-        var gate: SpeechGate? = null
-        var gateUnavailable = false
-
-        // Whether this detection may open Ari: speech in the second before it, on
-        // the rule measured offline (ari-tools/wakeword/trained/2026-10-07-vad-gate/).
-        // A model that cannot load fails open, because a check that cannot run must
-        // never cost somebody their wake.
-        // The check itself: whether there was speech in the second before now, or
-        // null when it cannot run.
-        fun speechNow(): Boolean? {
-            if (gate == null && !gateUnavailable) {
-                gate = try {
-                    SpeechGate(assets)
-                } catch (t: Throwable) {
-                    Log.w(TAG, "Speech check unavailable, letting wakes through", t)
-                    gateUnavailable = true
-                    null
-                }
-            }
-            val vad = gate ?: return null
-            // Caught here because this runs on the capture thread, where anything
-            // uncaught ends the listening for good.
-            return try {
-                vad.speechInTail(captureBus.peekRecent(SPEECH_CHECK_BUFFER_S), SPEECH_CHECK_TAIL_SAMPLES)
-            } catch (t: Throwable) {
-                Log.w(TAG, "Speech check failed, letting the wake through", t)
-                null
-            }
-        }
-
-        fun speechBeforeWake(now: Long): Boolean {
-            if (!pacing.shouldCheck(now)) return false
-            val speech = speechNow() ?: run {
-                wakeLog.speechCheckFailed(activeModelId, if (gateUnavailable) "unavailable" else "error")
-                return true
-            }
-            if (speech) {
-                if (pacing.passed()) wakeLog.passedAfterDrop(activeModelId)
-                return true
-            }
-            if (pacing.dropped(now)) {
-                Log.i(TAG, "Wake dropped: no speech in the second before it")
-                wakeLog.dropped(activeModelId)
-            }
-            return false
-        }
+        // What the pipeline last heard about the bus, so it is told on a
+        // change rather than on every chunk.
+        var armed = false
 
         while (isListening) {
             val read = record.read(buffer, 0, buffer.size)
@@ -574,46 +517,23 @@ class WakeWordService : Service() {
             }
             if (read == 0) continue
 
-            val chunkAt = System.currentTimeMillis()
-            if (chunkAt - aliveLoggedAt >= WakeLog.ALIVE_INTERVAL_MS) {
-                aliveLoggedAt = chunkAt
-                wakeLog.stillListening()
-            }
-
             // Feed every chunk into the shared capture bus FIRST.
             // Producer-side fan-out: ring buffer always; live channel
             // iff a consumer (sherpa) is currently armed. Cheap and
             // non-blocking by design — see CaptureBus.write().
             captureBus.write(buffer, read)
 
-            // Mid-conversation: audio still feeds the bus (STT/AEC path)
-            // but we do NOT run wake detection.
-            if (wakePaused) continue
-            val samples = if (read == buffer.size) buffer else buffer.copyOf(read)
-            if (detector?.processAudio(samples) != true) continue
-
-            // Belt-and-braces: don't fire wake while STT is armed.
-            // The debounce below covers the common case but the
-            // mic is now permanently open, so an in-utterance fire
-            // is theoretically possible.
-            if (captureBus.armed) {
-                detector?.reset()
-                continue
+            // Then to the engine, which runs the wake word, its debounce and
+            // its speech check, and calls PipelineHost.wakeDetected on this
+            // thread when Ari should wake. It never wakes while a listen is
+            // armed: the mic is permanently open, so an in-utterance fire is
+            // possible.
+            val nowArmed = captureBus.armed
+            if (nowArmed != armed) {
+                armed = nowArmed
+                pipeline.setListenArmed(armed)
             }
-            val now = System.currentTimeMillis()
-            if (now - lastDetectionAt < detectionDebounceMs) {
-                Log.d(TAG, "Wake word detected within debounce window — ignoring")
-                detector?.reset()
-                continue
-            }
-            // No reset when this declines: the engine reports again while it still
-            // hears the wake word, and the check runs again once speech arrives.
-            if (speechCheck && !speechBeforeWake(now)) continue
-            lastDetectionAt = now
-            Log.i(TAG, "Wake word detected!")
-            wakeLog.wake(activeModelId)
-            onWakeWordDetected()
-            detector?.reset()
+            VoiceAudio.push(buffer, read)
         }
     }
 
@@ -640,7 +560,6 @@ class WakeWordService : Service() {
      * state.
      */
     private fun releaseMic() {
-        if (isListening) wakeLog.listeningStopped()
         isListening = false
         micHot = false
         captureThread?.let { thread ->
@@ -650,8 +569,8 @@ class WakeWordService : Service() {
         captureThread = null
         audioRecord?.let { runCatching { it.stop(); it.release() } }
         audioRecord = null
-        detector?.close()
-        detector = null
+        // After the join: the capture thread is the only other caller.
+        if (::pipeline.isInitialized) pipeline.stopWake()
     }
 
     /**
@@ -710,7 +629,7 @@ class WakeWordService : Service() {
         if (!Settings.canDrawOverlays(this)) {
             Log.w(TAG, "SYSTEM_ALERT_WINDOW not granted — cannot launch over lock screen. Posting recovery notification.")
             postSawMissingNotification()
-            wakeLog.outcome(WakeOutcome.NOT_SHOWN)
+            wakeLog.outcome(FfiWakeOutcome.NOT_SHOWN)
             return
         }
 
@@ -721,7 +640,7 @@ class WakeWordService : Service() {
             mainHandler.post { voiceSession.start(verifyWake = true, quiet = true) }
             return
         }
-        if (!launchVoiceOverlay(verifyWake = true)) wakeLog.outcome(WakeOutcome.NOT_SHOWN)
+        if (!launchVoiceOverlay(verifyWake = true)) wakeLog.outcome(FfiWakeOutcome.NOT_SHOWN)
     }
 
     /**
@@ -777,18 +696,25 @@ class WakeWordService : Service() {
         nm.notify(DETECTION_NOTIFICATION_ID, notification)
     }
 
-    private fun loadModelFromAssets(filename: String): ByteBuffer? {
-        return try {
-            val inputStream = assets.open(filename)
-            val bytes = inputStream.readBytes()
-            inputStream.close()
-            val buffer = ByteBuffer.allocateDirect(bytes.size)
-            buffer.put(bytes)
-            buffer.rewind()
-            buffer
+    /** What the engine's pipeline asks of the app: model files, wakes and log lines. */
+    private inner class PipelineHost : FfiVoiceHost {
+        override fun loadModel(name: String): ByteArray? = try {
+            assets.open(name).use { it.readBytes() }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load model: ${e.message}")
             null
+        }
+
+        // On the capture thread, as it always was.
+        override fun wakeDetected() = onWakeWordDetected()
+
+        override fun log(level: FfiLogLevel, message: String) {
+            when (level) {
+                FfiLogLevel.TRACE, FfiLogLevel.DEBUG -> Log.d(TAG, message)
+                FfiLogLevel.INFO -> Log.i(TAG, message)
+                FfiLogLevel.WARN -> Log.w(TAG, message)
+                FfiLogLevel.ERROR -> Log.e(TAG, message)
+            }
         }
     }
 
@@ -913,6 +839,8 @@ class WakeWordService : Service() {
         wakePaused = false
         currentSource = audioSourceFor(CaptureMode.NORMAL)
         oneShotActive = false
+        // Last: the wakePaused reset above still talks to the pipeline.
+        if (::pipeline.isInitialized) pipeline.close()
         Log.i(TAG, "Wake word listening stopped")
         super.onDestroy()
     }
@@ -995,12 +923,6 @@ class WakeWordService : Service() {
         const val CHANNEL_TUNING = "wake_word_tuning"
 
         private const val SAMPLE_RATE = 16000
-
-        // The speech check's view: the ring buffer's 2 s ending at the detection,
-        // with speech required in its last second. Measured, not tuned; changing
-        // either means measuring again.
-        private const val SPEECH_CHECK_BUFFER_S = 2.0f
-        private const val SPEECH_CHECK_TAIL_SAMPLES = SAMPLE_RATE
 
         // 30ms at 16kHz. The models step features every 10ms, so one read now
         // yields three feature frames instead of one — same detection, a third

@@ -688,6 +688,15 @@ internal interface UniffiCallbackInterfaceFfiTasksProviderMethod3 : com.sun.jna.
 internal interface UniffiCallbackInterfaceFfiTasksProviderMethod4 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`startMs`: Long,`endMs`: Long,`limit`: Int,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
+internal interface UniffiCallbackInterfaceFfiVoiceHostMethod0 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`name`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+}
+internal interface UniffiCallbackInterfaceFfiVoiceHostMethod1 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+}
+internal interface UniffiCallbackInterfaceFfiVoiceHostMethod2 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`level`: RustBuffer.ByValue,`message`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+}
 @Structure.FieldOrder("uniffiFree", "uniffiClone", "text", "sentence")
 internal open class UniffiVTableCallbackInterfaceFfiAnswerSink(
     @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
@@ -971,6 +980,31 @@ internal open class UniffiVTableCallbackInterfaceFfiTasksProvider(
     }
 
 }
+@Structure.FieldOrder("uniffiFree", "uniffiClone", "loadModel", "wakeDetected", "log")
+internal open class UniffiVTableCallbackInterfaceFfiVoiceHost(
+    @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
+    @JvmField internal var `uniffiClone`: UniffiCallbackInterfaceClone? = null,
+    @JvmField internal var `loadModel`: UniffiCallbackInterfaceFfiVoiceHostMethod0? = null,
+    @JvmField internal var `wakeDetected`: UniffiCallbackInterfaceFfiVoiceHostMethod1? = null,
+    @JvmField internal var `log`: UniffiCallbackInterfaceFfiVoiceHostMethod2? = null,
+) : Structure() {
+    class UniffiByValue(
+        `uniffiFree`: UniffiCallbackInterfaceFree? = null,
+        `uniffiClone`: UniffiCallbackInterfaceClone? = null,
+        `loadModel`: UniffiCallbackInterfaceFfiVoiceHostMethod0? = null,
+        `wakeDetected`: UniffiCallbackInterfaceFfiVoiceHostMethod1? = null,
+        `log`: UniffiCallbackInterfaceFfiVoiceHostMethod2? = null,
+    ): UniffiVTableCallbackInterfaceFfiVoiceHost(`uniffiFree`,`uniffiClone`,`loadModel`,`wakeDetected`,`log`,), Structure.ByValue
+
+   internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceFfiVoiceHost) {
+        `uniffiFree` = other.`uniffiFree`
+        `uniffiClone` = other.`uniffiClone`
+        `loadModel` = other.`loadModel`
+        `wakeDetected` = other.`wakeDetected`
+        `log` = other.`log`
+    }
+
+}
 
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
@@ -995,235 +1029,279 @@ internal object IntegrityCheckingUniffiLib {
         uniffiCheckApiChecksums(this)
     }
     external fun uniffi_ari_ffi_checksum_func_engine_version(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_func_on_device_cpu_info(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_func_slash_commands(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_func_cloud_transcribe(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_func_cloud_transcribe_wake_clip(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_func_default_wake_word_model(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_func_early_name_check(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_func_false_wake_remedy(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_func_fit_tuned_ladder(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_func_ladder_review_delay_hours(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_func_match_wake_phrase(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_func_streaming_partial(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_func_strip_wake_phrase(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_func_tuned_ladder_cutoff_range(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_func_tuned_ladder_parse(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_func_wake_sensitivity_default(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_func_wake_sensitivity_from_name(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_func_wake_verdict(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_func_wake_word_model_by_id(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_func_wake_word_models(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_cancel_pending_reply(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_clear_conversation(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_conversation_memory(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_current_locale(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_handoff_assistants(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_last_cloud_assistant(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_load_llm_model(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_load_model_catalog(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_process_input(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_process_input_streaming(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_query_skill_setting(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_release_llm_memory(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_reload_community_skills(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_remembered_facts(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_set_conversation_active(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_set_conversation_length(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_set_conversation_memory_enabled(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_set_handoff_enabled(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_set_installed_apps(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_set_last_cloud_assistant(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_set_personality(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_set_remembered_facts(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_set_skill_suggestions_path(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_set_vocabulary(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_settings_action(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ariengine_unload_llm_model(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_authorize(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_build(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_calendar(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_clock(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_contacts(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_envelope_sink(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_live_conversations(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_locale(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_location(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_media_services(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_setting_writer(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_settings(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_sink(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_arienginebuilder_tasks(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ffianswersink_text(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ffianswersink_sentence(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ffiauthorizeprovider_authorize(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ffiauthorizeprovider_redirect_uri(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_fficalendarprovider_has_write_permission(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_fficalendarprovider_list_calendars(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_fficalendarprovider_insert(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_fficalendarprovider_delete(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_fficalendarprovider_query_in_range(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_fficontactsprovider_has_permission(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_fficontactsprovider_lookup(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ffienvelopesink_push(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ffiliveconversationsprovider_names(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ffilocalclock_now_components(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ffilocalclock_timezone_id(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ffilocaleprovider_current_locale(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ffilocationprovider_current(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ffilogsink_log(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ffimediaservicesprovider_installed_services(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ffisettingwriter_set_value(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ffitasksprovider_is_provider_installed(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ffitasksprovider_list_lists(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ffitasksprovider_insert(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ffitasksprovider_delete(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_ffitasksprovider_query_in_range(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_assistantregistry_apply_to_engine(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_assistantregistry_get_active_assistant(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_assistantregistry_get_assistant_config(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_assistantregistry_list_assistants(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_assistantregistry_reload_and_apply(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_assistantregistry_reload_community_assistants(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_assistantregistry_set_active_assistant(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_assistantregistry_set_assistant_config_value(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_skillsettingsstore_set_value(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_skillregistry_browse_registry(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_skillregistry_check_for_updates(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_skillregistry_fetch_manifest_preview(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_skillregistry_fetch_screenshot_urls(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_skillregistry_get_skill_settings(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_skillregistry_index_cache_path(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_skillregistry_install_skill_by_id(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_skillregistry_install_skill_update(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_skillregistry_list_installed(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_skillregistry_read_installed_manifest(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_skillregistry_refresh_model_catalog(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_skillregistry_set_skill_setting(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_method_skillregistry_uninstall_skill_by_id(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_constructor_ariengine_new(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_constructor_ariengine_with_log_sink(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_constructor_arienginebuilder_new(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_constructor_assistantregistry_new(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_constructor_skillsettingsstore_new(
-    ): Short
-    external fun uniffi_ari_ffi_checksum_constructor_skillregistry_new(
-    ): Short
-    external fun ffi_ari_ffi_uniffi_contract_version(
-    ): Int
+): Short
+external fun uniffi_ari_ffi_checksum_func_on_device_cpu_info(
+): Short
+external fun uniffi_ari_ffi_checksum_func_slash_commands(
+): Short
+external fun uniffi_ari_ffi_checksum_func_cloud_transcribe(
+): Short
+external fun uniffi_ari_ffi_checksum_func_cloud_transcribe_wake_clip(
+): Short
+external fun uniffi_ari_ffi_checksum_func_default_wake_word_model(
+): Short
+external fun uniffi_ari_ffi_checksum_func_early_name_check(
+): Short
+external fun uniffi_ari_ffi_checksum_func_false_wake_remedy(
+): Short
+external fun uniffi_ari_ffi_checksum_func_fit_tuned_ladder(
+): Short
+external fun uniffi_ari_ffi_checksum_func_ladder_review_delay_hours(
+): Short
+external fun uniffi_ari_ffi_checksum_func_match_wake_phrase(
+): Short
+external fun uniffi_ari_ffi_checksum_func_streaming_partial(
+): Short
+external fun uniffi_ari_ffi_checksum_func_strip_wake_phrase(
+): Short
+external fun uniffi_ari_ffi_checksum_func_tuned_ladder_cutoff_range(
+): Short
+external fun uniffi_ari_ffi_checksum_func_tuned_ladder_parse(
+): Short
+external fun uniffi_ari_ffi_checksum_func_wake_sensitivity_default(
+): Short
+external fun uniffi_ari_ffi_checksum_func_wake_sensitivity_from_name(
+): Short
+external fun uniffi_ari_ffi_checksum_func_wake_verdict(
+): Short
+external fun uniffi_ari_ffi_checksum_func_wake_word_model_by_id(
+): Short
+external fun uniffi_ari_ffi_checksum_func_wake_word_models(
+): Short
+external fun uniffi_ari_ffi_checksum_func_silero_vad_probabilities(
+): Short
+external fun uniffi_ari_ffi_checksum_func_wake_model_files(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_cancel_pending_reply(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_clear_conversation(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_conversation_memory(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_current_locale(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_handoff_assistants(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_last_cloud_assistant(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_load_llm_model(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_load_model_catalog(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_process_input(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_process_input_streaming(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_query_skill_setting(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_release_llm_memory(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_reload_community_skills(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_remembered_facts(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_set_conversation_active(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_set_conversation_length(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_set_conversation_memory_enabled(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_set_handoff_enabled(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_set_installed_apps(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_set_last_cloud_assistant(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_set_personality(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_set_remembered_facts(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_set_skill_suggestions_path(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_set_vocabulary(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_settings_action(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ariengine_unload_llm_model(
+): Short
+external fun uniffi_ari_ffi_checksum_method_arienginebuilder_authorize(
+): Short
+external fun uniffi_ari_ffi_checksum_method_arienginebuilder_build(
+): Short
+external fun uniffi_ari_ffi_checksum_method_arienginebuilder_calendar(
+): Short
+external fun uniffi_ari_ffi_checksum_method_arienginebuilder_clock(
+): Short
+external fun uniffi_ari_ffi_checksum_method_arienginebuilder_contacts(
+): Short
+external fun uniffi_ari_ffi_checksum_method_arienginebuilder_envelope_sink(
+): Short
+external fun uniffi_ari_ffi_checksum_method_arienginebuilder_live_conversations(
+): Short
+external fun uniffi_ari_ffi_checksum_method_arienginebuilder_locale(
+): Short
+external fun uniffi_ari_ffi_checksum_method_arienginebuilder_location(
+): Short
+external fun uniffi_ari_ffi_checksum_method_arienginebuilder_media_services(
+): Short
+external fun uniffi_ari_ffi_checksum_method_arienginebuilder_setting_writer(
+): Short
+external fun uniffi_ari_ffi_checksum_method_arienginebuilder_settings(
+): Short
+external fun uniffi_ari_ffi_checksum_method_arienginebuilder_sink(
+): Short
+external fun uniffi_ari_ffi_checksum_method_arienginebuilder_tasks(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffianswersink_text(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffianswersink_sentence(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffiauthorizeprovider_authorize(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffiauthorizeprovider_redirect_uri(
+): Short
+external fun uniffi_ari_ffi_checksum_method_fficalendarprovider_has_write_permission(
+): Short
+external fun uniffi_ari_ffi_checksum_method_fficalendarprovider_list_calendars(
+): Short
+external fun uniffi_ari_ffi_checksum_method_fficalendarprovider_insert(
+): Short
+external fun uniffi_ari_ffi_checksum_method_fficalendarprovider_delete(
+): Short
+external fun uniffi_ari_ffi_checksum_method_fficalendarprovider_query_in_range(
+): Short
+external fun uniffi_ari_ffi_checksum_method_fficontactsprovider_has_permission(
+): Short
+external fun uniffi_ari_ffi_checksum_method_fficontactsprovider_lookup(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffienvelopesink_push(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffiliveconversationsprovider_names(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffilocalclock_now_components(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffilocalclock_timezone_id(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffilocaleprovider_current_locale(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffilocationprovider_current(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffilogsink_log(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffimediaservicesprovider_installed_services(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffisettingwriter_set_value(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffitasksprovider_is_provider_installed(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffitasksprovider_list_lists(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffitasksprovider_insert(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffitasksprovider_delete(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffitasksprovider_query_in_range(
+): Short
+external fun uniffi_ari_ffi_checksum_method_assistantregistry_apply_to_engine(
+): Short
+external fun uniffi_ari_ffi_checksum_method_assistantregistry_get_active_assistant(
+): Short
+external fun uniffi_ari_ffi_checksum_method_assistantregistry_get_assistant_config(
+): Short
+external fun uniffi_ari_ffi_checksum_method_assistantregistry_list_assistants(
+): Short
+external fun uniffi_ari_ffi_checksum_method_assistantregistry_reload_and_apply(
+): Short
+external fun uniffi_ari_ffi_checksum_method_assistantregistry_reload_community_assistants(
+): Short
+external fun uniffi_ari_ffi_checksum_method_assistantregistry_set_active_assistant(
+): Short
+external fun uniffi_ari_ffi_checksum_method_assistantregistry_set_assistant_config_value(
+): Short
+external fun uniffi_ari_ffi_checksum_method_skillsettingsstore_set_value(
+): Short
+external fun uniffi_ari_ffi_checksum_method_skillregistry_browse_registry(
+): Short
+external fun uniffi_ari_ffi_checksum_method_skillregistry_check_for_updates(
+): Short
+external fun uniffi_ari_ffi_checksum_method_skillregistry_fetch_manifest_preview(
+): Short
+external fun uniffi_ari_ffi_checksum_method_skillregistry_fetch_screenshot_urls(
+): Short
+external fun uniffi_ari_ffi_checksum_method_skillregistry_get_skill_settings(
+): Short
+external fun uniffi_ari_ffi_checksum_method_skillregistry_index_cache_path(
+): Short
+external fun uniffi_ari_ffi_checksum_method_skillregistry_install_skill_by_id(
+): Short
+external fun uniffi_ari_ffi_checksum_method_skillregistry_install_skill_update(
+): Short
+external fun uniffi_ari_ffi_checksum_method_skillregistry_list_installed(
+): Short
+external fun uniffi_ari_ffi_checksum_method_skillregistry_read_installed_manifest(
+): Short
+external fun uniffi_ari_ffi_checksum_method_skillregistry_refresh_model_catalog(
+): Short
+external fun uniffi_ari_ffi_checksum_method_skillregistry_set_skill_setting(
+): Short
+external fun uniffi_ari_ffi_checksum_method_skillregistry_uninstall_skill_by_id(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffivoicehost_load_model(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffivoicehost_wake_detected(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffivoicehost_log(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffivoicepipeline_configure_wake(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffivoicepipeline_set_listen_armed(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffivoicepipeline_set_wake_paused(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffivoicepipeline_start_wake(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffivoicepipeline_stop_wake(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffiwakedetector_process_audio(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffiwakedetector_process_reads(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffiwakedetector_reset(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffiwakedetector_scores(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffiwakelog_early_name_check(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffiwakelog_listen_ended(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffiwakelog_outcome(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffiwakelog_report(
+): Short
+external fun uniffi_ari_ffi_checksum_constructor_ariengine_new(
+): Short
+external fun uniffi_ari_ffi_checksum_constructor_ariengine_with_log_sink(
+): Short
+external fun uniffi_ari_ffi_checksum_constructor_arienginebuilder_new(
+): Short
+external fun uniffi_ari_ffi_checksum_constructor_assistantregistry_new(
+): Short
+external fun uniffi_ari_ffi_checksum_constructor_skillsettingsstore_new(
+): Short
+external fun uniffi_ari_ffi_checksum_constructor_skillregistry_new(
+): Short
+external fun uniffi_ari_ffi_checksum_constructor_ffivoicepipeline_new(
+): Short
+external fun uniffi_ari_ffi_checksum_constructor_ffiwakedetector_new(
+): Short
+external fun uniffi_ari_ffi_checksum_constructor_ffiwakelog_new(
+): Short
+external fun uniffi_ari_ffi_checksum_constructor_ffiwakemodelfiles_new(
+): Short
+external fun ffi_ari_ffi_uniffi_contract_version(
+): Int
 
-        
+    
 }
 
 internal object UniffiLib {
@@ -1249,6 +1327,7 @@ internal object UniffiLib {
         uniffiCallbackInterfaceFfiMediaServicesProvider.register(this)
         uniffiCallbackInterfaceFfiSettingWriter.register(this)
         uniffiCallbackInterfaceFfiTasksProvider.register(this)
+        uniffiCallbackInterfaceFfiVoiceHost.register(this)
         
     }
     external fun uniffi_ari_ffi_fn_clone_ariengine(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -1535,7 +1614,73 @@ external fun uniffi_ari_ffi_fn_method_skillregistry_set_skill_setting(`ptr`: Lon
 ): Unit
 external fun uniffi_ari_ffi_fn_method_skillregistry_uninstall_skill_by_id(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+external fun uniffi_ari_ffi_fn_clone_ffivoicehost(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun uniffi_ari_ffi_fn_free_ffivoicehost(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_init_callback_vtable_ffivoicehost(`vtable`: UniffiVTableCallbackInterfaceFfiVoiceHost,
+): Unit
+external fun uniffi_ari_ffi_fn_method_ffivoicehost_load_model(`ptr`: Long,`name`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_ffivoicehost_wake_detected(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ffivoicehost_log(`ptr`: Long,`level`: RustBuffer.ByValue,`message`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_clone_ffivoicepipeline(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun uniffi_ari_ffi_fn_free_ffivoicepipeline(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_constructor_ffivoicepipeline_new(`host`: Long,`wakeLog`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun uniffi_ari_ffi_fn_method_ffivoicepipeline_configure_wake(`ptr`: Long,`config`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ffivoicepipeline_set_listen_armed(`ptr`: Long,`armed`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ffivoicepipeline_set_wake_paused(`ptr`: Long,`paused`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ffivoicepipeline_start_wake(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ffivoicepipeline_stop_wake(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_clone_ffiwakedetector(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun uniffi_ari_ffi_fn_free_ffiwakedetector(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_constructor_ffiwakedetector_new(`model`: RustBuffer.ByValue,`point`: RustBuffer.ByValue,`resetOnDetection`: Byte,`files`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun uniffi_ari_ffi_fn_method_ffiwakedetector_process_audio(`ptr`: Long,`pcm`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Byte
+external fun uniffi_ari_ffi_fn_method_ffiwakedetector_process_reads(`ptr`: Long,`pcm`: RustBuffer.ByValue,`chunk`: Int,uniffi_out_err: UniffiRustCallStatus, 
+): Byte
+external fun uniffi_ari_ffi_fn_method_ffiwakedetector_reset(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ffiwakedetector_scores(`ptr`: Long,`pcm`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_clone_ffiwakelog(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun uniffi_ari_ffi_fn_free_ffiwakelog(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_constructor_ffiwakelog_new(`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun uniffi_ari_ffi_fn_method_ffiwakelog_early_name_check(`ptr`: Long,`result`: RustBuffer.ByValue,`afterMs`: Long,`inTime`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ffiwakelog_listen_ended(`ptr`: Long,`end`: RustBuffer.ByValue,`afterMs`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ffiwakelog_outcome(`ptr`: Long,`outcome`: RustBuffer.ByValue,`hidden`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ffiwakelog_report(`ptr`: Long,`nowMs`: Long,`listeningNow`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_clone_ffiwakemodelfiles(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+external fun uniffi_ari_ffi_fn_free_ffiwakemodelfiles(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_constructor_ffiwakemodelfiles_new(`model`: RustBuffer.ByValue,`melspectrogram`: RustBuffer.ByValue,`embedding`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Long
 external fun uniffi_ari_ffi_fn_method_ffiearlynamecheck_slug(`ptr`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_ffiwakeoutcome_false_wake(`ptr`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Byte
+external fun uniffi_ari_ffi_fn_method_ffiwakeoutcome_slug(`ptr`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ffitunedladder_format(`ptr`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1582,6 +1727,10 @@ external fun uniffi_ari_ffi_fn_func_wake_verdict(`wakeMatch`: RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_func_wake_word_model_by_id(`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_func_wake_word_models(uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_silero_vad_probabilities(`model`: RustBuffer.ByValue,`pcm`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_wake_model_files(`model`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun ffi_ari_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1760,6 +1909,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_func_wake_word_models() != 26146.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_silero_vad_probabilities() != 16927.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_wake_model_files() != 24847.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ariengine_cancel_pending_reply() != 705.toShort()) {
@@ -2023,6 +2178,54 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_skillregistry_uninstall_skill_by_id() != 56184.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_ari_ffi_checksum_method_ffivoicehost_load_model() != 4376.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffivoicehost_wake_detected() != 35040.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffivoicehost_log() != 43961.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffivoicepipeline_configure_wake() != 26422.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffivoicepipeline_set_listen_armed() != 34330.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffivoicepipeline_set_wake_paused() != 1880.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffivoicepipeline_start_wake() != 36113.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffivoicepipeline_stop_wake() != 15031.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffiwakedetector_process_audio() != 57244.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffiwakedetector_process_reads() != 1107.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffiwakedetector_reset() != 59671.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffiwakedetector_scores() != 42015.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffiwakelog_early_name_check() != 37151.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffiwakelog_listen_ended() != 22450.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffiwakelog_outcome() != 58862.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffiwakelog_report() != 48422.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_ari_ffi_checksum_constructor_ariengine_new() != 23511.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -2039,6 +2242,18 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_constructor_skillregistry_new() != 44989.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_constructor_ffivoicepipeline_new() != 36940.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_constructor_ffiwakedetector_new() != 10460.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_constructor_ffiwakelog_new() != 26037.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_constructor_ffiwakemodelfiles_new() != 11539.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -9005,6 +9220,1659 @@ public object FfiConverterTypeFfiTasksProvider: FfiConverter<FfiTasksProvider, L
 
 
 /**
+ * What the pipeline needs from the app: model files, wakes, and log lines.
+ * Called on engine threads and the capture thread; hand work on rather than
+ * doing it in the call.
+ */
+public interface FfiVoiceHost {
+    
+    /**
+     * A model file by name, or `None` when it cannot be read.
+     */
+    fun `loadModel`(`name`: kotlin.String): kotlin.ByteArray?
+    
+    /**
+     * The wake word was heard and passed the debounce and the speech check.
+     */
+    fun `wakeDetected`()
+    
+    fun `log`(`level`: FfiLogLevel, `message`: kotlin.String)
+    
+    companion object
+}
+
+/**
+ * What the pipeline needs from the app: model files, wakes, and log lines.
+ * Called on engine threads and the capture thread; hand work on rather than
+ * doing it in the call.
+ */
+open class FfiVoiceHostImpl: Disposable, AutoCloseable, FfiVoiceHost
+{
+
+    @Suppress("UNUSED_PARAMETER")
+    /**
+     * @suppress
+     */
+    constructor(withHandle: UniffiWithHandle, handle: Long) {
+        this.handle = handle
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(handle))
+    }
+
+    /**
+     * @suppress
+     *
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noHandle: NoHandle) {
+        this.handle = 0
+        this.cleanable = null
+    }
+
+    protected val handle: Long
+    protected val cleanable: UniffiCleaner.Cleanable?
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithHandle(block: (handle: Long) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the handle being freed concurrently.
+        try {
+            return block(this.uniffiCloneHandle())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val handle: Long) : Runnable {
+        override fun run() {
+            if (handle == 0.toLong()) {
+                // Fake object created with `NoHandle`, don't try to free.
+                return;
+            }
+            uniffiRustCall { status ->
+                UniffiLib.uniffi_ari_ffi_fn_free_ffivoicehost(handle, status)
+            }
+        }
+    }
+
+    /**
+     * @suppress
+     */
+    fun uniffiCloneHandle(): Long {
+        if (handle == 0.toLong()) {
+            throw InternalException("uniffiCloneHandle() called on NoHandle object");
+        }
+        return uniffiRustCall() { status ->
+            UniffiLib.uniffi_ari_ffi_fn_clone_ffivoicehost(handle, status)
+        }
+    }
+
+    
+    /**
+     * A model file by name, or `None` when it cannot be read.
+     */override fun `loadModel`(`name`: kotlin.String): kotlin.ByteArray? {
+            return FfiConverterOptionalByteArray.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffivoicehost_load_model(
+        it,
+        FfiConverterString.lower(`name`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * The wake word was heard and passed the debounce and the speech check.
+     */override fun `wakeDetected`()
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffivoicehost_wake_detected(
+        it,
+        _status)
+}
+    }
+    
+    
+
+    override fun `log`(`level`: FfiLogLevel, `message`: kotlin.String)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffivoicehost_log(
+        it,
+        FfiConverterTypeFfiLogLevel.lower(`level`),FfiConverterString.lower(`message`),_status)
+}
+    }
+    
+    
+
+    
+
+    
+
+
+    
+    
+    /**
+     * @suppress
+     */
+    companion object
+    
+}
+
+
+
+// Put the implementation in an object so we don't pollute the top-level namespace
+internal object uniffiCallbackInterfaceFfiVoiceHost {
+    internal object `loadModel`: UniffiCallbackInterfaceFfiVoiceHostMethod0 {
+        override fun callback(`uniffiHandle`: Long,`name`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeFfiVoiceHost.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`loadModel`(
+                    FfiConverterString.lift(`name`),
+                )
+            }
+            val writeReturn = { value: kotlin.ByteArray? -> uniffiOutReturn.setValue(FfiConverterOptionalByteArray.lower(value)) }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+    internal object `wakeDetected`: UniffiCallbackInterfaceFfiVoiceHostMethod1 {
+        override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeFfiVoiceHost.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`wakeDetected`(
+                )
+            }
+            val writeReturn = { _: Unit -> Unit }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+    internal object `log`: UniffiCallbackInterfaceFfiVoiceHostMethod2 {
+        override fun callback(`uniffiHandle`: Long,`level`: RustBuffer.ByValue,`message`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeFfiVoiceHost.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`log`(
+                    FfiConverterTypeFfiLogLevel.lift(`level`),
+                    FfiConverterString.lift(`message`),
+                )
+            }
+            val writeReturn = { _: Unit -> Unit }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+
+    internal object uniffiFree: UniffiCallbackInterfaceFree {
+        override fun callback(handle: Long) {
+            FfiConverterTypeFfiVoiceHost.handleMap.remove(handle)
+        }
+    }
+
+    internal object uniffiClone: UniffiCallbackInterfaceClone {
+        override fun callback(handle: Long): Long {
+            return FfiConverterTypeFfiVoiceHost.handleMap.clone(handle)
+        }
+    }
+
+    internal var vtable = UniffiVTableCallbackInterfaceFfiVoiceHost.UniffiByValue(
+        uniffiFree,
+        uniffiClone,
+        `loadModel`,
+        `wakeDetected`,
+        `log`,
+    )
+
+    // Registers the foreign callback with the Rust side.
+    // This method is generated for each callback interface.
+    internal fun register(lib: UniffiLib) {
+        lib.uniffi_ari_ffi_fn_init_callback_vtable_ffivoicehost(vtable)
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiVoiceHost: FfiConverter<FfiVoiceHost, Long> {
+    internal val handleMap = UniffiHandleMap<FfiVoiceHost>()
+
+    override fun lower(value: FfiVoiceHost): Long {
+        if (value is FfiVoiceHostImpl) {
+             // Rust-implemented object.  Clone the handle and return it
+            return value.uniffiCloneHandle()
+         } else {
+            // Kotlin object, generate a new vtable handle and return that.
+            return handleMap.insert(value)
+         }
+    }
+
+    override fun lift(value: Long): FfiVoiceHost {
+        if ((value and 1.toLong()) == 0.toLong()) {
+            // Rust-generated handle, construct a new class that uses the handle to implement the
+            // interface
+            return FfiVoiceHostImpl(UniffiWithHandle, value)
+        } else {
+            // Kotlin-generated handle, get the object from the handle map
+            return handleMap.remove(value)
+        }
+    }
+
+    override fun read(buf: ByteBuffer): FfiVoiceHost {
+        return lift(buf.getLong())
+    }
+
+    override fun allocationSize(value: FfiVoiceHost) = 8UL
+
+    override fun write(value: FfiVoiceHost, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a handle
+// to the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque handle to the underlying Rust struct.
+//     Method calls need to read this handle from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its handle should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the handle, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the handle, but is interrupted
+//      before it can pass the handle over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read handle value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * The process's voice pipeline. Building one makes it the one
+ * [`ari_voice_push_audio`] feeds.
+ */
+public interface FfiVoicePipelineInterface {
+    
+    /**
+     * Build the wake engine, before the microphone opens.
+     */
+    fun `configureWake`(`config`: FfiWakeConfig)
+    
+    /**
+     * Interim until speech-to-text moves (step 3): a listen is consuming the mic.
+     */
+    fun `setListenArmed`(`armed`: kotlin.Boolean)
+    
+    /**
+     * Mid-conversation: no wake detection, audio still kept.
+     */
+    fun `setWakePaused`(`paused`: kotlin.Boolean)
+    
+    /**
+     * The microphone is open and its audio is arriving.
+     */
+    fun `startWake`()
+    
+    /**
+     * The microphone is closing.
+     */
+    fun `stopWake`()
+    
+    companion object
+}
+
+/**
+ * The process's voice pipeline. Building one makes it the one
+ * [`ari_voice_push_audio`] feeds.
+ */
+open class FfiVoicePipeline: Disposable, AutoCloseable, FfiVoicePipelineInterface
+{
+
+    @Suppress("UNUSED_PARAMETER")
+    /**
+     * @suppress
+     */
+    constructor(withHandle: UniffiWithHandle, handle: Long) {
+        this.handle = handle
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(handle))
+    }
+
+    /**
+     * @suppress
+     *
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noHandle: NoHandle) {
+        this.handle = 0
+        this.cleanable = null
+    }
+    constructor(`host`: FfiVoiceHost, `wakeLog`: FfiWakeLog) :
+        this(UniffiWithHandle, 
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_constructor_ffivoicepipeline_new(
+    
+        FfiConverterTypeFfiVoiceHost.lower(`host`),FfiConverterTypeFfiWakeLog.lower(`wakeLog`),_status)
+}
+    )
+
+    protected val handle: Long
+    protected val cleanable: UniffiCleaner.Cleanable?
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithHandle(block: (handle: Long) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the handle being freed concurrently.
+        try {
+            return block(this.uniffiCloneHandle())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val handle: Long) : Runnable {
+        override fun run() {
+            if (handle == 0.toLong()) {
+                // Fake object created with `NoHandle`, don't try to free.
+                return;
+            }
+            uniffiRustCall { status ->
+                UniffiLib.uniffi_ari_ffi_fn_free_ffivoicepipeline(handle, status)
+            }
+        }
+    }
+
+    /**
+     * @suppress
+     */
+    fun uniffiCloneHandle(): Long {
+        if (handle == 0.toLong()) {
+            throw InternalException("uniffiCloneHandle() called on NoHandle object");
+        }
+        return uniffiRustCall() { status ->
+            UniffiLib.uniffi_ari_ffi_fn_clone_ffivoicepipeline(handle, status)
+        }
+    }
+
+    
+    /**
+     * Build the wake engine, before the microphone opens.
+     */
+    @Throws(FfiVoiceException::class)override fun `configureWake`(`config`: FfiWakeConfig)
+        = 
+    callWithHandle {
+    uniffiRustCallWithError(FfiVoiceException) { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffivoicepipeline_configure_wake(
+        it,
+        FfiConverterTypeFfiWakeConfig.lower(`config`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Interim until speech-to-text moves (step 3): a listen is consuming the mic.
+     */override fun `setListenArmed`(`armed`: kotlin.Boolean)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffivoicepipeline_set_listen_armed(
+        it,
+        FfiConverterBoolean.lower(`armed`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Mid-conversation: no wake detection, audio still kept.
+     */override fun `setWakePaused`(`paused`: kotlin.Boolean)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffivoicepipeline_set_wake_paused(
+        it,
+        FfiConverterBoolean.lower(`paused`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * The microphone is open and its audio is arriving.
+     */override fun `startWake`()
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffivoicepipeline_start_wake(
+        it,
+        _status)
+}
+    }
+    
+    
+
+    
+    /**
+     * The microphone is closing.
+     */override fun `stopWake`()
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffivoicepipeline_stop_wake(
+        it,
+        _status)
+}
+    }
+    
+    
+
+    
+
+    
+
+
+    
+    
+    /**
+     * @suppress
+     */
+    companion object
+    
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiVoicePipeline: FfiConverter<FfiVoicePipeline, Long> {
+    override fun lower(value: FfiVoicePipeline): Long {
+        return value.uniffiCloneHandle()
+    }
+
+    override fun lift(value: Long): FfiVoicePipeline {
+        return FfiVoicePipeline(UniffiWithHandle, value)
+    }
+
+    override fun read(buf: ByteBuffer): FfiVoicePipeline {
+        return lift(buf.getLong())
+    }
+
+    override fun allocationSize(value: FfiVoicePipeline) = 8UL
+
+    override fun write(value: FfiVoicePipeline, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a handle
+// to the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque handle to the underlying Rust struct.
+//     Method calls need to read this handle from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its handle should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the handle, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the handle, but is interrupted
+//      before it can pass the handle over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read handle value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * One wake engine outside the pipeline, for the tuner and the parity test.
+ * Audio is 16 kHz mono as 16-bit little-endian bytes.
+ */
+public interface FfiWakeDetectorInterface {
+    
+    /**
+     * Whether the wake word was detected in `pcm`.
+     */
+    fun `processAudio`(`pcm`: kotlin.ByteArray): kotlin.Boolean
+    
+    /**
+     * `pcm` fed in reads of `chunk` samples, as the capture loop would:
+     * whether any read detected. One crossing for a whole take.
+     */
+    fun `processReads`(`pcm`: kotlin.ByteArray, `chunk`: kotlin.UInt): kotlin.Boolean
+    
+    fun `reset`()
+    
+    /**
+     * openWakeWord only: the score of each 80 ms frame `pcm` completes.
+     * Empty for microWakeWord, which has no score to give.
+     */
+    fun `scores`(`pcm`: kotlin.ByteArray): List<kotlin.Float>
+    
+    companion object
+}
+
+/**
+ * One wake engine outside the pipeline, for the tuner and the parity test.
+ * Audio is 16 kHz mono as 16-bit little-endian bytes.
+ */
+open class FfiWakeDetector: Disposable, AutoCloseable, FfiWakeDetectorInterface
+{
+
+    @Suppress("UNUSED_PARAMETER")
+    /**
+     * @suppress
+     */
+    constructor(withHandle: UniffiWithHandle, handle: Long) {
+        this.handle = handle
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(handle))
+    }
+
+    /**
+     * @suppress
+     *
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noHandle: NoHandle) {
+        this.handle = 0
+        this.cleanable = null
+    }
+    constructor(`model`: FfiWakeWordModel, `point`: FfiOperatingPoint, `resetOnDetection`: kotlin.Boolean, `files`: FfiWakeModelFiles) :
+        this(UniffiWithHandle, 
+    uniffiRustCallWithError(FfiVoiceException) { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_constructor_ffiwakedetector_new(
+    
+        FfiConverterTypeFfiWakeWordModel.lower(`model`),FfiConverterTypeFfiOperatingPoint.lower(`point`),FfiConverterBoolean.lower(`resetOnDetection`),FfiConverterTypeFfiWakeModelFiles.lower(`files`),_status)
+}
+    )
+
+    protected val handle: Long
+    protected val cleanable: UniffiCleaner.Cleanable?
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithHandle(block: (handle: Long) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the handle being freed concurrently.
+        try {
+            return block(this.uniffiCloneHandle())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val handle: Long) : Runnable {
+        override fun run() {
+            if (handle == 0.toLong()) {
+                // Fake object created with `NoHandle`, don't try to free.
+                return;
+            }
+            uniffiRustCall { status ->
+                UniffiLib.uniffi_ari_ffi_fn_free_ffiwakedetector(handle, status)
+            }
+        }
+    }
+
+    /**
+     * @suppress
+     */
+    fun uniffiCloneHandle(): Long {
+        if (handle == 0.toLong()) {
+            throw InternalException("uniffiCloneHandle() called on NoHandle object");
+        }
+        return uniffiRustCall() { status ->
+            UniffiLib.uniffi_ari_ffi_fn_clone_ffiwakedetector(handle, status)
+        }
+    }
+
+    
+    /**
+     * Whether the wake word was detected in `pcm`.
+     */override fun `processAudio`(`pcm`: kotlin.ByteArray): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffiwakedetector_process_audio(
+        it,
+        FfiConverterByteArray.lower(`pcm`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * `pcm` fed in reads of `chunk` samples, as the capture loop would:
+     * whether any read detected. One crossing for a whole take.
+     */override fun `processReads`(`pcm`: kotlin.ByteArray, `chunk`: kotlin.UInt): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffiwakedetector_process_reads(
+        it,
+        FfiConverterByteArray.lower(`pcm`),FfiConverterUInt.lower(`chunk`),_status)
+}
+    }
+    )
+    }
+    
+
+    override fun `reset`()
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffiwakedetector_reset(
+        it,
+        _status)
+}
+    }
+    
+    
+
+    
+    /**
+     * openWakeWord only: the score of each 80 ms frame `pcm` completes.
+     * Empty for microWakeWord, which has no score to give.
+     */override fun `scores`(`pcm`: kotlin.ByteArray): List<kotlin.Float> {
+            return FfiConverterSequenceFloat.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffiwakedetector_scores(
+        it,
+        FfiConverterByteArray.lower(`pcm`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+
+
+    
+    
+    /**
+     * @suppress
+     */
+    companion object
+    
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiWakeDetector: FfiConverter<FfiWakeDetector, Long> {
+    override fun lower(value: FfiWakeDetector): Long {
+        return value.uniffiCloneHandle()
+    }
+
+    override fun lift(value: Long): FfiWakeDetector {
+        return FfiWakeDetector(UniffiWithHandle, value)
+    }
+
+    override fun read(buf: ByteBuffer): FfiWakeDetector {
+        return lift(buf.getLong())
+    }
+
+    override fun allocationSize(value: FfiWakeDetector) = 8UL
+
+    override fun write(value: FfiWakeDetector, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a handle
+// to the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque handle to the underlying Rust struct.
+//     Method calls need to read this handle from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its handle should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the handle, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the handle, but is interrupted
+//      before it can pass the handle over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read handle value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * The wake log file (`ari_voice::wake_log::WakeLog`). One per process, shared
+ * by the pipeline and the frontend's voice session.
+ */
+public interface FfiWakeLogInterface {
+    
+    /**
+     * Interim until the session moves (step 4): a quiet wake's early name check.
+     */
+    fun `earlyNameCheck`(`result`: kotlin.String, `afterMs`: kotlin.Long, `inTime`: kotlin.Boolean)
+    
+    /**
+     * Interim until the session moves (step 4): how a wake's listen ended.
+     */
+    fun `listenEnded`(`end`: kotlin.String, `afterMs`: kotlin.Long)
+    
+    /**
+     * `hidden`: a quiet wake that ended without ever showing anything.
+     */
+    fun `outcome`(`outcome`: FfiWakeOutcome, `hidden`: kotlin.Boolean)
+    
+    /**
+     * The last day and week summarised, then the week's lines, for a bug report.
+     */
+    fun `report`(`nowMs`: kotlin.Long, `listeningNow`: kotlin.Boolean): kotlin.String
+    
+    companion object
+}
+
+/**
+ * The wake log file (`ari_voice::wake_log::WakeLog`). One per process, shared
+ * by the pipeline and the frontend's voice session.
+ */
+open class FfiWakeLog: Disposable, AutoCloseable, FfiWakeLogInterface
+{
+
+    @Suppress("UNUSED_PARAMETER")
+    /**
+     * @suppress
+     */
+    constructor(withHandle: UniffiWithHandle, handle: Long) {
+        this.handle = handle
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(handle))
+    }
+
+    /**
+     * @suppress
+     *
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noHandle: NoHandle) {
+        this.handle = 0
+        this.cleanable = null
+    }
+    constructor(`path`: kotlin.String) :
+        this(UniffiWithHandle, 
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_constructor_ffiwakelog_new(
+    
+        FfiConverterString.lower(`path`),_status)
+}
+    )
+
+    protected val handle: Long
+    protected val cleanable: UniffiCleaner.Cleanable?
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithHandle(block: (handle: Long) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the handle being freed concurrently.
+        try {
+            return block(this.uniffiCloneHandle())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val handle: Long) : Runnable {
+        override fun run() {
+            if (handle == 0.toLong()) {
+                // Fake object created with `NoHandle`, don't try to free.
+                return;
+            }
+            uniffiRustCall { status ->
+                UniffiLib.uniffi_ari_ffi_fn_free_ffiwakelog(handle, status)
+            }
+        }
+    }
+
+    /**
+     * @suppress
+     */
+    fun uniffiCloneHandle(): Long {
+        if (handle == 0.toLong()) {
+            throw InternalException("uniffiCloneHandle() called on NoHandle object");
+        }
+        return uniffiRustCall() { status ->
+            UniffiLib.uniffi_ari_ffi_fn_clone_ffiwakelog(handle, status)
+        }
+    }
+
+    
+    /**
+     * Interim until the session moves (step 4): a quiet wake's early name check.
+     */override fun `earlyNameCheck`(`result`: kotlin.String, `afterMs`: kotlin.Long, `inTime`: kotlin.Boolean)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffiwakelog_early_name_check(
+        it,
+        FfiConverterString.lower(`result`),FfiConverterLong.lower(`afterMs`),FfiConverterBoolean.lower(`inTime`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Interim until the session moves (step 4): how a wake's listen ended.
+     */override fun `listenEnded`(`end`: kotlin.String, `afterMs`: kotlin.Long)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffiwakelog_listen_ended(
+        it,
+        FfiConverterString.lower(`end`),FfiConverterLong.lower(`afterMs`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * `hidden`: a quiet wake that ended without ever showing anything.
+     */override fun `outcome`(`outcome`: FfiWakeOutcome, `hidden`: kotlin.Boolean)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffiwakelog_outcome(
+        it,
+        FfiConverterTypeFfiWakeOutcome.lower(`outcome`),FfiConverterBoolean.lower(`hidden`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * The last day and week summarised, then the week's lines, for a bug report.
+     */override fun `report`(`nowMs`: kotlin.Long, `listeningNow`: kotlin.Boolean): kotlin.String {
+            return FfiConverterString.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffiwakelog_report(
+        it,
+        FfiConverterLong.lower(`nowMs`),FfiConverterBoolean.lower(`listeningNow`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+
+
+    
+    
+    /**
+     * @suppress
+     */
+    companion object
+    
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiWakeLog: FfiConverter<FfiWakeLog, Long> {
+    override fun lower(value: FfiWakeLog): Long {
+        return value.uniffiCloneHandle()
+    }
+
+    override fun lift(value: Long): FfiWakeLog {
+        return FfiWakeLog(UniffiWithHandle, value)
+    }
+
+    override fun read(buf: ByteBuffer): FfiWakeLog {
+        return lift(buf.getLong())
+    }
+
+    override fun allocationSize(value: FfiWakeLog) = 8UL
+
+    override fun write(value: FfiWakeLog, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a handle
+// to the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque handle to the underlying Rust struct.
+//     Method calls need to read this handle from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its handle should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the handle, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the handle, but is interrupted
+//      before it can pass the handle over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read handle value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * A model's files, read once and shared by many detectors: the tuner builds a
+ * fresh engine for every step of every take's search.
+ */
+public interface FfiWakeModelFilesInterface {
+    
+    companion object
+}
+
+/**
+ * A model's files, read once and shared by many detectors: the tuner builds a
+ * fresh engine for every step of every take's search.
+ */
+open class FfiWakeModelFiles: Disposable, AutoCloseable, FfiWakeModelFilesInterface
+{
+
+    @Suppress("UNUSED_PARAMETER")
+    /**
+     * @suppress
+     */
+    constructor(withHandle: UniffiWithHandle, handle: Long) {
+        this.handle = handle
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(handle))
+    }
+
+    /**
+     * @suppress
+     *
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noHandle: NoHandle) {
+        this.handle = 0
+        this.cleanable = null
+    }
+    /**
+     * `model` is the model's own file; the feature models are needed for
+     * openWakeWord only.
+     */
+    constructor(`model`: kotlin.ByteArray, `melspectrogram`: kotlin.ByteArray?, `embedding`: kotlin.ByteArray?) :
+        this(UniffiWithHandle, 
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_constructor_ffiwakemodelfiles_new(
+    
+        FfiConverterByteArray.lower(`model`),FfiConverterOptionalByteArray.lower(`melspectrogram`),FfiConverterOptionalByteArray.lower(`embedding`),_status)
+}
+    )
+
+    protected val handle: Long
+    protected val cleanable: UniffiCleaner.Cleanable?
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithHandle(block: (handle: Long) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the handle being freed concurrently.
+        try {
+            return block(this.uniffiCloneHandle())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val handle: Long) : Runnable {
+        override fun run() {
+            if (handle == 0.toLong()) {
+                // Fake object created with `NoHandle`, don't try to free.
+                return;
+            }
+            uniffiRustCall { status ->
+                UniffiLib.uniffi_ari_ffi_fn_free_ffiwakemodelfiles(handle, status)
+            }
+        }
+    }
+
+    /**
+     * @suppress
+     */
+    fun uniffiCloneHandle(): Long {
+        if (handle == 0.toLong()) {
+            throw InternalException("uniffiCloneHandle() called on NoHandle object");
+        }
+        return uniffiRustCall() { status ->
+            UniffiLib.uniffi_ari_ffi_fn_clone_ffiwakemodelfiles(handle, status)
+        }
+    }
+
+    
+
+    
+
+
+    
+    
+    /**
+     * @suppress
+     */
+    companion object
+    
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiWakeModelFiles: FfiConverter<FfiWakeModelFiles, Long> {
+    override fun lower(value: FfiWakeModelFiles): Long {
+        return value.uniffiCloneHandle()
+    }
+
+    override fun lift(value: Long): FfiWakeModelFiles {
+        return FfiWakeModelFiles(UniffiWithHandle, value)
+    }
+
+    override fun read(buf: ByteBuffer): FfiWakeModelFiles {
+        return lift(buf.getLong())
+    }
+
+    override fun allocationSize(value: FfiWakeModelFiles) = 8UL
+
+    override fun write(value: FfiWakeModelFiles, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a handle
+// to the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque handle to the underlying Rust struct.
+//     Method calls need to read this handle from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its handle should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the handle, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the handle, but is interrupted
+//      before it can pass the handle over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read handle value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
  * Thread-safe handle to a skill store. One instance per process, created
  * at app startup and injected wherever it's needed. `storage_dir` is
  * retained so install calls can rebuild [`LoadOptions`] with the same
@@ -11711,6 +13579,60 @@ public object FfiConverterTypeFfiTunedSession: FfiConverterRustBuffer<FfiTunedSe
 
 
 
+/**
+ * How to listen for the wake word, from the app's settings.
+ */
+data class FfiWakeConfig (
+    /**
+     * With the device's tuned ladder already applied (`with_ladder`).
+     */
+    var `model`: FfiWakeWordModel
+    , 
+    var `sensitivity`: FfiWakeSensitivity
+    , 
+    var `speechCheck`: kotlin.Boolean
+    , 
+    var `quietWake`: kotlin.Boolean
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiWakeConfig: FfiConverterRustBuffer<FfiWakeConfig> {
+    override fun read(buf: ByteBuffer): FfiWakeConfig {
+        return FfiWakeConfig(
+            FfiConverterTypeFfiWakeWordModel.read(buf),
+            FfiConverterTypeFfiWakeSensitivity.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiWakeConfig) = (
+            FfiConverterTypeFfiWakeWordModel.allocationSize(value.`model`) +
+            FfiConverterTypeFfiWakeSensitivity.allocationSize(value.`sensitivity`) +
+            FfiConverterBoolean.allocationSize(value.`speechCheck`) +
+            FfiConverterBoolean.allocationSize(value.`quietWake`)
+    )
+
+    override fun write(value: FfiWakeConfig, buf: ByteBuffer) {
+            FfiConverterTypeFfiWakeWordModel.write(value.`model`, buf)
+            FfiConverterTypeFfiWakeSensitivity.write(value.`sensitivity`, buf)
+            FfiConverterBoolean.write(value.`speechCheck`, buf)
+            FfiConverterBoolean.write(value.`quietWake`, buf)
+    }
+}
+
+
+
 data class FfiWakeMatch (
     var `text`: kotlin.String
     , 
@@ -12781,6 +14703,68 @@ public object FfiConverterTypeFfiResponse : FfiConverterRustBuffer<FfiResponse>{
 
 
 
+
+sealed class FfiVoiceException: kotlin.Exception() {
+    
+    class Failed(
+        
+        val `reason`: kotlin.String
+        ) : FfiVoiceException() {
+        override val message
+            get() = "reason=${ `reason` }"
+    }
+    
+
+    
+
+
+    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<FfiVoiceException> {
+        override fun lift(error_buf: RustBuffer.ByValue): FfiVoiceException = FfiConverterTypeFfiVoiceError.lift(error_buf)
+    }
+
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiVoiceError : FfiConverterRustBuffer<FfiVoiceException> {
+    override fun read(buf: ByteBuffer): FfiVoiceException {
+        
+
+        return when(buf.getInt()) {
+            1 -> FfiVoiceException.Failed(
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: FfiVoiceException): ULong {
+        return when(value) {
+            is FfiVoiceException.Failed -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4UL
+                + FfiConverterString.allocationSize(value.`reason`)
+            )
+        }
+    }
+
+    override fun write(value: FfiVoiceException, buf: ByteBuffer) {
+        when(value) {
+            is FfiVoiceException.Failed -> {
+                buf.putInt(1)
+                FfiConverterString.write(value.`reason`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
+
+
+
+
 enum class FfiWakeEngine {
     
     MICRO_WAKE_WORD,
@@ -12806,6 +14790,72 @@ public object FfiConverterTypeFfiWakeEngine: FfiConverterRustBuffer<FfiWakeEngin
     override fun allocationSize(value: FfiWakeEngine) = 4UL
 
     override fun write(value: FfiWakeEngine, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * How a wake the user could see ended (`ari_voice::wake_log::WakeOutcome`).
+ */
+
+enum class FfiWakeOutcome {
+    
+    ACCEPTED,
+    REJECTED,
+    NO_SPEECH,
+    SILENT,
+    ERROR,
+    DISMISSED,
+    COLD_START,
+    NOT_SHOWN;
+
+    
+    /**
+     * The overlay opened and nobody had called Ari.
+     */ fun `falseWake`(): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffiwakeoutcome_false_wake(FfiConverterTypeFfiWakeOutcome.lower(this),
+        _status)
+}
+    )
+    }
+    
+
+     fun `slug`(): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffiwakeoutcome_slug(FfiConverterTypeFfiWakeOutcome.lower(this),
+        _status)
+}
+    )
+    }
+    
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiWakeOutcome: FfiConverterRustBuffer<FfiWakeOutcome> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiWakeOutcome.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiWakeOutcome) = 4UL
+
+    override fun write(value: FfiWakeOutcome, buf: ByteBuffer) {
         buf.putInt(value.ordinal + 1)
     }
 }
@@ -13007,6 +15057,38 @@ public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?>
         } else {
             buf.put(1)
             FfiConverterString.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalByteArray: FfiConverterRustBuffer<kotlin.ByteArray?> {
+    override fun read(buf: ByteBuffer): kotlin.ByteArray? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterByteArray.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.ByteArray?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterByteArray.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.ByteArray?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterByteArray.write(value, buf)
         }
     }
 }
@@ -13980,6 +16062,36 @@ public object FfiConverterMapStringTypeFfiLocalizedDisplay: FfiConverterRustBuff
     UniffiLib.uniffi_ari_ffi_fn_func_wake_word_models(
     
         _status)
+}
+    )
+    }
+    
+
+        /**
+         * Silero's speech probability for each whole 512-sample window of `pcm`
+         * (16-bit little-endian),
+         * from the start, carrying state window to window. For the phone test that
+         * holds this VAD to sherpa-onnx's `Vad.compute` while both are in the app.
+         */
+    @Throws(FfiVoiceException::class) fun `sileroVadProbabilities`(`model`: kotlin.ByteArray, `pcm`: kotlin.ByteArray): List<kotlin.Float> {
+            return FfiConverterSequenceFloat.lift(
+    uniffiRustCallWithError(FfiVoiceException) { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_silero_vad_probabilities(
+    
+        FfiConverterByteArray.lower(`model`),FfiConverterByteArray.lower(`pcm`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * The names of the files `model`'s detector needs, its own first.
+         */ fun `wakeModelFiles`(`model`: FfiWakeWordModel): List<kotlin.String> {
+            return FfiConverterSequenceString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_wake_model_files(
+    
+        FfiConverterTypeFfiWakeWordModel.lower(`model`),_status)
 }
     )
     }
