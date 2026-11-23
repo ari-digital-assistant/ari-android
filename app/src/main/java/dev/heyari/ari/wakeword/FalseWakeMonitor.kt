@@ -13,6 +13,9 @@ import dev.heyari.ari.data.SettingsRepository
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
+import uniffi.ari_ffi.falseWakeBurstDue
+import uniffi.ari_ffi.falseWakePrune
+import uniffi.ari_ffi.falseWakeWindowHours
 
 /**
  * Notices when Ari keeps waking up for nothing, and offers to do something
@@ -27,7 +30,10 @@ import javax.inject.Singleton
  * all, which is the reason [dev.heyari.ari.data.SettingsRepository.ladderTightenedAt]
  * exists and why this class comes back later to ask.
  *
- * Counting is unconditional and costs nothing but timestamps. Acting on the
+ * The voice session (ari-voice) decides what a false wake is, and the window
+ * and burst size are the engine's (`false_wake`); this keeps the timestamps
+ * and raises the notification. Counting is unconditional and costs nothing
+ * but timestamps. Acting on the
  * count requires `tuneDuringNormalUse`, because changing how the assistant
  * behaves on the strength of something the user never reported is a decision
  * they have to have opted into.
@@ -50,17 +56,17 @@ class FalseWakeMonitor @Inject constructor(
      */
     suspend fun onFalseWake(now: Long = System.currentTimeMillis()) {
         try {
-            val recent = (prune(read(), now) + now).sorted()
+            val recent = (falseWakePrune(read(), now) + now).sorted()
             settingsRepository.setFalseWakeLog(recent.joinToString(","))
             val notifiedAt = settingsRepository.falseWakeNotifiedAt.first()
-            if (!burstDue(recent, notifiedAt)) return
+            if (!falseWakeBurstDue(recent, notifiedAt)) return
             if (!settingsRepository.tuneDuringNormalUse.first()) {
                 // Counted but not acted on. Worth a log line: the rate is the
                 // number nobody has ever had, and this is where it shows up.
-                Log.i(TAG, "${recent.size} false wakes in ${WINDOW_MS / 3_600_000}h, tuning is off")
+                Log.i(TAG, "${recent.size} false wakes in ${falseWakeWindowHours()}h, tuning is off")
                 return
             }
-            Log.i(TAG, "${recent.size} false wakes in ${WINDOW_MS / 3_600_000}h, offering to help")
+            Log.i(TAG, "${recent.size} false wakes in ${falseWakeWindowHours()}h, offering to help")
             notifyBurst(recent.size)
             // The log itself is kept: the screen this notification opens
             // reads its count from it, and clearing it here made that screen
@@ -73,7 +79,7 @@ class FalseWakeMonitor @Inject constructor(
 
     /** False wakes inside the window, for the screen that offers to act on them. */
     suspend fun recentCount(now: Long = System.currentTimeMillis()): Int =
-        prune(read(), now).size
+        falseWakePrune(read(), now).size
 
     private suspend fun read(): List<Long> =
         settingsRepository.falseWakeLog.first()
@@ -108,39 +114,5 @@ class FalseWakeMonitor @Inject constructor(
         const val ACTION_REVIEW_FALSE_WAKES = "dev.heyari.ari.REVIEW_FALSE_WAKES"
         private const val REQUEST_REVIEW = 5101
         private const val NOTIFICATION_ID = 5102
-
-        /**
-         * How long a false wake stays on the books.
-         *
-         * A day rather than an hour, because the complaint that brings someone
-         * to this feature is "it keeps going off", which is a thing people
-         * notice across an evening, not inside one.
-         */
-        const val WINDOW_MS = 24L * 60 * 60 * 1000
-
-        /**
-         * False wakes inside [WINDOW_MS] before Ari offers to intervene.
-         *
-         * PROVISIONAL, and honestly so: nobody has ever measured what a normal
-         * false-wake rate looks like on a real phone, so this is the number of
-         * times a day that sounded annoying rather than a number anything
-         * produced. It is deliberately on the high side — a notification that
-         * arrives when nothing is wrong teaches people to dismiss the one that
-         * matters. Replace it once `falseWakeLog` has said what real phones do.
-         */
-        const val BURST_THRESHOLD = 5
-
-        /** Drops anything older than [WINDOW_MS]; also the pruning on every write. */
-        fun prune(timestamps: List<Long>, now: Long): List<Long> =
-            timestamps.filter { now - it in 0..WINDOW_MS }
-
-        /**
-         * Whether [recent], already pruned to the window, is a burst worth a
-         * notification. Only false wakes after the last notification count, so
-         * the next one needs a fresh burst rather than arriving again on the
-         * very next false wake.
-         */
-        fun burstDue(recent: List<Long>, notifiedAt: Long): Boolean =
-            recent.count { it > notifiedAt } >= BURST_THRESHOLD
     }
 }

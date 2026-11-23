@@ -5,68 +5,22 @@ import android.content.Intent
 import android.util.Log
 import androidx.core.content.FileProvider
 import java.io.File
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import java.util.Locale
+import uniffi.ari_ffi.FfiVoiceException
+import uniffi.ari_ffi.saveClip
 
 data class ClipStats(val count: Int, val totalBytes: Long)
 
 /**
  * `<prefix>-<zero-padded epoch ms>-<slug>`, the filename stem every clip and its
- * sidecar share. Fixed-width and ROOT-formatted because [evictOldest] treats
- * lexicographic order as chronological order — a locale with non-ASCII digits
- * would quietly break the eviction ordering.
+ * sidecar share, as the engine's `clip_stem` writes it. Fixed-width and
+ * ROOT-formatted because eviction treats lexicographic order as chronological
+ * order — a locale with non-ASCII digits would quietly break the ordering.
  */
 internal fun clipStem(prefix: String, timestampMs: Long, slug: String): String =
     String.format(Locale.ROOT, "%s-%017d-%s", prefix, timestampMs, slug)
 
-private const val SAMPLE_RATE = 16000
-private const val CHANNELS = 1
-private const val BYTES_PER_SAMPLE = 2
 private const val AUTHORITY_SUFFIX = ".captures"
-
-/**
- * Encode [pcm] as a 16-bit mono 16 kHz WAV. That is the format microWakeWord
- * training consumes, so captured clips drop straight into a hard-negative set
- * with no conversion step.
- */
-internal fun wavBytes(pcm: ShortArray): ByteArray {
-    val dataBytes = pcm.size * 2
-    val buf = ByteBuffer.allocate(44 + dataBytes).order(ByteOrder.LITTLE_ENDIAN)
-    buf.put("RIFF".toByteArray(Charsets.US_ASCII))
-    buf.putInt(36 + dataBytes)
-    buf.put("WAVE".toByteArray(Charsets.US_ASCII))
-    buf.put("fmt ".toByteArray(Charsets.US_ASCII))
-    buf.putInt(16)
-    buf.putShort(1)
-    buf.putShort(CHANNELS.toShort())
-    buf.putInt(SAMPLE_RATE)
-    buf.putInt(SAMPLE_RATE * CHANNELS * BYTES_PER_SAMPLE)
-    buf.putShort((CHANNELS * BYTES_PER_SAMPLE).toShort())
-    buf.putShort((BYTES_PER_SAMPLE * 8).toShort())
-    buf.put("data".toByteArray(Charsets.US_ASCII))
-    buf.putInt(dataBytes)
-    for (sample in pcm) buf.putShort(sample)
-    return buf.array()
-}
-
-/**
- * Delete the oldest clip/sidecar pairs until [dir] is within both caps.
- * Filenames are timestamp-prefixed and fixed-width, so lexicographic order is
- * chronological order.
- */
-internal fun evictOldest(dir: File, maxFiles: Int, maxBytes: Long) {
-    val clips = dir.listFiles { f -> f.extension == "wav" }?.sortedBy { it.name } ?: return
-    var count = clips.size
-    var bytes = clips.sumOf { it.length() }
-    for (clip in clips) {
-        if (count <= maxFiles && bytes <= maxBytes) return
-        bytes -= clip.length()
-        count--
-        clip.delete()
-        File(dir, "${clip.nameWithoutExtension}.txt").delete()
-    }
-}
 
 /**
  * An `ACTION_SEND_MULTIPLE` intent carrying [files] as `.captures` content URIs,
@@ -87,13 +41,15 @@ internal fun shareIntentFor(context: Context, files: List<File>): Intent? {
 }
 
 /**
- * A bounded directory of captured audio clips under `filesDir`, each written as
- * a WAV plus a `.txt` sidecar sharing its stem. Storage is app-private and both
- * caps are hard — the oldest pairs are evicted on every write.
+ * A directory of captured audio clips under `filesDir`, each a WAV plus a
+ * `.txt` sidecar sharing its stem. Storage is app-private. The engine writes
+ * them and evicts the oldest past a store's caps, the voice session's
+ * captures itself and the wake sample recorder's through [save]; this lists,
+ * shares and clears them.
  *
- * Not a Hilt singleton: each debug capture feature owns one, with its own
- * directory and caps, and adds the domain meaning on top (what the stem encodes,
- * what goes in the sidecar, which setting gates the write).
+ * Not a Hilt singleton: each capture feature owns one, with its own
+ * directory, and adds the domain meaning on top (what the stem encodes, what
+ * goes in the sidecar).
  *
  * The primary constructor takes the directory outright, so a JVM test can drive
  * a real store against a `TemporaryFolder` with no Android framework in sight —
@@ -102,26 +58,22 @@ internal fun shareIntentFor(context: Context, files: List<File>): Intent? {
 class AudioClipStore internal constructor(
     private val context: Context?,
     private val dir: File,
-    private val maxFiles: Int,
-    private val maxBytes: Long,
 ) {
-    constructor(context: Context, dirName: String, maxFiles: Int, maxBytes: Long) :
-        this(context, File(context.filesDir, dirName), maxFiles, maxBytes)
+    constructor(context: Context, dirName: String) : this(context, File(context.filesDir, dirName))
 
-    fun save(stem: String, pcm: ShortArray, sidecar: String) {
+    /**
+     * Write [pcm] as `<stem>.wav` and [sidecar] as `<stem>.txt`, then evict the
+     * oldest pairs until the directory is within [maxFiles] and [maxBytes].
+     */
+    fun save(stem: String, pcm: ShortArray, sidecar: String, maxFiles: Int, maxBytes: Long) {
         if (pcm.isEmpty()) return
-        if (!dir.exists() && !dir.mkdirs()) {
-            Log.w(TAG, "Could not create capture directory ${dir.path}")
+        try {
+            saveClip(dir.path, stem, pcmBytes(pcm), sidecar, maxFiles.toUInt(), maxBytes.toULong())
+        } catch (e: FfiVoiceException) {
+            Log.w(TAG, "Could not capture ${dir.name}/$stem.wav: ${e.message}")
             return
         }
-        File(dir, "$stem.wav").writeBytes(wavBytes(pcm))
-        File(dir, "$stem.txt").writeText(sidecar)
-        // Log the write, then evict: the line reports what this call did, not
-        // what survived the caps. The other order reads as a flat lie when a
-        // clip large enough to breach maxBytes on its own gets written,
-        // evicted, and then announced as captured.
         Log.i(TAG, "Captured ${dir.name}/$stem.wav (${pcm.size} samples)")
-        evictOldest(dir, maxFiles, maxBytes)
     }
 
     fun stats(): ClipStats {

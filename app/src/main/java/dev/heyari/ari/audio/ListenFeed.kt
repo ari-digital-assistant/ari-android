@@ -10,8 +10,7 @@ import uniffi.ari_ffi.FfiListenFeed
 
 /**
  * The engine's listen feed for the readers that still live in the app: the
- * sensitivity tuner, the wake sample recorder, the system speech service and
- * the voice session's look back at the last seconds.
+ * sensitivity tuner, the wake sample recorder and the system speech service.
  *
  * The microphone's audio is kept by the engine (ari-voice's ring), which hands
  * an armed reader the last [arm] seconds as 100 ms slices, then every chunk,
@@ -63,9 +62,6 @@ class ListenFeed @Inject constructor(
         feed?.disarm()
         feed = null
     }
-
-    /** The last [seconds] of audio, without arming. */
-    fun peekRecent(seconds: Float): ShortArray = shorts(voiceEngine.pipeline.peekRecent(seconds))
 
     private companion object {
         const val TAG = "ListenFeed"

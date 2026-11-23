@@ -48,7 +48,6 @@ import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import uniffi.ari_ffi.FfiVoiceException
 import uniffi.ari_ffi.FfiWakeConfig
-import uniffi.ari_ffi.FfiWakeOutcome
 import uniffi.ari_ffi.tunedLadderParse
 import uniffi.ari_ffi.wakeSensitivityFromName
 import uniffi.ari_ffi.wakeWordModelById
@@ -608,7 +607,7 @@ class WakeWordService : Service() {
         if (!Settings.canDrawOverlays(this)) {
             Log.w(TAG, "SYSTEM_ALERT_WINDOW not granted — cannot launch over lock screen. Posting recovery notification.")
             postSawMissingNotification()
-            wakeLog.outcome(FfiWakeOutcome.NOT_SHOWN)
+            wakeLog.notShown()
             return
         }
 

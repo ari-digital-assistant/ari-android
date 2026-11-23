@@ -44,9 +44,9 @@ class SpeechOutput(
 
     /**
      * Utterances awaiting their `onDone`/`onError` callback, keyed by
-     * utteranceId. [speakAndAwait] registers one and suspends on it so a
-     * caller can re-arm the mic only AFTER Ari has stopped talking — without
-     * this, the STT rewind ingests Ari's own speech ("…to use, Apple Music").
+     * utteranceId. [awaitSpoken] suspends on one so the voice session can
+     * re-arm the mic only AFTER Ari has stopped talking — without this, the
+     * STT rewind ingests Ari's own speech ("…to use, Apple Music").
      */
     private val pendingDone = ConcurrentHashMap<String, CompletableDeferred<Unit>>()
 
@@ -79,7 +79,7 @@ class SpeechOutput(
             }
             applyVoice()
             // One persistent listener for the engine's lifetime: it resolves
-            // any pending speakAndAwait() and re-applies the voice after a
+            // any pending awaitSpoken() and re-applies the voice after a
             // preview utterance. (Previously preview() installed its own
             // listener; a single owner avoids one path clobbering the other.)
             tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
@@ -129,56 +129,37 @@ class SpeechOutput(
     }
 
     /**
-     * Speak [text] and suspend until the TTS engine reports it finished,
-     * stopped or errored (or a length-based safety timeout elapses, in case the
-     * engine never reports back at all).
-     * Used by the voice session before re-arming the mic for a follow-up, so
-     * the mic opens only after Ari has stopped speaking — never capturing its
-     * own voice. Uses QUEUE_FLUSH: the prompt is the only thing that should be
-     * playing at this point.
+     * Queue [text] for the voice session, cutting off whatever plays when
+     * [flush], else after it, and return what [awaitSpoken] waits on. Null when
+     * nothing was queued: the engine isn't ready, or [text] is blank (flushing
+     * on nothing is not a no-op, it cancels whatever is playing). Not
+     * suspending, so an answer's sentences queue in the order they arrive.
      */
-    suspend fun speakAndAwait(text: String) {
+    fun queueSpeech(text: String, flush: Boolean): Spoken? {
         if (!ready) {
             Log.w(TAG, "TTS not ready, dropping: $text")
-            return
+            return null
         }
-        // QUEUE_FLUSH on nothing is not a no-op: it cancels whatever is
-        // already playing or queued. A Layer C phase-1 turn is deliberately
-        // silent, and speaking its empty reply here killed the phase-2 answer
-        // the conversation viewmodel had just queued.
-        if (text.isBlank()) return
-        awaitUtterance(queue(text, TextToSpeech.QUEUE_FLUSH), text.length)
+        if (text.isBlank()) return null
+        // The safety timeout counts everything queued ahead of this too: a
+        // sentence queued behind a long one starts late, and waiting only for
+        // its own length would call it finished before it was heard.
+        queuedChars = if (flush) text.length else queuedChars + text.length
+        return Spoken(queue(text, if (flush) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD), queuedChars)
     }
 
     /**
-     * A reply for the voice session, which may arrive a sentence at a time
-     * while the engine is still writing it (ari-android#37). The first
-     * sentence cuts off whatever is playing, as [speakAndAwait] does; the
-     * rest queue behind it.
+     * Suspend until [spoken] has finished, been stopped or failed, or a
+     * length-based safety timeout passes, in case the engine never reports
+     * back at all.
      */
-    inner class Reply {
-        private var lastId: String? = null
-        private var queuedChars = 0
+    suspend fun awaitSpoken(spoken: Spoken) = awaitUtterance(spoken.id, spoken.chars)
 
-        fun sentence(text: String) {
-            if (!ready) {
-                Log.w(TAG, "TTS not ready, dropping: $text")
-                return
-            }
-            val mode = if (lastId == null) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
-            lastId = queue(text, mode)
-            queuedChars += text.length
-        }
+    /** An utterance [queueSpeech] queued. */
+    class Spoken internal constructor(internal val id: String, internal val chars: Int)
 
-        /**
-         * Wait for the last sentence to finish, or, for a reply that didn't
-         * come a sentence at a time, [speakAndAwait] the whole [text].
-         */
-        suspend fun speakAndAwait(text: String) {
-            val id = lastId ?: return this@SpeechOutput.speakAndAwait(text)
-            awaitUtterance(id, queuedChars)
-        }
-    }
+    @Volatile
+    private var queuedChars = 0
 
     /** Hand [text] to the engine under a fresh id [awaitUtterance] can wait on. */
     private fun queue(text: String, mode: Int): String {
@@ -199,7 +180,7 @@ class SpeechOutput(
         // an utterance early.
         val maxMs = (chars * 120L).coerceIn(4_000L, 120_000L)
         if (withTimeoutOrNull(maxMs) { done.await() } == null) {
-            Log.w(TAG, "speakAndAwait timed out after ${maxMs}ms for id=$id")
+            Log.w(TAG, "awaitSpoken timed out after ${maxMs}ms for id=$id")
         }
         pendingDone.remove(id)
     }

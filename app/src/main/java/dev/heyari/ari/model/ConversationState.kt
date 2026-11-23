@@ -4,7 +4,6 @@ import dev.heyari.ari.data.SetupGaps
 import dev.heyari.ari.listening.ListeningMode
 import dev.heyari.ari.llm.LlmDownloadState
 import dev.heyari.ari.stt.ModelDownloadState
-import dev.heyari.ari.stt.SttState
 import dev.heyari.ari.ui.conversation.EmptyMode
 import dev.heyari.ari.ui.conversation.GreetingModel
 
@@ -22,7 +21,6 @@ data class ConversationState(
     /** Drives which segment of the top-bar [dev.heyari.ari.ui.conversation.ListeningModeSwitch] is selected. */
     val listeningMode: ListeningMode = ListeningMode.DEFAULT,
     val wakeWordDetected: Boolean = false,
-    val sttState: SttState = SttState.Idle,
     val needsSetup: Boolean = false,
     /** False until startup checks have finished — prevents the onboarding card flashing on launch. */
     val setupChecked: Boolean = false,

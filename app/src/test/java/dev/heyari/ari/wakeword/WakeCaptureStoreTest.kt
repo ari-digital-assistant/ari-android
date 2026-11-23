@@ -7,89 +7,37 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 
+/**
+ * The settings page's view of the wake captures the engine writes. Which
+ * directory a clip goes to is the engine's, tested there (ari-voice
+ * `captures`).
+ */
 class WakeCaptureStoreTest {
 
     @get:Rule
     val temp = TemporaryFolder()
-
-    private val pcm = ShortArray(1600) { 100 }
 
     private fun store() = WakeCaptureStore(null, temp.root)
 
     private fun names(dirName: String): List<String> =
         File(temp.root, dirName).listFiles()?.map { it.name }?.sorted() ?: emptyList()
 
-    @Test
-    fun `rejected clips land in the quarantine dir, silent ones in the retrain feed`() {
-        val store = store()
-
-        store.save(pcm, "ARA reminds me", WakeCaptureHook.REJECTED, 1_000L)
-        store.save(pcm, "", WakeCaptureHook.SILENT, 2_000L)
-
-        assertEquals(
-            listOf(
-                "wake-00000000000001000-rejected.txt",
-                "wake-00000000000001000-rejected.wav",
-            ),
-            names("wake-captures-rejected"),
-        )
-        assertEquals(
-            listOf(
-                "wake-00000000000002000-silent.txt",
-                "wake-00000000000002000-silent.wav",
-            ),
-            names("wake-captures"),
-        )
-        // The transcript that got the clip rejected travels with it, so a human
-        // reviewing the quarantine can see what sherpa thought it heard.
-        assertEquals(
-            "ARA reminds me",
-            File(temp.root, "wake-captures-rejected/wake-00000000000001000-rejected.txt").readText(),
-        )
-    }
-
-    @Test
-    fun `no-speech clips join the silent ones in the retrain feed`() {
-        val store = store()
-
-        store.save(pcm, "", WakeCaptureHook.NO_SPEECH, 4_000L)
-
-        assertEquals(
-            listOf(
-                "wake-00000000000004000-no-speech.txt",
-                "wake-00000000000004000-no-speech.wav",
-            ),
-            names("wake-captures"),
-        )
-        assertEquals(emptyList<String>(), names("wake-captures-rejected"))
-    }
-
-    @Test
-    fun `accepted clips land in their own dir, never the retrain feed or quarantine`() {
-        val store = store()
-
-        store.save(pcm, "hey ari how s the weather", WakeCaptureHook.ACCEPTED, 3_000L)
-
-        assertEquals(
-            listOf(
-                "wake-00000000000003000-accepted.txt",
-                "wake-00000000000003000-accepted.wav",
-            ),
-            names("wake-captures-accepted"),
-        )
-        assertEquals(emptyList<String>(), names("wake-captures"))
-        assertEquals(emptyList<String>(), names("wake-captures-rejected"))
+    /** A clip as the engine leaves it: a WAV of [bytes] and its sidecar. */
+    private fun clip(dirName: String, stem: String, bytes: Int) {
+        val dir = File(temp.root, dirName).apply { mkdirs() }
+        File(dir, "$stem.wav").writeBytes(ByteArray(bytes))
+        File(dir, "$stem.txt").writeText("")
     }
 
     @Test
     fun `stats and clear span all three directories`() {
+        clip("wake-captures-rejected", "wake-00000000000001000-rejected", 3_244)
+        clip("wake-captures", "wake-00000000000002000-silent", 3_244)
+        clip("wake-captures-accepted", "wake-00000000000003000-accepted", 3_244)
         val store = store()
-        store.save(pcm, "ARA reminds me", WakeCaptureHook.REJECTED, 1_000L)
-        store.save(pcm, "", WakeCaptureHook.SILENT, 2_000L)
-        store.save(pcm, "hey ari how s the weather", WakeCaptureHook.ACCEPTED, 3_000L)
 
-        // Three 1600-sample WAVs: 44 header bytes + 3200 data bytes each.
         assertEquals(ClipStats(count = 3, totalBytes = 9732L), store.stats())
+        assertEquals(6, store.files().size)
 
         store.clear()
 

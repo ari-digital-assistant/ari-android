@@ -2,6 +2,7 @@ package dev.heyari.ari.voice
 
 import android.content.Context
 import android.util.Log
+import com.sun.jna.Native
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.locale.AriFfiLocaleProvider
 import dev.heyari.ari.stt.CloudTranscriber
@@ -10,18 +11,18 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import uniffi.ari_ffi.FfiCloudSttSetup
 import uniffi.ari_ffi.FfiLogLevel
-import uniffi.ari_ffi.FfiSttEvent
 import uniffi.ari_ffi.FfiVoiceHost
 import uniffi.ari_ffi.FfiVoicePipeline
 
 /**
  * The engine's voice pipeline, one for the app: the wake word, the listen
- * feed and speech-to-text all live in it (ari-voice), and this is what it asks
- * of the app.
+ * feed, speech-to-text and the voice session all live in it (ari-voice), and
+ * this is what it asks of the app. The session's own needs are
+ * [VoiceSession]'s.
  *
  * App-wide rather than the wake word service's, because speech-to-text needs
  * it whether or not the service is running: models load at start-up and on a
- * settings change. Whoever acts on a wake or a speech event registers for it.
+ * settings change. The wake word service registers for wakes.
  */
 @Singleton
 class VoiceEngine @Inject constructor(
@@ -33,10 +34,6 @@ class VoiceEngine @Inject constructor(
     /** Called on the capture thread when Ari should wake. The wake word service's. */
     @Volatile
     var onWake: (() -> Unit)? = null
-
-    /** Called on a listen's thread with each speech event. The recogniser's. */
-    @Volatile
-    var onSttEvent: ((FfiSttEvent) -> Unit)? = null
 
     val pipeline: FfiVoicePipeline = FfiVoicePipeline(Host(), wakeLog.engineLog)
 
@@ -63,11 +60,16 @@ class VoiceEngine @Inject constructor(
 
         override fun locale(): String = localeProvider.currentLocale()
 
-        override fun sttEvent(event: FfiSttEvent) {
-            onSttEvent?.invoke(event)
-        }
-
         override fun cloudStt(): FfiCloudSttSetup? = cloudTranscriber.setup()
+
+        // The engine's own threads stay attached to the VM for their life.
+        // Attached per callback, the thread is detached when a callback
+        // returns, and a callback that calls back into the engine, which
+        // calls here again, loses its thread under it: ART aborts (the system
+        // speech service crashed this way opening the listen feed).
+        override fun threadStarted() {
+            Native.detach(false)
+        }
     }
 
     private companion object {
