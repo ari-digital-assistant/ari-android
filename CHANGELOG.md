@@ -40,6 +40,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- In "let's talk" with "Let me interrupt while Ari is speaking" on, Ari no longer takes
+  its own voice for your reply. Some of its answer got past the phone's echo cancelling,
+  and Ari would cut itself off and answer what it had just said. Ari's answer also stays
+  on screen while it speaks, and the "your turn" chime plays when it has finished rather
+  than as it starts.
 - Cloud speech-to-text works with a self-hosted server at a plain `http://` address,
   including the default one, `http://homeassistant.local:10300/v1`. Android blocked the
   app's unencrypted connections, so those requests always failed. HTTPS addresses are
