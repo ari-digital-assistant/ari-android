@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The wake word, speech recognition and the voice session now run in Ari's engine instead
+  of the app, so future desktop versions can share them. Nothing should behave
+  differently; if anything about talking to Ari does, please report it.
 - The empty chat's greeting picks up a name you asked Ari to remember out loud straight
   away, as it already did for a typed one, rather than the next time the app opens.
 - When on-device transcription mishears a request so no skill matches it, Ari now tries
