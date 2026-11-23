@@ -959,12 +959,14 @@
     <string name="whats_new_dismiss">Ho capito</string>
     <string name="whats_new_changelog">Tutte le modifiche</string>
     <string name="whats_new_skill_updates">Alcune novità arrivano come aggiornamenti delle skill. Installali dal banner nella schermata principale quando compare.</string>
-    <string name="whats_new_0_2_2_formatting_title">Risposte formattate</string>
-    <string name="whats_new_0_2_2_formatting_body">Le risposte dell\'assistente arrivano formattate come sono state scritte: grassetto, elenchi, titoli e tabelle. Tienine premuta una e scegli Copia come Markdown per mantenere la formattazione quando la incolli.</string>
-    <string name="whats_new_0_2_2_cards_title">Schede anche a voce</string>
-    <string name="whats_new_0_2_2_cards_body">Meteo, timer e altre schede ora compaiono anche quando parli con Ari, non solo nella chat. Restano circa 10 secondi dopo che Ari ha finito di parlare. Toccane una per tenerla finché non la chiudi.</string>
-    <string name="whats_new_0_2_2_black_title">Nero puro in modalità scura</string>
-    <string name="whats_new_0_2_2_black_body">Attiva “Nero puro in modalità scura” in Impostazioni > Generali per uno sfondo nero quando il telefono è in modalità scura. Gli schermi OLED spengono i pixel neri, quindi si risparmia un po\' di batteria.</string>
-    <string name="whats_new_0_2_2_fixes_title">Correzioni</string>
-    <string name="whats_new_0_2_2_fixes_body">Tenere premuto un messaggio mentre scrivi non chiude più la tastiera e non sposta più il messaggio da sotto il dito.</string>
+    <string name="whats_new_0_3_0_gesture_title">Scorri per parlare</string>
+    <string name="whats_new_0_3_0_gesture_body">Se Ari è l\'assistente predefinito, scorri verso l\'alto da un angolo in basso e Ari si apre già in ascolto, come gli altri assistenti.</string>
+    <string name="whats_new_0_3_0_interrupt_title">Interrompere Ari</string>
+    <string name="whats_new_0_3_0_interrupt_body">In una conversazione “parliamo” con “Lasciami interrompere mentre Ari parla” attivo, Ari non scambia più la propria voce per la tua. La risposta resta sullo schermo mentre Ari parla, e il segnale suona quando tocca a te.</string>
+    <string name="whats_new_0_3_0_hearing_title">Meno richieste fraintese</string>
+    <string name="whats_new_0_3_0_hearing_body">In inglese, quando il riconoscimento sul dispositivo capisce male una richiesta, Ari prova la sua seconda ipotesi prima di passarla all\'assistente. Anche il pulsante di una scheda detto a voce funziona quando Ari sente “cancelled” invece di “cancel”.</string>
+    <string name="whats_new_0_3_0_engine_title">Voce ricostruita</string>
+    <string name="whats_new_0_3_0_engine_body">La parola di attivazione, il riconoscimento vocale e le conversazioni ora funzionano nel motore di Ari, pronti per le versioni desktop. Non dovrebbe cambiare nulla. Se qualcosa nel parlare con Ari è diverso, segnalacelo con il pulsante segnalazioni.</string>
+    <string name="whats_new_0_3_0_more_title">Altre modifiche</string>
+    <string name="whats_new_0_3_0_more_body">La calibrazione della sensibilità tiene lo schermo acceso, emette un segnale quando è il momento di parlare e vale subito. La configurazione iniziale scarica il modello vocale quando prosegui. Whisper sul tuo server funziona anche con un indirizzo http://.</string>
 </resources>

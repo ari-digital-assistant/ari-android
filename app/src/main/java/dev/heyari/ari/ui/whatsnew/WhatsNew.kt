@@ -3,9 +3,10 @@ package dev.heyari.ari.ui.whatsnew
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.FormatBold
-import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.Hearing
+import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.ui.graphics.vector.ImageVector
 import dev.heyari.ari.R
 
@@ -17,13 +18,14 @@ import dev.heyari.ari.R
  * them shows nothing rather than the previous release's news.
  */
 internal object WhatsNew {
-    const val VERSION = "0.2.2"
+    const val VERSION = "0.3.0"
 
     val items = listOf(
-        WhatsNewItem(Icons.Default.FormatBold, R.string.whats_new_0_2_2_formatting_title, R.string.whats_new_0_2_2_formatting_body),
-        WhatsNewItem(Icons.Default.WbSunny, R.string.whats_new_0_2_2_cards_title, R.string.whats_new_0_2_2_cards_body),
-        WhatsNewItem(Icons.Default.DarkMode, R.string.whats_new_0_2_2_black_title, R.string.whats_new_0_2_2_black_body),
-        WhatsNewItem(Icons.Default.Build, R.string.whats_new_0_2_2_fixes_title, R.string.whats_new_0_2_2_fixes_body),
+        WhatsNewItem(Icons.Default.Mic, R.string.whats_new_0_3_0_gesture_title, R.string.whats_new_0_3_0_gesture_body),
+        WhatsNewItem(Icons.Default.RecordVoiceOver, R.string.whats_new_0_3_0_interrupt_title, R.string.whats_new_0_3_0_interrupt_body),
+        WhatsNewItem(Icons.Default.Hearing, R.string.whats_new_0_3_0_hearing_title, R.string.whats_new_0_3_0_hearing_body),
+        WhatsNewItem(Icons.Default.Memory, R.string.whats_new_0_3_0_engine_title, R.string.whats_new_0_3_0_engine_body),
+        WhatsNewItem(Icons.Default.Build, R.string.whats_new_0_3_0_more_title, R.string.whats_new_0_3_0_more_body),
     )
 
     /**

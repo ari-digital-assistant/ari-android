@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-23
+
+Changes since 0.2.2, uploaded to Google Play internal testing as versionCode 10.
+
 ### Added
 
 - Sensitivity tuning keeps the screen on while it runs, and beeps: a low beep as each
