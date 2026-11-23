@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Saying a card's button out loud presses it even when speech recognition adds an ending
+  to the word. "Cancel" heard as "cancelled" left a timer running.
 - In "let's talk" with "Let me interrupt while Ari is speaking" on, Ari no longer takes
   its own voice for your reply. Some of its answer got past the phone's echo cancelling,
   and Ari would cut itself off and answer what it had just said. Ari's answer also stays

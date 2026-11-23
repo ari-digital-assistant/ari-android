@@ -759,6 +759,16 @@
         <item>stops</item>
     </string-array>
 
+    <!-- Endings speech recognition adds to a card button's label said on its
+         own, so saying the label still presses it: "cancel" heard as
+         "cancelled" (the doubled l), "canceled" or "cancels". -->
+    <string-array name="card_action_spoken_endings">
+        <item>s</item>
+        <item>d</item>
+        <item>ed</item>
+        <item>led</item>
+    </string-array>
+
     <!-- Adaptive empty state (conversation home screen). -->
     <!-- TODO(i18n): add values-it/ translations -->
     <string name="empty_chip_remember_name">Remember my name</string>

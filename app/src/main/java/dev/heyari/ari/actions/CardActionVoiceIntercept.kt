@@ -1,5 +1,8 @@
 package dev.heyari.ari.actions
 
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.heyari.ari.R
 import dev.heyari.ari.data.card.CardAction
 import dev.heyari.ari.data.card.CardStateRepository
 import dev.heyari.ari.data.card.CardStateSource
@@ -20,14 +23,28 @@ import javax.inject.Singleton
  * eligible — what matters is an exact label/id match, not word count.
  * Inputs that don't match any visible button fall through to the engine.
  *
+ * Speech recognition hears a word said on its own with an ending added:
+ * "cancel" as "cancelled" (2026-11-22). The label or id with one of
+ * [R.array.card_action_spoken_endings] on the end matches too, if no
+ * button matches exactly. The endings are per language, as the alarm's
+ * "stopped" and "stops" are in [AlertVoiceIntercept].
+ *
  * Only the most recent card with actions is consulted; older cards
  * in the conversation are presumed already-handled and shouldn't
  * steal a fresh "yes" the user meant for a new question.
  */
 @Singleton
-class CardActionVoiceIntercept @Inject constructor(
+class CardActionVoiceIntercept internal constructor(
     private val cardRepository: CardStateSource,
+    private val spokenEndings: () -> List<String>,
 ) {
+    @Inject
+    constructor(cardRepository: CardStateSource, @ApplicationContext context: Context) : this(
+        cardRepository,
+        // Read per call, so a change of Ari's language applies at once.
+        spokenEndings = { context.resources.getStringArray(R.array.card_action_spoken_endings).toList() },
+    )
+
     /**
      * @param cardId   id of the card whose action matched
      * @param skillId  emitting skill id (for asset resolution if the
@@ -49,10 +66,14 @@ class CardActionVoiceIntercept @Inject constructor(
             .lastOrNull { it.actions.isNotEmpty() }
             ?: return null
 
-        val action = card.actions.firstOrNull {
-            it.id.equals(word, ignoreCase = true) ||
-                it.label.equals(word, ignoreCase = true)
-        } ?: return null
+        fun names(action: CardAction) = listOf(action.id, action.label)
+        val action = card.actions.firstOrNull { a -> names(a).any { it.equals(word, ignoreCase = true) } }
+            ?: spokenEndings().let { endings ->
+                card.actions.firstOrNull { a ->
+                    names(a).any { name -> endings.any { (name + it).equals(word, ignoreCase = true) } }
+                }
+            }
+            ?: return null
 
         return Match(card.id, card.skillId, action)
     }

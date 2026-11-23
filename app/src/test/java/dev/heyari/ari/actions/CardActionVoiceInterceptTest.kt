@@ -20,7 +20,11 @@ class CardActionVoiceInterceptTest {
      * Minimal [CardStateSource] backed by a single card with one button.
      * No Android framework — just a plain [MutableStateFlow].
      */
-    private fun makeInterceptWithCardButton(id: String, label: String): CardActionVoiceIntercept {
+    private fun makeInterceptWithCardButton(
+        id: String,
+        label: String,
+        endings: List<String> = ENGLISH_ENDINGS,
+    ): CardActionVoiceIntercept {
         val action = CardAction(
             id = id,
             label = label,
@@ -47,7 +51,12 @@ class CardActionVoiceInterceptTest {
             override val state: StateFlow<List<Card>> =
                 MutableStateFlow(listOf(card))
         }
-        return CardActionVoiceIntercept(source)
+        return CardActionVoiceIntercept(source) { endings }
+    }
+
+    private companion object {
+        /** As `values/strings.xml` has them. */
+        val ENGLISH_ENDINGS = listOf("s", "d", "ed", "led")
     }
 
     // ---------------------------------------------------------------------------
@@ -102,5 +111,23 @@ class CardActionVoiceInterceptTest {
         val intercept = makeInterceptWithCardButton(id = "spotify", label = "Spotify")
         assertNotNull(intercept.resolve("spotify."))
         assertNotNull(intercept.resolve("spotify!"))
+    }
+
+    @Test
+    fun aLabelHeardWithAnEndingStillPressesTheButton() {
+        // Kroko heard "cancel" as "cancelled" on 2026-11-22, and the timer's
+        // Cancel button wasn't pressed.
+        val intercept = makeInterceptWithCardButton(id = "cancel", label = "Cancel")
+        for (heard in listOf("cancelled", "Canceled.", "cancels")) {
+            assertEquals(heard, "cancel", intercept.resolve(heard)?.action?.id)
+        }
+    }
+
+    @Test
+    fun onlyTheListedEndingsCount() {
+        val intercept = makeInterceptWithCardButton(id = "yes", label = "Yes")
+        assertNull(intercept.resolve("yesterday"))
+        assertNull(intercept.resolve("yesss"))
+        assertNull(makeInterceptWithCardButton(id = "cancel", label = "Cancel", endings = emptyList()).resolve("cancelled"))
     }
 }
