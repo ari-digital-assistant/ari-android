@@ -719,33 +719,39 @@ internal interface UniffiCallbackInterfaceFfiSessionHostMethod9 : com.sun.jna.Ca
     fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceFfiSessionHostMethod10 : com.sun.jna.Callback {
-    fun callback(`uniffiHandle`: Long,`text`: RustBuffer.ByValue,`cards`: Byte,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+    fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceFfiSessionHostMethod11 : com.sun.jna.Callback {
-    fun callback(`uniffiHandle`: Long,`json`: RustBuffer.ByValue,`skillId`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+    fun callback(`uniffiHandle`: Long,`alertId`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceFfiSessionHostMethod12 : com.sun.jna.Callback {
-    fun callback(`uniffiHandle`: Long,`turn`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+    fun callback(`uniffiHandle`: Long,`cardId`: RustBuffer.ByValue,`buttonId`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceFfiSessionHostMethod13 : com.sun.jna.Callback {
-    fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+    fun callback(`uniffiHandle`: Long,`json`: RustBuffer.ByValue,`skillId`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceFfiSessionHostMethod14 : com.sun.jna.Callback {
-    fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+    fun callback(`uniffiHandle`: Long,`turn`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceFfiSessionHostMethod15 : com.sun.jna.Callback {
-    fun callback(`uniffiHandle`: Long,`text`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+    fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceFfiSessionHostMethod16 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceFfiSessionHostMethod17 : com.sun.jna.Callback {
-    fun callback(`uniffiHandle`: Long,`turn`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+    fun callback(`uniffiHandle`: Long,`text`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceFfiSessionHostMethod18 : com.sun.jna.Callback {
-    fun callback(`uniffiHandle`: Long,`turn`: Long,`soFar`: RustBuffer.ByValue,`markdown`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+    fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceFfiSessionHostMethod19 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`turn`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+}
+internal interface UniffiCallbackInterfaceFfiSessionHostMethod20 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`turn`: Long,`soFar`: RustBuffer.ByValue,`markdown`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+}
+internal interface UniffiCallbackInterfaceFfiSessionHostMethod21 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`turn`: Long,`finish`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceFfiVoiceHostMethod0 : com.sun.jna.Callback {
@@ -1049,7 +1055,7 @@ internal open class UniffiVTableCallbackInterfaceFfiTasksProvider(
     }
 
 }
-@Structure.FieldOrder("uniffiFree", "uniffiClone", "state", "reveal", "playCue", "speak", "stopSpeaking", "phrase", "captureMode", "loadSpeechModel", "hostListen", "hostStopListen", "intercept", "handleAction", "turnLogged", "factsChanged", "falseWake", "dictated", "engineTurnFinished", "typedThinking", "answerText", "typedFinished")
+@Structure.FieldOrder("uniffiFree", "uniffiClone", "state", "reveal", "playCue", "speak", "stopSpeaking", "phrase", "captureMode", "loadSpeechModel", "hostListen", "hostStopListen", "interceptTargets", "stopAlert", "pressCardButton", "handleAction", "turnLogged", "factsChanged", "falseWake", "dictated", "engineTurnFinished", "typedThinking", "answerText", "typedFinished")
 internal open class UniffiVTableCallbackInterfaceFfiSessionHost(
     @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
     @JvmField internal var `uniffiClone`: UniffiCallbackInterfaceClone? = null,
@@ -1063,16 +1069,18 @@ internal open class UniffiVTableCallbackInterfaceFfiSessionHost(
     @JvmField internal var `loadSpeechModel`: UniffiCallbackInterfaceFfiSessionHostMethod7? = null,
     @JvmField internal var `hostListen`: UniffiCallbackInterfaceFfiSessionHostMethod8? = null,
     @JvmField internal var `hostStopListen`: UniffiCallbackInterfaceFfiSessionHostMethod9? = null,
-    @JvmField internal var `intercept`: UniffiCallbackInterfaceFfiSessionHostMethod10? = null,
-    @JvmField internal var `handleAction`: UniffiCallbackInterfaceFfiSessionHostMethod11? = null,
-    @JvmField internal var `turnLogged`: UniffiCallbackInterfaceFfiSessionHostMethod12? = null,
-    @JvmField internal var `factsChanged`: UniffiCallbackInterfaceFfiSessionHostMethod13? = null,
-    @JvmField internal var `falseWake`: UniffiCallbackInterfaceFfiSessionHostMethod14? = null,
-    @JvmField internal var `dictated`: UniffiCallbackInterfaceFfiSessionHostMethod15? = null,
-    @JvmField internal var `engineTurnFinished`: UniffiCallbackInterfaceFfiSessionHostMethod16? = null,
-    @JvmField internal var `typedThinking`: UniffiCallbackInterfaceFfiSessionHostMethod17? = null,
-    @JvmField internal var `answerText`: UniffiCallbackInterfaceFfiSessionHostMethod18? = null,
-    @JvmField internal var `typedFinished`: UniffiCallbackInterfaceFfiSessionHostMethod19? = null,
+    @JvmField internal var `interceptTargets`: UniffiCallbackInterfaceFfiSessionHostMethod10? = null,
+    @JvmField internal var `stopAlert`: UniffiCallbackInterfaceFfiSessionHostMethod11? = null,
+    @JvmField internal var `pressCardButton`: UniffiCallbackInterfaceFfiSessionHostMethod12? = null,
+    @JvmField internal var `handleAction`: UniffiCallbackInterfaceFfiSessionHostMethod13? = null,
+    @JvmField internal var `turnLogged`: UniffiCallbackInterfaceFfiSessionHostMethod14? = null,
+    @JvmField internal var `factsChanged`: UniffiCallbackInterfaceFfiSessionHostMethod15? = null,
+    @JvmField internal var `falseWake`: UniffiCallbackInterfaceFfiSessionHostMethod16? = null,
+    @JvmField internal var `dictated`: UniffiCallbackInterfaceFfiSessionHostMethod17? = null,
+    @JvmField internal var `engineTurnFinished`: UniffiCallbackInterfaceFfiSessionHostMethod18? = null,
+    @JvmField internal var `typedThinking`: UniffiCallbackInterfaceFfiSessionHostMethod19? = null,
+    @JvmField internal var `answerText`: UniffiCallbackInterfaceFfiSessionHostMethod20? = null,
+    @JvmField internal var `typedFinished`: UniffiCallbackInterfaceFfiSessionHostMethod21? = null,
 ) : Structure() {
     class UniffiByValue(
         `uniffiFree`: UniffiCallbackInterfaceFree? = null,
@@ -1087,17 +1095,19 @@ internal open class UniffiVTableCallbackInterfaceFfiSessionHost(
         `loadSpeechModel`: UniffiCallbackInterfaceFfiSessionHostMethod7? = null,
         `hostListen`: UniffiCallbackInterfaceFfiSessionHostMethod8? = null,
         `hostStopListen`: UniffiCallbackInterfaceFfiSessionHostMethod9? = null,
-        `intercept`: UniffiCallbackInterfaceFfiSessionHostMethod10? = null,
-        `handleAction`: UniffiCallbackInterfaceFfiSessionHostMethod11? = null,
-        `turnLogged`: UniffiCallbackInterfaceFfiSessionHostMethod12? = null,
-        `factsChanged`: UniffiCallbackInterfaceFfiSessionHostMethod13? = null,
-        `falseWake`: UniffiCallbackInterfaceFfiSessionHostMethod14? = null,
-        `dictated`: UniffiCallbackInterfaceFfiSessionHostMethod15? = null,
-        `engineTurnFinished`: UniffiCallbackInterfaceFfiSessionHostMethod16? = null,
-        `typedThinking`: UniffiCallbackInterfaceFfiSessionHostMethod17? = null,
-        `answerText`: UniffiCallbackInterfaceFfiSessionHostMethod18? = null,
-        `typedFinished`: UniffiCallbackInterfaceFfiSessionHostMethod19? = null,
-    ): UniffiVTableCallbackInterfaceFfiSessionHost(`uniffiFree`,`uniffiClone`,`state`,`reveal`,`playCue`,`speak`,`stopSpeaking`,`phrase`,`captureMode`,`loadSpeechModel`,`hostListen`,`hostStopListen`,`intercept`,`handleAction`,`turnLogged`,`factsChanged`,`falseWake`,`dictated`,`engineTurnFinished`,`typedThinking`,`answerText`,`typedFinished`,), Structure.ByValue
+        `interceptTargets`: UniffiCallbackInterfaceFfiSessionHostMethod10? = null,
+        `stopAlert`: UniffiCallbackInterfaceFfiSessionHostMethod11? = null,
+        `pressCardButton`: UniffiCallbackInterfaceFfiSessionHostMethod12? = null,
+        `handleAction`: UniffiCallbackInterfaceFfiSessionHostMethod13? = null,
+        `turnLogged`: UniffiCallbackInterfaceFfiSessionHostMethod14? = null,
+        `factsChanged`: UniffiCallbackInterfaceFfiSessionHostMethod15? = null,
+        `falseWake`: UniffiCallbackInterfaceFfiSessionHostMethod16? = null,
+        `dictated`: UniffiCallbackInterfaceFfiSessionHostMethod17? = null,
+        `engineTurnFinished`: UniffiCallbackInterfaceFfiSessionHostMethod18? = null,
+        `typedThinking`: UniffiCallbackInterfaceFfiSessionHostMethod19? = null,
+        `answerText`: UniffiCallbackInterfaceFfiSessionHostMethod20? = null,
+        `typedFinished`: UniffiCallbackInterfaceFfiSessionHostMethod21? = null,
+    ): UniffiVTableCallbackInterfaceFfiSessionHost(`uniffiFree`,`uniffiClone`,`state`,`reveal`,`playCue`,`speak`,`stopSpeaking`,`phrase`,`captureMode`,`loadSpeechModel`,`hostListen`,`hostStopListen`,`interceptTargets`,`stopAlert`,`pressCardButton`,`handleAction`,`turnLogged`,`factsChanged`,`falseWake`,`dictated`,`engineTurnFinished`,`typedThinking`,`answerText`,`typedFinished`,), Structure.ByValue
 
    internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceFfiSessionHost) {
         `uniffiFree` = other.`uniffiFree`
@@ -1112,7 +1122,9 @@ internal open class UniffiVTableCallbackInterfaceFfiSessionHost(
         `loadSpeechModel` = other.`loadSpeechModel`
         `hostListen` = other.`hostListen`
         `hostStopListen` = other.`hostStopListen`
-        `intercept` = other.`intercept`
+        `interceptTargets` = other.`interceptTargets`
+        `stopAlert` = other.`stopAlert`
+        `pressCardButton` = other.`pressCardButton`
         `handleAction` = other.`handleAction`
         `turnLogged` = other.`turnLogged`
         `factsChanged` = other.`factsChanged`
@@ -1418,7 +1430,11 @@ external fun uniffi_ari_ffi_checksum_method_ffisessionhost_host_listen(
 ): Short
 external fun uniffi_ari_ffi_checksum_method_ffisessionhost_host_stop_listen(
 ): Short
-external fun uniffi_ari_ffi_checksum_method_ffisessionhost_intercept(
+external fun uniffi_ari_ffi_checksum_method_ffisessionhost_intercept_targets(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffisessionhost_stop_alert(
+): Short
+external fun uniffi_ari_ffi_checksum_method_ffisessionhost_press_card_button(
 ): Short
 external fun uniffi_ari_ffi_checksum_method_ffisessionhost_handle_action(
 ): Short
@@ -1879,7 +1895,11 @@ external fun uniffi_ari_ffi_fn_method_ffisessionhost_host_listen(`ptr`: Long,`pa
 ): Unit
 external fun uniffi_ari_ffi_fn_method_ffisessionhost_host_stop_listen(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
-external fun uniffi_ari_ffi_fn_method_ffisessionhost_intercept(`ptr`: Long,`text`: RustBuffer.ByValue,`cards`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+external fun uniffi_ari_ffi_fn_method_ffisessionhost_intercept_targets(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_method_ffisessionhost_stop_alert(`ptr`: Long,`alertId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+external fun uniffi_ari_ffi_fn_method_ffisessionhost_press_card_button(`ptr`: Long,`cardId`: RustBuffer.ByValue,`buttonId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_ffisessionhost_handle_action(`ptr`: Long,`json`: RustBuffer.ByValue,`skillId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -2516,34 +2536,40 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_host_stop_listen() != 43597.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_intercept() != 48869.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_intercept_targets() != 21368.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_handle_action() != 53058.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_stop_alert() != 56703.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_turn_logged() != 25562.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_press_card_button() != 54298.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_facts_changed() != 63399.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_handle_action() != 59473.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_false_wake() != 755.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_turn_logged() != 63625.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_dictated() != 22039.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_facts_changed() != 33199.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_engine_turn_finished() != 43048.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_false_wake() != 7304.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_typed_thinking() != 36362.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_dictated() != 3682.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_answer_text() != 46711.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_engine_turn_finished() != 58236.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_typed_finished() != 13993.toShort()) {
+    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_typed_thinking() != 43948.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_answer_text() != 40353.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_ffisessionhost_typed_finished() != 12386.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_ffivoicehost_load_model() != 4376.toShort()) {
@@ -9202,9 +9228,20 @@ public interface FfiSessionHost {
     fun `hostStopListen`()
     
     /**
-     * Blocking: give the words to a sounding alert or, when `cards`, the card on screen.
+     * Blocking: the sounding alerts and the cards on screen, which the
+     * session matches what was said against.
      */
-    fun `intercept`(`text`: kotlin.String, `cards`: kotlin.Boolean): FfiIntercepted
+    fun `interceptTargets`(): FfiInterceptTargets
+    
+    /**
+     * Stop sounding alert `alert_id`: its stop was said.
+     */
+    fun `stopAlert`(`alertId`: kotlin.String)
+    
+    /**
+     * Blocking: press `button_id` on card `card_id`, as a tap would.
+     */
+    fun `pressCardButton`(`cardId`: kotlin.String, `buttonId`: kotlin.String): FfiCardPressed
     
     /**
      * Blocking: run an action envelope.
@@ -9481,14 +9518,46 @@ open class FfiSessionHostImpl: Disposable, AutoCloseable, FfiSessionHost
 
     
     /**
-     * Blocking: give the words to a sounding alert or, when `cards`, the card on screen.
-     */override fun `intercept`(`text`: kotlin.String, `cards`: kotlin.Boolean): FfiIntercepted {
-            return FfiConverterTypeFfiIntercepted.lift(
+     * Blocking: the sounding alerts and the cards on screen, which the
+     * session matches what was said against.
+     */override fun `interceptTargets`(): FfiInterceptTargets {
+            return FfiConverterTypeFfiInterceptTargets.lift(
     callWithHandle {
     uniffiRustCall() { _status ->
-    UniffiLib.uniffi_ari_ffi_fn_method_ffisessionhost_intercept(
+    UniffiLib.uniffi_ari_ffi_fn_method_ffisessionhost_intercept_targets(
         it,
-        FfiConverterString.lower(`text`),FfiConverterBoolean.lower(`cards`),_status)
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Stop sounding alert `alert_id`: its stop was said.
+     */override fun `stopAlert`(`alertId`: kotlin.String)
+        = 
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffisessionhost_stop_alert(
+        it,
+        FfiConverterString.lower(`alertId`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * Blocking: press `button_id` on card `card_id`, as a tap would.
+     */override fun `pressCardButton`(`cardId`: kotlin.String, `buttonId`: kotlin.String): FfiCardPressed {
+            return FfiConverterTypeFfiCardPressed.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_ffisessionhost_press_card_button(
+        it,
+        FfiConverterString.lower(`cardId`),FfiConverterString.lower(`buttonId`),_status)
 }
     }
     )
@@ -9756,20 +9825,43 @@ internal object uniffiCallbackInterfaceFfiSessionHost {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
-    internal object `intercept`: UniffiCallbackInterfaceFfiSessionHostMethod10 {
-        override fun callback(`uniffiHandle`: Long,`text`: RustBuffer.ByValue,`cards`: Byte,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
+    internal object `interceptTargets`: UniffiCallbackInterfaceFfiSessionHostMethod10 {
+        override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeFfiSessionHost.handleMap.get(uniffiHandle)
             val makeCall = { ->
-                uniffiObj.`intercept`(
-                    FfiConverterString.lift(`text`),
-                    FfiConverterBoolean.lift(`cards`),
+                uniffiObj.`interceptTargets`(
                 )
             }
-            val writeReturn = { value: FfiIntercepted -> uniffiOutReturn.setValue(FfiConverterTypeFfiIntercepted.lower(value)) }
+            val writeReturn = { value: FfiInterceptTargets -> uniffiOutReturn.setValue(FfiConverterTypeFfiInterceptTargets.lower(value)) }
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
-    internal object `handleAction`: UniffiCallbackInterfaceFfiSessionHostMethod11 {
+    internal object `stopAlert`: UniffiCallbackInterfaceFfiSessionHostMethod11 {
+        override fun callback(`uniffiHandle`: Long,`alertId`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeFfiSessionHost.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`stopAlert`(
+                    FfiConverterString.lift(`alertId`),
+                )
+            }
+            val writeReturn = { _: Unit -> Unit }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+    internal object `pressCardButton`: UniffiCallbackInterfaceFfiSessionHostMethod12 {
+        override fun callback(`uniffiHandle`: Long,`cardId`: RustBuffer.ByValue,`buttonId`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeFfiSessionHost.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`pressCardButton`(
+                    FfiConverterString.lift(`cardId`),
+                    FfiConverterString.lift(`buttonId`),
+                )
+            }
+            val writeReturn = { value: FfiCardPressed -> uniffiOutReturn.setValue(FfiConverterTypeFfiCardPressed.lower(value)) }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+    internal object `handleAction`: UniffiCallbackInterfaceFfiSessionHostMethod13 {
         override fun callback(`uniffiHandle`: Long,`json`: RustBuffer.ByValue,`skillId`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeFfiSessionHost.handleMap.get(uniffiHandle)
             val makeCall = { ->
@@ -9782,7 +9874,7 @@ internal object uniffiCallbackInterfaceFfiSessionHost {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
-    internal object `turnLogged`: UniffiCallbackInterfaceFfiSessionHostMethod12 {
+    internal object `turnLogged`: UniffiCallbackInterfaceFfiSessionHostMethod14 {
         override fun callback(`uniffiHandle`: Long,`turn`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeFfiSessionHost.handleMap.get(uniffiHandle)
             val makeCall = { ->
@@ -9794,7 +9886,7 @@ internal object uniffiCallbackInterfaceFfiSessionHost {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
-    internal object `factsChanged`: UniffiCallbackInterfaceFfiSessionHostMethod13 {
+    internal object `factsChanged`: UniffiCallbackInterfaceFfiSessionHostMethod15 {
         override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeFfiSessionHost.handleMap.get(uniffiHandle)
             val makeCall = { ->
@@ -9805,7 +9897,7 @@ internal object uniffiCallbackInterfaceFfiSessionHost {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
-    internal object `falseWake`: UniffiCallbackInterfaceFfiSessionHostMethod14 {
+    internal object `falseWake`: UniffiCallbackInterfaceFfiSessionHostMethod16 {
         override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeFfiSessionHost.handleMap.get(uniffiHandle)
             val makeCall = { ->
@@ -9816,7 +9908,7 @@ internal object uniffiCallbackInterfaceFfiSessionHost {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
-    internal object `dictated`: UniffiCallbackInterfaceFfiSessionHostMethod15 {
+    internal object `dictated`: UniffiCallbackInterfaceFfiSessionHostMethod17 {
         override fun callback(`uniffiHandle`: Long,`text`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeFfiSessionHost.handleMap.get(uniffiHandle)
             val makeCall = { ->
@@ -9828,7 +9920,7 @@ internal object uniffiCallbackInterfaceFfiSessionHost {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
-    internal object `engineTurnFinished`: UniffiCallbackInterfaceFfiSessionHostMethod16 {
+    internal object `engineTurnFinished`: UniffiCallbackInterfaceFfiSessionHostMethod18 {
         override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeFfiSessionHost.handleMap.get(uniffiHandle)
             val makeCall = { ->
@@ -9839,7 +9931,7 @@ internal object uniffiCallbackInterfaceFfiSessionHost {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
-    internal object `typedThinking`: UniffiCallbackInterfaceFfiSessionHostMethod17 {
+    internal object `typedThinking`: UniffiCallbackInterfaceFfiSessionHostMethod19 {
         override fun callback(`uniffiHandle`: Long,`turn`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeFfiSessionHost.handleMap.get(uniffiHandle)
             val makeCall = { ->
@@ -9851,7 +9943,7 @@ internal object uniffiCallbackInterfaceFfiSessionHost {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
-    internal object `answerText`: UniffiCallbackInterfaceFfiSessionHostMethod18 {
+    internal object `answerText`: UniffiCallbackInterfaceFfiSessionHostMethod20 {
         override fun callback(`uniffiHandle`: Long,`turn`: Long,`soFar`: RustBuffer.ByValue,`markdown`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeFfiSessionHost.handleMap.get(uniffiHandle)
             val makeCall = { ->
@@ -9865,7 +9957,7 @@ internal object uniffiCallbackInterfaceFfiSessionHost {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
-    internal object `typedFinished`: UniffiCallbackInterfaceFfiSessionHostMethod19 {
+    internal object `typedFinished`: UniffiCallbackInterfaceFfiSessionHostMethod21 {
         override fun callback(`uniffiHandle`: Long,`turn`: Long,`finish`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeFfiSessionHost.handleMap.get(uniffiHandle)
             val makeCall = { ->
@@ -9904,7 +9996,9 @@ internal object uniffiCallbackInterfaceFfiSessionHost {
         `loadSpeechModel`,
         `hostListen`,
         `hostStopListen`,
-        `intercept`,
+        `interceptTargets`,
+        `stopAlert`,
+        `pressCardButton`,
         `handleAction`,
         `turnLogged`,
         `factsChanged`,
@@ -13910,6 +14004,47 @@ public object FfiConverterTypeFfiActionOutcome: FfiConverterRustBuffer<FfiAction
 
 
 /**
+ * `stop_label`: the label of the alert's Stop button.
+ */
+data class FfiAlertTarget (
+    var `id`: kotlin.String
+    , 
+    var `stopLabel`: kotlin.String?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiAlertTarget: FfiConverterRustBuffer<FfiAlertTarget> {
+    override fun read(buf: ByteBuffer): FfiAlertTarget {
+        return FfiAlertTarget(
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiAlertTarget) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterOptionalString.allocationSize(value.`stopLabel`)
+    )
+
+    override fun write(value: FfiAlertTarget, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterOptionalString.write(value.`stopLabel`, buf)
+    }
+}
+
+
+
+/**
  * One installed launchable app, pushed into the engine so scoring can tell
  * "open <app>" from "open <smart-home device>". Mirrors
  * [`ari_core::AppEntry`] across the UniFFI boundary.
@@ -14353,6 +14488,82 @@ public object FfiConverterTypeFfiCalendarEventRow: FfiConverterRustBuffer<FfiCal
             FfiConverterLong.write(value.`endMs`, buf)
             FfiConverterBoolean.write(value.`allDay`, buf)
             FfiConverterULong.write(value.`calendarId`, buf)
+    }
+}
+
+
+
+data class FfiCardButton (
+    var `id`: kotlin.String
+    , 
+    var `label`: kotlin.String
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiCardButton: FfiConverterRustBuffer<FfiCardButton> {
+    override fun read(buf: ByteBuffer): FfiCardButton {
+        return FfiCardButton(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiCardButton) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`label`)
+    )
+
+    override fun write(value: FfiCardButton, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`label`, buf)
+    }
+}
+
+
+
+data class FfiCardTarget (
+    var `id`: kotlin.String
+    , 
+    var `buttons`: List<FfiCardButton>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiCardTarget: FfiConverterRustBuffer<FfiCardTarget> {
+    override fun read(buf: ByteBuffer): FfiCardTarget {
+        return FfiCardTarget(
+            FfiConverterString.read(buf),
+            FfiConverterSequenceTypeFfiCardButton.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiCardTarget) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterSequenceTypeFfiCardButton.allocationSize(value.`buttons`)
+    )
+
+    override fun write(value: FfiCardTarget, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterSequenceTypeFfiCardButton.write(value.`buttons`, buf)
     }
 }
 
@@ -14861,6 +15072,49 @@ public object FfiConverterTypeFfiInstalledSkill: FfiConverterRustBuffer<FfiInsta
             FfiConverterString.write(value.`version`, buf)
             FfiConverterString.write(value.`installDir`, buf)
             FfiConverterSequenceString.write(value.`languages`, buf)
+    }
+}
+
+
+
+/**
+ * What words can answer instead of the engine
+ * (`ari_voice::session::InterceptTargets`): the sounding alerts, and the
+ * cards on screen, oldest first.
+ */
+data class FfiInterceptTargets (
+    var `alerts`: List<FfiAlertTarget>
+    , 
+    var `cards`: List<FfiCardTarget>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiInterceptTargets: FfiConverterRustBuffer<FfiInterceptTargets> {
+    override fun read(buf: ByteBuffer): FfiInterceptTargets {
+        return FfiInterceptTargets(
+            FfiConverterSequenceTypeFfiAlertTarget.read(buf),
+            FfiConverterSequenceTypeFfiCardTarget.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiInterceptTargets) = (
+            FfiConverterSequenceTypeFfiAlertTarget.allocationSize(value.`alerts`) +
+            FfiConverterSequenceTypeFfiCardTarget.allocationSize(value.`cards`)
+    )
+
+    override fun write(value: FfiInterceptTargets, buf: ByteBuffer) {
+            FfiConverterSequenceTypeFfiAlertTarget.write(value.`alerts`, buf)
+            FfiConverterSequenceTypeFfiCardTarget.write(value.`cards`, buf)
     }
 }
 
@@ -16173,6 +16427,111 @@ public object FfiConverterTypeFfiCaptureMode: FfiConverterRustBuffer<FfiCaptureM
 
 
 /**
+ * What pressing a card's button did. The app has acted; the session writes
+ * the log.
+ */
+sealed class FfiCardPressed {
+    
+    /**
+     * The card has gone: the words go to the engine.
+     */
+    object Gone : FfiCardPressed()
+    
+    
+    object Silent : FfiCardPressed()
+    
+    
+    /**
+     * `attachments`: the answer has any, which the app holds.
+     */
+    data class Spoken(
+        val `text`: kotlin.String, 
+        val `cards`: kotlin.Boolean, 
+        val `attachments`: kotlin.Boolean) : FfiCardPressed()
+        
+    {
+        
+
+        companion object
+    }
+    
+
+    
+
+    
+    
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiCardPressed : FfiConverterRustBuffer<FfiCardPressed>{
+    override fun read(buf: ByteBuffer): FfiCardPressed {
+        return when(buf.getInt()) {
+            1 -> FfiCardPressed.Gone
+            2 -> FfiCardPressed.Silent
+            3 -> FfiCardPressed.Spoken(
+                FfiConverterString.read(buf),
+                FfiConverterBoolean.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: FfiCardPressed) = when(value) {
+        is FfiCardPressed.Gone -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiCardPressed.Silent -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiCardPressed.Spoken -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`text`)
+                + FfiConverterBoolean.allocationSize(value.`cards`)
+                + FfiConverterBoolean.allocationSize(value.`attachments`)
+            )
+        }
+    }
+
+    override fun write(value: FfiCardPressed, buf: ByteBuffer) {
+        when(value) {
+            is FfiCardPressed.Gone -> {
+                buf.putInt(1)
+                Unit
+            }
+            is FfiCardPressed.Silent -> {
+                buf.putInt(2)
+                Unit
+            }
+            is FfiCardPressed.Spoken -> {
+                buf.putInt(3)
+                FfiConverterString.write(value.`text`, buf)
+                FfiConverterBoolean.write(value.`cards`, buf)
+                FfiConverterBoolean.write(value.`attachments`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+/**
  * Which cloud speech-to-text service to use. See [`CloudSttService`].
  */
 sealed class FfiCloudSttService {
@@ -16711,122 +17070,6 @@ public object FfiConverterTypeFfiHostHeard : FfiConverterRustBuffer<FfiHostHeard
             is FfiHostHeard.Failed -> {
                 buf.putInt(4)
                 FfiConverterTypeFfiSttFailure.write(value.`failure`, buf)
-                Unit
-            }
-        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
-    }
-}
-
-
-
-
-
-/**
- * What the app did with words an alert or a card claimed. It has acted; the
- * session writes the log.
- */
-sealed class FfiIntercepted {
-    
-    object No : FfiIntercepted()
-    
-    
-    object Alert : FfiIntercepted()
-    
-    
-    object CardSilent : FfiIntercepted()
-    
-    
-    /**
-     * `attachments`: the answer has any, which the app holds.
-     */
-    data class CardSpoken(
-        val `text`: kotlin.String, 
-        val `cards`: kotlin.Boolean, 
-        val `attachments`: kotlin.Boolean) : FfiIntercepted()
-        
-    {
-        
-
-        companion object
-    }
-    
-
-    
-
-    
-    
-
-
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeFfiIntercepted : FfiConverterRustBuffer<FfiIntercepted>{
-    override fun read(buf: ByteBuffer): FfiIntercepted {
-        return when(buf.getInt()) {
-            1 -> FfiIntercepted.No
-            2 -> FfiIntercepted.Alert
-            3 -> FfiIntercepted.CardSilent
-            4 -> FfiIntercepted.CardSpoken(
-                FfiConverterString.read(buf),
-                FfiConverterBoolean.read(buf),
-                FfiConverterBoolean.read(buf),
-                )
-            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
-        }
-    }
-
-    override fun allocationSize(value: FfiIntercepted) = when(value) {
-        is FfiIntercepted.No -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4UL
-            )
-        }
-        is FfiIntercepted.Alert -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4UL
-            )
-        }
-        is FfiIntercepted.CardSilent -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4UL
-            )
-        }
-        is FfiIntercepted.CardSpoken -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4UL
-                + FfiConverterString.allocationSize(value.`text`)
-                + FfiConverterBoolean.allocationSize(value.`cards`)
-                + FfiConverterBoolean.allocationSize(value.`attachments`)
-            )
-        }
-    }
-
-    override fun write(value: FfiIntercepted, buf: ByteBuffer) {
-        when(value) {
-            is FfiIntercepted.No -> {
-                buf.putInt(1)
-                Unit
-            }
-            is FfiIntercepted.Alert -> {
-                buf.putInt(2)
-                Unit
-            }
-            is FfiIntercepted.CardSilent -> {
-                buf.putInt(3)
-                Unit
-            }
-            is FfiIntercepted.CardSpoken -> {
-                buf.putInt(4)
-                FfiConverterString.write(value.`text`, buf)
-                FfiConverterBoolean.write(value.`cards`, buf)
-                FfiConverterBoolean.write(value.`attachments`, buf)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
@@ -17458,7 +17701,7 @@ sealed class FfiSessionState {
     
     
     /**
-     * `cards`: show the cards the last `handle_action` or `intercept` made.
+     * `cards`: show the cards the last `handle_action` or `press_card_button` made.
      */
     data class Responding(
         val `text`: kotlin.String, 
@@ -18242,6 +18485,34 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiAlertTarget: FfiConverterRustBuffer<List<FfiAlertTarget>> {
+    override fun read(buf: ByteBuffer): List<FfiAlertTarget> {
+        val len = buf.getInt()
+        return List<FfiAlertTarget>(len) {
+            FfiConverterTypeFfiAlertTarget.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiAlertTarget>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiAlertTarget.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiAlertTarget>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiAlertTarget.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiAppEntry: FfiConverterRustBuffer<List<FfiAppEntry>> {
     override fun read(buf: ByteBuffer): List<FfiAppEntry> {
         val len = buf.getInt()
@@ -18400,6 +18671,62 @@ public object FfiConverterSequenceTypeFfiCalendarEventRow: FfiConverterRustBuffe
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeFfiCalendarEventRow.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiCardButton: FfiConverterRustBuffer<List<FfiCardButton>> {
+    override fun read(buf: ByteBuffer): List<FfiCardButton> {
+        val len = buf.getInt()
+        return List<FfiCardButton>(len) {
+            FfiConverterTypeFfiCardButton.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiCardButton>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiCardButton.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiCardButton>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiCardButton.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiCardTarget: FfiConverterRustBuffer<List<FfiCardTarget>> {
+    override fun read(buf: ByteBuffer): List<FfiCardTarget> {
+        val len = buf.getInt()
+        return List<FfiCardTarget>(len) {
+            FfiConverterTypeFfiCardTarget.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiCardTarget>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiCardTarget.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiCardTarget>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiCardTarget.write(it, buf)
         }
     }
 }

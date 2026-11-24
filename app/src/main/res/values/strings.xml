@@ -750,24 +750,6 @@
         <item>Sorry, I didn\'t catch that — say it again?</item>
         <item>One more time?</item>
     </string-array>
-    <!-- Whole utterances that stop a ringing alert. Lowercase. Include what
-         the speech recogniser tends to hear instead of "stop": on-device it
-         often writes "stopped" or "stops". -->
-    <string-array name="alert_stop_phrases">
-        <item>stop</item>
-        <item>stopped</item>
-        <item>stops</item>
-    </string-array>
-
-    <!-- Endings speech recognition adds to a card button's label said on its
-         own, so saying the label still presses it: "cancel" heard as
-         "cancelled" (the doubled l), "canceled" or "cancels". -->
-    <string-array name="card_action_spoken_endings">
-        <item>s</item>
-        <item>d</item>
-        <item>ed</item>
-        <item>led</item>
-    </string-array>
 
     <!-- Adaptive empty state (conversation home screen). -->
     <!-- TODO(i18n): add values-it/ translations -->

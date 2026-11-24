@@ -8,16 +8,16 @@ import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.heyari.ari.R
 import dev.heyari.ari.actions.ActionHandler
-import dev.heyari.ari.actions.AlertVoiceIntercept
 import dev.heyari.ari.actions.CardActionDispatcher
-import dev.heyari.ari.actions.CardActionVoiceIntercept
 import dev.heyari.ari.data.SettingsRepository
 import dev.heyari.ari.data.card.CardAction
+import dev.heyari.ari.data.card.CardStateRepository
 import dev.heyari.ari.data.conversation.ConversationLogRepository
 import dev.heyari.ari.di.EngineHolder
 import dev.heyari.ari.model.Attachment
 import dev.heyari.ari.model.InputSource
 import dev.heyari.ari.model.Message
+import dev.heyari.ari.notifications.AlertRegistry
 import dev.heyari.ari.notifications.AlertService
 import dev.heyari.ari.stt.SpeechRecognizer
 import dev.heyari.ari.stt.SttModelLoader
@@ -44,8 +44,12 @@ import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
 import uniffi.ari_ffi.FfiActionOutcome
+import uniffi.ari_ffi.FfiAlertTarget
 import uniffi.ari_ffi.FfiCaptureMode
-import uniffi.ari_ffi.FfiIntercepted
+import uniffi.ari_ffi.FfiCardButton
+import uniffi.ari_ffi.FfiCardPressed
+import uniffi.ari_ffi.FfiCardTarget
+import uniffi.ari_ffi.FfiInterceptTargets
 import uniffi.ari_ffi.FfiListenParams
 import uniffi.ari_ffi.FfiLoggedTurn
 import uniffi.ari_ffi.FfiPhrase
@@ -118,8 +122,7 @@ class VoiceSession @Inject constructor(
     private val sttModelLoader: SttModelLoader,
     private val speechOutput: SpeechOutput,
     private val actionHandler: ActionHandler,
-    private val alertVoiceIntercept: AlertVoiceIntercept,
-    private val cardActionVoiceIntercept: CardActionVoiceIntercept,
+    private val cardRepository: CardStateRepository,
     private val cardActionDispatcher: CardActionDispatcher,
     private val settingsRepository: SettingsRepository,
     private val falseWakeMonitor: FalseWakeMonitor,
@@ -401,25 +404,36 @@ class VoiceSession @Inject constructor(
     }
 
     /**
-     * "Stop" over a ringing alarm silences it, ahead of everything else. The
-     * words that match a button on the card on screen (Yes, No, Cancel, or
-     * whatever labels the skill chose) press it, as a tap would, unless
-     * [cards] is false: the engine waits on a reply to its own question. On the
-     * main thread, where this ran before the session moved. The engine logs
-     * what was said and answered.
+     * The alerts sounding and the cards with their buttons. The engine matches
+     * what was said against them ("stop", or a button's label) and calls
+     * [stopAlert] or [pressCardButton].
      */
-    override fun intercept(text: String, cards: Boolean): FfiIntercepted = runBlocking(Dispatchers.Main) {
-        alertVoiceIntercept.resolve(text)?.let { alertId ->
-            context.startService(AlertService.stopIntent(context, alertId))
-            return@runBlocking FfiIntercepted.Alert
-        }
-        if (!cards) return@runBlocking FfiIntercepted.No
-        val match = cardActionVoiceIntercept.resolve(text) ?: return@runBlocking FfiIntercepted.No
-        when (val outcome = cardActionDispatcher.dispatch(match.cardId, match.action)) {
-            is CardActionDispatcher.Outcome.Silent -> FfiIntercepted.CardSilent
+    override fun interceptTargets(): FfiInterceptTargets = FfiInterceptTargets(
+        alerts = AlertRegistry.sounding().map { alert ->
+            FfiAlertTarget(id = alert.id, stopLabel = alert.actions.firstOrNull { it.id == STOP_ALERT_ACTION }?.label)
+        },
+        cards = cardRepository.state.value.map { card ->
+            FfiCardTarget(id = card.id, buttons = card.actions.map { FfiCardButton(id = it.id, label = it.label) })
+        },
+    )
+
+    override fun stopAlert(alertId: String) {
+        context.startService(AlertService.stopIntent(context, alertId))
+    }
+
+    /**
+     * Press a card's button, as a tap would. On the main thread, where this
+     * ran before the session moved. The engine logs what was said and answered.
+     */
+    override fun pressCardButton(cardId: String, buttonId: String): FfiCardPressed = runBlocking(Dispatchers.Main) {
+        val action = cardRepository.state.value.firstOrNull { it.id == cardId }
+            ?.actions?.firstOrNull { it.id == buttonId }
+            ?: return@runBlocking FfiCardPressed.Gone
+        when (val outcome = cardActionDispatcher.dispatch(cardId, action)) {
+            is CardActionDispatcher.Outcome.Silent -> FfiCardPressed.Silent
             is CardActionDispatcher.Outcome.Spoken -> {
                 turnAttachments = outcome.attachments
-                FfiIntercepted.CardSpoken(
+                FfiCardPressed.Spoken(
                     text = outcome.text,
                     cards = outcome.attachments.any { it is Attachment.Card },
                     attachments = outcome.attachments.isNotEmpty(),
@@ -545,5 +559,8 @@ class VoiceSession @Inject constructor(
 
         // How long an answer's cards stay on the overlay after it, untouched.
         private const val CARD_DWELL_MS = 10_000L
+
+        // The reserved id of an alert's Stop button.
+        private const val STOP_ALERT_ACTION = "stop_alert"
     }
 }
