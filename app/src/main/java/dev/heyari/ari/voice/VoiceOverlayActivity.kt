@@ -62,11 +62,16 @@ class VoiceOverlayActivity : ComponentActivity() {
 
         Log.i(TAG, "VoiceOverlayActivity created")
 
-        // Start the session and observe state to auto-finish on Idle.
-        voiceSession.start(
-            verifyWake = intent.getBooleanExtra(WakeWordService.EXTRA_VERIFY_WAKE, false)
-        )
-        session = voiceSession.sessionId
+        // Start the session and observe state to auto-finish on Idle. An overlay
+        // recreated by a rotation (or any configuration change) carries on with
+        // the session it showed: starting one would open a wake turn that hears
+        // Ari's own reply and counts it as a false wake.
+        session = savedInstanceState?.getInt(KEY_SESSION) ?: run {
+            voiceSession.start(
+                verifyWake = intent.getBooleanExtra(WakeWordService.EXTRA_VERIFY_WAKE, false)
+            )
+            voiceSession.sessionId
+        }
 
         lifecycleScope.launch {
             combine(voiceSession.state, voiceSession.lingering, ::Pair).collect { (state, lingering) ->
@@ -105,18 +110,26 @@ class VoiceOverlayActivity : ComponentActivity() {
         }
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putInt(KEY_SESSION, session)
+    }
+
     override fun onStop() {
         super.onStop()
         // An answer's cards go once the overlay is out of sight: the screen
-        // went off, or the user went elsewhere.
-        if (voiceSession.sessionId == session && !voiceSession.isActive) voiceSession.dropCards()
+        // went off, or the user went elsewhere. A rotation is neither.
+        if (!isChangingConfigurations && voiceSession.sessionId == session && !voiceSession.isActive) {
+            voiceSession.dropCards()
+        }
     }
 
     override fun onDestroy() {
         // Make sure the session ends if the activity is killed by something
         // outside our control (back press, system kill, etc.). Only this
-        // overlay's own session: a later one may already be running.
-        if (voiceSession.isActive && voiceSession.sessionId == session) {
+        // overlay's own session: a later one may already be running. Not for
+        // a rotation, whose new overlay takes the session over.
+        if (!isChangingConfigurations && voiceSession.isActive && voiceSession.sessionId == session) {
             voiceSession.dismiss()
         }
         super.onDestroy()
@@ -124,5 +137,6 @@ class VoiceOverlayActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "VoiceOverlayActivity"
+        private const val KEY_SESSION = "session"
     }
 }
