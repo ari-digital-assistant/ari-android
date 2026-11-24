@@ -15,8 +15,8 @@ import java.util.concurrent.ConcurrentHashMap
  * Process-local singleton (intentionally — alerts don't survive process
  * restart anyway, the foreground service holds the only authoritative
  * state). [AlertService] mutates; [AlertActivity] observes;
- * [dev.heyari.ari.actions.AlertVoiceIntercept] reads [sounding] to match a
- * spoken "stop" against the alert's own Stop button.
+ * [dev.heyari.ari.voice.VoiceSession] hands [sounding] to the engine, which
+ * matches a spoken "stop" against the alert's own Stop button.
  */
 object AlertRegistry {
     private val _active = MutableStateFlow<Set<String>>(emptySet())

@@ -14,8 +14,8 @@ import uniffi.ari_ffi.FfiResponse
 
 /**
  * Single source of truth for what happens when a card button is
- * activated — by tap, by typed text, or by speech (via
- * [CardActionVoiceIntercept]). Centralising here means every input
+ * activated — by tap, by typed text, or by speech (the engine matches
+ * the words, [dev.heyari.ari.voice.VoiceSession] presses the button). Centralising here means every input
  * path gets identical behaviour: speak "Cancel" and the on_cancel
  * envelope fires, type "Yes" and the confirmation utterance round-
  * trips, tap "Snooze" and whatever the skill wired up runs. No skill-
