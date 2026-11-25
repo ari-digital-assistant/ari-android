@@ -1202,6 +1202,8 @@ external fun uniffi_ari_ffi_checksum_func_slash_commands(
 ): Short
 external fun uniffi_ari_ffi_checksum_func_parse_presentation_envelope(
 ): Short
+external fun uniffi_ari_ffi_checksum_func_resolve_card_press(
+): Short
 external fun uniffi_ari_ffi_checksum_func_default_wake_word_model(
 ): Short
 external fun uniffi_ari_ffi_checksum_func_false_wake_burst_due(
@@ -2035,6 +2037,8 @@ external fun uniffi_ari_ffi_fn_func_slash_commands(`locale`: RustBuffer.ByValue,
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_func_parse_presentation_envelope(`json`: RustBuffer.ByValue,`skillId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_resolve_card_press(`id`: RustBuffer.ByValue,`utterance`: RustBuffer.ByValue,`speak`: RustBuffer.ByValue,`onCancel`: RustBuffer.ByValue,`alertId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_func_default_wake_word_model(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_func_false_wake_burst_due(`recent`: RustBuffer.ByValue,`notifiedAt`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -2196,6 +2200,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_func_parse_presentation_envelope() != 15934.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_resolve_card_press() != 64071.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_func_default_wake_word_model() != 30507.toShort()) {
@@ -17571,6 +17578,155 @@ public object FfiConverterTypeFfiCaptureMode: FfiConverterRustBuffer<FfiCaptureM
 
 
 
+sealed class FfiCardPress {
+    
+    data class StopAlert(
+        val `alertId`: kotlin.String) : FfiCardPress()
+        
+    {
+        
+
+        companion object
+    }
+    
+    object NoAlert : FfiCardPress()
+    
+    
+    data class Cancel(
+        val `onCancel`: kotlin.String, 
+        val `speak`: kotlin.String?) : FfiCardPress()
+        
+    {
+        
+
+        companion object
+    }
+    
+    data class Run(
+        val `utterance`: kotlin.String) : FfiCardPress()
+        
+    {
+        
+
+        companion object
+    }
+    
+    data class Dismiss(
+        val `speak`: kotlin.String?) : FfiCardPress()
+        
+    {
+        
+
+        companion object
+    }
+    
+
+    
+
+    
+    
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiCardPress : FfiConverterRustBuffer<FfiCardPress>{
+    override fun read(buf: ByteBuffer): FfiCardPress {
+        return when(buf.getInt()) {
+            1 -> FfiCardPress.StopAlert(
+                FfiConverterString.read(buf),
+                )
+            2 -> FfiCardPress.NoAlert
+            3 -> FfiCardPress.Cancel(
+                FfiConverterString.read(buf),
+                FfiConverterOptionalString.read(buf),
+                )
+            4 -> FfiCardPress.Run(
+                FfiConverterString.read(buf),
+                )
+            5 -> FfiCardPress.Dismiss(
+                FfiConverterOptionalString.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: FfiCardPress) = when(value) {
+        is FfiCardPress.StopAlert -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`alertId`)
+            )
+        }
+        is FfiCardPress.NoAlert -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiCardPress.Cancel -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`onCancel`)
+                + FfiConverterOptionalString.allocationSize(value.`speak`)
+            )
+        }
+        is FfiCardPress.Run -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`utterance`)
+            )
+        }
+        is FfiCardPress.Dismiss -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterOptionalString.allocationSize(value.`speak`)
+            )
+        }
+    }
+
+    override fun write(value: FfiCardPress, buf: ByteBuffer) {
+        when(value) {
+            is FfiCardPress.StopAlert -> {
+                buf.putInt(1)
+                FfiConverterString.write(value.`alertId`, buf)
+                Unit
+            }
+            is FfiCardPress.NoAlert -> {
+                buf.putInt(2)
+                Unit
+            }
+            is FfiCardPress.Cancel -> {
+                buf.putInt(3)
+                FfiConverterString.write(value.`onCancel`, buf)
+                FfiConverterOptionalString.write(value.`speak`, buf)
+                Unit
+            }
+            is FfiCardPress.Run -> {
+                buf.putInt(4)
+                FfiConverterString.write(value.`utterance`, buf)
+                Unit
+            }
+            is FfiCardPress.Dismiss -> {
+                buf.putInt(5)
+                FfiConverterOptionalString.write(value.`speak`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 /**
  * What pressing a card's button did. The app has acted; the session writes
  * the log.
@@ -21094,6 +21250,22 @@ public object FfiConverterMapStringTypeFfiLocalizedDisplay: FfiConverterRustBuff
     UniffiLib.uniffi_ari_ffi_fn_func_parse_presentation_envelope(
     
         FfiConverterString.lower(`json`),FfiConverterString.lower(`skillId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * What pressing a card's button does ([`ari_core::envelope::card_press`]):
+         * the button's `id`, `utterance` and `speak`, and the card's `on_cancel`
+         * and the id of the alert it rings when it ends, None for a card that has
+         * gone.
+         */ fun `resolveCardPress`(`id`: kotlin.String, `utterance`: kotlin.String?, `speak`: kotlin.String?, `onCancel`: kotlin.String?, `alertId`: kotlin.String?): FfiCardPress {
+            return FfiConverterTypeFfiCardPress.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_resolve_card_press(
+    
+        FfiConverterString.lower(`id`),FfiConverterOptionalString.lower(`utterance`),FfiConverterOptionalString.lower(`speak`),FfiConverterOptionalString.lower(`onCancel`),FfiConverterOptionalString.lower(`alertId`),_status)
 }
     )
     }

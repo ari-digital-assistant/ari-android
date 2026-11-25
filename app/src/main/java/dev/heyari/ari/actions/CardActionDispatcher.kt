@@ -10,7 +10,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import uniffi.ari_ffi.FfiCardPress
 import uniffi.ari_ffi.FfiResponse
+import uniffi.ari_ffi.resolveCardPress
 
 /**
  * Single source of truth for what happens when a card button is
@@ -18,10 +20,10 @@ import uniffi.ari_ffi.FfiResponse
  * the words, [dev.heyari.ari.voice.VoiceSession] presses the button). Centralising here means every input
  * path gets identical behaviour: speak "Cancel" and the on_cancel
  * envelope fires, type "Yes" and the confirmation utterance round-
- * trips, tap "Snooze" and whatever the skill wired up runs. No skill-
- * specific knowledge lives in this class — it dispatches by reserved
- * action id (`stop_alert`, `cancel`) and by the action's `utterance`
- * field, both already documented in the v:1 envelope schema.
+ * trips, tap "Snooze" and whatever the skill wired up runs. What a press
+ * means (reserved ids `stop_alert` and `cancel`, the card's `on_cancel`,
+ * the button's `utterance`) is the engine's call, `resolveCardPress`;
+ * this class carries it out.
  *
  * Card removal is handled here too so callers don't have to remember
  * to do it. Demo cards (id prefix `card_demo-`) get an extra
@@ -63,74 +65,56 @@ class CardActionDispatcher @Inject constructor(
      */
     suspend fun dispatch(cardId: String, action: CardAction): Outcome =
         withContext(Dispatchers.Default) {
-            when (action.id) {
-                "stop_alert" -> dispatchStopAlert(cardId)
-                "cancel" -> dispatchCancel(cardId, action)
-                else -> dispatchGeneric(cardId, action)
+            // What the press means is the engine's call (ari_core::envelope::card_press);
+            // carrying it out is the phone's.
+            val card = cardRepository.state.value.firstOrNull { it.id == cardId }
+            val press = resolveCardPress(
+                action.id,
+                action.utterance,
+                action.speak,
+                card?.onCancel,
+                card?.onComplete?.alert?.id,
+            )
+            when (press) {
+                is FfiCardPress.StopAlert -> {
+                    application.startService(AlertService.stopIntent(application, press.alertId))
+                    Outcome.Silent
+                }
+                FfiCardPress.NoAlert -> Outcome.Silent
+                is FfiCardPress.Cancel -> runOnCancel(cardId, card?.skillId.orEmpty(), press.onCancel, press.speak)
+                is FfiCardPress.Run -> {
+                    removeCard(cardId)
+                    runUtterance(press.utterance)
+                }
+                is FfiCardPress.Dismiss -> {
+                    removeCard(cardId)
+                    spokenOrSilent(press.speak)
+                }
             }
         }
 
-    private fun dispatchStopAlert(cardId: String): Outcome {
-        val card = cardRepository.state.value.firstOrNull { it.id == cardId }
-        val alertId = card?.onComplete?.alert?.id ?: return Outcome.Silent
-        application.startService(AlertService.stopIntent(application, alertId))
-        return Outcome.Silent
-    }
-
-    private suspend fun dispatchCancel(cardId: String, action: CardAction): Outcome {
-        val card = cardRepository.state.value.firstOrNull { it.id == cardId }
-
-        // Card-level on_cancel envelope wins over a button utterance —
-        // it's the documented Layer B mechanism and gives the skill a
-        // chance to bounce a clean run_utterance back through the
-        // engine without inventing a skill-specific primitive.
-        if (card?.onCancel != null) {
-            val result = actionHandler.handle(card.onCancel, card.skillId)
-            val followup = (result as? ActionResult.Spoken)?.followupUtterance
-            // The on_cancel envelope often bounces an internal utterance
-            // back through the engine (e.g. `aricancelreminder ...`) whose
-            // response carries the user-facing acknowledgement ("OK,
-            // cancelled that."). Surface that response's speak so the
-            // user hears the cancel landed. Fall back to action.speak
-            // when the round-trip didn't produce text, so a skill can
-            // still set a static ack.
-            val followupSpeak: String? = if (!followup.isNullOrBlank()) {
-                when (val response = engineHolder.processInput(followup)) {
-                    is FfiResponse.Action -> {
-                        val r = actionHandler.handle(response.json, response.skillId)
-                        r.text.ifBlank { null }
-                    }
-                    is FfiResponse.Text -> response.body.ifBlank { null }
-                    else -> null
+    private suspend fun runOnCancel(cardId: String, skillId: String, onCancel: String, speak: String?): Outcome {
+        val result = actionHandler.handle(onCancel, skillId)
+        val followup = (result as? ActionResult.Spoken)?.followupUtterance
+        // The on_cancel envelope often bounces an internal utterance
+        // back through the engine (e.g. `aricancelreminder ...`) whose
+        // response carries the user-facing acknowledgement ("OK,
+        // cancelled that."). Surface that response's speak so the
+        // user hears the cancel landed. Fall back to the button's speak
+        // when the round-trip didn't produce text, so a skill can still
+        // set a static ack.
+        val followupSpeak: String? = if (!followup.isNullOrBlank()) {
+            when (val response = engineHolder.processInput(followup)) {
+                is FfiResponse.Action -> {
+                    val r = actionHandler.handle(response.json, response.skillId)
+                    r.text.ifBlank { null }
                 }
-            } else null
-            removeCard(cardId)
-            return spokenOrSilent(followupSpeak ?: action.speak)
-        }
-
-        // Back-compat: a "cancel" action that carries an utterance but
-        // no card-level on_cancel still round-trips through the engine.
-        if (!action.utterance.isNullOrBlank()) {
-            removeCard(cardId)
-            return runUtterance(action.utterance)
-        }
-
-        // Plain dismiss — no on_cancel, no utterance. Optional speak
-        // text gives the user feedback that the cancel registered.
+                is FfiResponse.Text -> response.body.ifBlank { null }
+                else -> null
+            }
+        } else null
         removeCard(cardId)
-        return spokenOrSilent(action.speak)
-    }
-
-    private suspend fun dispatchGeneric(cardId: String, action: CardAction): Outcome {
-        removeCard(cardId)
-        val utterance = action.utterance
-        if (utterance.isNullOrBlank()) {
-            // A no-utterance button (e.g. "Keep" / "No") doesn't need
-            // an engine round-trip, but the skill may have set `speak`
-            // to acknowledge the dismissal.
-            return spokenOrSilent(action.speak)
-        }
-        return runUtterance(utterance)
+        return spokenOrSilent(followupSpeak ?: speak)
     }
 
     private fun spokenOrSilent(speak: String?): Outcome =
