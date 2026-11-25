@@ -1200,6 +1200,8 @@ external fun uniffi_ari_ffi_checksum_func_on_device_cpu_info(
 ): Short
 external fun uniffi_ari_ffi_checksum_func_slash_commands(
 ): Short
+external fun uniffi_ari_ffi_checksum_func_parse_presentation_envelope(
+): Short
 external fun uniffi_ari_ffi_checksum_func_default_wake_word_model(
 ): Short
 external fun uniffi_ari_ffi_checksum_func_false_wake_burst_due(
@@ -2031,6 +2033,8 @@ external fun uniffi_ari_ffi_fn_func_on_device_cpu_info(uniffi_out_err: UniffiRus
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_func_slash_commands(`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_parse_presentation_envelope(`json`: RustBuffer.ByValue,`skillId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_func_default_wake_word_model(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_func_false_wake_burst_due(`recent`: RustBuffer.ByValue,`notifiedAt`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -2189,6 +2193,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_func_slash_commands() != 47627.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_parse_presentation_envelope() != 15934.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_func_default_wake_word_model() != 30507.toShort()) {
@@ -14003,6 +14010,200 @@ public object FfiConverterTypeFfiActionOutcome: FfiConverterRustBuffer<FfiAction
 
 
 
+data class FfiAlarmAction (
+    var `op`: kotlin.String
+    , 
+    var `hour`: kotlin.Long?
+    , 
+    var `minute`: kotlin.Long?
+    , 
+    var `message`: kotlin.String?
+    , 
+    var `days`: List<kotlin.String>
+    , 
+    var `skipUi`: kotlin.Boolean
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiAlarmAction: FfiConverterRustBuffer<FfiAlarmAction> {
+    override fun read(buf: ByteBuffer): FfiAlarmAction {
+        return FfiAlarmAction(
+            FfiConverterString.read(buf),
+            FfiConverterOptionalLong.read(buf),
+            FfiConverterOptionalLong.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiAlarmAction) = (
+            FfiConverterString.allocationSize(value.`op`) +
+            FfiConverterOptionalLong.allocationSize(value.`hour`) +
+            FfiConverterOptionalLong.allocationSize(value.`minute`) +
+            FfiConverterOptionalString.allocationSize(value.`message`) +
+            FfiConverterSequenceString.allocationSize(value.`days`) +
+            FfiConverterBoolean.allocationSize(value.`skipUi`)
+    )
+
+    override fun write(value: FfiAlarmAction, buf: ByteBuffer) {
+            FfiConverterString.write(value.`op`, buf)
+            FfiConverterOptionalLong.write(value.`hour`, buf)
+            FfiConverterOptionalLong.write(value.`minute`, buf)
+            FfiConverterOptionalString.write(value.`message`, buf)
+            FfiConverterSequenceString.write(value.`days`, buf)
+            FfiConverterBoolean.write(value.`skipUi`, buf)
+    }
+}
+
+
+
+data class FfiAlertAction (
+    var `id`: kotlin.String
+    , 
+    var `label`: kotlin.String
+    , 
+    var `utterance`: kotlin.String?
+    , 
+    var `style`: FfiButtonStyle
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiAlertAction: FfiConverterRustBuffer<FfiAlertAction> {
+    override fun read(buf: ByteBuffer): FfiAlertAction {
+        return FfiAlertAction(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeFfiButtonStyle.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiAlertAction) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`label`) +
+            FfiConverterOptionalString.allocationSize(value.`utterance`) +
+            FfiConverterTypeFfiButtonStyle.allocationSize(value.`style`)
+    )
+
+    override fun write(value: FfiAlertAction, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`label`, buf)
+            FfiConverterOptionalString.write(value.`utterance`, buf)
+            FfiConverterTypeFfiButtonStyle.write(value.`style`, buf)
+    }
+}
+
+
+
+data class FfiAlertSpec (
+    var `id`: kotlin.String
+    , 
+    var `skillId`: kotlin.String
+    , 
+    var `title`: kotlin.String
+    , 
+    var `body`: kotlin.String?
+    , 
+    var `urgency`: FfiUrgency
+    , 
+    var `sound`: kotlin.String
+    , 
+    var `speechLoop`: kotlin.String?
+    , 
+    var `autoStopMs`: kotlin.Long
+    , 
+    var `maxCycles`: kotlin.Long
+    , 
+    var `fullTakeover`: kotlin.Boolean
+    , 
+    var `icon`: kotlin.String?
+    , 
+    var `actions`: List<FfiAlertAction>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiAlertSpec: FfiConverterRustBuffer<FfiAlertSpec> {
+    override fun read(buf: ByteBuffer): FfiAlertSpec {
+        return FfiAlertSpec(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeFfiUrgency.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterSequenceTypeFfiAlertAction.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiAlertSpec) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`skillId`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterOptionalString.allocationSize(value.`body`) +
+            FfiConverterTypeFfiUrgency.allocationSize(value.`urgency`) +
+            FfiConverterString.allocationSize(value.`sound`) +
+            FfiConverterOptionalString.allocationSize(value.`speechLoop`) +
+            FfiConverterLong.allocationSize(value.`autoStopMs`) +
+            FfiConverterLong.allocationSize(value.`maxCycles`) +
+            FfiConverterBoolean.allocationSize(value.`fullTakeover`) +
+            FfiConverterOptionalString.allocationSize(value.`icon`) +
+            FfiConverterSequenceTypeFfiAlertAction.allocationSize(value.`actions`)
+    )
+
+    override fun write(value: FfiAlertSpec, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`skillId`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterOptionalString.write(value.`body`, buf)
+            FfiConverterTypeFfiUrgency.write(value.`urgency`, buf)
+            FfiConverterString.write(value.`sound`, buf)
+            FfiConverterOptionalString.write(value.`speechLoop`, buf)
+            FfiConverterLong.write(value.`autoStopMs`, buf)
+            FfiConverterLong.write(value.`maxCycles`, buf)
+            FfiConverterBoolean.write(value.`fullTakeover`, buf)
+            FfiConverterOptionalString.write(value.`icon`, buf)
+            FfiConverterSequenceTypeFfiAlertAction.write(value.`actions`, buf)
+    }
+}
+
+
+
 /**
  * `stop_label`: the label of the alert's Stop button.
  */
@@ -14493,6 +14694,162 @@ public object FfiConverterTypeFfiCalendarEventRow: FfiConverterRustBuffer<FfiCal
 
 
 
+data class FfiCard (
+    var `id`: kotlin.String
+    , 
+    var `skillId`: kotlin.String
+    , 
+    var `title`: kotlin.String
+    , 
+    var `subtitle`: kotlin.String?
+    , 
+    var `body`: kotlin.String?
+    , 
+    var `icon`: kotlin.String?
+    , 
+    var `countdownToTsMs`: kotlin.Long?
+    , 
+    var `startedAtTsMs`: kotlin.Long?
+    , 
+    var `progress`: kotlin.Float?
+    , 
+    var `accent`: FfiAccent
+    , 
+    var `actions`: List<FfiCardAction>
+    , 
+    var `onComplete`: FfiOnComplete?
+    , 
+    var `onCancel`: kotlin.String?
+    , 
+    var `stat`: FfiStat?
+    , 
+    var `list`: FfiListCard?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiCard: FfiConverterRustBuffer<FfiCard> {
+    override fun read(buf: ByteBuffer): FfiCard {
+        return FfiCard(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalLong.read(buf),
+            FfiConverterOptionalLong.read(buf),
+            FfiConverterOptionalFloat.read(buf),
+            FfiConverterTypeFfiAccent.read(buf),
+            FfiConverterSequenceTypeFfiCardAction.read(buf),
+            FfiConverterOptionalTypeFfiOnComplete.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalTypeFfiStat.read(buf),
+            FfiConverterOptionalTypeFfiListCard.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiCard) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`skillId`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterOptionalString.allocationSize(value.`subtitle`) +
+            FfiConverterOptionalString.allocationSize(value.`body`) +
+            FfiConverterOptionalString.allocationSize(value.`icon`) +
+            FfiConverterOptionalLong.allocationSize(value.`countdownToTsMs`) +
+            FfiConverterOptionalLong.allocationSize(value.`startedAtTsMs`) +
+            FfiConverterOptionalFloat.allocationSize(value.`progress`) +
+            FfiConverterTypeFfiAccent.allocationSize(value.`accent`) +
+            FfiConverterSequenceTypeFfiCardAction.allocationSize(value.`actions`) +
+            FfiConverterOptionalTypeFfiOnComplete.allocationSize(value.`onComplete`) +
+            FfiConverterOptionalString.allocationSize(value.`onCancel`) +
+            FfiConverterOptionalTypeFfiStat.allocationSize(value.`stat`) +
+            FfiConverterOptionalTypeFfiListCard.allocationSize(value.`list`)
+    )
+
+    override fun write(value: FfiCard, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`skillId`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterOptionalString.write(value.`subtitle`, buf)
+            FfiConverterOptionalString.write(value.`body`, buf)
+            FfiConverterOptionalString.write(value.`icon`, buf)
+            FfiConverterOptionalLong.write(value.`countdownToTsMs`, buf)
+            FfiConverterOptionalLong.write(value.`startedAtTsMs`, buf)
+            FfiConverterOptionalFloat.write(value.`progress`, buf)
+            FfiConverterTypeFfiAccent.write(value.`accent`, buf)
+            FfiConverterSequenceTypeFfiCardAction.write(value.`actions`, buf)
+            FfiConverterOptionalTypeFfiOnComplete.write(value.`onComplete`, buf)
+            FfiConverterOptionalString.write(value.`onCancel`, buf)
+            FfiConverterOptionalTypeFfiStat.write(value.`stat`, buf)
+            FfiConverterOptionalTypeFfiListCard.write(value.`list`, buf)
+    }
+}
+
+
+
+data class FfiCardAction (
+    var `id`: kotlin.String
+    , 
+    var `label`: kotlin.String
+    , 
+    var `utterance`: kotlin.String?
+    , 
+    var `speak`: kotlin.String?
+    , 
+    var `style`: FfiButtonStyle
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiCardAction: FfiConverterRustBuffer<FfiCardAction> {
+    override fun read(buf: ByteBuffer): FfiCardAction {
+        return FfiCardAction(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeFfiButtonStyle.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiCardAction) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`label`) +
+            FfiConverterOptionalString.allocationSize(value.`utterance`) +
+            FfiConverterOptionalString.allocationSize(value.`speak`) +
+            FfiConverterTypeFfiButtonStyle.allocationSize(value.`style`)
+    )
+
+    override fun write(value: FfiCardAction, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`label`, buf)
+            FfiConverterOptionalString.write(value.`utterance`, buf)
+            FfiConverterOptionalString.write(value.`speak`, buf)
+            FfiConverterTypeFfiButtonStyle.write(value.`style`, buf)
+    }
+}
+
+
+
 data class FfiCardButton (
     var `id`: kotlin.String
     , 
@@ -14903,6 +15260,44 @@ public object FfiConverterTypeFfiCutoffRange: FfiConverterRustBuffer<FfiCutoffRa
 
 
 
+data class FfiIconText (
+    var `icon`: kotlin.String?
+    , 
+    var `text`: kotlin.String
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiIconText: FfiConverterRustBuffer<FfiIconText> {
+    override fun read(buf: ByteBuffer): FfiIconText {
+        return FfiIconText(
+            FfiConverterOptionalString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiIconText) = (
+            FfiConverterOptionalString.allocationSize(value.`icon`) +
+            FfiConverterString.allocationSize(value.`text`)
+    )
+
+    override fun write(value: FfiIconText, buf: ByteBuffer) {
+            FfiConverterOptionalString.write(value.`icon`, buf)
+            FfiConverterString.write(value.`text`, buf)
+    }
+}
+
+
+
 data class FfiInsertCalendarEventParams (
     var `calendarId`: kotlin.ULong
     , 
@@ -15168,6 +15563,102 @@ public object FfiConverterTypeFfiLadderFit: FfiConverterRustBuffer<FfiLadderFit>
             FfiConverterInt.write(value.`phrasesTotal`, buf)
             FfiConverterFloat.write(value.`worstDecoy`, buf)
             FfiConverterBoolean.write(value.`overlapping`, buf)
+    }
+}
+
+
+
+data class FfiListCard (
+    var `summary`: FfiIconText?
+    , 
+    var `rows`: List<FfiListRow>
+    , 
+    var `footer`: FfiIconText?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiListCard: FfiConverterRustBuffer<FfiListCard> {
+    override fun read(buf: ByteBuffer): FfiListCard {
+        return FfiListCard(
+            FfiConverterOptionalTypeFfiIconText.read(buf),
+            FfiConverterSequenceTypeFfiListRow.read(buf),
+            FfiConverterOptionalTypeFfiIconText.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiListCard) = (
+            FfiConverterOptionalTypeFfiIconText.allocationSize(value.`summary`) +
+            FfiConverterSequenceTypeFfiListRow.allocationSize(value.`rows`) +
+            FfiConverterOptionalTypeFfiIconText.allocationSize(value.`footer`)
+    )
+
+    override fun write(value: FfiListCard, buf: ByteBuffer) {
+            FfiConverterOptionalTypeFfiIconText.write(value.`summary`, buf)
+            FfiConverterSequenceTypeFfiListRow.write(value.`rows`, buf)
+            FfiConverterOptionalTypeFfiIconText.write(value.`footer`, buf)
+    }
+}
+
+
+
+data class FfiListRow (
+    var `leading`: kotlin.String
+    , 
+    var `icon`: kotlin.String?
+    , 
+    var `text`: kotlin.String?
+    , 
+    var `trailing`: kotlin.String?
+    , 
+    var `badge`: FfiIconText?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiListRow: FfiConverterRustBuffer<FfiListRow> {
+    override fun read(buf: ByteBuffer): FfiListRow {
+        return FfiListRow(
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalTypeFfiIconText.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiListRow) = (
+            FfiConverterString.allocationSize(value.`leading`) +
+            FfiConverterOptionalString.allocationSize(value.`icon`) +
+            FfiConverterOptionalString.allocationSize(value.`text`) +
+            FfiConverterOptionalString.allocationSize(value.`trailing`) +
+            FfiConverterOptionalTypeFfiIconText.allocationSize(value.`badge`)
+    )
+
+    override fun write(value: FfiListRow, buf: ByteBuffer) {
+            FfiConverterString.write(value.`leading`, buf)
+            FfiConverterOptionalString.write(value.`icon`, buf)
+            FfiConverterOptionalString.write(value.`text`, buf)
+            FfiConverterOptionalString.write(value.`trailing`, buf)
+            FfiConverterOptionalTypeFfiIconText.write(value.`badge`, buf)
     }
 }
 
@@ -15480,6 +15971,314 @@ public object FfiConverterTypeFfiLoggedTurn: FfiConverterRustBuffer<FfiLoggedTur
 
 
 
+data class FfiMediaAction (
+    var `action`: kotlin.String
+    , 
+    var `query`: kotlin.String?
+    , 
+    var `service`: kotlin.String?
+    , 
+    var `direction`: kotlin.String?
+    , 
+    var `level`: kotlin.Long?
+    , 
+    var `mute`: kotlin.Boolean?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiMediaAction: FfiConverterRustBuffer<FfiMediaAction> {
+    override fun read(buf: ByteBuffer): FfiMediaAction {
+        return FfiMediaAction(
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalLong.read(buf),
+            FfiConverterOptionalBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiMediaAction) = (
+            FfiConverterString.allocationSize(value.`action`) +
+            FfiConverterOptionalString.allocationSize(value.`query`) +
+            FfiConverterOptionalString.allocationSize(value.`service`) +
+            FfiConverterOptionalString.allocationSize(value.`direction`) +
+            FfiConverterOptionalLong.allocationSize(value.`level`) +
+            FfiConverterOptionalBoolean.allocationSize(value.`mute`)
+    )
+
+    override fun write(value: FfiMediaAction, buf: ByteBuffer) {
+            FfiConverterString.write(value.`action`, buf)
+            FfiConverterOptionalString.write(value.`query`, buf)
+            FfiConverterOptionalString.write(value.`service`, buf)
+            FfiConverterOptionalString.write(value.`direction`, buf)
+            FfiConverterOptionalLong.write(value.`level`, buf)
+            FfiConverterOptionalBoolean.write(value.`mute`, buf)
+    }
+}
+
+
+
+data class FfiMessageAction (
+    var `text`: kotlin.String
+    , 
+    var `service`: kotlin.String?
+    , 
+    var `recipientId`: kotlin.String?
+    , 
+    var `recipientLabel`: kotlin.String?
+    , 
+    var `delivery`: kotlin.String?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiMessageAction: FfiConverterRustBuffer<FfiMessageAction> {
+    override fun read(buf: ByteBuffer): FfiMessageAction {
+        return FfiMessageAction(
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiMessageAction) = (
+            FfiConverterString.allocationSize(value.`text`) +
+            FfiConverterOptionalString.allocationSize(value.`service`) +
+            FfiConverterOptionalString.allocationSize(value.`recipientId`) +
+            FfiConverterOptionalString.allocationSize(value.`recipientLabel`) +
+            FfiConverterOptionalString.allocationSize(value.`delivery`)
+    )
+
+    override fun write(value: FfiMessageAction, buf: ByteBuffer) {
+            FfiConverterString.write(value.`text`, buf)
+            FfiConverterOptionalString.write(value.`service`, buf)
+            FfiConverterOptionalString.write(value.`recipientId`, buf)
+            FfiConverterOptionalString.write(value.`recipientLabel`, buf)
+            FfiConverterOptionalString.write(value.`delivery`, buf)
+    }
+}
+
+
+
+data class FfiNavigateAction (
+    var `destination`: kotlin.String
+    , 
+    var `mode`: kotlin.String?
+    , 
+    var `place`: kotlin.String?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiNavigateAction: FfiConverterRustBuffer<FfiNavigateAction> {
+    override fun read(buf: ByteBuffer): FfiNavigateAction {
+        return FfiNavigateAction(
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiNavigateAction) = (
+            FfiConverterString.allocationSize(value.`destination`) +
+            FfiConverterOptionalString.allocationSize(value.`mode`) +
+            FfiConverterOptionalString.allocationSize(value.`place`)
+    )
+
+    override fun write(value: FfiNavigateAction, buf: ByteBuffer) {
+            FfiConverterString.write(value.`destination`, buf)
+            FfiConverterOptionalString.write(value.`mode`, buf)
+            FfiConverterOptionalString.write(value.`place`, buf)
+    }
+}
+
+
+
+data class FfiNotificationAction (
+    var `id`: kotlin.String
+    , 
+    var `label`: kotlin.String
+    , 
+    var `utterance`: kotlin.String?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiNotificationAction: FfiConverterRustBuffer<FfiNotificationAction> {
+    override fun read(buf: ByteBuffer): FfiNotificationAction {
+        return FfiNotificationAction(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiNotificationAction) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`label`) +
+            FfiConverterOptionalString.allocationSize(value.`utterance`)
+    )
+
+    override fun write(value: FfiNotificationAction, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`label`, buf)
+            FfiConverterOptionalString.write(value.`utterance`, buf)
+    }
+}
+
+
+
+data class FfiNotificationSpec (
+    var `id`: kotlin.String
+    , 
+    var `skillId`: kotlin.String
+    , 
+    var `title`: kotlin.String
+    , 
+    var `body`: kotlin.String?
+    , 
+    var `importance`: FfiImportance
+    , 
+    var `sticky`: kotlin.Boolean
+    , 
+    var `countdownToTsMs`: kotlin.Long?
+    , 
+    var `actions`: List<FfiNotificationAction>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiNotificationSpec: FfiConverterRustBuffer<FfiNotificationSpec> {
+    override fun read(buf: ByteBuffer): FfiNotificationSpec {
+        return FfiNotificationSpec(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeFfiImportance.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalLong.read(buf),
+            FfiConverterSequenceTypeFfiNotificationAction.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiNotificationSpec) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`skillId`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterOptionalString.allocationSize(value.`body`) +
+            FfiConverterTypeFfiImportance.allocationSize(value.`importance`) +
+            FfiConverterBoolean.allocationSize(value.`sticky`) +
+            FfiConverterOptionalLong.allocationSize(value.`countdownToTsMs`) +
+            FfiConverterSequenceTypeFfiNotificationAction.allocationSize(value.`actions`)
+    )
+
+    override fun write(value: FfiNotificationSpec, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`skillId`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterOptionalString.write(value.`body`, buf)
+            FfiConverterTypeFfiImportance.write(value.`importance`, buf)
+            FfiConverterBoolean.write(value.`sticky`, buf)
+            FfiConverterOptionalLong.write(value.`countdownToTsMs`, buf)
+            FfiConverterSequenceTypeFfiNotificationAction.write(value.`actions`, buf)
+    }
+}
+
+
+
+data class FfiOnComplete (
+    var `alert`: FfiAlertSpec?
+    , 
+    var `dismissCard`: kotlin.Boolean
+    , 
+    var `dismissNotifications`: List<kotlin.String>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiOnComplete: FfiConverterRustBuffer<FfiOnComplete> {
+    override fun read(buf: ByteBuffer): FfiOnComplete {
+        return FfiOnComplete(
+            FfiConverterOptionalTypeFfiAlertSpec.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterSequenceString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiOnComplete) = (
+            FfiConverterOptionalTypeFfiAlertSpec.allocationSize(value.`alert`) +
+            FfiConverterBoolean.allocationSize(value.`dismissCard`) +
+            FfiConverterSequenceString.allocationSize(value.`dismissNotifications`)
+    )
+
+    override fun write(value: FfiOnComplete, buf: ByteBuffer) {
+            FfiConverterOptionalTypeFfiAlertSpec.write(value.`alert`, buf)
+            FfiConverterBoolean.write(value.`dismissCard`, buf)
+            FfiConverterSequenceString.write(value.`dismissNotifications`, buf)
+    }
+}
+
+
+
 data class FfiOperatingPoint (
     var `probabilityCutoff`: kotlin.Float
     , 
@@ -15513,6 +16312,185 @@ public object FfiConverterTypeFfiOperatingPoint: FfiConverterRustBuffer<FfiOpera
     override fun write(value: FfiOperatingPoint, buf: ByteBuffer) {
             FfiConverterFloat.write(value.`probabilityCutoff`, buf)
             FfiConverterInt.write(value.`slidingWindowSize`, buf)
+    }
+}
+
+
+
+data class FfiPresentationEnvelope (
+    var `speak`: kotlin.String?
+    , 
+    var `display`: kotlin.String?
+    , 
+    var `cards`: List<FfiCard>
+    , 
+    var `alerts`: List<FfiAlertSpec>
+    , 
+    var `notifications`: List<FfiNotificationSpec>
+    , 
+    var `launchApp`: kotlin.String?
+    , 
+    var `media`: FfiMediaAction?
+    , 
+    var `alarm`: FfiAlarmAction?
+    , 
+    var `navigate`: FfiNavigateAction?
+    , 
+    var `message`: FfiMessageAction?
+    , 
+    var `reply`: FfiReplyAction?
+    , 
+    var `search`: kotlin.String?
+    , 
+    var `openUrl`: kotlin.String?
+    , 
+    var `clipboardText`: kotlin.String?
+    , 
+    var `dismissCards`: List<kotlin.String>
+    , 
+    var `dismissNotifications`: List<kotlin.String>
+    , 
+    var `dismissAlerts`: List<kotlin.String>
+    , 
+    var `runUtterance`: kotlin.String?
+    , 
+    var `confidence`: FfiConfidence
+    , 
+    var `unparsed`: kotlin.String?
+    , 
+    var `suggestSkill`: FfiSkillSuggestion?
+    , 
+    /**
+     * [`PresentationEnvelope::has_presentation`].
+     */
+    var `hasPresentation`: kotlin.Boolean
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPresentationEnvelope: FfiConverterRustBuffer<FfiPresentationEnvelope> {
+    override fun read(buf: ByteBuffer): FfiPresentationEnvelope {
+        return FfiPresentationEnvelope(
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterSequenceTypeFfiCard.read(buf),
+            FfiConverterSequenceTypeFfiAlertSpec.read(buf),
+            FfiConverterSequenceTypeFfiNotificationSpec.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalTypeFfiMediaAction.read(buf),
+            FfiConverterOptionalTypeFfiAlarmAction.read(buf),
+            FfiConverterOptionalTypeFfiNavigateAction.read(buf),
+            FfiConverterOptionalTypeFfiMessageAction.read(buf),
+            FfiConverterOptionalTypeFfiReplyAction.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterSequenceString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeFfiConfidence.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalTypeFfiSkillSuggestion.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPresentationEnvelope) = (
+            FfiConverterOptionalString.allocationSize(value.`speak`) +
+            FfiConverterOptionalString.allocationSize(value.`display`) +
+            FfiConverterSequenceTypeFfiCard.allocationSize(value.`cards`) +
+            FfiConverterSequenceTypeFfiAlertSpec.allocationSize(value.`alerts`) +
+            FfiConverterSequenceTypeFfiNotificationSpec.allocationSize(value.`notifications`) +
+            FfiConverterOptionalString.allocationSize(value.`launchApp`) +
+            FfiConverterOptionalTypeFfiMediaAction.allocationSize(value.`media`) +
+            FfiConverterOptionalTypeFfiAlarmAction.allocationSize(value.`alarm`) +
+            FfiConverterOptionalTypeFfiNavigateAction.allocationSize(value.`navigate`) +
+            FfiConverterOptionalTypeFfiMessageAction.allocationSize(value.`message`) +
+            FfiConverterOptionalTypeFfiReplyAction.allocationSize(value.`reply`) +
+            FfiConverterOptionalString.allocationSize(value.`search`) +
+            FfiConverterOptionalString.allocationSize(value.`openUrl`) +
+            FfiConverterOptionalString.allocationSize(value.`clipboardText`) +
+            FfiConverterSequenceString.allocationSize(value.`dismissCards`) +
+            FfiConverterSequenceString.allocationSize(value.`dismissNotifications`) +
+            FfiConverterSequenceString.allocationSize(value.`dismissAlerts`) +
+            FfiConverterOptionalString.allocationSize(value.`runUtterance`) +
+            FfiConverterTypeFfiConfidence.allocationSize(value.`confidence`) +
+            FfiConverterOptionalString.allocationSize(value.`unparsed`) +
+            FfiConverterOptionalTypeFfiSkillSuggestion.allocationSize(value.`suggestSkill`) +
+            FfiConverterBoolean.allocationSize(value.`hasPresentation`)
+    )
+
+    override fun write(value: FfiPresentationEnvelope, buf: ByteBuffer) {
+            FfiConverterOptionalString.write(value.`speak`, buf)
+            FfiConverterOptionalString.write(value.`display`, buf)
+            FfiConverterSequenceTypeFfiCard.write(value.`cards`, buf)
+            FfiConverterSequenceTypeFfiAlertSpec.write(value.`alerts`, buf)
+            FfiConverterSequenceTypeFfiNotificationSpec.write(value.`notifications`, buf)
+            FfiConverterOptionalString.write(value.`launchApp`, buf)
+            FfiConverterOptionalTypeFfiMediaAction.write(value.`media`, buf)
+            FfiConverterOptionalTypeFfiAlarmAction.write(value.`alarm`, buf)
+            FfiConverterOptionalTypeFfiNavigateAction.write(value.`navigate`, buf)
+            FfiConverterOptionalTypeFfiMessageAction.write(value.`message`, buf)
+            FfiConverterOptionalTypeFfiReplyAction.write(value.`reply`, buf)
+            FfiConverterOptionalString.write(value.`search`, buf)
+            FfiConverterOptionalString.write(value.`openUrl`, buf)
+            FfiConverterOptionalString.write(value.`clipboardText`, buf)
+            FfiConverterSequenceString.write(value.`dismissCards`, buf)
+            FfiConverterSequenceString.write(value.`dismissNotifications`, buf)
+            FfiConverterSequenceString.write(value.`dismissAlerts`, buf)
+            FfiConverterOptionalString.write(value.`runUtterance`, buf)
+            FfiConverterTypeFfiConfidence.write(value.`confidence`, buf)
+            FfiConverterOptionalString.write(value.`unparsed`, buf)
+            FfiConverterOptionalTypeFfiSkillSuggestion.write(value.`suggestSkill`, buf)
+            FfiConverterBoolean.write(value.`hasPresentation`, buf)
+    }
+}
+
+
+
+data class FfiReplyAction (
+    var `text`: kotlin.String
+    , 
+    var `recipientLabel`: kotlin.String?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiReplyAction: FfiConverterRustBuffer<FfiReplyAction> {
+    override fun read(buf: ByteBuffer): FfiReplyAction {
+        return FfiReplyAction(
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiReplyAction) = (
+            FfiConverterString.allocationSize(value.`text`) +
+            FfiConverterOptionalString.allocationSize(value.`recipientLabel`)
+    )
+
+    override fun write(value: FfiReplyAction, buf: ByteBuffer) {
+            FfiConverterString.write(value.`text`, buf)
+            FfiConverterOptionalString.write(value.`recipientLabel`, buf)
     }
 }
 
@@ -15807,6 +16785,44 @@ public object FfiConverterTypeFfiSkillManifest: FfiConverterRustBuffer<FfiSkillM
 
 
 
+data class FfiSkillSuggestion (
+    var `id`: kotlin.String
+    , 
+    var `name`: kotlin.String
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiSkillSuggestion: FfiConverterRustBuffer<FfiSkillSuggestion> {
+    override fun read(buf: ByteBuffer): FfiSkillSuggestion {
+        return FfiSkillSuggestion(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiSkillSuggestion) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`name`)
+    )
+
+    override fun write(value: FfiSkillSuggestion, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`name`, buf)
+    }
+}
+
+
+
 /**
  * One update the registry has for a skill that's already installed.
  * `name` + `description` come from the registry index so the UI can
@@ -15912,6 +16928,64 @@ public object FfiConverterTypeFfiSlashCommand: FfiConverterRustBuffer<FfiSlashCo
             FfiConverterString.write(value.`name`, buf)
             FfiConverterString.write(value.`description`, buf)
             FfiConverterBoolean.write(value.`takesArgument`, buf)
+    }
+}
+
+
+
+data class FfiStat (
+    var `headline`: kotlin.String
+    , 
+    var `caption`: kotlin.String?
+    , 
+    var `pill`: FfiIconText?
+    , 
+    var `metrics`: List<FfiIconText>
+    , 
+    var `background`: kotlin.String?
+    , 
+    var `footer`: FfiIconText?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiStat: FfiConverterRustBuffer<FfiStat> {
+    override fun read(buf: ByteBuffer): FfiStat {
+        return FfiStat(
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalTypeFfiIconText.read(buf),
+            FfiConverterSequenceTypeFfiIconText.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalTypeFfiIconText.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiStat) = (
+            FfiConverterString.allocationSize(value.`headline`) +
+            FfiConverterOptionalString.allocationSize(value.`caption`) +
+            FfiConverterOptionalTypeFfiIconText.allocationSize(value.`pill`) +
+            FfiConverterSequenceTypeFfiIconText.allocationSize(value.`metrics`) +
+            FfiConverterOptionalString.allocationSize(value.`background`) +
+            FfiConverterOptionalTypeFfiIconText.allocationSize(value.`footer`)
+    )
+
+    override fun write(value: FfiStat, buf: ByteBuffer) {
+            FfiConverterString.write(value.`headline`, buf)
+            FfiConverterOptionalString.write(value.`caption`, buf)
+            FfiConverterOptionalTypeFfiIconText.write(value.`pill`, buf)
+            FfiConverterSequenceTypeFfiIconText.write(value.`metrics`, buf)
+            FfiConverterOptionalString.write(value.`background`, buf)
+            FfiConverterOptionalTypeFfiIconText.write(value.`footer`, buf)
     }
 }
 
@@ -16388,6 +17462,77 @@ public object FfiConverterTypeFfiWakeWordModel: FfiConverterRustBuffer<FfiWakeWo
 
 
 
+
+enum class FfiAccent {
+    
+    DEFAULT,
+    WARNING,
+    SUCCESS,
+    CRITICAL;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiAccent: FfiConverterRustBuffer<FfiAccent> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiAccent.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiAccent) = 4UL
+
+    override fun write(value: FfiAccent, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
+enum class FfiButtonStyle {
+    
+    DEFAULT,
+    PRIMARY,
+    DESTRUCTIVE;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiButtonStyle: FfiConverterRustBuffer<FfiButtonStyle> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiButtonStyle.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiButtonStyle) = 4UL
+
+    override fun write(value: FfiButtonStyle, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 /**
  * How the mic is captured: wake-word listening, or echo-cancelled for a
  * "let's talk" session with barge-in.
@@ -16604,6 +17749,41 @@ public object FfiConverterTypeFfiCloudSttService : FfiConverterRustBuffer<FfiClo
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+
+enum class FfiConfidence {
+    
+    HIGH,
+    PARTIAL,
+    LOW;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiConfidence: FfiConverterRustBuffer<FfiConfidence> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiConfidence.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiConfidence) = 4UL
+
+    override fun write(value: FfiConfidence, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
     }
 }
 
@@ -17073,6 +18253,42 @@ public object FfiConverterTypeFfiHostHeard : FfiConverterRustBuffer<FfiHostHeard
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+
+enum class FfiImportance {
+    
+    MIN,
+    LOW,
+    DEFAULT,
+    HIGH;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiImportance: FfiConverterRustBuffer<FfiImportance> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiImportance.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiImportance) = 4UL
+
+    override fun write(value: FfiImportance, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
     }
 }
 
@@ -17900,6 +19116,41 @@ public object FfiConverterTypeFfiSttFailure: FfiConverterRustBuffer<FfiSttFailur
 
 
 
+enum class FfiUrgency {
+    
+    NORMAL,
+    HIGH,
+    CRITICAL;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiUrgency: FfiConverterRustBuffer<FfiUrgency> {
+    override fun read(buf: ByteBuffer) = try {
+        FfiUrgency.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: FfiUrgency) = 4UL
+
+    override fun write(value: FfiUrgency, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+
 
 sealed class FfiVoiceException: kotlin.Exception() {
     
@@ -18177,6 +19428,70 @@ public object FfiConverterOptionalLong: FfiConverterRustBuffer<kotlin.Long?> {
 /**
  * @suppress
  */
+public object FfiConverterOptionalFloat: FfiConverterRustBuffer<kotlin.Float?> {
+    override fun read(buf: ByteBuffer): kotlin.Float? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterFloat.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.Float?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterFloat.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.Float?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterFloat.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalBoolean: FfiConverterRustBuffer<kotlin.Boolean?> {
+    override fun read(buf: ByteBuffer): kotlin.Boolean? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterBoolean.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.Boolean?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterBoolean.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.Boolean?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterBoolean.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?> {
     override fun read(buf: ByteBuffer): kotlin.String? {
         if (buf.get().toInt() == 0) {
@@ -18273,6 +19588,70 @@ public object FfiConverterOptionalTypeFfiListenFeed: FfiConverterRustBuffer<FfiL
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeFfiAlarmAction: FfiConverterRustBuffer<FfiAlarmAction?> {
+    override fun read(buf: ByteBuffer): FfiAlarmAction? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiAlarmAction.read(buf)
+    }
+
+    override fun allocationSize(value: FfiAlarmAction?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiAlarmAction.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiAlarmAction?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiAlarmAction.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeFfiAlertSpec: FfiConverterRustBuffer<FfiAlertSpec?> {
+    override fun read(buf: ByteBuffer): FfiAlertSpec? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiAlertSpec.read(buf)
+    }
+
+    override fun allocationSize(value: FfiAlertSpec?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiAlertSpec.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiAlertSpec?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiAlertSpec.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeFfiCloudSttSetup: FfiConverterRustBuffer<FfiCloudSttSetup?> {
     override fun read(buf: ByteBuffer): FfiCloudSttSetup? {
         if (buf.get().toInt() == 0) {
@@ -18295,6 +19674,38 @@ public object FfiConverterOptionalTypeFfiCloudSttSetup: FfiConverterRustBuffer<F
         } else {
             buf.put(1)
             FfiConverterTypeFfiCloudSttSetup.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeFfiIconText: FfiConverterRustBuffer<FfiIconText?> {
+    override fun read(buf: ByteBuffer): FfiIconText? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiIconText.read(buf)
+    }
+
+    override fun allocationSize(value: FfiIconText?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiIconText.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiIconText?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiIconText.write(value, buf)
         }
     }
 }
@@ -18337,6 +19748,38 @@ public object FfiConverterOptionalTypeFfiLadderFit: FfiConverterRustBuffer<FfiLa
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeFfiListCard: FfiConverterRustBuffer<FfiListCard?> {
+    override fun read(buf: ByteBuffer): FfiListCard? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiListCard.read(buf)
+    }
+
+    override fun allocationSize(value: FfiListCard?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiListCard.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiListCard?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiListCard.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeFfiLoggedReply: FfiConverterRustBuffer<FfiLoggedReply?> {
     override fun read(buf: ByteBuffer): FfiLoggedReply? {
         if (buf.get().toInt() == 0) {
@@ -18359,6 +19802,262 @@ public object FfiConverterOptionalTypeFfiLoggedReply: FfiConverterRustBuffer<Ffi
         } else {
             buf.put(1)
             FfiConverterTypeFfiLoggedReply.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeFfiMediaAction: FfiConverterRustBuffer<FfiMediaAction?> {
+    override fun read(buf: ByteBuffer): FfiMediaAction? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiMediaAction.read(buf)
+    }
+
+    override fun allocationSize(value: FfiMediaAction?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiMediaAction.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiMediaAction?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiMediaAction.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeFfiMessageAction: FfiConverterRustBuffer<FfiMessageAction?> {
+    override fun read(buf: ByteBuffer): FfiMessageAction? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiMessageAction.read(buf)
+    }
+
+    override fun allocationSize(value: FfiMessageAction?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiMessageAction.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiMessageAction?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiMessageAction.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeFfiNavigateAction: FfiConverterRustBuffer<FfiNavigateAction?> {
+    override fun read(buf: ByteBuffer): FfiNavigateAction? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiNavigateAction.read(buf)
+    }
+
+    override fun allocationSize(value: FfiNavigateAction?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiNavigateAction.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiNavigateAction?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiNavigateAction.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeFfiOnComplete: FfiConverterRustBuffer<FfiOnComplete?> {
+    override fun read(buf: ByteBuffer): FfiOnComplete? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiOnComplete.read(buf)
+    }
+
+    override fun allocationSize(value: FfiOnComplete?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiOnComplete.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiOnComplete?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiOnComplete.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeFfiPresentationEnvelope: FfiConverterRustBuffer<FfiPresentationEnvelope?> {
+    override fun read(buf: ByteBuffer): FfiPresentationEnvelope? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiPresentationEnvelope.read(buf)
+    }
+
+    override fun allocationSize(value: FfiPresentationEnvelope?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiPresentationEnvelope.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiPresentationEnvelope?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiPresentationEnvelope.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeFfiReplyAction: FfiConverterRustBuffer<FfiReplyAction?> {
+    override fun read(buf: ByteBuffer): FfiReplyAction? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiReplyAction.read(buf)
+    }
+
+    override fun allocationSize(value: FfiReplyAction?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiReplyAction.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiReplyAction?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiReplyAction.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeFfiSkillSuggestion: FfiConverterRustBuffer<FfiSkillSuggestion?> {
+    override fun read(buf: ByteBuffer): FfiSkillSuggestion? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiSkillSuggestion.read(buf)
+    }
+
+    override fun allocationSize(value: FfiSkillSuggestion?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiSkillSuggestion.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiSkillSuggestion?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiSkillSuggestion.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeFfiStat: FfiConverterRustBuffer<FfiStat?> {
+    override fun read(buf: ByteBuffer): FfiStat? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiStat.read(buf)
+    }
+
+    override fun allocationSize(value: FfiStat?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiStat.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiStat?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiStat.write(value, buf)
         }
     }
 }
@@ -18475,6 +20174,62 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterString.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiAlertAction: FfiConverterRustBuffer<List<FfiAlertAction>> {
+    override fun read(buf: ByteBuffer): List<FfiAlertAction> {
+        val len = buf.getInt()
+        return List<FfiAlertAction>(len) {
+            FfiConverterTypeFfiAlertAction.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiAlertAction>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiAlertAction.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiAlertAction>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiAlertAction.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiAlertSpec: FfiConverterRustBuffer<List<FfiAlertSpec>> {
+    override fun read(buf: ByteBuffer): List<FfiAlertSpec> {
+        val len = buf.getInt()
+        return List<FfiAlertSpec>(len) {
+            FfiConverterTypeFfiAlertSpec.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiAlertSpec>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiAlertSpec.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiAlertSpec>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiAlertSpec.write(it, buf)
         }
     }
 }
@@ -18681,6 +20436,62 @@ public object FfiConverterSequenceTypeFfiCalendarEventRow: FfiConverterRustBuffe
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiCard: FfiConverterRustBuffer<List<FfiCard>> {
+    override fun read(buf: ByteBuffer): List<FfiCard> {
+        val len = buf.getInt()
+        return List<FfiCard>(len) {
+            FfiConverterTypeFfiCard.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiCard>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiCard.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiCard>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiCard.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiCardAction: FfiConverterRustBuffer<List<FfiCardAction>> {
+    override fun read(buf: ByteBuffer): List<FfiCardAction> {
+        val len = buf.getInt()
+        return List<FfiCardAction>(len) {
+            FfiConverterTypeFfiCardAction.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiCardAction>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiCardAction.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiCardAction>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiCardAction.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiCardButton: FfiConverterRustBuffer<List<FfiCardButton>> {
     override fun read(buf: ByteBuffer): List<FfiCardButton> {
         val len = buf.getInt()
@@ -18821,6 +20632,34 @@ public object FfiConverterSequenceTypeFfiContactChannel: FfiConverterRustBuffer<
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiIconText: FfiConverterRustBuffer<List<FfiIconText>> {
+    override fun read(buf: ByteBuffer): List<FfiIconText> {
+        val len = buf.getInt()
+        return List<FfiIconText>(len) {
+            FfiConverterTypeFfiIconText.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiIconText>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiIconText.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiIconText>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiIconText.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiInstalledSkill: FfiConverterRustBuffer<List<FfiInstalledSkill>> {
     override fun read(buf: ByteBuffer): List<FfiInstalledSkill> {
         val len = buf.getInt()
@@ -18839,6 +20678,90 @@ public object FfiConverterSequenceTypeFfiInstalledSkill: FfiConverterRustBuffer<
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeFfiInstalledSkill.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiListRow: FfiConverterRustBuffer<List<FfiListRow>> {
+    override fun read(buf: ByteBuffer): List<FfiListRow> {
+        val len = buf.getInt()
+        return List<FfiListRow>(len) {
+            FfiConverterTypeFfiListRow.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiListRow>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiListRow.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiListRow>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiListRow.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiNotificationAction: FfiConverterRustBuffer<List<FfiNotificationAction>> {
+    override fun read(buf: ByteBuffer): List<FfiNotificationAction> {
+        val len = buf.getInt()
+        return List<FfiNotificationAction>(len) {
+            FfiConverterTypeFfiNotificationAction.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiNotificationAction>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiNotificationAction.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiNotificationAction>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiNotificationAction.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiNotificationSpec: FfiConverterRustBuffer<List<FfiNotificationSpec>> {
+    override fun read(buf: ByteBuffer): List<FfiNotificationSpec> {
+        val len = buf.getInt()
+        return List<FfiNotificationSpec>(len) {
+            FfiConverterTypeFfiNotificationSpec.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiNotificationSpec>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiNotificationSpec.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiNotificationSpec>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiNotificationSpec.write(it, buf)
         }
     }
 }
@@ -19157,6 +21080,20 @@ public object FfiConverterMapStringTypeFfiLocalizedDisplay: FfiConverterRustBuff
     UniffiLib.uniffi_ari_ffi_fn_func_slash_commands(
     
         FfiConverterString.lower(`locale`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * The envelope in `json` from skill `skill_id`, or None when it isn't one
+         * this engine reads.
+         */ fun `parsePresentationEnvelope`(`json`: kotlin.String, `skillId`: kotlin.String): FfiPresentationEnvelope? {
+            return FfiConverterOptionalTypeFfiPresentationEnvelope.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_parse_presentation_envelope(
+    
+        FfiConverterString.lower(`json`),FfiConverterString.lower(`skillId`),_status)
 }
     )
     }

@@ -100,7 +100,7 @@ class ActionHandler @Inject constructor(
             }
         }
 
-        val attachments = if (env.hasPresentationPrimitives()) {
+        val attachments = if (env.hasPresentationPrimitives) {
             presentationCoordinator.apply(env)
         } else {
             emptyList()

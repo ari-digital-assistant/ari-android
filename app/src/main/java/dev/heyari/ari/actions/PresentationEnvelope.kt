@@ -12,8 +12,18 @@ import dev.heyari.ari.notifications.AlertAction
 import dev.heyari.ari.notifications.AlertSpec
 import dev.heyari.ari.notifications.NotificationAction
 import dev.heyari.ari.notifications.NotificationPrimitive
-import org.json.JSONArray
 import org.json.JSONObject
+import uniffi.ari_ffi.FfiAccent
+import uniffi.ari_ffi.FfiAlertSpec
+import uniffi.ari_ffi.FfiButtonStyle
+import uniffi.ari_ffi.FfiCard
+import uniffi.ari_ffi.FfiConfidence
+import uniffi.ari_ffi.FfiIconText
+import uniffi.ari_ffi.FfiImportance
+import uniffi.ari_ffi.FfiNotificationSpec
+import uniffi.ari_ffi.FfiPresentationEnvelope
+import uniffi.ari_ffi.FfiUrgency
+import uniffi.ari_ffi.parsePresentationEnvelope
 
 /** A media action from the engine, e.g. play a [query] optionally on a named [service]. */
 data class MediaAction(
@@ -93,13 +103,15 @@ data class AlarmAction(
 /**
  * Parsed, typed view of a presentation envelope from a skill.
  *
- * The wire format is documented in
+ * The engine parses it (`ari_core::envelope`), with its defaults and its
+ * leniency; this is the engine's result in the app's own types. The wire
+ * format is documented in
  * [docs/reference-actions.md](https://github.com/ari-digital-assistant/ari-skills/blob/main/docs/reference-actions.md).
  * `skillId` is supplied by the FFI layer (it's not in the envelope itself);
- * the parser stamps it onto every primitive that needs to resolve assets.
+ * the engine stamps it onto every primitive that needs to resolve assets.
  *
- * Returns null on protocol-version mismatch or anything malformed enough that
- * we can't safely apply the envelope. Callers fall back to "I couldn't
+ * [parse] returns null for an envelope version the engine doesn't read, or
+ * anything that isn't an envelope. Callers fall back to "I couldn't
  * understand that action."
  */
 data class PresentationEnvelope(
@@ -131,361 +143,152 @@ data class PresentationEnvelope(
      * itself without needing a skill-specific envelope primitive.
      */
     val runUtterance: String?,
-    /**
-     * How sure the emitting skill is about its own output. Generic
-     * envelope-level signal (Layer A of the parse-confidence work):
-     * `HIGH` is the default when the skill didn't say — keeps old
-     * skill builds compatible. Other skills can opt in by emitting
-     * the same two fields at envelope top-level.
-     */
+    /** How sure the emitting skill is about its own output: HIGH when it didn't say. */
     val confidence: ParseConfidence,
     /** The residue phrase the skill noticed but couldn't consume. Null when [confidence] is HIGH. */
     val unparsed: String?,
     /** A store skill to offer, from the engine's `suggest_skill`. */
-    val suggestSkill: SkillSuggestion? = null,
+    val suggestSkill: SkillSuggestion?,
+    /** Whether it puts anything on screen or takes anything off it, as the engine decides. */
+    val hasPresentationPrimitives: Boolean,
 ) {
     enum class ParseConfidence { HIGH, PARTIAL, LOW }
 
-    fun hasPresentationPrimitives(): Boolean =
-        cards.isNotEmpty() || alerts.isNotEmpty() || notifications.isNotEmpty() ||
-            dismissCardIds.isNotEmpty() || dismissNotificationIds.isNotEmpty() ||
-            dismissAlertIds.isNotEmpty() || suggestSkill != null
-
     companion object {
-        const val SUPPORTED_VERSION: Int = 1
-
         fun parse(json: JSONObject, skillId: String): PresentationEnvelope? {
-            val v = json.optInt("v", 0)
-            if (v != SUPPORTED_VERSION) {
-                Log.w(TAG, "envelope rejected — version $v != $SUPPORTED_VERSION")
-                return null
-            }
-            return runCatching {
-                PresentationEnvelope(
-                    speak = json.optStringOrNull("speak"),
-                    display = json.optStringOrNull("display"),
-                    cards = json.optJSONArray("cards")?.let { parseCards(it, skillId) }.orEmpty(),
-                    alerts = json.optJSONArray("alerts")?.let { parseAlerts(it, skillId) }.orEmpty(),
-                    notifications = json.optJSONArray("notifications")
-                        ?.let { parseNotifications(it, skillId) }.orEmpty(),
-                    launchApp = json.optStringOrNull("launch_app"),
-                    media = json.optJSONObject("media")?.let { o ->
-                        o.optStringOrNull("action")?.let { act ->
-                            MediaAction(
-                                action = act,
-                                query = o.optStringOrNull("query"),
-                                service = o.optStringOrNull("service"),
-                                direction = o.optStringOrNull("direction"),
-                                level = if (o.has("level")) o.optInt("level") else null,
-                                mute = if (o.has("mute")) o.optBoolean("mute") else null,
-                            )
-                        }
-                    },
-                    alarm = json.optJSONObject("alarm")?.let { o ->
-                        o.optStringOrNull("op")?.let { op ->
-                            AlarmAction(
-                                op = op,
-                                hour = if (o.has("hour")) o.optInt("hour") else null,
-                                minute = if (o.has("minute")) o.optInt("minute") else null,
-                                message = o.optStringOrNull("message"),
-                                days = o.optJSONArray("days")?.toStringList().orEmpty(),
-                                skipUi = if (o.has("skip_ui")) o.optBoolean("skip_ui") else true,
-                            )
-                        }
-                    },
-                    navigate = json.optJSONObject("navigate")?.let { o ->
-                        o.optStringOrNull("destination")?.let { dest ->
-                            NavigateAction(
-                                destination = dest,
-                                mode = o.optStringOrNull("mode"),
-                                place = o.optStringOrNull("place"),
-                            )
-                        }
-                    },
-                    message = json.optJSONObject("message")?.let { o ->
-                        o.optStringOrNull("text")?.let { body ->
-                            MessageAction(
-                                text = body,
-                                service = o.optStringOrNull("service"),
-                                recipientId = o.optStringOrNull("recipient_id"),
-                                recipientLabel = o.optStringOrNull("recipient_label"),
-                                delivery = o.optStringOrNull("delivery"),
-                            )
-                        }
-                    },
-                    reply = json.optJSONObject("reply")?.let { o ->
-                        o.optStringOrNull("text")?.let { body ->
-                            ReplyAction(
-                                text = body,
-                                recipientLabel = o.optStringOrNull("recipient_label"),
-                            )
-                        }
-                    },
-                    search = json.optStringOrNull("search"),
-                    openUrl = json.optStringOrNull("open_url"),
-                    clipboardText = json.optJSONObject("clipboard")?.optStringOrNull("text"),
-                    dismissCardIds = json.optJSONObject("dismiss")
-                        ?.optJSONArray("cards")?.toStringList().orEmpty(),
-                    dismissNotificationIds = json.optJSONObject("dismiss")
-                        ?.optJSONArray("notifications")?.toStringList().orEmpty(),
-                    dismissAlertIds = json.optJSONObject("dismiss")
-                        ?.optJSONArray("alerts")?.toStringList().orEmpty(),
-                    confidence = parseConfidence(json.optStringOrNull("confidence")),
-                    unparsed = json.optStringOrNull("unparsed"),
-                    runUtterance = json.optStringOrNull("run_utterance"),
-                    suggestSkill = json.optJSONObject("suggest_skill")?.let { o ->
-                        o.optStringOrNull("id")?.let { id ->
-                            SkillSuggestion(id = id, name = o.optStringOrNull("name") ?: id)
-                        }
-                    },
-                )
-            }.onFailure {
-                Log.w(TAG, "envelope parse failed", it)
-            }.getOrNull()
-        }
-
-        private fun parseConfidence(raw: String?): ParseConfidence = when (raw?.lowercase()) {
-            "partial" -> ParseConfidence.PARTIAL
-            "low" -> ParseConfidence.LOW
-            // Unknown / missing → assume HIGH so pre-signal skills work unchanged.
-            else -> ParseConfidence.HIGH
+            val parsed = parsePresentationEnvelope(json.toString(), skillId)
+            if (parsed == null) Log.w(TAG, "envelope rejected: not one this engine reads")
+            return parsed?.toEnvelope()
         }
 
         private const val TAG = "PresentationEnvelope"
     }
 }
 
-// -- Per-primitive parsers ------------------------------------------------
+// -- The engine's types as the app's ------------------------------------
 
-private fun parseCards(arr: JSONArray, skillId: String): List<Card> {
-    val out = ArrayList<Card>(arr.length())
-    for (i in 0 until arr.length()) {
-        val o = arr.optJSONObject(i) ?: continue
-        val id = o.optStringOrNull("id") ?: continue
-        val title = o.optStringOrNull("title") ?: continue
-        out += Card(
-            id = id,
-            skillId = skillId,
-            title = title,
-            subtitle = o.optStringOrNull("subtitle"),
-            body = o.optStringOrNull("body"),
-            icon = o.optStringOrNull("icon"),
-            countdownToTsMs = o.optLongOrNull("countdown_to_ts_ms"),
-            startedAtTsMs = o.optLongOrNull("started_at_ts_ms"),
-            progress = o.optJSONObject("progress")?.optDoubleOrNull("value")?.toFloat(),
-            accent = parseAccent(o.optStringOrNull("accent")),
-            actions = o.optJSONArray("actions")?.let { parseCardActions(it) }.orEmpty(),
-            onComplete = o.optJSONObject("on_complete")?.let { parseOnComplete(it, skillId) },
-            // Stored as the raw JSON string. The frontend re-parses it
-            // into a PresentationEnvelope via ActionHandler when the
-            // user taps the Cancel button — skills can use any
-            // envelope primitive they like here.
-            onCancel = o.optJSONObject("on_cancel")?.toString(),
-            stat = o.optJSONObject("stat")?.let { parseStat(it) },
-            list = o.optJSONObject("list")?.let { parseListCard(it) },
-        )
-    }
-    return out
-}
-
-private fun parseIconText(o: JSONObject?): IconText? {
-    if (o == null) return null
-    val text = o.optStringOrNull("text") ?: return null
-    return IconText(icon = o.optStringOrNull("icon"), text = text)
-}
-
-private fun parseStat(o: JSONObject): Stat? {
-    val headline = o.optStringOrNull("headline") ?: return null
-    val metrics = o.optJSONArray("metrics")?.let { arr ->
-        (0 until arr.length()).mapNotNull { parseIconText(arr.optJSONObject(it)) }
-    }.orEmpty()
-    return Stat(
-        headline = headline,
-        caption = o.optStringOrNull("caption"),
-        pill = parseIconText(o.optJSONObject("pill")),
-        metrics = metrics,
-        background = o.optStringOrNull("background"),
-        footer = parseIconText(o.optJSONObject("footer")),
-    )
-}
-
-private fun parseListCard(o: JSONObject): ListCard {
-    val rows = o.optJSONArray("rows")?.let { arr ->
-        (0 until arr.length()).mapNotNull { i ->
-            val r = arr.optJSONObject(i) ?: return@mapNotNull null
-            val leading = r.optStringOrNull("leading") ?: return@mapNotNull null
-            ListRow(
-                leading = leading,
-                icon = r.optStringOrNull("icon"),
-                text = r.optStringOrNull("text"),
-                trailing = r.optStringOrNull("trailing"),
-                badge = parseIconText(r.optJSONObject("badge")),
-            )
-        }
-    }.orEmpty()
-    return ListCard(
-        summary = parseIconText(o.optJSONObject("summary")),
-        rows = rows,
-        footer = parseIconText(o.optJSONObject("footer")),
-    )
-}
-
-private fun parseAccent(s: String?): Card.Accent = when (s) {
-    "warning" -> Card.Accent.WARNING
-    "success" -> Card.Accent.SUCCESS
-    "critical" -> Card.Accent.CRITICAL
-    else -> Card.Accent.DEFAULT
-}
-
-private fun parseCardActions(arr: JSONArray): List<CardAction> {
-    val out = ArrayList<CardAction>(arr.length())
-    for (i in 0 until arr.length()) {
-        val o = arr.optJSONObject(i) ?: continue
-        val id = o.optStringOrNull("id") ?: continue
-        val label = o.optStringOrNull("label") ?: continue
-        out += CardAction(
-            id = id,
-            label = label,
-            utterance = o.optStringOrNull("utterance"),
-            speak = o.optStringOrNull("speak"),
-            style = parseCardStyle(o.optStringOrNull("style")),
-        )
-    }
-    return out
-}
-
-private fun parseCardStyle(s: String?): CardAction.Style = when (s) {
-    "primary" -> CardAction.Style.PRIMARY
-    "destructive" -> CardAction.Style.DESTRUCTIVE
-    else -> CardAction.Style.DEFAULT
-}
-
-private fun parseOnComplete(o: JSONObject, skillId: String): OnComplete = OnComplete(
-    alert = o.optJSONObject("alert")?.let { parseAlert(it, skillId) },
-    // Wire format default: dismiss_card true when on_complete is present.
-    dismissCard = o.optBoolean("dismiss_card", true),
-    dismissNotificationIds = o.optJSONArray("dismiss_notifications")?.toStringList().orEmpty(),
+private fun FfiPresentationEnvelope.toEnvelope() = PresentationEnvelope(
+    speak = speak,
+    display = display,
+    cards = cards.map { it.toCard() },
+    alerts = alerts.map { it.toAlert() },
+    notifications = notifications.map { it.toNotification() },
+    launchApp = launchApp,
+    media = media?.let {
+        MediaAction(it.action, it.query, it.service, it.direction, it.level?.toInt(), it.mute)
+    },
+    alarm = alarm?.let {
+        AlarmAction(it.op, it.hour?.toInt(), it.minute?.toInt(), it.message, it.days, it.skipUi)
+    },
+    navigate = navigate?.let { NavigateAction(it.destination, it.mode, it.place) },
+    message = message?.let {
+        MessageAction(it.text, it.service, it.recipientId, it.recipientLabel, it.delivery)
+    },
+    reply = reply?.let { ReplyAction(it.text, it.recipientLabel) },
+    search = search,
+    openUrl = openUrl,
+    clipboardText = clipboardText,
+    dismissCardIds = dismissCards,
+    dismissNotificationIds = dismissNotifications,
+    dismissAlertIds = dismissAlerts,
+    runUtterance = runUtterance,
+    confidence = when (confidence) {
+        FfiConfidence.HIGH -> PresentationEnvelope.ParseConfidence.HIGH
+        FfiConfidence.PARTIAL -> PresentationEnvelope.ParseConfidence.PARTIAL
+        FfiConfidence.LOW -> PresentationEnvelope.ParseConfidence.LOW
+    },
+    unparsed = unparsed,
+    suggestSkill = suggestSkill?.let { SkillSuggestion(it.id, it.name) },
+    hasPresentationPrimitives = hasPresentation,
 )
 
-private fun parseAlerts(arr: JSONArray, skillId: String): List<AlertSpec> {
-    val out = ArrayList<AlertSpec>(arr.length())
-    for (i in 0 until arr.length()) {
-        val o = arr.optJSONObject(i) ?: continue
-        parseAlert(o, skillId)?.let { out += it }
-    }
-    return out
-}
-
-private fun parseAlert(o: JSONObject, skillId: String): AlertSpec? {
-    val id = o.optStringOrNull("id") ?: return null
-    val title = o.optStringOrNull("title") ?: return null
-    return AlertSpec(
-        id = id,
-        skillId = skillId,
-        title = title,
-        body = o.optStringOrNull("body"),
-        urgency = parseUrgency(o.optStringOrNull("urgency")),
-        sound = o.optStringOrNull("sound") ?: AlertSpec.SoundToken.NOTIFICATION,
-        speechLoop = o.optStringOrNull("speech_loop"),
-        autoStopMs = o.optLongOrNull("auto_stop_ms") ?: DEFAULT_AUTO_STOP_MS,
-        maxCycles = o.optInt("max_cycles", DEFAULT_MAX_CYCLES),
-        fullTakeover = o.optBoolean("full_takeover", false),
-        icon = o.optStringOrNull("icon"),
-        actions = o.optJSONArray("actions")?.let { parseAlertActions(it) }.orEmpty(),
-    )
-}
-
-private fun parseUrgency(s: String?): AlertSpec.Urgency = when (s) {
-    "critical" -> AlertSpec.Urgency.CRITICAL
-    "high" -> AlertSpec.Urgency.HIGH
-    else -> AlertSpec.Urgency.NORMAL
-}
-
-private fun parseAlertActions(arr: JSONArray): List<AlertAction> {
-    val out = ArrayList<AlertAction>(arr.length())
-    for (i in 0 until arr.length()) {
-        val o = arr.optJSONObject(i) ?: continue
-        val id = o.optStringOrNull("id") ?: continue
-        val label = o.optStringOrNull("label") ?: continue
-        out += AlertAction(
-            id = id,
-            label = label,
-            utterance = o.optStringOrNull("utterance"),
-            style = parseAlertStyle(o.optStringOrNull("style")),
+private fun FfiCard.toCard() = Card(
+    id = id,
+    skillId = skillId,
+    title = title,
+    subtitle = subtitle,
+    body = body,
+    icon = icon,
+    countdownToTsMs = countdownToTsMs,
+    startedAtTsMs = startedAtTsMs,
+    progress = progress,
+    accent = when (accent) {
+        FfiAccent.DEFAULT -> Card.Accent.DEFAULT
+        FfiAccent.WARNING -> Card.Accent.WARNING
+        FfiAccent.SUCCESS -> Card.Accent.SUCCESS
+        FfiAccent.CRITICAL -> Card.Accent.CRITICAL
+    },
+    actions = actions.map {
+        CardAction(it.id, it.label, it.utterance, it.speak, it.style.toCardStyle())
+    },
+    onComplete = onComplete?.let {
+        OnComplete(it.alert?.toAlert(), it.dismissCard, it.dismissNotifications)
+    },
+    onCancel = onCancel,
+    stat = stat?.let {
+        Stat(
+            headline = it.headline,
+            caption = it.caption,
+            pill = it.pill?.toIconText(),
+            metrics = it.metrics.map { m -> m.toIconText() },
+            background = it.background,
+            footer = it.footer?.toIconText(),
         )
-    }
-    return out
-}
-
-private fun parseAlertStyle(s: String?): AlertAction.Style = when (s) {
-    "primary" -> AlertAction.Style.PRIMARY
-    "destructive" -> AlertAction.Style.DESTRUCTIVE
-    else -> AlertAction.Style.DEFAULT
-}
-
-private fun parseNotifications(arr: JSONArray, skillId: String): List<NotificationPrimitive> {
-    val out = ArrayList<NotificationPrimitive>(arr.length())
-    for (i in 0 until arr.length()) {
-        val o = arr.optJSONObject(i) ?: continue
-        val id = o.optStringOrNull("id") ?: continue
-        val title = o.optStringOrNull("title") ?: continue
-        out += NotificationPrimitive(
-            id = id,
-            skillId = skillId,
-            title = title,
-            body = o.optStringOrNull("body"),
-            importance = parseImportance(o.optStringOrNull("importance")),
-            sticky = o.optBoolean("sticky", false),
-            countdownToTsMs = o.optLongOrNull("countdown_to_ts_ms"),
-            actions = o.optJSONArray("actions")?.let { parseNotificationActions(it) }.orEmpty(),
+    },
+    list = list?.let {
+        ListCard(
+            summary = it.summary?.toIconText(),
+            rows = it.rows.map { r -> ListRow(r.leading, r.icon, r.text, r.trailing, r.badge?.toIconText()) },
+            footer = it.footer?.toIconText(),
         )
-    }
-    return out
+    },
+)
+
+private fun FfiIconText.toIconText() = IconText(icon = icon, text = text)
+
+private fun FfiButtonStyle.toCardStyle() = when (this) {
+    FfiButtonStyle.DEFAULT -> CardAction.Style.DEFAULT
+    FfiButtonStyle.PRIMARY -> CardAction.Style.PRIMARY
+    FfiButtonStyle.DESTRUCTIVE -> CardAction.Style.DESTRUCTIVE
 }
 
-private fun parseImportance(s: String?): NotificationPrimitive.Importance = when (s) {
-    "min" -> NotificationPrimitive.Importance.MIN
-    "low" -> NotificationPrimitive.Importance.LOW
-    "high" -> NotificationPrimitive.Importance.HIGH
-    else -> NotificationPrimitive.Importance.DEFAULT
+private fun FfiButtonStyle.toAlertStyle() = when (this) {
+    FfiButtonStyle.DEFAULT -> AlertAction.Style.DEFAULT
+    FfiButtonStyle.PRIMARY -> AlertAction.Style.PRIMARY
+    FfiButtonStyle.DESTRUCTIVE -> AlertAction.Style.DESTRUCTIVE
 }
 
-private fun parseNotificationActions(arr: JSONArray): List<NotificationAction> {
-    val out = ArrayList<NotificationAction>(arr.length())
-    for (i in 0 until arr.length()) {
-        val o = arr.optJSONObject(i) ?: continue
-        val id = o.optStringOrNull("id") ?: continue
-        val label = o.optStringOrNull("label") ?: continue
-        out += NotificationAction(
-            id = id,
-            label = label,
-            utterance = o.optStringOrNull("utterance"),
-        )
-    }
-    return out
-}
+private fun FfiAlertSpec.toAlert() = AlertSpec(
+    id = id,
+    skillId = skillId,
+    title = title,
+    body = body,
+    urgency = when (urgency) {
+        FfiUrgency.NORMAL -> AlertSpec.Urgency.NORMAL
+        FfiUrgency.HIGH -> AlertSpec.Urgency.HIGH
+        FfiUrgency.CRITICAL -> AlertSpec.Urgency.CRITICAL
+    },
+    sound = sound,
+    speechLoop = speechLoop,
+    autoStopMs = autoStopMs,
+    maxCycles = maxCycles.toInt(),
+    fullTakeover = fullTakeover,
+    actions = actions.map { AlertAction(it.id, it.label, it.utterance, it.style.toAlertStyle()) },
+    icon = icon,
+)
 
-// -- Tiny JSON helpers ----------------------------------------------------
-
-/**
- * `JSONObject.optString` returns `""` for missing keys (and for JSONObject.NULL),
- * which makes nullable-string semantics impossible without these wrappers.
- */
-private fun JSONObject.optStringOrNull(key: String): String? =
-    if (!has(key) || isNull(key)) null else optString(key, "").takeIf { it.isNotEmpty() }
-
-private fun JSONObject.optLongOrNull(key: String): Long? =
-    if (!has(key) || isNull(key)) null else optLong(key, Long.MIN_VALUE).takeIf { it != Long.MIN_VALUE }
-
-private fun JSONObject.optDoubleOrNull(key: String): Double? =
-    if (!has(key) || isNull(key)) null else optDouble(key, Double.NaN).takeIf { !it.isNaN() }
-
-private fun JSONArray.toStringList(): List<String> {
-    val out = ArrayList<String>(length())
-    for (i in 0 until length()) out += optString(i, "")
-    return out.filter { it.isNotEmpty() }
-}
-
-private const val DEFAULT_AUTO_STOP_MS: Long = 120_000L
-private const val DEFAULT_MAX_CYCLES: Int = 12
-
+private fun FfiNotificationSpec.toNotification() = NotificationPrimitive(
+    id = id,
+    skillId = skillId,
+    title = title,
+    body = body,
+    importance = when (importance) {
+        FfiImportance.MIN -> NotificationPrimitive.Importance.MIN
+        FfiImportance.LOW -> NotificationPrimitive.Importance.LOW
+        FfiImportance.DEFAULT -> NotificationPrimitive.Importance.DEFAULT
+        FfiImportance.HIGH -> NotificationPrimitive.Importance.HIGH
+    },
+    sticky = sticky,
+    countdownToTsMs = countdownToTsMs,
+    actions = actions.map { NotificationAction(it.id, it.label, it.utterance) },
+)

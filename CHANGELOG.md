@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Answering a card's button or stopping an alarm by voice, installing and updating
-  skills, and choosing an assistant now run in Ari's engine instead of the app, so future
+  skills, choosing an assistant, and reading what a skill asks Ari to show or do (cards,
+  alarms, notifications, actions) now run in Ari's engine instead of the app, so future
   desktop versions can share them. Nothing should behave differently; if any of them
   does, please report it.
 
