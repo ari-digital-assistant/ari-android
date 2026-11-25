@@ -1384,6 +1384,8 @@ external fun uniffi_ari_ffi_checksum_method_assistantregistry_set_assistant_conf
 ): Short
 external fun uniffi_ari_ffi_checksum_method_skillsettingsstore_set_value(
 ): Short
+external fun uniffi_ari_ffi_checksum_method_skillregistry_asset_path(
+): Short
 external fun uniffi_ari_ffi_checksum_method_skillregistry_browse_registry(
 ): Short
 external fun uniffi_ari_ffi_checksum_method_skillregistry_check_for_updates(
@@ -1839,6 +1841,8 @@ external fun uniffi_ari_ffi_fn_free_skillregistry(`handle`: Long,uniffi_out_err:
 ): Unit
 external fun uniffi_ari_ffi_fn_constructor_skillregistry_new(`skillStoreDir`: RustBuffer.ByValue,`storageDir`: RustBuffer.ByValue,`settingsStore`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): Long
+external fun uniffi_ari_ffi_fn_method_skillregistry_asset_path(`ptr`: Long,`skillId`: RustBuffer.ByValue,`reference`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_skillregistry_browse_registry(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_method_skillregistry_check_for_updates(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -2473,6 +2477,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_skillsettingsstore_set_value() != 42909.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_method_skillregistry_asset_path() != 38608.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_method_skillregistry_browse_registry() != 19077.toShort()) {
@@ -13012,6 +13019,13 @@ public object FfiConverterTypeFfiWakeModelFiles: FfiConverter<FfiWakeModelFiles,
 public interface SkillRegistryInterface {
     
     /**
+     * The file an envelope's `asset:<path>` reference from skill `skill_id`
+     * names, or None when there's no such asset. See
+     * [`skills::SkillRegistry::asset_path`].
+     */
+    fun `assetPath`(`skillId`: kotlin.String, `reference`: kotlin.String): kotlin.String?
+    
+    /**
      * Fetch the registry index and return every entry as a [`FfiBrowseEntry`],
      * with `installed` set for skills that already exist in the local store.
      * Powers the "Browse registry" screen where the user picks skills to
@@ -13314,6 +13328,24 @@ open class SkillRegistry: Disposable, AutoCloseable, SkillRegistryInterface
             UniffiLib.uniffi_ari_ffi_fn_clone_skillregistry(handle, status)
         }
     }
+
+    
+    /**
+     * The file an envelope's `asset:<path>` reference from skill `skill_id`
+     * names, or None when there's no such asset. See
+     * [`skills::SkillRegistry::asset_path`].
+     */override fun `assetPath`(`skillId`: kotlin.String, `reference`: kotlin.String): kotlin.String? {
+            return FfiConverterOptionalString.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_method_skillregistry_asset_path(
+        it,
+        FfiConverterString.lower(`skillId`),FfiConverterString.lower(`reference`),_status)
+}
+    }
+    )
+    }
+    
 
     
     /**

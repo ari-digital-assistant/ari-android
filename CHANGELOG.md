@@ -11,8 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Answering a card's button or stopping an alarm by voice, installing and updating
   skills, choosing an assistant, reading what a skill asks Ari to show or do (cards,
-  alarms, notifications, actions), and deciding what pressing a card's button does now
-  run in Ari's engine instead of the app, so future desktop versions can share them.
+  alarms, notifications, actions), deciding what pressing a card's button does, and
+  finding a skill's sounds and pictures now run in Ari's engine instead of the app, so
+  future desktop versions can share them.
   Nothing should behave differently; if any of them does, please report it.
 
 ### Fixed
