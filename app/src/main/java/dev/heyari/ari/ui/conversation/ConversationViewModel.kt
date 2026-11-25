@@ -662,8 +662,9 @@ class ConversationViewModel @Inject constructor(
                         isFromUser = false,
                         attachments = outcome.attachments,
                     )
+                    // Shown, not read out: a tap gets a silent reply, as a typed
+                    // question does.
                     logRepository.append(ariMessage)
-                    if (outcome.text.isNotBlank()) speechOutput.speak(outcome.text)
                 }
             }
         }

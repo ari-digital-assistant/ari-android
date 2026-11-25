@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Tapping a button on a card in the chat, such as a timer's Cancel, no longer reads Ari's
+  reply out loud. It shows in the conversation, as replies to typed questions do.
 - Turning the phone sideways while talking to Ari no longer ends the conversation and
   starts a new one that hears Ari's own reply as a false wake. An answer's cards left on
   screen no longer close when the phone is turned, either.
