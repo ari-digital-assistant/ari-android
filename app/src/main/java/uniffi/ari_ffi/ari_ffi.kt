@@ -1204,6 +1204,16 @@ external fun uniffi_ari_ffi_checksum_func_parse_presentation_envelope(
 ): Short
 external fun uniffi_ari_ffi_checksum_func_resolve_card_press(
 ): Short
+external fun uniffi_ari_ffi_checksum_func_parse_model_manifest(
+): Short
+external fun uniffi_ari_ffi_checksum_func_stt_models(
+): Short
+external fun uniffi_ari_ffi_checksum_func_stt_on_device_choices(
+): Short
+external fun uniffi_ari_ffi_checksum_func_stt_on_device_for(
+): Short
+external fun uniffi_ari_ffi_checksum_func_stt_retired_ids(
+): Short
 external fun uniffi_ari_ffi_checksum_func_default_wake_word_model(
 ): Short
 external fun uniffi_ari_ffi_checksum_func_false_wake_burst_due(
@@ -2043,6 +2053,16 @@ external fun uniffi_ari_ffi_fn_func_parse_presentation_envelope(`json`: RustBuff
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_func_resolve_card_press(`id`: RustBuffer.ByValue,`utterance`: RustBuffer.ByValue,`speak`: RustBuffer.ByValue,`onCancel`: RustBuffer.ByValue,`alertId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_parse_model_manifest(`json`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_stt_models(uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_stt_on_device_choices(`locale`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_stt_on_device_for(`locale`: RustBuffer.ByValue,`current`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+external fun uniffi_ari_ffi_fn_func_stt_retired_ids(uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_func_default_wake_word_model(uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 external fun uniffi_ari_ffi_fn_func_false_wake_burst_due(`recent`: RustBuffer.ByValue,`notifiedAt`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -2207,6 +2227,21 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_func_resolve_card_press() != 64071.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_parse_model_manifest() != 43704.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_stt_models() != 48267.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_stt_on_device_choices() != 29461.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_stt_on_device_for() != 58211.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_ari_ffi_checksum_func_stt_retired_ids() != 39601.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_ari_ffi_checksum_func_default_wake_word_model() != 30507.toShort()) {
@@ -16010,6 +16045,54 @@ public object FfiConverterTypeFfiLoggedTurn: FfiConverterRustBuffer<FfiLoggedTur
 
 
 
+data class FfiManifestFile (
+    var `name`: kotlin.String
+    , 
+    var `url`: kotlin.String
+    , 
+    var `sha256`: kotlin.String
+    , 
+    var `sizeBytes`: kotlin.Long
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiManifestFile: FfiConverterRustBuffer<FfiManifestFile> {
+    override fun read(buf: ByteBuffer): FfiManifestFile {
+        return FfiManifestFile(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterLong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiManifestFile) = (
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterString.allocationSize(value.`url`) +
+            FfiConverterString.allocationSize(value.`sha256`) +
+            FfiConverterLong.allocationSize(value.`sizeBytes`)
+    )
+
+    override fun write(value: FfiManifestFile, buf: ByteBuffer) {
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterString.write(value.`url`, buf)
+            FfiConverterString.write(value.`sha256`, buf)
+            FfiConverterLong.write(value.`sizeBytes`, buf)
+    }
+}
+
+
+
 data class FfiMediaAction (
     var `action`: kotlin.String
     , 
@@ -16116,6 +16199,49 @@ public object FfiConverterTypeFfiMessageAction: FfiConverterRustBuffer<FfiMessag
             FfiConverterOptionalString.write(value.`recipientId`, buf)
             FfiConverterOptionalString.write(value.`recipientLabel`, buf)
             FfiConverterOptionalString.write(value.`delivery`, buf)
+    }
+}
+
+
+
+data class FfiModelManifest (
+    var `version`: kotlin.String
+    , 
+    var `releasedAt`: kotlin.String?
+    , 
+    var `files`: List<FfiManifestFile>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiModelManifest: FfiConverterRustBuffer<FfiModelManifest> {
+    override fun read(buf: ByteBuffer): FfiModelManifest {
+        return FfiModelManifest(
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterSequenceTypeFfiManifestFile.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiModelManifest) = (
+            FfiConverterString.allocationSize(value.`version`) +
+            FfiConverterOptionalString.allocationSize(value.`releasedAt`) +
+            FfiConverterSequenceTypeFfiManifestFile.allocationSize(value.`files`)
+    )
+
+    override fun write(value: FfiModelManifest, buf: ByteBuffer) {
+            FfiConverterString.write(value.`version`, buf)
+            FfiConverterOptionalString.write(value.`releasedAt`, buf)
+            FfiConverterSequenceTypeFfiManifestFile.write(value.`files`, buf)
     }
 }
 
@@ -17025,6 +17151,79 @@ public object FfiConverterTypeFfiStat: FfiConverterRustBuffer<FfiStat> {
             FfiConverterSequenceTypeFfiIconText.write(value.`metrics`, buf)
             FfiConverterOptionalString.write(value.`background`, buf)
             FfiConverterOptionalTypeFfiIconText.write(value.`footer`, buf)
+    }
+}
+
+
+
+data class FfiSttModel (
+    var `id`: kotlin.String
+    , 
+    var `totalBytes`: kotlin.Long
+    , 
+    var `encoderFile`: kotlin.String
+    , 
+    var `decoderFile`: kotlin.String
+    , 
+    var `joinerFile`: kotlin.String?
+    , 
+    var `tokensFile`: kotlin.String
+    , 
+    var `baseUrl`: kotlin.String
+    , 
+    var `modelType`: kotlin.String
+    , 
+    var `manifestUrl`: kotlin.String
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiSttModel: FfiConverterRustBuffer<FfiSttModel> {
+    override fun read(buf: ByteBuffer): FfiSttModel {
+        return FfiSttModel(
+            FfiConverterString.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiSttModel) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterLong.allocationSize(value.`totalBytes`) +
+            FfiConverterString.allocationSize(value.`encoderFile`) +
+            FfiConverterString.allocationSize(value.`decoderFile`) +
+            FfiConverterOptionalString.allocationSize(value.`joinerFile`) +
+            FfiConverterString.allocationSize(value.`tokensFile`) +
+            FfiConverterString.allocationSize(value.`baseUrl`) +
+            FfiConverterString.allocationSize(value.`modelType`) +
+            FfiConverterString.allocationSize(value.`manifestUrl`)
+    )
+
+    override fun write(value: FfiSttModel, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterLong.write(value.`totalBytes`, buf)
+            FfiConverterString.write(value.`encoderFile`, buf)
+            FfiConverterString.write(value.`decoderFile`, buf)
+            FfiConverterOptionalString.write(value.`joinerFile`, buf)
+            FfiConverterString.write(value.`tokensFile`, buf)
+            FfiConverterString.write(value.`baseUrl`, buf)
+            FfiConverterString.write(value.`modelType`, buf)
+            FfiConverterString.write(value.`manifestUrl`, buf)
     }
 }
 
@@ -18559,6 +18758,48 @@ public object FfiConverterTypeFfiLogLevel: FfiConverterRustBuffer<FfiLogLevel> {
 }
 
 
+
+
+
+
+
+sealed class FfiManifestException(message: String): kotlin.Exception(message) {
+        
+        class Invalid(message: String) : FfiManifestException(message)
+        
+
+    companion object ErrorHandler : UniffiRustCallStatusErrorHandler<FfiManifestException> {
+        override fun lift(error_buf: RustBuffer.ByValue): FfiManifestException = FfiConverterTypeFfiManifestError.lift(error_buf)
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiManifestError : FfiConverterRustBuffer<FfiManifestException> {
+    override fun read(buf: ByteBuffer): FfiManifestException {
+        
+            return when(buf.getInt()) {
+            1 -> FfiManifestException.Invalid(FfiConverterString.read(buf))
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+        
+    }
+
+    override fun allocationSize(value: FfiManifestException): ULong {
+        return 4UL
+    }
+
+    override fun write(value: FfiManifestException, buf: ByteBuffer) {
+        when(value) {
+            is FfiManifestException.Invalid -> {
+                buf.putInt(1)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
 
 
 
@@ -20904,6 +21145,34 @@ public object FfiConverterSequenceTypeFfiListRow: FfiConverterRustBuffer<List<Ff
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFfiManifestFile: FfiConverterRustBuffer<List<FfiManifestFile>> {
+    override fun read(buf: ByteBuffer): List<FfiManifestFile> {
+        val len = buf.getInt()
+        return List<FfiManifestFile>(len) {
+            FfiConverterTypeFfiManifestFile.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiManifestFile>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiManifestFile.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiManifestFile>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiManifestFile.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiNotificationAction: FfiConverterRustBuffer<List<FfiNotificationAction>> {
     override fun read(buf: ByteBuffer): List<FfiNotificationAction> {
         val len = buf.getInt()
@@ -21034,6 +21303,34 @@ public object FfiConverterSequenceTypeFfiSlashCommand: FfiConverterRustBuffer<Li
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeFfiSlashCommand.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiSttModel: FfiConverterRustBuffer<List<FfiSttModel>> {
+    override fun read(buf: ByteBuffer): List<FfiSttModel> {
+        val len = buf.getInt()
+        return List<FfiSttModel>(len) {
+            FfiConverterTypeFfiSttModel.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiSttModel>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiSttModel.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiSttModel>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiSttModel.write(it, buf)
         }
     }
 }
@@ -21298,6 +21595,73 @@ public object FfiConverterMapStringTypeFfiLocalizedDisplay: FfiConverterRustBuff
     UniffiLib.uniffi_ari_ffi_fn_func_resolve_card_press(
     
         FfiConverterString.lower(`id`),FfiConverterOptionalString.lower(`utterance`),FfiConverterOptionalString.lower(`speak`),FfiConverterOptionalString.lower(`onCancel`),FfiConverterOptionalString.lower(`alertId`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * The model manifest in `json` ([`ari_core::model_manifest`]).
+         */
+    @Throws(FfiManifestException::class) fun `parseModelManifest`(`json`: kotlin.String): FfiModelManifest {
+            return FfiConverterTypeFfiModelManifest.lift(
+    uniffiRustCallWithError(FfiManifestException) { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_parse_model_manifest(
+    
+        FfiConverterString.lower(`json`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Every speech-to-text model offered.
+         */ fun `sttModels`(): List<FfiSttModel> {
+            return FfiConverterSequenceTypeFfiSttModel.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_stt_models(
+    
+        _status)
+}
+    )
+    }
+    
+
+        /**
+         * The models that can transcribe `locale`, recommended first.
+         */ fun `sttOnDeviceChoices`(`locale`: kotlin.String): List<FfiSttModel> {
+            return FfiConverterSequenceTypeFfiSttModel.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_stt_on_device_choices(
+    
+        FfiConverterString.lower(`locale`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * The model for `locale`: `current` while it serves it, else the
+         * recommended one.
+         */ fun `sttOnDeviceFor`(`locale`: kotlin.String, `current`: kotlin.String?): FfiSttModel {
+            return FfiConverterTypeFfiSttModel.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_stt_on_device_for(
+    
+        FfiConverterString.lower(`locale`),FfiConverterOptionalString.lower(`current`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Model ids no longer offered, which an install has to move off.
+         */ fun `sttRetiredIds`(): List<kotlin.String> {
+            return FfiConverterSequenceString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_ari_ffi_fn_func_stt_retired_ids(
+    
+        _status)
 }
     )
     }

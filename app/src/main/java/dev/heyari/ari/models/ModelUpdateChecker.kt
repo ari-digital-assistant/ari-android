@@ -9,6 +9,7 @@ import dev.heyari.ari.llm.LlmModel
 import dev.heyari.ari.llm.LlmModelRegistry
 import dev.heyari.ari.stt.ModelDownloadManager
 import dev.heyari.ari.stt.SttModel
+import dev.heyari.ari.stt.SttModelNames
 import dev.heyari.ari.stt.SttModelRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -60,7 +61,7 @@ sealed interface ModelTarget {
         @StringRes
         fun displayNameResFor(key: String): Int? =
             LlmModelRegistry.byId(key)?.displayNameRes
-                ?: SttModelRegistry.byId(key)?.displayNameRes
+                ?: SttModelNames.displayNameRes(key)
     }
 }
 

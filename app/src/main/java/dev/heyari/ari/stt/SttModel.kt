@@ -2,6 +2,11 @@ package dev.heyari.ari.stt
 
 import androidx.annotation.StringRes
 import dev.heyari.ari.R
+import uniffi.ari_ffi.FfiSttModel
+import uniffi.ari_ffi.sttModels
+import uniffi.ari_ffi.sttOnDeviceChoices
+import uniffi.ari_ffi.sttOnDeviceFor
+import uniffi.ari_ffi.sttRetiredIds
 
 /**
  * How the user wants their speech transcribed. This is the only STT choice we
@@ -57,13 +62,12 @@ enum class SttMode {
 }
 
 /**
- * Metadata for a downloadable STT model.
+ * A downloadable on-device STT model: the engine's catalog entry
+ * (`ari_voice::stt_models`) with the names the app shows for it.
  *
- * Models are downloaded into [filesDir]/models/<id>/ on demand. Encoder/decoder/joiner
- * filenames are kept distinct so int8 and fp32 variants of the same family can coexist.
- *
- * `joinerFile` is nullable: transducer models (Kroko, Parakeet) have a separate joiner
- * network, while encoder-decoder models (Whisper) do not.
+ * Models are downloaded into [filesDir]/models/<id>/ on demand. `joinerFile`
+ * is null for encoder-decoder models (Whisper); transducers (Kroko, Parakeet)
+ * have one.
  */
 data class SttModel(
     val id: String,
@@ -79,88 +83,57 @@ data class SttModel(
     val encoderFile: String,
     val decoderFile: String,
     val joinerFile: String?,
-    val tokensFile: String = "tokens.txt",
+    val tokensFile: String,
     val baseUrl: String,
-    val modelType: String = "zipformer",
-    /**
-     * Bundle manifest endpoint covering all component files. Empty
-     * means "no manifest published — fall back to per-file legacy URLs
-     * derived from [baseUrl] with SHA verification skipped and sidecar
-     * version=unknown".
-     */
-    val manifestUrl: String = "",
-)
+    val modelType: String,
+    /** Bundle manifest endpoint covering all component files. */
+    val manifestUrl: String,
+) {
+    companion object {
+        fun from(model: FfiSttModel): SttModel = SttModel(
+            id = model.id,
+            displayNameRes = requireNotNull(SttModelNames.displayNameRes(model.id)) {
+                "the engine offers ${model.id}, which the app has no name for"
+            },
+            descriptionRes = requireNotNull(SttModelNames.descriptionRes(model.id)),
+            totalBytes = model.totalBytes,
+            encoderFile = model.encoderFile,
+            decoderFile = model.decoderFile,
+            joinerFile = model.joinerFile,
+            tokensFile = model.tokensFile,
+            baseUrl = model.baseUrl,
+            modelType = model.modelType,
+            manifestUrl = model.manifestUrl,
+        )
+    }
+}
 
-/** The on-device models this build ships. */
+/**
+ * What the app calls each model the engine offers. The names are the app's
+ * words; which models there are, and which serves which language, is the
+ * engine's (`ari_voice::stt_models`).
+ */
+object SttModelNames {
+    private val names = mapOf(
+        "kroko-2025-08-06" to (R.string.model_stt_kroko_name to R.string.model_stt_kroko_desc),
+        "parakeet-ultra-int8-2026-11" to
+            (R.string.model_stt_parakeet_ultra_name to R.string.model_stt_parakeet_ultra_desc),
+        "whisper-turbo-int8-2024-09" to
+            (R.string.model_stt_whisper_turbo_name to R.string.model_stt_whisper_turbo_desc),
+    )
+
+    /** Null for a model this build doesn't offer, a retired one among them. */
+    @StringRes fun displayNameRes(id: String): Int? = names[id]?.first
+
+    @StringRes fun descriptionRes(id: String): Int? = names[id]?.second
+}
+
+/**
+ * The on-device models, read from the engine: which there are, which can
+ * transcribe a language, and which are retired.
+ */
 object SttModelRegistry {
-    val KROKO = SttModel(
-        id = "kroko-2025-08-06",
-        displayNameRes = R.string.model_stt_kroko_name,
-        descriptionRes = R.string.model_stt_kroko_desc,
-        totalBytes = 71_500_000L,
-        encoderFile = "encoder.onnx",
-        decoderFile = "decoder.onnx",
-        joinerFile = "joiner.onnx",
-        baseUrl = "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06/resolve/main",
-        modelType = "zipformer2",
-        manifestUrl = "https://github.com/ari-digital-assistant/ari-tools/releases/download/stt-kroko-latest/manifest.json",
-    )
-
-    /**
-     * OpenAI's whisper-large-v3-turbo, exported to ONNX and int8-quantised
-     * by csukuangfj. Multilingual (99 languages): the on-device model for the
-     * languages [PARAKEET_ULTRA] does not cover.
-     *
-     * Encoder-decoder architecture, no joiner. Non-streaming: the full
-     * utterance is buffered and decoded in one shot at end-of-speech, so
-     * there are no partials and the transcript appears all at once.
-     * VAD-based endpointing is used in [SpeechRecognizer.startListening]
-     * for this model type — sherpa's online-stream endpoint detection
-     * doesn't apply to offline recognizers.
-     */
-    val WHISPER_TURBO = SttModel(
-        id = "whisper-turbo-int8-2024-09",
-        displayNameRes = R.string.model_stt_whisper_turbo_name,
-        descriptionRes = R.string.model_stt_whisper_turbo_desc,
-        totalBytes = 1_037_000_000L,
-        encoderFile = "turbo-encoder.int8.onnx",
-        decoderFile = "turbo-decoder.int8.onnx",
-        joinerFile = null,
-        tokensFile = "turbo-tokens.txt",
-        baseUrl = "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-turbo/resolve/main",
-        modelType = "whisper",
-        manifestUrl = "https://github.com/ari-digital-assistant/ari-tools/releases/download/stt-whisper-turbo-latest/manifest.json",
-    )
-
-    /**
-     * Moondream's Parakeet Ultra, a further-trained NVIDIA Parakeet TDT 0.6B
-     * v3, exported to ONNX and int8-quantised by csukuangfj. CC-BY-4.0.
-     *
-     * Buffered like Whisper: no partials, one decode at end of speech. On the
-     * November 2026 bench (ari-android#26) it matched Whisper Turbo on Italian
-     * at a ninth of the decode time, and beat Kroko on English accuracy, but
-     * without Kroko's live partials, at nine times the download.
-     */
-    val PARAKEET_ULTRA = SttModel(
-        id = "parakeet-ultra-int8-2026-11",
-        displayNameRes = R.string.model_stt_parakeet_ultra_name,
-        descriptionRes = R.string.model_stt_parakeet_ultra_desc,
-        totalBytes = 670_600_000L,
-        encoderFile = "encoder.int8.onnx",
-        decoderFile = "decoder.int8.onnx",
-        joinerFile = "joiner.int8.onnx",
-        baseUrl = "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-ultra-int8/resolve/main",
-        modelType = "nemo_transducer",
-        manifestUrl = "https://github.com/ari-digital-assistant/ari-tools/releases/download/stt-parakeet-ultra-latest/manifest.json",
-    )
-
-    /** The 25 languages of Parakeet TDT v3, which Ultra is trained from. */
-    private val PARAKEET_LANGUAGES = setOf(
-        "bg", "cs", "da", "de", "el", "en", "es", "et", "fi", "fr", "hr", "hu", "it",
-        "lt", "lv", "mt", "nl", "pl", "pt", "ro", "ru", "sk", "sl", "sv", "uk",
-    )
-
-    val all = listOf(KROKO, PARAKEET_ULTRA, WHISPER_TURBO)
+    val all: List<SttModel> by lazy { sttModels().map(SttModel::from) }
 
     fun byId(id: String?): SttModel? = all.firstOrNull { it.id == id }
 
@@ -169,42 +142,24 @@ object SttModelRegistry {
      * Users choose between on-device and cloud; the language decides which
      * local models can serve them, and the first-run wizard only ever offers
      * the first. Settings shows them all.
-     *
-     * [KROKO] is English-only (the `-en-` in its upstream repo name is
-     * literal) and stays first for English: it is small and streams.
-     * [PARAKEET_ULTRA] leads for the other languages it covers, and every
-     * remaining language has only [WHISPER_TURBO].
      */
-    fun onDeviceChoicesFor(locale: String): List<SttModel> {
-        val language = locale.lowercase().substringBefore('-').substringBefore('_')
-        return when {
-            language == "en" -> listOf(KROKO, PARAKEET_ULTRA)
-            language in PARAKEET_LANGUAGES -> listOf(PARAKEET_ULTRA, WHISPER_TURBO)
-            else -> listOf(WHISPER_TURBO)
-        }
-    }
+    fun onDeviceChoicesFor(locale: String): List<SttModel> =
+        sttOnDeviceChoices(locale).map(SttModel::from)
 
     /** The recommended on-device model for [locale]: see [onDeviceChoicesFor]. */
-    fun onDeviceFor(locale: String): SttModel = onDeviceChoicesFor(locale).first()
+    fun onDeviceFor(locale: String): SttModel = SttModel.from(sttOnDeviceFor(locale, null))
 
     /**
      * [current] if it can transcribe [locale], else the recommended model: a
      * choice made in settings outlives a trip to the cloud and back.
      */
     fun onDeviceFor(locale: String, current: SttModel?): SttModel =
-        current?.takeIf { it in onDeviceChoicesFor(locale) } ?: onDeviceFor(locale)
+        SttModel.from(sttOnDeviceFor(locale, current?.id))
 
     /**
      * Model ids this build no longer ships. An install whose active id is in
-     * here has to be migrated — [byId] returns null for it, which would leave
+     * here has to be migrated: [byId] returns null for it, which would leave
      * the user with no recogniser at all rather than a degraded one.
-     *
-     * `nemotron-0.6b-int8-2026-01-14` was dropped after replaying the debug
-     * capture set through sherpa offline: given identical audio it produced
-     * "how's the weat" and "ton" where the 71 MB Kroko produced "how's the
-     * weather" and "turn on the kitchen table". Ten times the size, an order
-     * of magnitude worse — most likely int8 quantisation damage to a 0.6B
-     * streaming transducer.
      */
-    val retiredIds = setOf("nemotron-0.6b-int8-2026-01-14")
+    val retiredIds: Set<String> by lazy { sttRetiredIds().toSet() }
 }

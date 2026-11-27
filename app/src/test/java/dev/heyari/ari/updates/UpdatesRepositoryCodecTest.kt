@@ -4,7 +4,9 @@ import dev.heyari.ari.llm.LlmModelRegistry
 import dev.heyari.ari.models.ModelManifest
 import dev.heyari.ari.models.ModelTarget
 import dev.heyari.ari.models.ModelUpdate
-import dev.heyari.ari.stt.SttModelRegistry
+import dev.heyari.ari.R
+import dev.heyari.ari.stt.SttModel
+import dev.heyari.ari.stt.SttModelNames
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -21,6 +23,21 @@ import org.junit.Test
  * stable under reordering, and a different version flips the fingerprint.
  */
 class UpdatesRepositoryCodecTest {
+
+    /** Kroko as the engine's catalog has it; JVM tests can't call the engine. */
+    private val kroko = SttModel(
+        id = "kroko-2025-08-06",
+        displayNameRes = R.string.model_stt_kroko_name,
+        descriptionRes = R.string.model_stt_kroko_desc,
+        totalBytes = 71_500_000L,
+        encoderFile = "encoder.onnx",
+        decoderFile = "decoder.onnx",
+        joinerFile = "joiner.onnx",
+        tokensFile = "tokens.txt",
+        baseUrl = "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-kroko-2025-08-06/resolve/main",
+        modelType = "zipformer2",
+        manifestUrl = "https://github.com/ari-digital-assistant/ari-tools/releases/download/stt-kroko-latest/manifest.json",
+    )
 
     private val a = PendingUpdateSummary(
         id = "dev.heyari.timer",
@@ -108,17 +125,17 @@ class UpdatesRepositoryCodecTest {
         // handed a resolver — if it ever went back to reading a literal off
         // the target, the name would stop translating and this would catch it.
         val update = ModelUpdate(
-            target = ModelTarget.Stt(SttModelRegistry.KROKO),
+            target = ModelTarget.Stt(kroko),
             installedVersion = "1",
             manifest = ModelManifest(version = "2", releasedAt = null, files = emptyList()),
         )
         val summaries = UpdatesRepository.summariesFromModelUpdates(listOf(update)) { res ->
-            assertEquals(SttModelRegistry.KROKO.displayNameRes, res)
+            assertEquals(R.string.model_stt_kroko_name, res)
             "resolved-by-caller"
         }
         assertEquals(1, summaries.size)
         assertEquals("resolved-by-caller", summaries[0].displayName)
-        assertEquals(SttModelRegistry.KROKO.id, summaries[0].id)
+        assertEquals(kroko.id, summaries[0].id)
         assertEquals("1", summaries[0].installedVersion)
         assertEquals("2", summaries[0].availableVersion)
     }
@@ -129,9 +146,10 @@ class UpdatesRepositoryCodecTest {
         // point at a different string after an app update. Keys are ours and
         // stable, which is why the summaries store the key.
         assertEquals(
-            SttModelRegistry.KROKO.displayNameRes,
-            ModelTarget.displayNameResFor(SttModelRegistry.KROKO.id),
+            SttModelNames.displayNameRes(kroko.id),
+            ModelTarget.displayNameResFor(kroko.id),
         )
+        assertEquals(R.string.model_stt_kroko_name, ModelTarget.displayNameResFor(kroko.id))
         assertEquals(
             LlmModelRegistry.SMALL.displayNameRes,
             ModelTarget.displayNameResFor(LlmModelRegistry.SMALL.id),
